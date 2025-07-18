@@ -1,0 +1,92 @@
+'use client'
+
+import { ExternalLink } from 'lucide-react'
+import { useRedirectIfNotAuth } from '@/utils/auth'
+
+export default function PrivacySettingsPage() {
+  const userInfo = useRedirectIfNotAuth()
+
+  if (!userInfo) {
+    return (
+      <div className="min-h-screen bg-[#1E1E1E] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const tabs = [
+    { id: 'profile', name: 'Profil personnel', href: '/settings' },
+    { id: 'privacy', name: 'Données et confidentialité', href: '/settings/privacy' },
+    { id: 'billing', name: 'Facturation', href: '/settings/billing' },
+  ]
+
+  return (
+    <div className="bg-transparent min-h-screen text-white">
+      <div className="px-8 py-8">
+        <div className="mb-6">
+          <p className="text-xs text-white mb-1">Paramètres</p>
+          <h1 className="text-3xl font-bold text-white">Paramètres personnels</h1>
+        </div>
+        
+        <div className="mb-8">
+          <nav className="flex space-x-10">
+            {tabs.map((tab) => (
+              <a
+                key={tab.id}
+                href={tab.href}
+                className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  tab.id === 'privacy'
+                    ? 'border-accent-light text-white'
+                    : 'border-transparent text-white hover:text-accent-light hover:border-accent-light'
+                }`}
+              >
+                {tab.name}
+              </a>
+            ))}
+          </nav>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <div className="rounded-lg p-6 flex flex-col" style={{ background: '#262626', color: '#E0E0E0', border: '1px solid #3a3a4a' }}>
+            <div className="flex-grow">
+              <h3 className="text-lg font-semibold text-white mb-3">Politique de confidentialité</h3>
+              <p className="text-[#E0E0E0] text-sm leading-relaxed">
+                Comprenez comment nous collectons, utilisons et protégeons vos informations personnelles.
+              </p>
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => window.open('https://www.pickle.com/ko/privacy-policy', '_blank')}
+                className="flex items-center gap-2 px-4 py-2 bg-[#303030] hover:bg-[#444] text-white rounded-md text-sm font-medium transition-colors"
+              >
+                Confidentialité
+                <ExternalLink className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-lg p-6 flex flex-col" style={{ background: '#262626', color: '#E0E0E0', border: '1px solid #3a3a4a' }}>
+            <div className="flex-grow">
+              <h3 className="text-lg font-semibold text-white mb-3">Conditions d’utilisation</h3>
+              <p className="text-[#E0E0E0] text-sm leading-relaxed">
+                Comprenez vos droits et responsabilités lors de l’utilisation de notre plateforme.
+              </p>
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                onClick={() => window.open('https://www.pickle.com/ko/terms-of-service', '_blank')}
+                className="flex items-center gap-2 px-4 py-2 bg-[#303030] hover:bg-[#444] text-white rounded-md text-sm font-medium transition-colors"
+              >
+                Conditions
+                <ExternalLink className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+} 

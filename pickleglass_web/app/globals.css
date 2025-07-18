@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 30, 30, 30; /* #1e1e1e */
+  --background-end-rgb: 30, 30, 30;   /* #1e1e1e */
+  --main-bg-rgb: 35, 35, 41; /* #232329, moins foncé que la sidebar */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 30, 30, 30; /* #1e1e1e */
+    --background-end-rgb: 30, 30, 30;   /* #1e1e1e */
+    --main-bg-rgb: 35, 35, 41; /* #232329 */
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: #2c2c39;
+  letter-spacing: -0.03em;
+}
+
+/* Force tout le texte en blanc pur */
+body, .text-white, .text-main, .text-text-main, .text-\[\#E0E0E0\], .text-\[\#d1d5db\], .text-\[\#9ca3af\], .text-gray-900, .text-gray-600, .text-gray-500, .text-gray-400, .text-gray-700, .text-gray-800, .text-gray-300, .text-gray-200, .text-gray-100 {
+  color: #fff !important;
+}
+
+/* Style global pour les champs de formulaire */
+input, textarea {
+  background: #1e1e2e !important;
+  color: #fff !important;
+  border: 1px solid #444 !important;
+}
+input::placeholder, textarea::placeholder {
+  color: #bbb !important;
+  opacity: 1 !important;
+}
+
+body, input, textarea, button, select {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+.topbar-bg {
+  background: rgba(0,0,0,0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.card-bg {
+  background: #32323e;
+}
+
+.border-subtle {
+  border-color: #3a3a4a !important;
+}
+
+/* Utilitaire pour le fond du main/content */
+.main-bg {
+  background: rgb(var(--main-bg-rgb));
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+} 

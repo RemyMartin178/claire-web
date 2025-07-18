@@ -1,0 +1,24 @@
+{
+  "welcome": "Welcome",
+  "settings": "Settings",
+  "logout": "Log out",
+  "loading": "Loading...",
+  "save": "Save",
+  "cancel": "Cancel",
+  "profile": "Profile",
+  "language": "Language",
+  "email": "Email",
+  "default_user": "Default User",
+  "error": "Error",
+  "success": "Success",
+  "login": {
+    "welcome": "Welcome to Pickle Glass",
+    "signin_google": "Sign in with your Google account to sync your data across all devices.",
+    "electron_mode": "🔗 Login requested from Electron app",
+    "local_mode": "Local mode will run if you don't sign in.",
+    "signing_in": "Signing in...",
+    "signin_with_google": "Sign in with Google",
+    "continue_local_mode": "Continue in local mode",
+    "terms": "By signing in, you agree to our Terms of Service and Privacy Policy."
+  }
+} 

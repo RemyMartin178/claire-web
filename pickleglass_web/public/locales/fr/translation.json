@@ -1,0 +1,33 @@
+{
+  "welcome": "Bienvenue",
+  "settings": "Paramètres",
+  "logout": "Se déconnecter",
+  "loading": "Chargement...",
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "profile": "Profil",
+  "language": "Langue",
+  "email": "E-mail",
+  "default_user": "Utilisateur par défaut",
+  "error": "Erreur",
+  "success": "Succès",
+  "login": {
+    "welcome": "Bienvenue sur Pickle Glass",
+    "signin_google": "Connectez-vous avec votre compte Google pour synchroniser vos données sur tous vos appareils.",
+    "electron_mode": "🔗 Connexion demandée depuis l'application Electron",
+    "local_mode": "Le mode local sera utilisé si vous ne vous connectez pas.",
+    "signing_in": "Connexion en cours...",
+    "signin_with_google": "Se connecter avec Google",
+    "continue_local_mode": "Continuer en mode local",
+    "terms": "En vous connectant, vous acceptez nos Conditions d'utilisation et notre Politique de confidentialité."
+  },
+  "activity": {
+    "greeting_morning": "Bonjour",
+    "greeting_afternoon": "Bon après-midi",
+    "greeting_evening": "Bonsoir",
+    "your_past_activity": "Votre activité passée",
+    "loading_conversations": "Chargement des conversations...",
+    "no_conversations": "Aucune conversation pour l’instant. Démarrez une conversation dans l’application de bureau pour voir votre activité ici.",
+    "tip": "💡 Astuce : Utilisez l’application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement."
+  }
+} 
