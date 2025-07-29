@@ -46,11 +46,13 @@ export const createUserWithEmail = async (email: string, password: string, first
     }
 
     // Create user profile in Firestore
+    console.log('Creating user profile with:', { uid: user.uid, display_name: displayName, email: user.email || email })
     await findOrCreateUser({
       uid: user.uid,
       display_name: displayName,
       email: user.email || email
     })
+    console.log('User profile created successfully')
 
     return user
   } catch (error) {
