@@ -37,7 +37,6 @@ function SessionDetailsContent() {
   const [isLoading, setIsLoading] = useState(true);
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
-  const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
