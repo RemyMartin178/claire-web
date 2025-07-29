@@ -446,12 +446,15 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
     const getUserDisplayName = useCallback(() => {
         if (authLoading) return 'Chargement...';
-        return userInfo?.displayName || 'Invité';
+        if (!userInfo) return 'Invité';
+        return userInfo.displayName || userInfo.email?.split('@')[0] || 'Utilisateur';
     }, [userInfo, authLoading]);
 
     const getUserInitial = useCallback(() => {
         if (authLoading) return 'L';
-        return userInfo?.displayName ? userInfo.displayName.charAt(0).toUpperCase() : 'G';
+        if (!userInfo) return 'I';
+        const displayName = userInfo.displayName || userInfo.email?.split('@')[0] || 'U';
+        return displayName.charAt(0).toUpperCase();
     }, [userInfo, authLoading]);
 
     const isFirebaseUser = userInfo && userInfo.uid !== 'default_user';
