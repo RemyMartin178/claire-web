@@ -89,15 +89,12 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#1E1E1E' }}>
       <div className="w-full max-w-md mx-auto">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <img src="/word.png" alt="Claire Logo" className="w-12 h-12" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Claire</h1>
-          <p className="text-[#bbb]">Assistant IA intelligent</p>
+        {/* Logo en haut à gauche */}
+        <div className="absolute top-8 left-8 flex items-center gap-3">
+          <img src="/word.png" alt="Claire Logo" className="w-16 h-16" />
+          <h1 className="text-2xl font-bold text-white">Claire</h1>
         </div>
-
+        
         {/* Formulaire */}
         <div className="bg-[#232329] rounded-xl shadow-lg border border-[#3a3a4a] p-8">
           <div className="text-center mb-6">
