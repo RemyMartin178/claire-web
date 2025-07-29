@@ -48,7 +48,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <div>
           <h1 className="text-3xl font-bold mb-1 text-white">Dashboard Claire</h1>
-                      <p className="text-[#bbb]">Bonjour, {user?.displayName || 'Utilisateur'} !</p>
+                      <p className="text-[#bbb]">Bonjour, {user?.display_name || 'Utilisateur'} !</p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/activity" className="flex items-center gap-2 bg-accent-light hover:opacity-90 text-white px-6 py-3 rounded-lg font-semibold text-lg shadow transition-all">
