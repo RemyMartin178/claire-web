@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Check, ExternalLink, Cloud, HardDrive } from 'lucide-react'
-import { useAuth } from '@/utils/auth'
+import { useAuth } from '@/contexts/AuthContext'
 import { 
   UserProfile,
   getUserProfile,
@@ -24,7 +24,7 @@ type Tab = 'profile' | 'privacy' | 'billing'
 type BillingCycle = 'monthly' | 'annually'
 
 export default function SettingsPage() {
-  const { user: userInfo, isLoading, mode } = useAuth()
+  const { user: userInfo, loading } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly')
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -72,7 +72,7 @@ export default function SettingsPage() {
     }
   }, [userInfo])
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#1E1E1E] flex items-center justify-center">
         <div className="text-center">
@@ -88,7 +88,7 @@ export default function SettingsPage() {
     return null
   }
 
-  const isFirebaseMode = mode === 'firebase'
+  const isFirebaseMode = true
 
   const tabs = [
     { id: 'profile' as Tab, name: 'Profil personnel', href: '/settings' },

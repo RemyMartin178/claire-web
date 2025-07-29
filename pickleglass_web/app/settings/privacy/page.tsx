@@ -1,10 +1,19 @@
 'use client'
 
 import { ExternalLink } from 'lucide-react'
-import { useRedirectIfNotAuth } from '@/utils/auth'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function PrivacySettingsPage() {
-  const userInfo = useRedirectIfNotAuth()
+  const { user: userInfo, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !userInfo) {
+      router.push('/login');
+    }
+  }, [userInfo, loading, router]);
 
   if (!userInfo) {
     return (

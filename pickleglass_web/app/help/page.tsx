@@ -1,14 +1,23 @@
 'use client'
 
 import { HelpCircle, Book, MessageCircle, Mail } from 'lucide-react'
-import { useRedirectIfNotAuth } from '@/utils/auth'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 // SUPPRIMER : import { useTranslation } from 'react-i18next';
 
 export default function HelpPage() {
   // SUPPRIMER : const { t } = useTranslation();
-  const userInfo = useRedirectIfNotAuth()
+  const { user: userInfo, loading } = useAuth();
+  const router = useRouter();
 
-  if (!userInfo) {
+  useEffect(() => {
+    if (!loading && !userInfo) {
+      router.push('/login');
+    }
+  }, [userInfo, loading, router]);
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -17,6 +26,10 @@ export default function HelpPage() {
         </div>
       </div>
     )
+  }
+
+  if (!userInfo) {
+    return null;
   }
 
   return (
