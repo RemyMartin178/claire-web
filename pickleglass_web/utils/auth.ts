@@ -32,15 +32,23 @@ export const signInWithGoogle = async () => {
   }
 }
 
-export const createUserWithEmail = async (email: string, password: string) => {
+export const createUserWithEmail = async (email: string, password: string, firstName?: string, lastName?: string) => {
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password)
     const user = result.user
 
+    // Create display name from firstName and lastName if provided
+    let displayName = 'User'
+    if (firstName && lastName) {
+      displayName = `${firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()} ${lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase()}`
+    } else if (firstName) {
+      displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
+    }
+
     // Create user profile in Firestore
     await findOrCreateUser({
       uid: user.uid,
-      display_name: user.displayName || 'User',
+      display_name: displayName,
       email: user.email || email
     })
 

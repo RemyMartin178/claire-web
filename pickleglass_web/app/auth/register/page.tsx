@@ -46,7 +46,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await createUserWithEmail(formData.email, formData.password)
+      await createUserWithEmail(formData.email, formData.password, formData.firstName, formData.lastName)
       router.push('/accueil')
     } catch (error: any) {
       console.error('Register error:', error)
