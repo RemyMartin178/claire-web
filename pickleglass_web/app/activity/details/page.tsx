@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useRedirectIfNotAuth } from '@/utils/auth'
+import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -25,7 +25,14 @@ const Section = ({ title, children }: { title: string, children: React.ReactNode
 );
 
 function SessionDetailsContent() {
-  const userInfo = useRedirectIfNotAuth() as UserProfile | null;
+  const { user: userInfo, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !userInfo) {
+      router.push('/login');
+    }
+  }, [userInfo, loading, router]);
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const searchParams = useSearchParams();
@@ -64,7 +71,7 @@ function SessionDetailsContent() {
     }
   };
 
-  if (!userInfo || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center">
         <div className="text-center">
@@ -73,6 +80,10 @@ function SessionDetailsContent() {
         </div>
       </div>
     );
+  }
+
+  if (!userInfo) {
+    return null;
   }
 
   if (!sessionDetails) {
