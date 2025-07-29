@@ -9,7 +9,7 @@ export default function AuthLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="min-h-screen" style={{ background: '#1E1E1E' }}>
+      <div className="min-h-screen" style={{ background: '#202123' }}>
         {children}
       </div>
     </AuthProvider>

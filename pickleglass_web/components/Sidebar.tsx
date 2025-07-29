@@ -450,15 +450,22 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         if (authLoading) return 'Chargement...';
         if (!userInfo) return 'Invité';
         
-        // Si on a un displayName, on l'utilise
+        // Si on a un displayName, on l'utilise et on formate
         if (userInfo.displayName) {
-            return userInfo.displayName;
+            const names = userInfo.displayName.split(' ');
+            if (names.length >= 2) {
+                // Si on a au moins 2 mots, on prend les 2 premiers
+                return `${names[0].charAt(0).toUpperCase() + names[0].slice(1).toLowerCase()} ${names[1].charAt(0).toUpperCase() + names[1].slice(1).toLowerCase()}`;
+            } else {
+                // Si un seul mot, on le met en majuscule
+                return userInfo.displayName.charAt(0).toUpperCase() + userInfo.displayName.slice(1).toLowerCase();
+            }
         }
         
         // Sinon on utilise l'email et on met en majuscules
         if (userInfo.email) {
             const name = userInfo.email.split('@')[0];
-            return name.charAt(0).toUpperCase() + name.slice(1);
+            return name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
         }
         
         return 'Utilisateur';
@@ -468,9 +475,10 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         if (authLoading) return 'L';
         if (!userInfo) return 'I';
         
-        // Si on a un displayName, on prend la première lettre
+        // Si on a un displayName, on prend la première lettre du premier nom
         if (userInfo.displayName) {
-            return userInfo.displayName.charAt(0).toUpperCase();
+            const names = userInfo.displayName.split(' ');
+            return names[0].charAt(0).toUpperCase();
         }
         
         // Sinon on utilise l'email
@@ -628,32 +636,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                     </div>
                 </div>
                 
-                {/* Bouton de déconnexion */}
-                {userInfo && (
-                    <div className="mt-2">
-                        <button
-                            onClick={handleLogout}
-                            className={`
-                                group flex items-center rounded-[6px] px-[12px] py-[8px] text-[13px] text-white
-                                hover:text-white hover:bg-[#232323] ${isCollapsed ? '' : 'gap-x-[10px]'}
-                                transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out 
-                                focus:outline-none w-full
-                            `}
-                            title={isCollapsed ? 'Déconnexion' : undefined}
-                            aria-label="Se déconnecter"
-                            style={{ willChange: 'background-color, color' }}
-                        >
-                            <div className="overflow-hidden">
-                                <span className="" style={getUniformTextStyle()}>
-                                    {isCollapsed ? '' : 'Déconnexion'}
-                                </span>
-                            </div>
-                            <div className="shrink-0 flex items-center justify-center w-4 h-4">
-                                <LogOut className="h-[16px] w-[16px] transition-transform duration-${ANIMATION_DURATION.ICON_HOVER}" />
-                            </div>
-                        </button>
-                    </div>
-                )}
+
             </nav>
         </aside>
     );
