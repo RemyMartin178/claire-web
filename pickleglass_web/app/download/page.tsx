@@ -1,12 +1,21 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Download, Smartphone, Monitor, Tablet } from 'lucide-react'
-import { useRedirectIfNotAuth } from '@/utils/auth'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
 
 export default function DownloadPage() {
-  const userInfo = useRedirectIfNotAuth()
+  const { user: userInfo, loading } = useAuth();
+  const router = useRouter();
 
-  if (!userInfo) {
+  useEffect(() => {
+    if (!loading && !userInfo) {
+      router.push('/login');
+    }
+  }, [userInfo, loading, router]);
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -15,6 +24,10 @@ export default function DownloadPage() {
         </div>
       </div>
     )
+  }
+
+  if (!userInfo) {
+    return null;
   }
 
   return (
