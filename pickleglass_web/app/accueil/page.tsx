@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getUserProfile, getSessions, getPresets, UserProfile, Session, PromptPreset } from '@/utils/api';
 import Link from 'next/link';
 import { MessageCircle, PlusCircle, CheckCircle, Clock, Book, ChevronDown } from 'lucide-react';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function AccueilPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
