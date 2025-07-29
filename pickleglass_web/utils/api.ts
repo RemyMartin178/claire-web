@@ -395,7 +395,7 @@ export const getUserProfile = async (): Promise<UserProfile> => {
     
     return {
       uid: user.uid,
-      display_name: firestoreProfile?.displayName || user.displayName || 'User',
+      display_name: firestoreProfile?.display_name || user.displayName || 'User',
       email: firestoreProfile?.email || user.email || 'no-email@example.com'
     };
   } else {
@@ -425,7 +425,7 @@ export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> 
     
     if (!existingUser) {
       await FirestoreUserService.createUser(uid, {
-        displayName: user.display_name,
+        display_name: user.display_name,
         email: user.email
       });
     }

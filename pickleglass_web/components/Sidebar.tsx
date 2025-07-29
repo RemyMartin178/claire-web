@@ -450,15 +450,15 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         if (authLoading) return 'Chargement...';
         if (!userInfo) return 'Invité';
         
-        // Si on a un displayName, on l'utilise et on formate
-        if (userInfo.displayName) {
-            const names = userInfo.displayName.split(' ');
+        // Si on a un display_name, on l'utilise et on formate
+        if (userInfo.display_name) {
+            const names = userInfo.display_name.split(' ');
             if (names.length >= 2) {
                 // Si on a au moins 2 mots, on prend les 2 premiers
                 return `${names[0].charAt(0).toUpperCase() + names[0].slice(1).toLowerCase()} ${names[1].charAt(0).toUpperCase() + names[1].slice(1).toLowerCase()}`;
             } else {
                 // Si un seul mot, on le met en majuscule
-                return userInfo.displayName.charAt(0).toUpperCase() + userInfo.displayName.slice(1).toLowerCase();
+                return userInfo.display_name.charAt(0).toUpperCase() + userInfo.display_name.slice(1).toLowerCase();
             }
         }
         
@@ -475,9 +475,9 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         if (authLoading) return 'L';
         if (!userInfo) return 'I';
         
-        // Si on a un displayName, on prend la première lettre du premier nom
-        if (userInfo.displayName) {
-            const names = userInfo.displayName.split(' ');
+        // Si on a un display_name, on prend la première lettre du premier nom
+        if (userInfo.display_name) {
+            const names = userInfo.display_name.split(' ');
             return names[0].charAt(0).toUpperCase();
         }
         
