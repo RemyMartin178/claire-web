@@ -14,7 +14,7 @@ import {
   Timestamp,
   writeBatch
 } from 'firebase/firestore';
-import { firestore } from './firebase';
+import { db as firestore } from './firebase';
 
 export interface FirestoreUserProfile {
   displayName: string;
