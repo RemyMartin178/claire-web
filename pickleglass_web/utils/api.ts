@@ -391,13 +391,17 @@ export const getUserProfile = async (): Promise<UserProfile> => {
   if (isFirebaseMode()) {
     const user = auth.currentUser;
     if (!user) throw new Error('Aucun utilisateur connecté');
+    console.log('Getting Firestore profile for user:', user.uid);
     const firestoreProfile = await FirestoreUserService.getUser(user.uid);
+    console.log('Firestore profile:', firestoreProfile);
     
-    return {
+    const result = {
       uid: user.uid,
       display_name: firestoreProfile?.displayName || user.displayName || 'User',
       email: firestoreProfile?.email || user.email || 'no-email@example.com'
     };
+    console.log('Returning user profile:', result);
+    return result;
   } else {
     const response = await apiCall(`/api/user/profile`, { method: 'GET' });
     if (!response.ok) throw new Error('Failed to fetch user profile');

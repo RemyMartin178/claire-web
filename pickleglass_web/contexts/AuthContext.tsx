@@ -32,16 +32,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
+          console.log('Fetching user profile for:', firebaseUser.uid)
           const userProfile = await getUserProfile()
+          console.log('User profile fetched:', userProfile)
           setUser(userProfile)
         } catch (error) {
           console.error('Error fetching user profile:', error)
           // Fallback to Firebase user data
-          setUser({
+          const fallbackUser = {
             uid: firebaseUser.uid,
             display_name: firebaseUser.displayName || 'User',
             email: firebaseUser.email || 'no-email@example.com'
-          })
+          }
+          console.log('Using fallback user data:', fallbackUser)
+          setUser(fallbackUser)
         }
       } else {
         setUser(null)

@@ -143,6 +143,8 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     try {
       await logout()
+      // Rediriger vers la landing page
+      window.location.href = 'https://clairia.app'
     } catch (error) {
       console.error("Logout failed:", error)
     }
