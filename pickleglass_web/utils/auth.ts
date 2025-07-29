@@ -3,6 +3,7 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail as firebaseSendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged as firebaseOnAuthStateChanged,
   type User,
@@ -31,20 +32,20 @@ export const signInWithGoogle = async () => {
   }
 }
 
-export const createUserWithEmail = async (email: string, password: string, displayName: string) => {
+export const createUserWithEmail = async (email: string, password: string) => {
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password)
     const user = result.user
 
-    // Create user profile in Firestore with display name
+    // Create user profile in Firestore
     await findOrCreateUser({
       uid: user.uid,
-      display_name: displayName,
+      display_name: user.displayName || 'User',
       email: user.email || email
     })
 
     return user
-        } catch (error) {
+  } catch (error) {
     console.error("Error creating user with email:", error)
     throw error
   }
@@ -75,4 +76,13 @@ export const onAuthStateChanged = (callback: (user: User | null) => void) => {
 
 export const getCurrentUser = () => {
   return auth.currentUser
+}
+
+export const sendPasswordResetEmail = async (email: string) => {
+  try {
+    await firebaseSendPasswordResetEmail(auth, email)
+  } catch (error) {
+    console.error("Error sending password reset email:", error)
+    throw error
+  }
 } 
