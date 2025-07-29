@@ -156,119 +156,115 @@ export default function PersonalizePage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-transparent text-white">
-      <div className="bg-card-bg border-b border-sidebar-border text-white">
-        <div className="px-8 pt-8 pb-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-[#9ca3af] mb-2">Préréglages</p>
-              <h1 className="text-3xl font-bold text-white">Personnaliser</h1>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleCreateNewPreset}
-                disabled={saving}
-                className="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 bg-accent-light text-white hover:opacity-90 disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Nouveau préréglage
-              </button>
-              {selectedPreset && (
-                <button
-                  onClick={handleDuplicatePreset}
-                  disabled={saving}
-                  className="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 bg-accent-light text-white hover:opacity-90 disabled:bg-gray-700 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Copy className="h-4 w-4" />
-                  Dupliquer
-                </button>
-              )}
-              <button
-                onClick={handleSave}
-                disabled={saving || !isDirty || selectedPreset?.is_default === 1}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  !isDirty && !saving
-                    ? 'bg-card-bg text-[#9ca3af] cursor-default'
-                    : saving 
-                      ? 'bg-card-bg text-[#9ca3af] cursor-not-allowed' 
-                      : 'bg-accent-light text-white hover:opacity-90'
-                }`}
-              >
-                {!isDirty && !saving ? 'Enregistré' : saving ? 'Enregistrement...' : 'Enregistrer'}
-              </button>
-            </div>
-          </div>
+    <div className="min-h-screen w-full flex flex-col gap-8 px-4 py-8 md:px-12 md:py-12 bg-transparent">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
+        <div>
+          <h1 className="text-3xl font-bold mb-1 text-white">Personnaliser</h1>
+          <p className="text-[#bbb]">Gérez vos préréglages personnalisés</p>
         </div>
-      </div>
-
-      <div className={`transition-colors duration-300 bg-[#343541] text-white`}>
-        <div className="px-8 py-6">
-          <div className="mb-6">
+                    <div className="flex items-center gap-3">
+          <button
+            onClick={handleCreateNewPreset}
+            disabled={saving}
+            className="flex items-center gap-2 bg-accent-light hover:opacity-90 text-white px-6 py-3 rounded-lg font-semibold text-lg shadow transition-all disabled:opacity-50"
+          >
+            <Plus className="w-5 h-5" />
+            Nouveau préréglage
+          </button>
+          {selectedPreset && (
             <button
-              onClick={() => setShowPresets(!showPresets)}
-              className="flex items-center gap-2 text-[#9ca3af] hover:text-white text-sm font-medium transition-colors"
+              onClick={handleDuplicatePreset}
+              disabled={saving}
+              className="flex items-center gap-2 bg-[#232329] border border-[#3a3a4a] text-white px-6 py-3 rounded-lg font-semibold text-lg shadow transition-all disabled:opacity-50"
             >
-              <ChevronDown 
-                className={`h-4 w-4 transition-transform duration-200 ${showPresets ? 'rotate-180' : ''}`}
-              />
-              {showPresets ? 'Hide Presets' : 'Show Presets'}
+              <Copy className="w-5 h-5" />
+              Dupliquer
             </button>
-          </div>
-          
-          {showPresets && (
-            <div className="grid grid-cols-5 gap-4 mb-6">
-              {allPresets.map((preset) => (
-                <div
-                  key={preset.id}
-                  onClick={() => handlePresetClick(preset)}
-                  className={`
-                    p-4 rounded-lg cursor-pointer transition-all duration-200 bg-card-bg
-                    h-48 flex flex-col shadow-sm hover:shadow-md relative
-                    ${selectedPreset?.id === preset.id
-                      ? 'border-2 border-accent-light shadow-md'
-                      : 'border border-sidebar-border hover:border-accent-light'
-                    }
-                  `}
-                >
-                  {preset.is_default === 1 && (
-                    <div className="absolute top-2 right-2 bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
-                      Default
-                    </div>
-                  )}
-                  <h3 className="font-semibold text-white mb-3 text-center text-sm">
-                    {preset.title}
-                  </h3>
-                  <p className="text-xs text-[#9ca3af] leading-relaxed flex-1 overflow-hidden">
-                    {preset.prompt.substring(0, 100) + (preset.prompt.length > 100 ? '...' : '')}
-                  </p>
-                </div>
-              ))}
-            </div>
           )}
+          <button
+            onClick={handleSave}
+            disabled={saving || !isDirty || selectedPreset?.is_default === 1}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold text-lg shadow transition-all ${
+              !isDirty && !saving
+                ? 'bg-[#232329] border border-[#3a3a4a] text-[#bbb] cursor-default'
+                : saving 
+                  ? 'bg-[#232329] border border-[#3a3a4a] text-[#bbb] cursor-not-allowed' 
+                  : 'bg-accent-light text-white hover:opacity-90'
+            }`}
+          >
+            {!isDirty && !saving ? 'Enregistré' : saving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
         </div>
       </div>
 
-      <div className="flex-1 bg-[#343541] text-white">
-        <div className="h-full px-8 py-6 flex flex-col">
-          {selectedPreset?.is_default === 1 && (
-            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
-                <p className="text-sm text-yellow-800">
-                  <strong>Ceci est un préréglage par défaut et ne peut pas être modifié.</strong> 
-                  Utilisez le bouton « Dupliquer » ci-dessus pour créer une copie modifiable, ou créez un nouveau préréglage.
+      {/* Section des préréglages */}
+      <div className="bg-[#232329] rounded-xl p-6 border border-[#3a3a4a] shadow">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">Préréglages</h2>
+          <button
+            onClick={() => setShowPresets(!showPresets)}
+            className="flex items-center gap-2 text-[#bbb] hover:text-white text-sm font-medium transition-colors"
+          >
+            <ChevronDown 
+              className={`h-4 w-4 transition-transform duration-200 ${showPresets ? 'rotate-180' : ''}`}
+            />
+            {showPresets ? 'Masquer' : 'Afficher'}
+          </button>
+        </div>
+        
+        {showPresets && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {allPresets.map((preset) => (
+              <div
+                key={preset.id}
+                onClick={() => handlePresetClick(preset)}
+                className={`
+                  p-4 rounded-lg cursor-pointer transition-all duration-200 bg-[#2a2a32]
+                  h-48 flex flex-col shadow-sm hover:shadow-md relative border
+                  ${selectedPreset?.id === preset.id
+                    ? 'border-2 border-accent-light shadow-md'
+                    : 'border-[#3a3a4a] hover:border-accent-light'
+                  }
+                `}
+              >
+                {preset.is_default === 1 && (
+                  <div className="absolute top-2 right-2 bg-yellow-900/20 text-yellow-400 text-xs px-2 py-1 rounded-full border border-yellow-500/30">
+                    Par défaut
+                  </div>
+                )}
+                <h3 className="font-semibold text-white mb-3 text-center text-sm">
+                  {preset.title}
+                </h3>
+                <p className="text-xs text-[#bbb] leading-relaxed flex-1 overflow-hidden">
+                  {preset.prompt.substring(0, 100) + (preset.prompt.length > 100 ? '...' : '')}
                 </p>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Éditeur de préréglage */}
+      <div className="bg-[#232329] rounded-xl p-6 border border-[#3a3a4a] shadow">
+        {selectedPreset?.is_default === 1 && (
+          <div className="mb-4 p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
+              <p className="text-sm text-yellow-400">
+                <strong>Ceci est un préréglage par défaut et ne peut pas être modifié.</strong> 
+                Utilisez le bouton « Dupliquer » ci-dessus pour créer une copie modifiable, ou créez un nouveau préréglage.
+              </p>
             </div>
-          )}
-          <textarea
-            value={editorContent}
-            onChange={handleEditorChange}
-            className="w-full flex-1 text-sm text-white border-0 resize-none focus:outline-none bg-transparent font-mono leading-relaxed placeholder-[#9ca3af]"
-            placeholder="Sélectionnez un préréglage ou saisissez directement..."
-            readOnly={selectedPreset?.is_default === 1}
-          />
-        </div>
+          </div>
+        )}
+        <textarea
+          value={editorContent}
+          onChange={handleEditorChange}
+          className="w-full h-64 text-sm text-white border-0 resize-none focus:outline-none bg-transparent font-mono leading-relaxed placeholder-[#bbb] rounded-lg p-4 bg-[#2a2a32] border border-[#3a3a4a]"
+          placeholder="Sélectionnez un préréglage ou saisissez directement..."
+          readOnly={selectedPreset?.is_default === 1}
+        />
       </div>
     </div>
   );

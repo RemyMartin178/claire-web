@@ -247,6 +247,8 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const handleLogout = useCallback(async () => {
         try {
             await logout();
+            // Rediriger vers la landing page
+            window.location.href = 'https://clairia.app';
         } catch (error) {
             console.error('An error occurred during logout:', error);
         }
@@ -447,14 +449,37 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const getUserDisplayName = useCallback(() => {
         if (authLoading) return 'Chargement...';
         if (!userInfo) return 'Invité';
-        return userInfo.displayName || userInfo.email?.split('@')[0] || 'Utilisateur';
+        
+        // Si on a un displayName, on l'utilise
+        if (userInfo.displayName) {
+            return userInfo.displayName;
+        }
+        
+        // Sinon on utilise l'email et on met en majuscules
+        if (userInfo.email) {
+            const name = userInfo.email.split('@')[0];
+            return name.charAt(0).toUpperCase() + name.slice(1);
+        }
+        
+        return 'Utilisateur';
     }, [userInfo, authLoading]);
 
     const getUserInitial = useCallback(() => {
         if (authLoading) return 'L';
         if (!userInfo) return 'I';
-        const displayName = userInfo.displayName || userInfo.email?.split('@')[0] || 'U';
-        return displayName.charAt(0).toUpperCase();
+        
+        // Si on a un displayName, on prend la première lettre
+        if (userInfo.displayName) {
+            return userInfo.displayName.charAt(0).toUpperCase();
+        }
+        
+        // Sinon on utilise l'email
+        if (userInfo.email) {
+            const name = userInfo.email.split('@')[0];
+            return name.charAt(0).toUpperCase();
+        }
+        
+        return 'U';
     }, [userInfo, authLoading]);
 
     const isFirebaseUser = userInfo && userInfo.uid !== 'default_user';
@@ -469,10 +494,10 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         >
             <header className={`group relative h-6 flex shrink-0 items-center justify-between text-text-main`}>
                 <Link href="/" className="flex items-center">
-                    {/* Logo long (word.png) pour sidebar ouverte, logo court (symbol.png) pour sidebar fermée */}
+                    {/* Logo long (word.png) pour sidebar ouverte, logo court (symbol.svg) pour sidebar fermée */}
                     {isCollapsed ? (
                         <Image
-                            src="/symbol.png"
+                            src="/symbol.svg"
                             alt="Logo Claire"
                             width={32}
                             height={32}
@@ -602,6 +627,33 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                         </span>
                     </div>
                 </div>
+                
+                {/* Bouton de déconnexion */}
+                {userInfo && (
+                    <div className="mt-2">
+                        <button
+                            onClick={handleLogout}
+                            className={`
+                                group flex items-center rounded-[6px] px-[12px] py-[8px] text-[13px] text-white
+                                hover:text-white hover:bg-[#232323] ${isCollapsed ? '' : 'gap-x-[10px]'}
+                                transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out 
+                                focus:outline-none w-full
+                            `}
+                            title={isCollapsed ? 'Déconnexion' : undefined}
+                            aria-label="Se déconnecter"
+                            style={{ willChange: 'background-color, color' }}
+                        >
+                            <div className="overflow-hidden">
+                                <span className="" style={getUniformTextStyle()}>
+                                    {isCollapsed ? '' : 'Déconnexion'}
+                                </span>
+                            </div>
+                            <div className="shrink-0 flex items-center justify-center w-4 h-4">
+                                <LogOut className="h-[16px] w-[16px] transition-transform duration-${ANIMATION_DURATION.ICON_HOVER}" />
+                            </div>
+                        </button>
+                    </div>
+                )}
             </nav>
         </aside>
     );
