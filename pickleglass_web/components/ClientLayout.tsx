@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 import SearchPopup from '@/components/SearchPopup'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 export default function ClientLayout({
   children,
@@ -25,20 +26,22 @@ export default function ClientLayout({
   }, [])
 
   return (
-    <div className="flex h-screen">
-      <Sidebar 
-        isCollapsed={isSidebarCollapsed} 
-        onToggle={setIsSidebarCollapsed}
-        onSearchClick={() => setIsSearchOpen(true)}
-      />
-      <main className="flex-1 overflow-auto" style={{ background: '#1E1E1E' }}>
-        {children}
-      </main>
-      
-      <SearchPopup 
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-      />
-    </div>
+    <AuthProvider>
+      <div className="flex h-screen">
+        <Sidebar 
+          isCollapsed={isSidebarCollapsed} 
+          onToggle={setIsSidebarCollapsed}
+          onSearchClick={() => setIsSearchOpen(true)}
+        />
+        <main className="flex-1 overflow-auto" style={{ background: '#1E1E1E' }}>
+          {children}
+        </main>
+        
+        <SearchPopup 
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)}
+        />
+      </div>
+    </AuthProvider>
   )
 } 

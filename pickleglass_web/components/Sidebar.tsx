@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useState, createElement, useEffect, useMemo, useCallback, memo } from 'react';
 import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, Home } from 'lucide-react';
 import { logout, UserProfile, checkApiKeyStatus } from '@/utils/api';
-import { useAuth } from '@/utils/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ANIMATION_DURATION = {
     SIDEBAR: 500,
@@ -156,7 +156,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const pathname = usePathname();
     const router = useRouter();
     const [isSettingsExpanded, setIsSettingsExpanded] = useState(pathname.startsWith('/settings'));
-    const { user: userInfo, isLoading: authLoading } = useAuth();
+    const { user: userInfo, loading: authLoading } = useAuth();
     const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
 
     const { isAnimating, getTextAnimationStyle, getSubmenuAnimationStyle, sidebarContainerStyle, getTextContainerStyle, getUniformTextStyle } =
@@ -181,11 +181,11 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         () => [
             {
                 name: 'Accueil',
-                href: '/',
+                href: '/dashboard',
                 icon: Home,
                 isLucide: true,
                 ariaLabel: 'Accueil',
-                isActive: pathname === '/',
+                isActive: pathname === '/dashboard',
             },
             {
                 name: 'Mon activité',
@@ -376,24 +376,24 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                                     </li>
                                 ))}
                                 <li role="none">
-                                    <button
+                                        <button
                                         onClick={() => {
                                             // Remplacer l'URL ci-dessous par celle de la page de connexion Claire quand tu l'auras
                                             window.location.href = 'https://URL_CONNEXION_CLAIRE';
                                         }}
-                                        className={`
+                                            className={`
                                     group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px]
                                     text-red-600 hover:text-red-700 hover:bg-[#f7f7f7] w-full 
                                     transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
                                     focus:outline-none
                                   `}
-                                        style={{ willChange: 'background-color, color' }}
-                                        role="menuitem"
-                                        aria-label="Déconnexion"
-                                    >
-                                        <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-                                        <span className="whitespace-nowrap">Déconnexion</span>
-                                    </button>
+                                            style={{ willChange: 'background-color, color' }}
+                                            role="menuitem"
+                                            aria-label="Déconnexion"
+                                        >
+                                            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
+                                            <span className="whitespace-nowrap">Déconnexion</span>
+                                        </button>
                                 </li>
                             </ul>
                         </div>
@@ -446,12 +446,12 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
     const getUserDisplayName = useCallback(() => {
         if (authLoading) return 'Chargement...';
-        return userInfo?.display_name || 'Invité';
+        return userInfo?.displayName || 'Invité';
     }, [userInfo, authLoading]);
 
     const getUserInitial = useCallback(() => {
         if (authLoading) return 'L';
-        return userInfo?.display_name ? userInfo.display_name.charAt(0).toUpperCase() : 'G';
+        return userInfo?.displayName ? userInfo.displayName.charAt(0).toUpperCase() : 'G';
     }, [userInfo, authLoading]);
 
     const isFirebaseUser = userInfo && userInfo.uid !== 'default_user';
@@ -477,14 +477,14 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                             priority
                         />
                     ) : (
-                        <Image
+                    <Image
                             src="/word.png"
                             alt="Claire"
-                            width={50}
+                        width={50}
                             height={32}
                             className="ml-0 shrink-0 mt-4"
                             priority
-                        />
+                    />
                     )}
                 </Link>
                 <button
@@ -519,13 +519,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                     </div>
                 </button>
 
-                {!isCollapsed && hasApiKey !== null && (
-                    <div className="px-2.5 py-2 text-center">
-                        <span className={`text-xs px-2 py-1 rounded-full ${hasApiKey ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                            {hasApiKey ? 'Exécution locale' : 'Système Pickle Gratuit'}
-                        </span>
-                    </div>
-                )}
+
 
                 <div className="mt-auto space-y-[0px]" role="navigation" aria-label="Liens supplémentaires">
                     {bottomItems.map((item, index) => (

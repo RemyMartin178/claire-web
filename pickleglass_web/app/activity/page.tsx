@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRedirectIfNotAuth } from '@/utils/auth'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   UserProfile,
   Session,
@@ -12,7 +13,8 @@ import {
 // SUPPRIMER : import { useTranslation } from 'react-i18next';
 
 export default function ActivityPage() {
-  const userInfo = useRedirectIfNotAuth() as UserProfile | null;
+  const router = useRouter();
+  const { user: userInfo, loading } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -29,10 +31,16 @@ export default function ActivityPage() {
   }
 
   useEffect(() => {
-    fetchSessions()
-  }, [])
+    if (!loading && !userInfo) {
+      router.push('/login');
+      return;
+    }
+    if (userInfo) {
+      fetchSessions()
+    }
+  }, [userInfo, loading, router])
 
-  if (!userInfo) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -41,6 +49,10 @@ export default function ActivityPage() {
         </div>
       </div>
     )
+  }
+
+  if (!userInfo) {
+    return null; // Will redirect to login
   }
 
   const getGreeting = () => {

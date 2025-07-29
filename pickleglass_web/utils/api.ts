@@ -456,7 +456,7 @@ export const saveApiKey = async (apiKey: string): Promise<void> => {
 
 export const checkApiKeyStatus = async (): Promise<{ hasApiKey: boolean }> => {
   if (isFirebaseMode()) {
-    return { hasApiKey: true };
+    return { hasApiKey: false };
   } else {
     const response = await apiCall(`/api/user/api-key-status`, { method: 'GET' });
     if (!response.ok) throw new Error('Failed to check API key status');

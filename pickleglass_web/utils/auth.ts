@@ -1,67 +1,78 @@
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { UserProfile, setUserInfo, findOrCreateUser } from './api'
-import { auth } from './firebase'
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged as firebaseOnAuthStateChanged,
+  type User,
+} from "firebase/auth"
+import { auth } from "./firebase"
+import { findOrCreateUser } from "./api"
 
-const defaultLocalUser: UserProfile = {
-  uid: 'default_user',
-  display_name: 'Default User',
-  email: 'contact@pickle.com',
-};
+const googleProvider = new GoogleAuthProvider()
 
-export const useAuth = () => {
-  const [user, setUser] = useState<UserProfile | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [mode, setMode] = useState<'local' | 'firebase' | null>(null)
-  
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        console.log('🔥 Firebase mode activated:', firebaseUser.uid);
-        setMode('firebase');
-        
-        let profile: UserProfile = {
-          uid: firebaseUser.uid,
-          display_name: firebaseUser.displayName || 'User',
-          email: firebaseUser.email || 'no-email@example.com',
-        };
-        
-        try {
-          profile = await findOrCreateUser(profile);
-          console.log('✅ Firestore user created/verified:', profile);
-        } catch (error) {
-          console.error('❌ Firestore user creation/verification failed:', error);
-        }
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider)
+    const user = result.user
 
-        setUser(profile);
-        setUserInfo(profile);
-      } else {
-        console.log('🏠 Local mode activated');
-        setMode('local');
-        
-        setUser(defaultLocalUser);
-        setUserInfo(defaultLocalUser);
-      }
-      setIsLoading(false);
-    });
+    // Create user profile in Firestore
+    await findOrCreateUser({
+      uid: user.uid,
+      display_name: user.displayName || 'User',
+      email: user.email || 'no-email@example.com'
+    })
 
-    return () => unsubscribe();
-  }, [])
-
-  return { user, isLoading, mode }
+    return user
+  } catch (error) {
+    console.error("Error signing in with Google:", error)
+    throw error
+  }
 }
 
-export const useRedirectIfNotAuth = () => {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
+export const createUserWithEmail = async (email: string, password: string, displayName: string) => {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password)
+    const user = result.user
 
-  useEffect(() => {
-    // This hook is now simplified. It doesn't redirect for local mode.
-    // If you want to force login for hosting mode, you'd add logic here.
-    // For example: if (!isLoading && !user) router.push('/login');
-    // But for now, we allow both modes.
-  }, [user, isLoading, router])
+    // Create user profile in Firestore with display name
+    await findOrCreateUser({
+      uid: user.uid,
+      display_name: displayName,
+      email: user.email || email
+    })
 
-  return user
+    return user
+        } catch (error) {
+    console.error("Error creating user with email:", error)
+    throw error
+  }
+}
+
+export const signInWithEmail = async (email: string, password: string) => {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password)
+    return result.user
+  } catch (error) {
+    console.error("Error signing in with email:", error)
+    throw error
+  }
+}
+
+export const signOut = async () => {
+  try {
+    await firebaseSignOut(auth)
+  } catch (error) {
+    console.error("Error signing out:", error)
+    throw error
+  }
+}
+
+export const onAuthStateChanged = (callback: (user: User | null) => void) => {
+  return firebaseOnAuthStateChanged(auth, callback)
+}
+
+export const getCurrentUser = () => {
+  return auth.currentUser
 } 

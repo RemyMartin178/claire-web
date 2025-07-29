@@ -4,19 +4,17 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
-export default function HomePage() {
-  const router = useRouter()
+interface ProtectedRouteProps {
+  children: React.ReactNode
+}
+
+export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        // Utilisateur connecté → redirection vers le dashboard
-        router.push('/dashboard')
-      } else {
-        // Utilisateur non connecté → redirection vers clairia.app
-        window.location.href = 'https://clairia.app'
-      }
+    if (!loading && !user) {
+      router.push('/login')
     }
   }, [user, loading, router])
 
@@ -32,5 +30,11 @@ export default function HomePage() {
     )
   }
 
-  return null
+  // Si pas d'utilisateur, ne rien afficher (redirection en cours)
+  if (!user) {
+    return null
+  }
+
+  // Si utilisateur connecté, afficher le contenu
+  return <>{children}</>
 } 
