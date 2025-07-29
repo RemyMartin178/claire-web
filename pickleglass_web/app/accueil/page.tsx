@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getUserProfile, getSessions, getPresets, UserProfile, Session, PromptPreset } from '@/utils/api';
 import Link from 'next/link';
 import { MessageCircle, PlusCircle, CheckCircle, Clock, Book, ChevronDown } from 'lucide-react';
-import ProtectedRoute from '@/components/ProtectedRoute';
+
 
 export default function AccueilPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -39,14 +39,11 @@ export default function AccueilPage() {
 
   if (loading) {
     return (
-      <ProtectedRoute>
-        <div className="min-h-screen flex items-center justify-center text-white">Chargement…</div>
-      </ProtectedRoute>
+      <div className="min-h-screen flex items-center justify-center text-white">Chargement…</div>
     );
   }
 
   return (
-    <ProtectedRoute>
       <div className="min-h-screen w-full flex flex-col gap-8 px-4 py-8 md:px-12 md:py-12 bg-transparent">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
@@ -106,6 +103,5 @@ export default function AccueilPage() {
           </ul>
         </div>
       </div>
-    </ProtectedRoute>
   );
 } 

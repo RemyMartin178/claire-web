@@ -3,7 +3,7 @@
 import ClientLayout from '@/components/ClientLayout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
-export default function DashboardLayout({
+export default function SettingsLayout({
   children,
 }: {
   children: React.ReactNode

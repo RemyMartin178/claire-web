@@ -76,9 +76,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-accent-light rounded-lg flex items-center justify-center">
-              <span className="text-white text-xl font-bold">C</span>
-            </div>
+            <img src="/word.png" alt="Claire Logo" className="w-12 h-12" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Claire</h1>
           <p className="text-[#bbb]">Assistant IA intelligent</p>
