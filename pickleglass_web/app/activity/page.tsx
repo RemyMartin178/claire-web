@@ -81,7 +81,7 @@ export default function ActivityPage() {
       <div className="max-w-4xl mx-auto px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-2xl text-white">
-            {getGreeting()}, {userInfo.displayName}
+            {getGreeting()}, {userInfo.display_name}
           </h1>
         </div>
         <div>

@@ -408,7 +408,7 @@ export const getUserProfile = async (): Promise<UserProfile> => {
 export const updateUserProfile = async (data: { displayName: string }): Promise<void> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser!.uid;
-    await FirestoreUserService.updateUser(uid, { displayName: data.displayName });
+    await FirestoreUserService.updateUser(uid, { display_name: data.displayName });
   } else {
     const response = await apiCall(`/api/user/profile`, {
         method: 'PUT',
