@@ -53,19 +53,34 @@ export default function AdminPage() {
   // Vérifier si l'utilisateur est admin (uniquement martin.remy178@gmail.com)
   const isAdmin = user?.email === 'martin.remy178@gmail.com'
 
+  // Debug logs
+  console.log('Admin page - Loading:', loading)
+  console.log('Admin page - User:', user)
+  console.log('Admin page - User email:', user?.email)
+  console.log('Admin page - Is admin:', isAdmin)
+
   useEffect(() => {
+    console.log('Admin page - useEffect triggered')
+    console.log('Admin page - Loading:', loading, 'IsAdmin:', isAdmin)
+    
     if (!loading && !isAdmin) {
+      console.log('Admin page - Redirecting to /accueil')
       router.push('/accueil')
     }
   }, [loading, isAdmin, router])
 
   useEffect(() => {
+    console.log('Admin page - fetchAdminData useEffect triggered')
+    console.log('Admin page - IsAdmin for fetch:', isAdmin)
+    
     if (isAdmin) {
+      console.log('Admin page - Fetching admin data')
       fetchAdminData()
     }
   }, [isAdmin])
 
   const fetchAdminData = async () => {
+    console.log('Admin page - fetchAdminData called')
     setLoadingData(true)
     try {
       // Ici on ferait les appels API pour récupérer les données admin
@@ -110,10 +125,12 @@ export default function AdminPage() {
 
       setUsers(mockUsers)
       setStats(mockStats)
+      console.log('Admin page - Data loaded successfully')
     } catch (error) {
       console.error('Error fetching admin data:', error)
     } finally {
       setLoadingData(false)
+      console.log('Admin page - Loading data finished')
     }
   }
 
@@ -124,14 +141,19 @@ export default function AdminPage() {
     return matchesSearch && matchesActiveFilter
   })
 
+  console.log('Admin page - Render state:', { loading, isAdmin, loadingData })
+
   if (loading) {
+    console.log('Admin page - Showing loading screen')
     return <div className="min-h-screen flex items-center justify-center text-white">Chargement...</div>
   }
 
   if (!isAdmin) {
+    console.log('Admin page - Showing access denied screen')
     return <div className="min-h-screen flex items-center justify-center text-white">Accès refusé - Panel réservé à l'administrateur</div>
   }
 
+  console.log('Admin page - Rendering admin panel')
   return (
     <div className="min-h-screen w-full flex flex-col gap-8 px-4 py-8 md:px-12 md:py-12 bg-transparent">
       {/* Header */}
