@@ -143,20 +143,14 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     try {
-      console.log('Logging out user...')
+      console.log('Settings: Logging out user...')
       
-      // Déconnecter de Firebase
+      // Utiliser la fonction signOut qui gère tout
       await signOut()
       
-      // Nettoyer le localStorage
-      localStorage.removeItem('userInfo')
-      localStorage.removeItem('authToken')
-      
-      // Rediriger vers la landing page
-      console.log('Redirecting to clairia.app')
-      window.location.replace('https://clairia.app')
+      // La redirection est gérée dans signOut()
     } catch (error) {
-      console.error('Error during logout:', error)
+      console.error('Settings: Error during logout:', error)
       // En cas d'erreur, rediriger quand même
       window.location.replace('https://clairia.app')
     }

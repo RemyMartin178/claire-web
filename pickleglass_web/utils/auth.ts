@@ -75,23 +75,45 @@ export const signOut = async () => {
   try {
     console.log('Auth: Starting sign out process')
     
+    // Marquer que l'utilisateur a été déconnecté manuellement
+    sessionStorage.setItem('manuallyLoggedOut', 'true')
+    
     // Déconnecter de Firebase
     await firebaseSignOut(auth)
     
-    // Nettoyer le localStorage
-    localStorage.removeItem('userInfo')
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('firebase:authUser:')
+    // Nettoyer le localStorage complètement
+    localStorage.clear()
     
     // Nettoyer les cookies de session
     document.cookie.split(";").forEach(function(c) { 
       document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
     })
     
+    // Nettoyer sessionStorage aussi (sauf le marqueur de déconnexion manuelle)
+    const manuallyLoggedOut = sessionStorage.getItem('manuallyLoggedOut')
+    sessionStorage.clear()
+    if (manuallyLoggedOut) {
+      sessionStorage.setItem('manuallyLoggedOut', manuallyLoggedOut)
+    }
+    
+    // Forcer la déconnexion de Firebase en supprimant les données persistantes
+    if (typeof window !== 'undefined') {
+      // Supprimer les données Firebase du localStorage
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('firebase:') || key.includes('auth')) {
+          localStorage.removeItem(key)
+        }
+      })
+    }
+    
     console.log('Auth: Sign out completed successfully')
+    
+    // Rediriger vers la landing page
+    window.location.replace('https://clairia.app')
   } catch (error) {
     console.error("Error signing out:", error)
-    throw error
+    // En cas d'erreur, rediriger quand même
+    window.location.replace('https://clairia.app')
   }
 }
 

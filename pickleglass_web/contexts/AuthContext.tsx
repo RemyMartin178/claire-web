@@ -34,11 +34,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log('AuthContext: Setting up auth state listener')
     
+    // Vérifier si l'utilisateur a été déconnecté manuellement
+    const wasManuallyLoggedOut = sessionStorage.getItem('manuallyLoggedOut')
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('AuthContext: Auth state changed', { 
         hasUser: !!firebaseUser, 
-        email: firebaseUser?.email 
+        email: firebaseUser?.email,
+        wasManuallyLoggedOut
       })
+      
+      // Si l'utilisateur a été déconnecté manuellement, ne pas se reconnecter automatiquement
+      if (wasManuallyLoggedOut === 'true') {
+        console.log('AuthContext: User was manually logged out, not auto-reconnecting')
+        setUser(null)
+        setIsAuthenticated(false)
+        setLoading(false)
+        return
+      }
       
       if (firebaseUser) {
         try {
