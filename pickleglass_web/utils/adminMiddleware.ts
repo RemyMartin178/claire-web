@@ -1,3 +1,6 @@
+import { doc, getDoc } from 'firebase/firestore'
+import { db as firestore } from './firebase'
+
 // Middleware pour vérifier les permissions admin côté serveur
 // À utiliser avec Cloud Functions ou API Routes
 
