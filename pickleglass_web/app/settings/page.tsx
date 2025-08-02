@@ -9,6 +9,7 @@ import {
   saveApiKey,
   deleteAccount,
   logout,
+  checkApiKeyStatus,
   type UserProfile
 } from '@/utils/api'
 import { signOut } from '@/utils/auth'
