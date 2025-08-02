@@ -1,28 +1,29 @@
 "use client"
 
-import { useEffect, useState } from 'react';
-import { getUserProfile, getSessions, getPresets, UserProfile, Session, PromptPreset } from '@/utils/api';
+import { useState, useEffect } from 'react'
 import Link from 'next/link';
 import { MessageCircle, PlusCircle, CheckCircle, Clock, Book, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getSessions, getPresets, type Session, type PromptPreset } from '@/utils/api';
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [presets, setPresets] = useState<PromptPreset[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
+      if (authLoading) return;
+      
       setLoading(true);
       try {
-        const [profile, sessions, presets] = await Promise.all([
-          getUserProfile(),
+        const [sessionsData, presetsData] = await Promise.all([
           getSessions(),
           getPresets()
         ]);
-        setUser(profile);
-        setSessions(sessions);
-        setPresets(presets);
+        setSessions(sessionsData);
+        setPresets(presetsData);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -30,13 +31,13 @@ export default function DashboardPage() {
       }
     }
     fetchData();
-  }, []);
+  }, [authLoading]);
 
   const successRate = sessions.length
     ? Math.round((sessions.filter(s => s.ended_at).length / sessions.length) * 100)
     : 0;
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">Chargement…</div>
     );
@@ -48,7 +49,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <div>
           <h1 className="text-3xl font-bold mb-1 text-white">Dashboard Claire</h1>
-                      <p className="text-[#bbb]">Bonjour, {user?.display_name || 'Utilisateur'} !</p>
+          <p className="text-[#bbb]">Bonjour, {user?.display_name || 'Utilisateur'} !</p>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/activity" className="flex items-center gap-2 bg-accent-light hover:opacity-90 text-white px-6 py-3 rounded-lg font-semibold text-lg shadow transition-all">

@@ -1,29 +1,29 @@
 "use client"
 
-import { useEffect, useState } from 'react';
-import { getUserProfile, getSessions, getPresets, UserProfile, Session, PromptPreset } from '@/utils/api';
+import { useState, useEffect } from 'react'
 import Link from 'next/link';
 import { MessageCircle, PlusCircle, CheckCircle, Clock, Book, ChevronDown } from 'lucide-react';
-
+import { useAuth } from '@/contexts/AuthContext';
+import { getSessions, getPresets, type Session, type PromptPreset } from '@/utils/api';
 
 export default function AccueilPage() {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [presets, setPresets] = useState<PromptPreset[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
+      if (authLoading) return;
+      
       setLoading(true);
       try {
-        const [profile, sessions, presets] = await Promise.all([
-          getUserProfile(),
+        const [sessionsData, presetsData] = await Promise.all([
           getSessions(),
           getPresets()
         ]);
-        setUser(profile);
-        setSessions(sessions);
-        setPresets(presets);
+        setSessions(sessionsData);
+        setPresets(presetsData);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -31,13 +31,13 @@ export default function AccueilPage() {
       }
     }
     fetchData();
-  }, []);
+  }, [authLoading]);
 
   const successRate = sessions.length
     ? Math.round((sessions.filter(s => s.ended_at).length / sessions.length) * 100)
     : 0;
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-white">Chargement…</div>
     );

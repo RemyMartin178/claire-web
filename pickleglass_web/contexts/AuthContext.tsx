@@ -38,14 +38,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(userProfile)
         } catch (error) {
           console.error('Error fetching user profile:', error)
-          // Fallback to Firebase user data
-          const fallbackUser = {
-            uid: firebaseUser.uid,
-            display_name: firebaseUser.displayName || 'User',
-            email: firebaseUser.email || 'no-email@example.com'
-          }
-          console.log('Using fallback user data:', fallbackUser)
-          setUser(fallbackUser)
+          // Si on ne peut pas récupérer le profil, on met null
+          setUser(null)
         }
       } else {
         setUser(null)
