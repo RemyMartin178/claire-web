@@ -14,9 +14,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login')
+      // Rediriger vers la landing page au lieu de /login
+      window.location.replace('https://clairia.app')
     }
-  }, [user, loading, router])
+  }, [user, loading])
 
   // Afficher un loader pendant la vérification
   if (loading) {

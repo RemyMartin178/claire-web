@@ -85,7 +85,7 @@ export default function SettingsPage() {
   }
 
   if (!userInfo) {
-    router.push('/login')
+    window.location.replace('https://clairia.app')
     return null
   }
 
@@ -134,7 +134,7 @@ export default function SettingsPage() {
     if (window.confirm(confirmMessage)) {
       try {
         await deleteAccount()
-        router.push('/login');
+        window.location.replace('https://clairia.app')
       } catch (error) {
         console.error("Failed to delete account:", error)
       }
