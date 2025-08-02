@@ -178,39 +178,56 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     }, [pathname]);
 
     const navigation = useMemo<NavigationItem[]>(
-        () => [
-            {
-                name: 'Accueil',
-                href: '/dashboard',
-                icon: Home,
-                isLucide: true,
-                ariaLabel: 'Accueil',
-                isActive: pathname === '/dashboard',
-            },
-            {
-                name: 'Mon activité',
-                href: '/activity',
-                icon: Activity,
-                isLucide: true,
-                ariaLabel: 'Voir mon activité',
-            },
-            {
-                name: 'Personnaliser',
-                href: '/personalize',
-                icon: Book,
-                isLucide: true,
-                ariaLabel: 'Paramètres de personnalisation',
-            },
-            {
-                name: 'Paramètres',
-                href: '/settings',
-                icon: Settings,
-                isLucide: true,
-                hasSubmenu: true,
-                ariaLabel: 'Menu des paramètres',
-            },
-        ],
-        [onSearchClick]
+        () => {
+            const baseNavigation = [
+                {
+                    name: 'Accueil',
+                    href: '/dashboard',
+                    icon: Home,
+                    isLucide: true,
+                    ariaLabel: 'Accueil',
+                    isActive: pathname === '/dashboard',
+                },
+                {
+                    name: 'Mon activité',
+                    href: '/activity',
+                    icon: Activity,
+                    isLucide: true,
+                    ariaLabel: 'Voir mon activité',
+                },
+                {
+                    name: 'Personnaliser',
+                    href: '/personalize',
+                    icon: Book,
+                    isLucide: true,
+                    ariaLabel: 'Paramètres de personnalisation',
+                },
+                {
+                    name: 'Paramètres',
+                    href: '/settings',
+                    icon: Settings,
+                    isLucide: true,
+                    hasSubmenu: true,
+                    ariaLabel: 'Menu des paramètres',
+                },
+            ];
+
+            // Ajouter l'admin uniquement pour martin.remy178@gmail.com
+            const isAdmin = userInfo?.email === 'martin.remy178@gmail.com';
+            
+            if (isAdmin) {
+                baseNavigation.splice(2, 0, {
+                    name: 'Administration',
+                    href: '/admin',
+                    icon: Shield,
+                    isLucide: true,
+                    ariaLabel: 'Panel d\'administration',
+                });
+            }
+
+            return baseNavigation;
+        },
+        [onSearchClick, userInfo?.email]
     );
 
     const settingsSubmenu = useMemo<SubmenuItem[]>(
