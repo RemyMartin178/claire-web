@@ -8,7 +8,8 @@ import {
   updateUserProfile, 
   saveApiKey,
   deleteAccount,
-  logout
+  logout,
+  type UserProfile
 } from '@/utils/api'
 import { signOut } from '@/utils/auth'
 import { useRouter } from 'next/navigation'
