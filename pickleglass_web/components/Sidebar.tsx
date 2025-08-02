@@ -397,10 +397,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                                 ))}
                                 <li role="none">
                                         <button
-                                        onClick={() => {
-                                            // Remplacer l'URL ci-dessous par celle de la page de connexion Claire quand tu l'auras
-                                            window.location.href = 'https://URL_CONNEXION_CLAIRE';
-                                        }}
+                                        onClick={handleLogout}
                                             className={`
                                     group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px]
                                     text-red-600 hover:text-red-700 hover:bg-[#f7f7f7] w-full 
