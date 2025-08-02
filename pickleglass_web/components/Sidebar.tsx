@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, createElement, useEffect, useMemo, useCallback, memo } from 'react';
 import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, Home } from 'lucide-react';
-import { logout, UserProfile, checkApiKeyStatus } from '@/utils/api';
+import { logout, checkApiKeyStatus } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const ANIMATION_DURATION = {
