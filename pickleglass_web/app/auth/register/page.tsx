@@ -47,6 +47,7 @@ export default function RegisterPage() {
 
     try {
       await createUserWithEmail(formData.email, formData.password, formData.firstName, formData.lastName)
+      sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
       console.error('Register error:', error)
@@ -69,6 +70,7 @@ export default function RegisterPage() {
       setIsLoading(true)
       setError('')
       await signInWithGoogle()
+      sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
       setError('Erreur lors de la connexion avec Google')

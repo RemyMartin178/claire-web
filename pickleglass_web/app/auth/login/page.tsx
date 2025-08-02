@@ -31,6 +31,7 @@ export default function LoginPage() {
 
     try {
       await signInWithEmail(formData.email, formData.password)
+      sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
       console.error('Login error:', error)
@@ -53,6 +54,7 @@ export default function LoginPage() {
       setIsLoading(true)
       setError('')
       await signInWithGoogle()
+      sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
       setError('Erreur lors de la connexion avec Google')
