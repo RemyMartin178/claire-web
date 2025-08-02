@@ -50,27 +50,29 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showInactive, setShowInactive] = useState(true)
 
+  // Debug log au chargement de la page
+  console.log('ADMIN PAGE LOAD', { loading, user })
+
   // Vérifier si l'utilisateur est admin (uniquement martin.remy178@gmail.com)
   const isAdmin = user?.email === 'martin.remy178@gmail.com'
 
-  // Debug logs
-  console.log('Admin page - Loading:', loading)
-  console.log('Admin page - User:', user)
-  console.log('Admin page - User email:', user?.email)
-  console.log('Admin page - Is admin:', isAdmin)
-
-  // Rediriger si pas admin
   useEffect(() => {
-    if (!loading && user && !isAdmin) {
-      console.log('Admin page - Redirecting to /accueil')
-      router.push('/accueil')
+    console.log('ADMIN DEBUG:', { loading, user, isAdmin })
+    if (!loading && !user) {
+      window.location.replace('https://clairia.app');
     }
-  }, [loading, user, isAdmin, router])
+    if (!loading && user && !isAdmin) {
+      window.location.replace('https://clairia.app');
+    }
+    // Si l'utilisateur est bien connecté, on supprime le marqueur de déconnexion manuelle
+    if (!loading && user) {
+      sessionStorage.removeItem('manuallyLoggedOut');
+    }
+  }, [loading, user, isAdmin]);
 
   // Charger les données admin
   useEffect(() => {
     if (!loading && user && isAdmin && !loadingData) {
-      console.log('Admin page - Fetching admin data')
       fetchAdminData()
     }
   }, [loading, user, isAdmin])
