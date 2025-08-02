@@ -213,7 +213,8 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
             ];
 
             // Ajouter l'admin uniquement pour martin.remy178@gmail.com
-            const isAdmin = userInfo?.email === 'martin.remy178@gmail.com';
+            // Vérifier que l'auth est chargée et que l'utilisateur est connecté
+            const isAdmin = !authLoading && userInfo?.email === 'martin.remy178@gmail.com';
             
             if (isAdmin) {
                 baseNavigation.splice(2, 0, {
@@ -227,7 +228,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
             return baseNavigation;
         },
-        [onSearchClick, userInfo?.email]
+        [onSearchClick, userInfo?.email, authLoading]
     );
 
     const settingsSubmenu = useMemo<SubmenuItem[]>(
