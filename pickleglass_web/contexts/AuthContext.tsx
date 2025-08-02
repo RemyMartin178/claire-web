@@ -9,11 +9,13 @@ import { getUserProfile, type UserProfile } from "../utils/api"
 interface AuthContextType {
   user: UserProfile | null
   loading: boolean
+  isAuthenticated: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  isAuthenticated: false,
 })
 
 export const useAuth = () => {
@@ -27,28 +29,47 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
+    console.log('AuthContext: Setting up auth state listener')
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('AuthContext: Auth state changed', { 
+        hasUser: !!firebaseUser, 
+        email: firebaseUser?.email 
+      })
+      
       if (firebaseUser) {
         try {
-          console.log('Fetching user profile for:', firebaseUser.uid)
+          console.log('AuthContext: Fetching user profile for:', firebaseUser.uid)
           const userProfile = await getUserProfile()
-          console.log('User profile fetched:', userProfile)
+          console.log('AuthContext: User profile fetched:', userProfile)
           setUser(userProfile)
+          setIsAuthenticated(true)
         } catch (error) {
-          console.error('Error fetching user profile:', error)
+          console.error('AuthContext: Error fetching user profile:', error)
           // Si on ne peut pas récupérer le profil, on met null
           setUser(null)
+          setIsAuthenticated(false)
         }
       } else {
+        console.log('AuthContext: No user, clearing state')
         setUser(null)
+        setIsAuthenticated(false)
       }
       setLoading(false)
     })
 
-    return () => unsubscribe()
+    return () => {
+      console.log('AuthContext: Cleaning up auth listener')
+      unsubscribe()
+    }
   }, [])
 
-  return <AuthContext.Provider value={{ user, loading }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, loading, isAuthenticated }}>
+      {children}
+    </AuthContext.Provider>
+  )
 } 

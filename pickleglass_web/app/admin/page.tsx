@@ -46,7 +46,7 @@ export default function AdminPage() {
     totalSessions: 0,
     activeSessions: 0
   })
-  const [loadingData, setLoadingData] = useState(true)
+  const [loadingData, setLoadingData] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [showInactive, setShowInactive] = useState(true)
 
@@ -59,32 +59,29 @@ export default function AdminPage() {
   console.log('Admin page - User email:', user?.email)
   console.log('Admin page - Is admin:', isAdmin)
 
+  // Rediriger si pas admin
   useEffect(() => {
-    console.log('Admin page - useEffect triggered')
-    console.log('Admin page - Loading:', loading, 'IsAdmin:', isAdmin)
-    
-    if (!loading && !isAdmin) {
+    if (!loading && user && !isAdmin) {
       console.log('Admin page - Redirecting to /accueil')
       router.push('/accueil')
     }
-  }, [loading, isAdmin, router])
+  }, [loading, user, isAdmin, router])
 
+  // Charger les données admin
   useEffect(() => {
-    console.log('Admin page - fetchAdminData useEffect triggered')
-    console.log('Admin page - IsAdmin for fetch:', isAdmin)
-    
-    if (isAdmin) {
+    if (!loading && user && isAdmin && !loadingData) {
       console.log('Admin page - Fetching admin data')
       fetchAdminData()
     }
-  }, [isAdmin])
+  }, [loading, user, isAdmin])
 
   const fetchAdminData = async () => {
     console.log('Admin page - fetchAdminData called')
     setLoadingData(true)
     try {
-      // Ici on ferait les appels API pour récupérer les données admin
-      // Pour l'instant, on simule avec des données de test
+      // Simuler un délai pour voir le chargement
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
       const mockUsers: AdminUser[] = [
         {
           uid: '1',
@@ -100,7 +97,7 @@ export default function AdminPage() {
           display_name: 'Marie Martin',
           email: 'marie.martin@example.com',
           createdAt: new Date('2024-01-20'),
-          lastLogin: new Date(Date.now() - 86400000), // 1 jour ago
+          lastLogin: new Date(Date.now() - 86400000),
           sessionCount: 8,
           isActive: true
         },
@@ -109,7 +106,7 @@ export default function AdminPage() {
           display_name: 'Pierre Durand',
           email: 'pierre.durand@example.com',
           createdAt: new Date('2024-01-10'),
-          lastLogin: new Date(Date.now() - 604800000), // 1 semaine ago
+          lastLogin: new Date(Date.now() - 604800000),
           sessionCount: 3,
           isActive: false
         }
@@ -143,14 +140,22 @@ export default function AdminPage() {
 
   console.log('Admin page - Render state:', { loading, isAdmin, loadingData })
 
+  // Afficher le chargement initial
   if (loading) {
     console.log('Admin page - Showing loading screen')
-    return <div className="min-h-screen flex items-center justify-center text-white">Chargement...</div>
+    return <div className="min-h-screen flex items-center justify-center text-white">Chargement de l'authentification...</div>
   }
 
-  if (!isAdmin) {
+  // Afficher l'écran d'accès refusé
+  if (!user || !isAdmin) {
     console.log('Admin page - Showing access denied screen')
     return <div className="min-h-screen flex items-center justify-center text-white">Accès refusé - Panel réservé à l'administrateur</div>
+  }
+
+  // Afficher le chargement des données
+  if (loadingData) {
+    console.log('Admin page - Showing data loading screen')
+    return <div className="min-h-screen flex items-center justify-center text-white">Chargement des données d'administration...</div>
   }
 
   console.log('Admin page - Rendering admin panel')

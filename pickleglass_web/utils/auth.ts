@@ -73,7 +73,22 @@ export const signInWithEmail = async (email: string, password: string) => {
 
 export const signOut = async () => {
   try {
+    console.log('Auth: Starting sign out process')
+    
+    // Déconnecter de Firebase
     await firebaseSignOut(auth)
+    
+    // Nettoyer le localStorage
+    localStorage.removeItem('userInfo')
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('firebase:authUser:')
+    
+    // Nettoyer les cookies de session
+    document.cookie.split(";").forEach(function(c) { 
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+    })
+    
+    console.log('Auth: Sign out completed successfully')
   } catch (error) {
     console.error("Error signing out:", error)
     throw error

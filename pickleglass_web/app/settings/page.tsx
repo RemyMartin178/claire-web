@@ -4,14 +4,13 @@ import { useState, useEffect } from 'react'
 import { Check, ExternalLink, Cloud, HardDrive } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { 
-  UserProfile,
-  getUserProfile,
-  updateUserProfile,
-  checkApiKeyStatus,
+  getUserProfile, 
+  updateUserProfile, 
   saveApiKey,
   deleteAccount,
   logout
 } from '@/utils/api'
+import { signOut } from '@/utils/auth'
 import { useRouter } from 'next/navigation'
 
 declare global {
@@ -142,11 +141,22 @@ export default function SettingsPage() {
 
   const handleLogout = async () => {
     try {
-      await logout()
+      console.log('Logging out user...')
+      
+      // Déconnecter de Firebase
+      await signOut()
+      
+      // Nettoyer le localStorage
+      localStorage.removeItem('userInfo')
+      localStorage.removeItem('authToken')
+      
       // Rediriger vers la landing page
+      console.log('Redirecting to clairia.app')
       window.location.replace('https://clairia.app')
     } catch (error) {
-      console.error("Logout failed:", error)
+      console.error('Error during logout:', error)
+      // En cas d'erreur, rediriger quand même
+      window.location.replace('https://clairia.app')
     }
   }
 
