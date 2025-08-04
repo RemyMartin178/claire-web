@@ -16,6 +16,13 @@ import {
 } from 'firebase/firestore';
 import { db as firestore } from './firebase';
 
+// Debug: Log Firestore instance
+console.log('Firestore Debug:', {
+  firestore: !!firestore,
+  app: firestore?.app,
+  type: typeof firestore
+});
+
 export interface FirestoreUserProfile {
   displayName: string;
   email: string;
@@ -66,17 +73,32 @@ export interface FirestorePromptPreset {
 
 export class FirestoreUserService {
   static async createUser(uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>) {
+    console.log('FirestoreUserService: Creating user with uid:', uid, 'profile:', profile);
     const userRef = doc(firestore, 'users', uid);
-    await setDoc(userRef, {
-      ...profile,
-      createdAt: serverTimestamp()
-    });
+    try {
+      await setDoc(userRef, {
+        ...profile,
+        createdAt: serverTimestamp()
+      });
+      console.log('FirestoreUserService: User created successfully');
+    } catch (error) {
+      console.error('FirestoreUserService: Error creating user:', error);
+      throw error;
+    }
   }
 
   static async getUser(uid: string): Promise<FirestoreUserProfile | null> {
+    console.log('FirestoreUserService: Getting user with uid:', uid);
     const userRef = doc(firestore, 'users', uid);
-    const userSnap = await getDoc(userRef);
-    return userSnap.exists() ? userSnap.data() as FirestoreUserProfile : null;
+    try {
+      const userSnap = await getDoc(userRef);
+      const result = userSnap.exists() ? userSnap.data() as FirestoreUserProfile : null;
+      console.log('FirestoreUserService: User found:', result);
+      return result;
+    } catch (error) {
+      console.error('FirestoreUserService: Error getting user:', error);
+      throw error;
+    }
   }
 
   static async updateUser(uid: string, updates: Partial<FirestoreUserProfile>) {
