@@ -9,7 +9,7 @@ import {
   type User,
 } from "firebase/auth"
 import { auth } from "./firebase"
-import { findOrCreateUser } from "./api"
+import { findOrCreateUser, createUserAndProfileSafely } from "./api"
 
 const googleProvider = new GoogleAuthProvider()
 
@@ -63,13 +63,6 @@ export const createUserWithEmail = async (email: string, password: string, first
     console.log('Auth: Firebase user created successfully:', user.uid)
     console.log('Auth: User object:', { uid: user.uid, email: user.email, displayName: user.displayName })
 
-    // Attendre 1 seconde pour la propagation des droits auth côté Google
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Attendre que l'utilisateur soit bien authentifié côté client
-    const settledUser = await waitForAuth();
-    console.log('Auth: Settled user after waitForAuth:', settledUser.uid)
-
     // Create display name from firstName and lastName if provided
     let displayName = 'User'
     if (firstName && lastName) {
@@ -78,21 +71,18 @@ export const createUserWithEmail = async (email: string, password: string, first
       displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
     }
 
-    // Create user profile in Firestore
-    console.log('Auth: Creating Firestore profile with:', { uid: settledUser.uid, display_name: displayName, email: settledUser.email || email })
-    
+    // Utilise la fonction safe pour créer le profil Firestore
     try {
-      await findOrCreateUser({
-        uid: settledUser.uid,
-        display_name: displayName,
-        email: settledUser.email || email
-      })
+      await createUserAndProfileSafely(email, password, user.uid, {
+        displayName,
+        email: user.email || email
+      });
       console.log('Auth: Firestore profile created successfully')
     } catch (firestoreError) {
       console.error('Auth: Error creating Firestore profile:', firestoreError)
       // Si Firestore échoue, on supprime l'utilisateur Firebase pour éviter un état incohérent
       try {
-        await settledUser.delete()
+        await user.delete()
         console.log('Auth: Deleted Firebase user due to Firestore error')
       } catch (deleteError) {
         console.error('Auth: Error deleting Firebase user:', deleteError)
@@ -100,7 +90,7 @@ export const createUserWithEmail = async (email: string, password: string, first
       throw new Error('Erreur lors de la création du profil utilisateur. Veuillez réessayer.')
     }
 
-    return settledUser
+    return user
   } catch (error) {
     console.error("Auth: Error creating user with email:", error)
     throw error
