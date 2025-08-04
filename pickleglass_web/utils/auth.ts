@@ -35,10 +35,13 @@ export const signInWithGoogle = async () => {
 export const createUserWithEmail = async (email: string, password: string, firstName?: string, lastName?: string) => {
   try {
     console.log('Auth: Starting user creation for email:', email)
+    console.log('Auth: Firebase auth instance:', auth)
+    console.log('Auth: Current auth state:', auth.currentUser)
     
     const result = await createUserWithEmailAndPassword(auth, email, password)
     const user = result.user
     console.log('Auth: Firebase user created successfully:', user.uid)
+    console.log('Auth: User object:', { uid: user.uid, email: user.email, displayName: user.displayName })
 
     // Create display name from firstName and lastName if provided
     let displayName = 'User'

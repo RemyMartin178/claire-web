@@ -12,11 +12,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
+// Debug: Log Firebase config (without sensitive data)
+console.log('Firebase Config Debug:', {
+  hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  hasStorageBucket: !!process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  hasMessagingSenderId: !!process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  hasAppId: !!process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  environment: process.env.NODE_ENV
+})
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig)
 
 // Initialize Firebase services
 export const auth = getAuth(app)
 export const db = getFirestore(app)
+
+console.log('Firebase initialized successfully')
 
 export default app
