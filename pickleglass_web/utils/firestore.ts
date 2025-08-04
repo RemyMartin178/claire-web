@@ -82,7 +82,12 @@ export class FirestoreUserService {
       });
       console.log('FirestoreUserService: User created successfully');
     } catch (error) {
-      console.error('FirestoreUserService: Error creating user:', error);
+      // Ajout d'un log détaillé pour le debug
+      console.error('FirestoreUserService: Error creating user:', error, {
+        uid,
+        profile,
+        authUser: typeof window !== 'undefined' ? (window.firebaseAuthDebugUser || null) : null
+      });
       throw error;
     }
   }
