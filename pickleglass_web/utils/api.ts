@@ -1,5 +1,5 @@
 import { auth } from './firebase';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, onAuthStateChanged, createUserWithEmailAndPassword } from 'firebase/auth';
 import { 
   FirestoreUserService, 
   FirestoreSessionService, 
@@ -14,7 +14,7 @@ import {
   FirestorePromptPreset
 } from './firestore';
 import { Timestamp } from 'firebase/firestore';
-import { setDoc, doc } from "firebase/firestore";
+import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db as firestore } from "./firebase";
 
 export interface UserProfile {
@@ -601,7 +601,25 @@ export const logout = async () => {
 }; 
 
 export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
-  await signInWithEmailAndPassword(auth, email, password);
-  await new Promise(res => setTimeout(res, 1500));
-  await setDoc(doc(firestore, "users", uid), data);
+  // 1. Créer l'utilisateur (si pas déjà fait)
+  let user = auth.currentUser;
+  if (!user) {
+    const result = await createUserWithEmailAndPassword(auth, email, password);
+    user = result.user;
+  }
+  // 2. Force refresh du token
+  await user.getIdToken(true);
+  // 3. Attendre que auth.currentUser soit bien peuplé
+  await new Promise((resolve) =>
+    onAuthStateChanged(auth, (u) => {
+      if (u) resolve(u);
+    })
+  );
+  // 4. Debug
+  console.log("✅ uid ready", auth.currentUser?.uid);
+  // 5. Ensuite seulement, créer le doc Firestore
+  await setDoc(doc(firestore, "users", user.uid), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
 }; 
