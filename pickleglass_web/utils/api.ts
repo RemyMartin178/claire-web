@@ -13,6 +13,9 @@ import {
   FirestorePromptPreset
 } from './firestore';
 import { Timestamp } from 'firebase/firestore';
+import { signInWithEmailAndPassword, auth } from "./firebase";
+import { setDoc, doc } from "firebase/firestore";
+import { db as firestore } from "./firebase";
 
 export interface UserProfile {
   uid: string;
@@ -595,4 +598,10 @@ export const logout = async () => {
   localStorage.removeItem('user_info');
   
   window.location.href = '/login';
+}; 
+
+export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
+  await signInWithEmailAndPassword(auth, email, password);
+  await new Promise(res => setTimeout(res, 1500));
+  await setDoc(doc(firestore, "users", uid), data);
 }; 
