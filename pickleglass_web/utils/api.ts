@@ -425,33 +425,21 @@ export const updateUserProfile = async (data: { displayName: string }): Promise<
 export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser!.uid;
-    console.log('API: findOrCreateUser - checking for existing user with uid:', uid);
-    
     try {
-      const existingUser = await FirestoreUserService.getUser(uid);
-      console.log('API: findOrCreateUser - existing user found:', existingUser);
-      
-      if (!existingUser) {
-        console.log('API: findOrCreateUser - creating new user with data:', { displayName: user.display_name, email: user.email });
-        
-        try {
-          await FirestoreUserService.createUser(uid, {
-            displayName: user.display_name,
-            email: user.email
-          });
-          console.log('API: findOrCreateUser - user created successfully in Firestore');
-        } catch (createError) {
-          console.error('API: findOrCreateUser - error creating user in Firestore:', createError);
-          throw new Error(`Erreur lors de la création du profil: ${createError}`);
-        }
-      } else {
-        console.log('API: findOrCreateUser - user already exists in Firestore');
-      }
-      
-      return user;
-    } catch (error) {
-      console.error('API: findOrCreateUser - error:', error);
-      throw error;
+      // Tente d'écrire le document utilisateur directement
+      await FirestoreUserService.createUser(uid, {
+        displayName: user.display_name,
+        email: user.email
+      });
+      console.log('API: findOrCreateUser - user created successfully in Firestore');
+      return {
+        uid,
+        display_name: user.display_name,
+        email: user.email
+      };
+    } catch (createError) {
+      console.error('API: findOrCreateUser - error:', createError);
+      throw createError;
     }
   } else {
     const response = await apiCall(`/api/user/find-or-create`, {
