@@ -15,6 +15,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db as firestore } from './firebase';
+import { auth } from './firebase';
 
 // Debug: Log Firestore instance
 console.log('Firestore Debug:', {
