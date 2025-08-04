@@ -1,0 +1,5 @@
+[33m4f4cadd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix: Simplify Firestore rules for MVP - allow all authenticated users
+[33m1a1b7e5[m Fix: Update Firebase project ID to dedale-database
+[33m89f0401[m Fix: Update Firestore rules to allow proper user creation and data access
+[33mbd2ea63[m Add: Debug logs for Firebase authentication troubleshooting
+[33mcc48477[m Add: Firestore security rules for user authentication

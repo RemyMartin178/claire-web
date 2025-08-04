@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "pickle-3651a"
-  }
+    "default": "pickle-3651a",
+    "  default": "dedale-database"
+  },
+  "targets": {},
+  "etags": {}
 }

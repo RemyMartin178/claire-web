@@ -32,6 +32,26 @@ export const signInWithGoogle = async () => {
   }
 }
 
+/**
+ * Attend que l'utilisateur Firebase soit authentifié avant de continuer.
+ * Timeout après 5 secondes si rien ne se passe.
+ */
+export const waitForAuth = (): Promise<User> => {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      reject(new Error('Timeout: auth.currentUser is still null after 5s'));
+    }, 5000);
+    const unsubscribe = firebaseOnAuthStateChanged(auth, (user) => {
+      if (user) {
+        clearTimeout(timeout);
+        unsubscribe();
+        resolve(user);
+      }
+    });
+  });
+};
+
 export const createUserWithEmail = async (email: string, password: string, firstName?: string, lastName?: string) => {
   try {
     console.log('Auth: Starting user creation for email:', email)
@@ -43,6 +63,10 @@ export const createUserWithEmail = async (email: string, password: string, first
     console.log('Auth: Firebase user created successfully:', user.uid)
     console.log('Auth: User object:', { uid: user.uid, email: user.email, displayName: user.displayName })
 
+    // Attendre que l'utilisateur soit bien authentifié côté client
+    const settledUser = await waitForAuth();
+    console.log('Auth: Settled user after waitForAuth:', settledUser.uid)
+
     // Create display name from firstName and lastName if provided
     let displayName = 'User'
     if (firstName && lastName) {
@@ -52,20 +76,20 @@ export const createUserWithEmail = async (email: string, password: string, first
     }
 
     // Create user profile in Firestore
-    console.log('Auth: Creating Firestore profile with:', { uid: user.uid, display_name: displayName, email: user.email || email })
+    console.log('Auth: Creating Firestore profile with:', { uid: settledUser.uid, display_name: displayName, email: settledUser.email || email })
     
     try {
       await findOrCreateUser({
-        uid: user.uid,
+        uid: settledUser.uid,
         display_name: displayName,
-        email: user.email || email
+        email: settledUser.email || email
       })
       console.log('Auth: Firestore profile created successfully')
     } catch (firestoreError) {
       console.error('Auth: Error creating Firestore profile:', firestoreError)
       // Si Firestore échoue, on supprime l'utilisateur Firebase pour éviter un état incohérent
       try {
-        await user.delete()
+        await settledUser.delete()
         console.log('Auth: Deleted Firebase user due to Firestore error')
       } catch (deleteError) {
         console.error('Auth: Error deleting Firebase user:', deleteError)
@@ -73,7 +97,7 @@ export const createUserWithEmail = async (email: string, password: string, first
       throw new Error('Erreur lors de la création du profil utilisateur. Veuillez réessayer.')
     }
 
-    return user
+    return settledUser
   } catch (error) {
     console.error("Auth: Error creating user with email:", error)
     throw error
