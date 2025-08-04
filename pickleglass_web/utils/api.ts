@@ -1,4 +1,4 @@
-import { auth } from './firebase';
+import { auth, signInWithEmailAndPassword } from './firebase';
 import { 
   FirestoreUserService, 
   FirestoreSessionService, 
@@ -13,7 +13,6 @@ import {
   FirestorePromptPreset
 } from './firestore';
 import { Timestamp } from 'firebase/firestore';
-import { signInWithEmailAndPassword, auth } from "./firebase";
 import { setDoc, doc } from "firebase/firestore";
 import { db as firestore } from "./firebase";
 
