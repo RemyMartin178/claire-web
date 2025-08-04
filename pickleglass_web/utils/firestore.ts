@@ -102,12 +102,16 @@ export class FirestoreUserService {
     const userRef = doc(firestore, 'users', uid);
     try {
       const userSnap = await getDoc(userRef);
-      const result = userSnap.exists() ? userSnap.data() as FirestoreUserProfile : null;
+      if (!userSnap.exists()) {
+        console.warn("user doc does not exist, skip fetching profile.");
+        return null;
+      }
+      const result = userSnap.data() as FirestoreUserProfile;
       console.log('FirestoreUserService: User found:', result);
       return result;
     } catch (error) {
       console.error('FirestoreUserService: Error getting user:', error, { uid });
-      throw error;
+      return null;
     }
   }
 

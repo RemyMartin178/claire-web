@@ -481,7 +481,8 @@ export const deleteAccount = async (): Promise<void> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser!.uid;
     
-    await FirestoreUserService.deleteUser(uid);
+    // Dans le flow d'inscription, commenter la suppression automatique du user en cas d'erreur Firestore
+    // await FirestoreUserService.deleteUser(uid); // Suppression désactivée temporairement pour debug
     
     await auth.currentUser!.delete();
   } else {
