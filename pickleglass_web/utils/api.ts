@@ -425,22 +425,34 @@ export const updateUserProfile = async (data: { displayName: string }): Promise<
 export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser!.uid;
-    console.log('findOrCreateUser: checking for existing user with uid:', uid);
-    const existingUser = await FirestoreUserService.getUser(uid);
-    console.log('findOrCreateUser: existing user found:', existingUser);
+    console.log('API: findOrCreateUser - checking for existing user with uid:', uid);
     
-    if (!existingUser) {
-      console.log('findOrCreateUser: creating new user with data:', { displayName: user.display_name, email: user.email });
-      await FirestoreUserService.createUser(uid, {
-        displayName: user.display_name,
-        email: user.email
-      });
-      console.log('findOrCreateUser: user created successfully');
-    } else {
-      console.log('findOrCreateUser: user already exists');
+    try {
+      const existingUser = await FirestoreUserService.getUser(uid);
+      console.log('API: findOrCreateUser - existing user found:', existingUser);
+      
+      if (!existingUser) {
+        console.log('API: findOrCreateUser - creating new user with data:', { displayName: user.display_name, email: user.email });
+        
+        try {
+          await FirestoreUserService.createUser(uid, {
+            displayName: user.display_name,
+            email: user.email
+          });
+          console.log('API: findOrCreateUser - user created successfully in Firestore');
+        } catch (createError) {
+          console.error('API: findOrCreateUser - error creating user in Firestore:', createError);
+          throw new Error(`Erreur lors de la création du profil: ${createError}`);
+        }
+      } else {
+        console.log('API: findOrCreateUser - user already exists in Firestore');
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('API: findOrCreateUser - error:', error);
+      throw error;
     }
-    
-    return user;
   } else {
     const response = await apiCall(`/api/user/find-or-create`, {
         method: 'POST',

@@ -34,8 +34,11 @@ export const signInWithGoogle = async () => {
 
 export const createUserWithEmail = async (email: string, password: string, firstName?: string, lastName?: string) => {
   try {
+    console.log('Auth: Starting user creation for email:', email)
+    
     const result = await createUserWithEmailAndPassword(auth, email, password)
     const user = result.user
+    console.log('Auth: Firebase user created successfully:', user.uid)
 
     // Create display name from firstName and lastName if provided
     let displayName = 'User'
@@ -46,17 +49,30 @@ export const createUserWithEmail = async (email: string, password: string, first
     }
 
     // Create user profile in Firestore
-    console.log('Creating user profile with:', { uid: user.uid, display_name: displayName, email: user.email || email })
-    await findOrCreateUser({
-      uid: user.uid,
-      display_name: displayName,
-      email: user.email || email
-    })
-    console.log('User profile created successfully')
+    console.log('Auth: Creating Firestore profile with:', { uid: user.uid, display_name: displayName, email: user.email || email })
+    
+    try {
+      await findOrCreateUser({
+        uid: user.uid,
+        display_name: displayName,
+        email: user.email || email
+      })
+      console.log('Auth: Firestore profile created successfully')
+    } catch (firestoreError) {
+      console.error('Auth: Error creating Firestore profile:', firestoreError)
+      // Si Firestore échoue, on supprime l'utilisateur Firebase pour éviter un état incohérent
+      try {
+        await user.delete()
+        console.log('Auth: Deleted Firebase user due to Firestore error')
+      } catch (deleteError) {
+        console.error('Auth: Error deleting Firebase user:', deleteError)
+      }
+      throw new Error('Erreur lors de la création du profil utilisateur. Veuillez réessayer.')
+    }
 
     return user
   } catch (error) {
-    console.error("Error creating user with email:", error)
+    console.error("Auth: Error creating user with email:", error)
     throw error
   }
 }
