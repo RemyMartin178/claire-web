@@ -94,21 +94,14 @@ export class FirestoreUserService {
   }
 
   static async getUser(uid: string): Promise<FirestoreUserProfile | null> {
-    console.log('FirestoreUserService: Getting user with uid:', uid);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    if (auth.currentUser) {
-      await auth.currentUser.getIdToken(true);
-    }
-    const userRef = doc(firestore, 'users', uid);
     try {
+      const userRef = doc(firestore, 'users', uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
-        console.warn("user doc does not exist, skip fetching profile.");
+        console.warn("User doc does not exist yet.");
         return null;
       }
-      const result = userSnap.data() as FirestoreUserProfile;
-      console.log('FirestoreUserService: User found:', result);
-      return result;
+      return userSnap.data() as FirestoreUserProfile;
     } catch (error) {
       console.error('FirestoreUserService: Error getting user:', error, { uid });
       return null;

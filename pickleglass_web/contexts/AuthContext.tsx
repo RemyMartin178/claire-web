@@ -55,12 +55,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (firebaseUser) {
         try {
+          await new Promise(res => setTimeout(res, 1000)); // délai pour laisser Firestore créer le doc
           console.log('AuthContext: Fetching user profile for:', firebaseUser.uid)
           const userProfile = await getUserProfile()
           if (!userProfile) {
-            console.warn('AuthContext: Firestore profile not found, user probably just registered.');
+            console.log('⏳ Profil Firestore non encore dispo, attente...');
             setUser(null)
             setIsAuthenticated(false)
+            // Pas de suppression, pas de reset, juste attente
           } else {
             console.log('AuthContext: User profile fetched:', userProfile)
             setUser(userProfile)

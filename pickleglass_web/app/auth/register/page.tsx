@@ -47,7 +47,7 @@ export default function RegisterPage() {
 
     try {
       await createUserWithEmail(formData.email, formData.password, formData.firstName, formData.lastName)
-      console.log('✅ Profil créé dans Firestore')
+      console.log('✅ Profil Firestore créé')
       sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
