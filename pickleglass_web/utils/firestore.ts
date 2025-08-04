@@ -86,7 +86,7 @@ export class FirestoreUserService {
       console.error('FirestoreUserService: Error creating user:', error, {
         uid,
         profile,
-        authUser: typeof window !== 'undefined' ? (window.firebaseAuthDebugUser || null) : null
+        authUser: typeof window !== 'undefined' ? auth.currentUser : null
       });
       throw error;
     }
