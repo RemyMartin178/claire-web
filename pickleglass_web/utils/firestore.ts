@@ -95,6 +95,8 @@ export class FirestoreUserService {
 
   static async getUser(uid: string): Promise<FirestoreUserProfile | null> {
     console.log('FirestoreUserService: Getting user with uid:', uid);
+    // Ajoute un délai de 1 seconde avant le getDoc
+    await new Promise(resolve => setTimeout(resolve, 1000));
     const userRef = doc(firestore, 'users', uid);
     try {
       const userSnap = await getDoc(userRef);
@@ -102,7 +104,7 @@ export class FirestoreUserService {
       console.log('FirestoreUserService: User found:', result);
       return result;
     } catch (error) {
-      console.error('FirestoreUserService: Error getting user:', error);
+      console.error('FirestoreUserService: Error getting user:', error, { uid });
       throw error;
     }
   }
