@@ -57,12 +57,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           console.log('AuthContext: Fetching user profile for:', firebaseUser.uid)
           const userProfile = await getUserProfile()
-          console.log('AuthContext: User profile fetched:', userProfile)
-          setUser(userProfile)
-          setIsAuthenticated(true)
+          if (!userProfile) {
+            console.warn('AuthContext: Firestore profile not found, user probably just registered.');
+            setUser(null)
+            setIsAuthenticated(false)
+          } else {
+            console.log('AuthContext: User profile fetched:', userProfile)
+            setUser(userProfile)
+            setIsAuthenticated(true)
+          }
         } catch (error) {
           console.error('AuthContext: Error fetching user profile:', error)
-          // Si on ne peut pas récupérer le profil, on met null
           setUser(null)
           setIsAuthenticated(false)
         }
