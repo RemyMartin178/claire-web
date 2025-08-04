@@ -19,19 +19,14 @@ jobs:
           node-version: '20.x' # Node.js version compatible with project
           cache: 'npm' # npm dependency caching for speed improvement
 
-      - name: 📦 Install root dependencies
-        run: npm install
-
-      - name: 🌐 Install and build web (Renderer) part
+      - name: 📦 Install dependencies and build web
         # Move to pickleglass_web directory and run commands
-        working-directory: ./pickleglass_web
+        working-directory: pickleglass_web
         run: |
           npm install
           npm run build
 
-      - name: 🖥️ Build Electron app
-        # Run Electron build script from root directory
-        run: npm run build
+      # (Optionnel) Ajoute ici d'autres étapes si besoin (tests, déploiement, etc.)
 
       - name: 🚨 Send failure notification to Slack
         if: failure()
