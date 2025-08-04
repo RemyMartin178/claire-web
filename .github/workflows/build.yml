@@ -1,40 +1,34 @@
-name: Build & Verify
+name: build
 
 on:
   push:
-    branches: [ "main" ] # Runs on every push to main branch
+    branches: [main]
 
 jobs:
   build:
-    # Currently runs on macOS only, can add windows-latest later
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: pickleglass_web
 
     steps:
-      - name: 🚚 Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: ⚙️ Setup Node.js environment
-        uses: actions/setup-node@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: '20.x' # Node.js version compatible with project
-          cache: 'npm' # npm dependency caching for speed improvement
+          node-version: '18'
 
-      - name: 📦 Install dependencies and build web
-        # Move to pickleglass_web directory and run commands
-        working-directory: pickleglass_web
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Debug CI path
         run: |
-          npm install
-          npm run build
-
-      # (Optionnel) Ajoute ici d'autres étapes si besoin (tests, déploiement, etc.)
-
-      - name: 🚨 Send failure notification to Slack
-        if: failure()
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_CHANNEL: general
-          SLACK_TITLE: "🚨 Build Failed"
-          SLACK_MESSAGE: "😭 Build failed for `${{ github.repository }}` repo on main branch."
-          SLACK_COLOR: 'danger'
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          echo "CI working dir:"
+          pwd
+          ls -la
 

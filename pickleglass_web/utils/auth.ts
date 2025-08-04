@@ -63,6 +63,9 @@ export const createUserWithEmail = async (email: string, password: string, first
     console.log('Auth: Firebase user created successfully:', user.uid)
     console.log('Auth: User object:', { uid: user.uid, email: user.email, displayName: user.displayName })
 
+    // Attendre 1 seconde pour la propagation des droits auth côté Google
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     // Attendre que l'utilisateur soit bien authentifié côté client
     const settledUser = await waitForAuth();
     console.log('Auth: Settled user after waitForAuth:', settledUser.uid)
