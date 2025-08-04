@@ -95,8 +95,10 @@ export class FirestoreUserService {
 
   static async getUser(uid: string): Promise<FirestoreUserProfile | null> {
     console.log('FirestoreUserService: Getting user with uid:', uid);
-    // Ajoute un délai de 1 seconde avant le getDoc
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    if (auth.currentUser) {
+      await auth.currentUser.getIdToken(true);
+    }
     const userRef = doc(firestore, 'users', uid);
     try {
       const userSnap = await getDoc(userRef);
