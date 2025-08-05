@@ -484,7 +484,8 @@ export const deleteAccount = async (): Promise<void> => {
     // Dans le flow d'inscription, commenter la suppression automatique du user en cas d'erreur Firestore
     // await FirestoreUserService.deleteUser(uid); // Suppression désactivée temporairement pour debug
     
-    await auth.currentUser!.delete();
+    // SUPPRESSION DÉFINITIVEMENT DÉSACTIVÉE
+    // await auth.currentUser!.delete();
   } else {
     const response = await apiCall(`/api/user/profile`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete account');
@@ -602,31 +603,42 @@ export const logout = async () => {
 }; 
 
 export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
-  // 1. Créer l'utilisateur avec le flow robuste
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  const user = userCredential.user;
-  
-  console.log('🔍 createUserAndProfileSafely: User créé:', user.uid);
-  
-  // 2. Forcer l'actualisation du token
-  await user.getIdToken(true);
-  console.log('🔍 createUserAndProfileSafely: Token forcé');
-  
-  // 3. Attendre la propagation côté Firestore
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  console.log('🔍 createUserAndProfileSafely: Délai de propagation terminé');
-  
-  // 4. Créer le doc Firestore
   try {
-    await setDoc(doc(firestore, "users", user.uid), {
-      ...data,
-      createdAt: serverTimestamp(),
-    });
-    console.log("✅ Profil Firestore créé avec succès");
-  } catch (error) {
-    console.error('❌ createUserAndProfileSafely: Erreur setDoc:', error);
-    // SUPPRESSION DÉFINITIVEMENT DÉSACTIVÉE
-    // Ne pas supprimer le user, juste log l'erreur
-    throw error;
+    // 1. Créer l'utilisateur avec le flow robuste
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    console.log('🔍 createUserAndProfileSafely: User créé:', user.uid);
+    
+    // 2. Forcer l'actualisation du token
+    await user.getIdToken(true);
+    console.log('🔍 createUserAndProfileSafely: Token forcé');
+    
+    // 3. Attendre la propagation côté Firestore
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('🔍 createUserAndProfileSafely: Délai de propagation terminé');
+    
+    // 4. Créer le doc Firestore
+    try {
+      await setDoc(doc(firestore, "users", user.uid), {
+        ...data,
+        createdAt: serverTimestamp(),
+      });
+      console.log("✅ Profil Firestore créé avec succès");
+    } catch (error) {
+      console.error('❌ createUserAndProfileSafely: Erreur setDoc:', error);
+      // SUPPRESSION DÉFINITIVEMENT DÉSACTIVÉE
+      // Ne pas supprimer le user, juste log l'erreur
+      throw error;
+    }
+  } catch (error: any) {
+    if (error.code === 'auth/email-already-in-use') {
+      console.error("⚠️ Cet email est déjà utilisé !");
+      // Afficher un message à l'utilisateur, ne PAS continuer le flow Firestore
+      throw new Error("Cette adresse email est déjà utilisée");
+    } else {
+      console.error("❌ Erreur Firebase inconnue:", error);
+      throw error;
+    }
   }
 }; 
