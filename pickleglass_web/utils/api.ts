@@ -608,19 +608,48 @@ export const createUserAndProfileSafely = async (email: string, password: string
     const result = await createUserWithEmailAndPassword(auth, email, password);
     user = result.user;
   }
-  // 2. Force refresh du token
-  await user.getIdToken(true);
-  // 3. Attendre que auth.currentUser soit bien peuplé
+  
+  // 2. Log détaillé de l'état après création
+  console.log('🔍 createUserAndProfileSafely: auth.currentUser après création:', auth.currentUser);
+  console.log('🔍 createUserAndProfileSafely: user.uid:', user.uid);
+  
+  // 3. Force refresh du token et log le résultat
+  const tokenResult = await user.getIdTokenResult(true);
+  console.log('🔍 createUserAndProfileSafely: getIdTokenResult:', {
+    uid: tokenResult.claims.user_id,
+    auth_time: tokenResult.authTime,
+    issued_at: tokenResult.issuedAtTime,
+    expiration_time: tokenResult.expirationTime
+  });
+  
+  // 4. Attendre que auth.currentUser soit bien peuplé
   await new Promise((resolve) =>
     onAuthStateChanged(auth, (u) => {
-      if (u) resolve(u);
+      if (u) {
+        console.log('🔍 createUserAndProfileSafely: onAuthStateChanged déclenché avec user:', u.uid);
+        resolve(u);
+      }
     })
   );
-  // 4. Debug
-  console.log("✅ uid ready", auth.currentUser?.uid);
-  // 5. Ensuite seulement, créer le doc Firestore
-  await setDoc(doc(firestore, "users", user.uid), {
-    ...data,
-    createdAt: serverTimestamp(),
+  
+  // 5. Log final avant setDoc
+  console.log('🔍 createUserAndProfileSafely: État final avant setDoc:', {
+    auth_currentUser: auth.currentUser?.uid,
+    user_uid: user.uid,
+    firestore_app: firestore.app.name
   });
+  
+  // 6. Créer le doc Firestore
+  try {
+    await setDoc(doc(firestore, "users", user.uid), {
+      ...data,
+      createdAt: serverTimestamp(),
+    });
+    console.log("✅ Profil Firestore créé avec succès");
+  } catch (error) {
+    console.error('❌ createUserAndProfileSafely: Erreur setDoc:', error);
+    // TEMP: Ne pas supprimer le user, juste log l'erreur
+    // await FirestoreUserService.deleteUser(uid); // SUPPRESSION DÉSACTIVÉE
+    throw error;
+  }
 }; 
