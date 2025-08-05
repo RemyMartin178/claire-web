@@ -602,44 +602,21 @@ export const logout = async () => {
 }; 
 
 export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
-  // 1. Créer l'utilisateur (si pas déjà fait)
-  let user = auth.currentUser;
-  if (!user) {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    user = result.user;
-  }
+  // 1. Créer l'utilisateur avec le flow robuste
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
   
-  // 2. Log détaillé de l'état après création
-  console.log('🔍 createUserAndProfileSafely: auth.currentUser après création:', auth.currentUser);
-  console.log('🔍 createUserAndProfileSafely: user.uid:', user.uid);
+  console.log('🔍 createUserAndProfileSafely: User créé:', user.uid);
   
-  // 3. Force refresh du token et log le résultat
-  const tokenResult = await user.getIdTokenResult(true);
-  console.log('🔍 createUserAndProfileSafely: getIdTokenResult:', {
-    uid: tokenResult.claims.user_id,
-    auth_time: tokenResult.authTime,
-    issued_at: tokenResult.issuedAtTime,
-    expiration_time: tokenResult.expirationTime
-  });
+  // 2. Forcer l'actualisation du token
+  await user.getIdToken(true);
+  console.log('🔍 createUserAndProfileSafely: Token forcé');
   
-  // 4. Attendre que auth.currentUser soit bien peuplé
-  await new Promise((resolve) =>
-    onAuthStateChanged(auth, (u) => {
-      if (u) {
-        console.log('🔍 createUserAndProfileSafely: onAuthStateChanged déclenché avec user:', u.uid);
-        resolve(u);
-      }
-    })
-  );
+  // 3. Attendre la propagation côté Firestore
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  console.log('🔍 createUserAndProfileSafely: Délai de propagation terminé');
   
-  // 5. Log final avant setDoc
-  console.log('🔍 createUserAndProfileSafely: État final avant setDoc:', {
-    auth_currentUser: auth.currentUser?.uid,
-    user_uid: user.uid,
-    firestore_app: firestore.app.name
-  });
-  
-  // 6. Créer le doc Firestore
+  // 4. Créer le doc Firestore
   try {
     await setDoc(doc(firestore, "users", user.uid), {
       ...data,
@@ -648,8 +625,8 @@ export const createUserAndProfileSafely = async (email: string, password: string
     console.log("✅ Profil Firestore créé avec succès");
   } catch (error) {
     console.error('❌ createUserAndProfileSafely: Erreur setDoc:', error);
-    // TEMP: Ne pas supprimer le user, juste log l'erreur
-    // await FirestoreUserService.deleteUser(uid); // SUPPRESSION DÉSACTIVÉE
+    // SUPPRESSION DÉFINITIVEMENT DÉSACTIVÉE
+    // Ne pas supprimer le user, juste log l'erreur
     throw error;
   }
 }; 
