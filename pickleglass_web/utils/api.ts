@@ -604,11 +604,17 @@ export const logout = async () => {
 
 export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
   try {
-    // 1. Créer l'utilisateur avec le flow robuste
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    // 1. Utiliser l'utilisateur déjà créé ou en créer un nouveau
+    let user = auth.currentUser;
+    if (!user) {
+      console.log('🔍 createUserAndProfileSafely: Création d\'un nouvel utilisateur');
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      user = userCredential.user;
+    } else {
+      console.log('🔍 createUserAndProfileSafely: Utilisation de l\'utilisateur existant:', user.uid);
+    }
     
-    console.log('🔍 createUserAndProfileSafely: User créé:', user.uid);
+    console.log('🔍 createUserAndProfileSafely: User créé/existant:', user.uid);
     
     // 2. Forcer l'actualisation du token
     await user.getIdToken(true);
