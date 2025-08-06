@@ -1,28 +1,21 @@
 import { 
   doc, 
-  collection, 
-  addDoc,
   getDoc, 
-  getDocs, 
   setDoc, 
   updateDoc, 
   deleteDoc, 
+  collection, 
+  getDocs, 
+  addDoc, 
   query, 
-  where, 
   orderBy, 
-  serverTimestamp,
-  Timestamp,
-  writeBatch
-} from 'firebase/firestore';
-import { db as firestore } from './firebase';
-import { auth } from './firebase';
-
-// Debug: Log Firestore instance
-console.log('Firestore Debug:', {
-  firestore: !!firestore,
-  app: firestore?.app,
-  type: typeof firestore
-});
+  writeBatch, 
+  serverTimestamp, 
+  Timestamp 
+} from 'firebase/firestore'
+import { db as firestore, auth } from './firebase'
+import { trackUserOperation } from './monitoring'
+import { FirebaseErrorHandler } from './errorHandler'
 
 export interface FirestoreUserProfile {
   displayName: string;
@@ -72,80 +65,154 @@ export interface FirestorePromptPreset {
   createdAt: Timestamp;
 }
 
-export class FirestoreUserService {
-  static async createUser(uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>) {
+class FirestoreUserService {
+  private static readonly MAX_RETRIES = 3;
+  private static readonly RETRY_DELAY = 1000;
+  private static readonly TOKEN_REFRESH_DELAY = 2000;
+
+  static createUser = trackUserOperation('firestore_create_user', async (uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>): Promise<void> => {
     console.log('FirestoreUserService: Creating user with uid:', uid, 'profile:', profile);
     const userRef = doc(firestore, 'users', uid);
-    try {
-      await setDoc(userRef, {
-        ...profile,
-        createdAt: serverTimestamp()
-      });
-      console.log('FirestoreUserService: User created successfully');
-    } catch (error) {
-      // Ajout d'un log détaillé pour le debug
-      console.error('FirestoreUserService: Error creating user:', error, {
-        uid,
-        profile,
-        authUser: typeof window !== 'undefined' ? auth.currentUser : null
-      });
-      throw error;
-    }
-  }
+    
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        await this.ensureValidToken();
+        
+        const existingDoc = await getDoc(userRef);
+        if (existingDoc.exists()) {
+          console.log('FirestoreUserService: User document already exists, updating profile');
+          await updateDoc(userRef, {
+            displayName: profile.displayName,
+            email: profile.email
+          });
+          return;
+        }
 
-  static async getUser(uid: string): Promise<FirestoreUserProfile | null> {
+        await setDoc(userRef, {
+          ...profile,
+          createdAt: serverTimestamp()
+        });
+        
+        console.log('FirestoreUserService: User created successfully on attempt', attempt);
+        return;
+      } catch (error: any) {
+        console.error(`FirestoreUserService: Attempt ${attempt} failed:`, error);
+        
+        if (attempt === this.MAX_RETRIES) {
+          throw new Error(`Failed to create user after ${this.MAX_RETRIES} attempts: ${FirebaseErrorHandler.getUserFriendlyMessage(error)}`);
+        }
+        
+        if (error.code === 'permission-denied') {
+          throw new Error('Permission denied. Please check your authentication status.');
+        }
+        
+        if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+          await this.delay(this.RETRY_DELAY * attempt);
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+  });
+
+  static getUser = trackUserOperation('firestore_get_user', async (uid: string): Promise<FirestoreUserProfile | null> => {
     try {
+      await this.ensureValidToken();
+      
       const userRef = doc(firestore, 'users', uid);
       const userSnap = await getDoc(userRef);
+      
       if (!userSnap.exists()) {
-        console.warn("User doc does not exist yet.");
+        console.warn("FirestoreUserService: User document does not exist for uid:", uid);
         return null;
       }
+      
       return userSnap.data() as FirestoreUserProfile;
-    } catch (error) {
+    } catch (error: any) {
       console.error('FirestoreUserService: Error getting user:', error, { uid });
+      
+      if (error.code === 'permission-denied') {
+        throw new Error('Permission denied. Please check your authentication status.');
+      }
+      
       return null;
     }
-  }
+  });
 
-  static async updateUser(uid: string, updates: Partial<FirestoreUserProfile>) {
-    const userRef = doc(firestore, 'users', uid);
-    await updateDoc(userRef, updates);
-  }
+  static updateUser = trackUserOperation('firestore_update_user', async (uid: string, updates: Partial<FirestoreUserProfile>): Promise<void> => {
+    try {
+      await this.ensureValidToken();
+      
+      const userRef = doc(firestore, 'users', uid);
+      await updateDoc(userRef, updates);
+    } catch (error: any) {
+      console.error('FirestoreUserService: Error updating user:', error, { uid, updates });
+      throw new Error(`Failed to update user: ${FirebaseErrorHandler.getUserFriendlyMessage(error)}`);
+    }
+  });
 
-  static async deleteUser(uid: string) {
-    const batch = writeBatch(firestore);
-    
-    const sessionsRef = collection(firestore, 'users', uid, 'sessions');
-    const sessionsSnap = await getDocs(sessionsRef);
-    
-    for (const sessionDoc of sessionsSnap.docs) {
-      const sessionId = sessionDoc.id;
+  static deleteUser = trackUserOperation('firestore_delete_user', async (uid: string): Promise<void> => {
+    try {
+      await this.ensureValidToken();
       
-      const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
-      const transcriptsSnap = await getDocs(transcriptsRef);
-      transcriptsSnap.docs.forEach(doc => batch.delete(doc.ref));
+      const batch = writeBatch(firestore);
       
-      const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'aiMessages');
-      const aiMessagesSnap = await getDocs(aiMessagesRef);
-      aiMessagesSnap.docs.forEach(doc => batch.delete(doc.ref));
+      const sessionsRef = collection(firestore, 'users', uid, 'sessions');
+      const sessionsSnap = await getDocs(sessionsRef);
       
-      const summaryRef = doc(firestore, 'users', uid, 'sessions', sessionId, 'summary', 'data');
-      batch.delete(summaryRef);
+      for (const sessionDoc of sessionsSnap.docs) {
+        const sessionId = sessionDoc.id;
+        
+        const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
+        const transcriptsSnap = await getDocs(transcriptsRef);
+        transcriptsSnap.docs.forEach(doc => batch.delete(doc.ref));
+        
+        const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'aiMessages');
+        const aiMessagesSnap = await getDocs(aiMessagesRef);
+        aiMessagesSnap.docs.forEach(doc => batch.delete(doc.ref));
+        
+        const summaryRef = doc(firestore, 'users', uid, 'sessions', sessionId, 'summary', 'data');
+        batch.delete(summaryRef);
+        
+        batch.delete(sessionDoc.ref);
+      }
       
-      batch.delete(sessionDoc.ref);
+      const presetsRef = collection(firestore, 'users', uid, 'promptPresets');
+      const presetsSnap = await getDocs(presetsRef);
+      presetsSnap.docs.forEach(doc => batch.delete(doc.ref));
+      
+      const userRef = doc(firestore, 'users', uid);
+      batch.delete(userRef);
+      
+      await batch.commit();
+    } catch (error: any) {
+      console.error('FirestoreUserService: Error deleting user:', error, { uid });
+      throw new Error(`Failed to delete user: ${FirebaseErrorHandler.getUserFriendlyMessage(error)}`);
+    }
+  });
+
+  private static async ensureValidToken(): Promise<void> {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('No authenticated user found');
     }
     
-    const presetsRef = collection(firestore, 'users', uid, 'promptPresets');
-    const presetsSnap = await getDocs(presetsRef);
-    presetsSnap.docs.forEach(doc => batch.delete(doc.ref));
-    
-    const userRef = doc(firestore, 'users', uid);
-    batch.delete(userRef);
-    
-    await batch.commit();
+    try {
+      await user.getIdToken(true);
+      await this.delay(500);
+    } catch (error: any) {
+      console.error('FirestoreUserService: Token refresh failed:', error);
+      throw new Error('Authentication token is invalid. Please sign in again.');
+    }
+  }
+
+  private static delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
+
+export { FirestoreUserService };
 
 export class FirestoreSessionService {
   static async createSession(uid: string, session: Omit<FirestoreSession, 'startedAt'>): Promise<string> {

@@ -34,7 +34,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log('AuthContext: Setting up auth state listener')
     
-    // Vérifier si l'utilisateur a été déconnecté manuellement
     const wasManuallyLoggedOut = sessionStorage.getItem('manuallyLoggedOut')
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -44,7 +43,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         wasManuallyLoggedOut
       })
       
-      // Si l'utilisateur a été déconnecté manuellement, ne pas se reconnecter automatiquement
       if (wasManuallyLoggedOut === 'true') {
         console.log('AuthContext: User was manually logged out, not auto-reconnecting')
         setUser(null)
@@ -54,31 +52,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       if (firebaseUser) {
-        try {
-          await new Promise(res => setTimeout(res, 1000)); // délai pour laisser Firestore créer le doc
-          console.log('AuthContext: Fetching user profile for:', firebaseUser.uid)
-          const userProfile = await getUserProfile()
-          if (!userProfile) {
-            console.log('⏳ Profil Firestore non encore dispo, attente...');
-            setUser(null)
-            setIsAuthenticated(false)
-            // Pas de suppression, pas de reset, juste attente
-          } else {
-            console.log('AuthContext: User profile fetched:', userProfile)
-            setUser(userProfile)
-            setIsAuthenticated(true)
-          }
-        } catch (error) {
-          console.error('AuthContext: Error fetching user profile:', error)
-          setUser(null)
-          setIsAuthenticated(false)
-        }
+        await handleUserAuthentication(firebaseUser)
       } else {
         console.log('AuthContext: No user, clearing state')
         setUser(null)
         setIsAuthenticated(false)
+        setLoading(false)
       }
-      setLoading(false)
     })
 
     return () => {
@@ -86,6 +66,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubscribe()
     }
   }, [])
+
+  const handleUserAuthentication = async (firebaseUser: User) => {
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY = 1000;
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        console.log('AuthContext: Fetching user profile for:', firebaseUser.uid)
+        const userProfile = await getUserProfile()
+        
+        if (userProfile) {
+          console.log('AuthContext: User profile fetched:', userProfile)
+          setUser(userProfile)
+          setIsAuthenticated(true)
+          setLoading(false)
+          return
+        }
+        
+        if (attempt === MAX_RETRIES) {
+          console.warn('AuthContext: User profile not found after all retries, creating fallback profile')
+          const fallbackProfile: UserProfile = {
+            uid: firebaseUser.uid,
+            display_name: firebaseUser.displayName || 'User',
+            email: firebaseUser.email || 'no-email@example.com'
+          }
+          setUser(fallbackProfile)
+          setIsAuthenticated(true)
+          setLoading(false)
+          return
+        }
+        
+        console.log('⏳ Profil Firestore non encore dispo, attente...');
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
+      } catch (error: any) {
+        console.error(`AuthContext: Attempt ${attempt} failed:`, error)
+        
+        if (attempt === MAX_RETRIES) {
+          console.error('AuthContext: All attempts failed, setting user to null')
+          setUser(null)
+          setIsAuthenticated(false)
+          setLoading(false)
+          return
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
+      }
+    }
+  }
 
   return (
     <AuthContext.Provider value={{ user, loading, isAuthenticated }}>
