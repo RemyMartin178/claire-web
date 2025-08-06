@@ -51,7 +51,9 @@ export default function SettingsPage() {
       try {
         const userProfile = await getUserProfile()
         setProfile(userProfile)
-        setDisplayNameInput(userProfile.display_name)
+        if (userProfile) {
+          setDisplayNameInput(userProfile.display_name)
+        }
         await fetchApiKeyStatus();
       } catch (error) {
         console.error("Failed to fetch profile data:", error)
