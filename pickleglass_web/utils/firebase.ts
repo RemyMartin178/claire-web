@@ -35,15 +35,15 @@ console.log('Firebase Config Debug:', {
 })
 
 // Check if config is valid before initializing
-const isConfigValid = firebaseConfig.apiKey && 
-                     firebaseConfig.authDomain && 
-                     firebaseConfig.projectId && 
-                     firebaseConfig.storageBucket && 
-                     firebaseConfig.messagingSenderId && 
-                     firebaseConfig.appId
+const isConfigValid = !!(firebaseConfig.apiKey && 
+                       firebaseConfig.authDomain && 
+                       firebaseConfig.projectId && 
+                       firebaseConfig.storageBucket && 
+                       firebaseConfig.messagingSenderId && 
+                       firebaseConfig.appId)
 
 console.log('Firebase Config Validation:', {
-  isConfigValid: !!isConfigValid, // Convert to boolean
+  isConfigValid: isConfigValid,
   configKeys: {
     apiKey: !!firebaseConfig.apiKey,
     authDomain: !!firebaseConfig.authDomain,
@@ -83,8 +83,6 @@ console.log('Firebase Firestore initialized:', !!db)
 // Only log success if config is valid
 if (isConfigValid) {
   console.log('✅ Firebase configuration is valid and working')
-} else {
-  console.error('❌ Firebase configuration has issues')
 }
 
 export default app
