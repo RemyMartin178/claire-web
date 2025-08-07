@@ -1,6 +1,6 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
-import ClientLayout from '@/components/ClientLayout'
+import ConditionalLayout from '@/components/ConditionalLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,9 +17,9 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={inter.className} style={{ background: '#202123' }}>
-        <ClientLayout>
+        <ConditionalLayout>
           {children}
-        </ClientLayout>
+        </ConditionalLayout>
       </body>
     </html>
   )
