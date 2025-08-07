@@ -34,6 +34,32 @@ console.log('Firebase Config Debug:', {
   }
 })
 
+// Check if config is valid before initializing
+const isConfigValid = firebaseConfig.apiKey && 
+                     firebaseConfig.authDomain && 
+                     firebaseConfig.projectId && 
+                     firebaseConfig.storageBucket && 
+                     firebaseConfig.messagingSenderId && 
+                     firebaseConfig.appId
+
+console.log('Firebase Config Validation:', {
+  isConfigValid,
+  configKeys: {
+    apiKey: !!firebaseConfig.apiKey,
+    authDomain: !!firebaseConfig.authDomain,
+    projectId: !!firebaseConfig.projectId,
+    storageBucket: !!firebaseConfig.storageBucket,
+    messagingSenderId: !!firebaseConfig.messagingSenderId,
+    appId: !!firebaseConfig.appId
+  }
+})
+
+if (!isConfigValid) {
+  console.error('❌ Firebase configuration is invalid - missing required values')
+  console.error('Expected project: dedale-database (from .firebaserc)')
+  console.error('Please check your environment variables on Vercel')
+}
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig)
 
