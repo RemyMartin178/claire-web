@@ -1,7 +1,7 @@
 "use client"
 
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app"
+import { initializeApp, getApps } from "firebase/app"
 import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
 
@@ -78,21 +78,32 @@ if (!isConfigValid) {
   console.error('Please check your environment variables on Vercel')
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
+// Initialize Firebase only if not already initialized
+let app: any = null
+let auth: any = null
+let db: any = null
 
-// Initialize Firebase services
-export const auth = getAuth(app)
-export const db = getFirestore(app)
+if (typeof window !== 'undefined') {
+  // Only initialize on client side
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig)
+  } else {
+    app = getApps()[0]
+  }
+  
+  auth = getAuth(app)
+  db = getFirestore(app)
 
-// Verify Firebase initialization
-console.log('Firebase initialized successfully')
-console.log('Firebase Auth initialized:', !!auth)
-console.log('Firebase Firestore initialized:', !!db)
+  // Verify Firebase initialization
+  console.log('Firebase initialized successfully')
+  console.log('Firebase Auth initialized:', !!auth)
+  console.log('Firebase Firestore initialized:', !!db)
 
-// Only log success if config is valid
-if (isConfigValid) {
-  console.log('✅ Firebase configuration is valid and working')
+  // Only log success if config is valid
+  if (isConfigValid) {
+    console.log('✅ Firebase configuration is valid and working')
+  }
 }
 
+export { auth, db }
 export default app
