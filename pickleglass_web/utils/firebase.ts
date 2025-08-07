@@ -43,7 +43,7 @@ const isConfigValid = firebaseConfig.apiKey &&
                      firebaseConfig.appId
 
 console.log('Firebase Config Validation:', {
-  isConfigValid,
+  isConfigValid: !!isConfigValid, // Convert to boolean
   configKeys: {
     apiKey: !!firebaseConfig.apiKey,
     authDomain: !!firebaseConfig.authDomain,
@@ -51,6 +51,14 @@ console.log('Firebase Config Validation:', {
     storageBucket: !!firebaseConfig.storageBucket,
     messagingSenderId: !!firebaseConfig.messagingSenderId,
     appId: !!firebaseConfig.appId
+  },
+  actualValues: {
+    apiKey: firebaseConfig.apiKey ? 'PRESENT' : 'MISSING',
+    authDomain: firebaseConfig.authDomain || 'MISSING',
+    projectId: firebaseConfig.projectId || 'MISSING',
+    storageBucket: firebaseConfig.storageBucket || 'MISSING',
+    messagingSenderId: firebaseConfig.messagingSenderId || 'MISSING',
+    appId: firebaseConfig.appId || 'MISSING'
   }
 })
 
