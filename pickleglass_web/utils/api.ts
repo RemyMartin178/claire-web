@@ -381,11 +381,18 @@ export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> 
     if (!uid) throw new Error('No authenticated user');
     
     try {
+      // Attendre que l'utilisateur soit complètement authentifié
+      await auth.currentUser?.getIdToken(true);
+      
+      console.log('Creating Firestore profile for existing user:', uid);
+      
       // Create Firestore profile immediately
       await FirestoreUserService.createUser(uid, {
         displayName: user.display_name,
         email: user.email
       });
+      
+      console.log('Firestore profile created successfully for existing user');
       
       return {
         uid,
@@ -565,14 +572,26 @@ export const createUserAndProfileSafely = async (email: string, password: string
         user = userCredential.user;
       }
       
+      // Attendre que l'utilisateur soit complètement authentifié
       await user.getIdToken(true);
-      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Attendre un peu plus pour s'assurer que auth.currentUser est mis à jour
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Vérifier que l'utilisateur est bien authentifié avant d'écrire dans Firestore
+      if (!auth.currentUser) {
+        console.error('User not authenticated after creation');
+        throw new Error('Erreur d\'authentification');
+      }
+      
+      console.log('Creating Firestore profile for user:', user.uid);
       
       await FirestoreUserService.createUser(user.uid, {
         displayName: data.displayName,
         email: data.email
       });
       
+      console.log('Firestore profile created successfully');
       return user;
     } catch (error: any) {
       console.error(`Registration attempt ${attempt} failed:`, error);
