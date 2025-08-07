@@ -15,7 +15,7 @@ export default function HomePage() {
         router.push('/dashboard')
       } else {
         // Utilisateur non connecté → redirection vers clairia.app
-        window.location.href = 'https://clairia.app'
+        router.push('https://clairia.app')
       }
     }
   }, [user, loading, router])

@@ -76,8 +76,10 @@ export class FirestoreUserService {
     
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
+        console.log(`FirestoreUserService: Attempt ${attempt} - Ensuring valid token...`);
         await this.ensureValidToken();
         
+        console.log(`FirestoreUserService: Attempt ${attempt} - Checking existing document...`);
         const existingDoc = await getDoc(userRef);
         if (existingDoc.exists()) {
           console.log('FirestoreUserService: User document already exists, updating profile');
@@ -88,6 +90,7 @@ export class FirestoreUserService {
           return;
         }
 
+        console.log(`FirestoreUserService: Attempt ${attempt} - Creating new document...`);
         await setDoc(userRef, {
           ...profile,
           createdAt: serverTimestamp()
@@ -97,12 +100,20 @@ export class FirestoreUserService {
         return;
       } catch (error: any) {
         console.error(`FirestoreUserService: Attempt ${attempt} failed:`, error);
+        console.error('FirestoreUserService: Error details:', {
+          code: error.code,
+          message: error.message,
+          uid: uid
+        });
         
         if (attempt === this.MAX_RETRIES) {
           throw new Error(`Failed to create user after ${this.MAX_RETRIES} attempts: ${FirebaseErrorHandler.getUserFriendlyMessage(error)}`);
         }
         
         if (error.code === 'permission-denied') {
+          console.error('FirestoreUserService: Permission denied - checking auth state...');
+          const currentUser = auth.currentUser;
+          console.error('FirestoreUserService: Current auth user:', currentUser?.uid, currentUser?.email);
           throw new Error('Permission denied. Please check your authentication status.');
         }
         
@@ -133,7 +144,13 @@ export class FirestoreUserService {
       console.error('FirestoreUserService: Error getting user:', error, { uid });
       
       if (error.code === 'permission-denied') {
-        throw new Error('Permission denied. Please check your authentication status.');
+        console.error('FirestoreUserService: Permission denied for user:', uid);
+        return null;
+      }
+      
+      if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
+        console.error('FirestoreUserService: Network error, returning null');
+        return null;
       }
       
       return null;
@@ -194,13 +211,16 @@ export class FirestoreUserService {
 
   private static async ensureValidToken(): Promise<void> {
     const user = auth.currentUser;
+    console.log('FirestoreUserService: Current user:', user?.uid, user?.email);
+    
     if (!user) {
       throw new Error('No authenticated user found');
     }
     
     try {
-      await user.getIdToken(true);
-      await this.delay(200); // Reduced from 500
+      const token = await user.getIdToken(true);
+      console.log('FirestoreUserService: Token refreshed successfully, length:', token.length);
+      await this.delay(200);
     } catch (error: any) {
       console.error('FirestoreUserService: Token refresh failed:', error);
       throw new Error('Authentication token is invalid. Please sign in again.');
