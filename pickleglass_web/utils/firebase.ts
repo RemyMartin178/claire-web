@@ -80,21 +80,11 @@ console.log('Firebase initialized successfully')
 console.log('Firebase Auth initialized:', !!auth)
 console.log('Firebase Firestore initialized:', !!db)
 
-// Check if all required config is present
-const requiredConfig = [
-  'NEXT_PUBLIC_FIREBASE_API_KEY',
-  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', 
-  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
-  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  'NEXT_PUBLIC_FIREBASE_APP_ID'
-]
-
-const missingConfig = requiredConfig.filter(key => !process.env[key])
-if (missingConfig.length > 0) {
-  console.error('❌ Missing Firebase configuration:', missingConfig)
+// Only log success if config is valid
+if (isConfigValid) {
+  console.log('✅ Firebase configuration is valid and working')
 } else {
-  console.log('✅ All Firebase configuration present')
+  console.error('❌ Firebase configuration has issues')
 }
 
 export default app
