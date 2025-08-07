@@ -34,6 +34,14 @@ console.log('Firebase Config Debug:', {
   }
 })
 
+// Additional debug for Vercel
+console.log('Environment Debug:', {
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL_ENV: process.env.VERCEL_ENV,
+  VERCEL_URL: process.env.VERCEL_URL,
+  isVercel: !!process.env.VERCEL_ENV
+})
+
 // Check if config is valid before initializing
 const isConfigValid = !!(firebaseConfig.apiKey && 
                        firebaseConfig.authDomain && 
