@@ -90,7 +90,11 @@ export class FirestoreUserService {
           return;
         }
 
-        console.log(`FirestoreUserService: Attempt ${attempt} - Creating new document...`);
+        console.log(`FirestoreUserService: Attempt ${attempt} - Creating new document with data:`, {
+          ...profile,
+          createdAt: 'serverTimestamp()'
+        });
+        
         await setDoc(userRef, {
           ...profile,
           createdAt: serverTimestamp()
@@ -129,9 +133,12 @@ export class FirestoreUserService {
 
   static getUser = trackUserOperation('firestore_get_user', async (uid: string): Promise<FirestoreUserProfile | null> => {
     try {
+      console.log('FirestoreUserService: Getting user for uid:', uid);
       await this.ensureValidToken();
       
       const userRef = doc(firestore, 'users', uid);
+      console.log('FirestoreUserService: User ref path:', userRef.path);
+      
       const userSnap = await getDoc(userRef);
       
       if (!userSnap.exists()) {
@@ -139,9 +146,16 @@ export class FirestoreUserService {
         return null;
       }
       
-      return userSnap.data() as FirestoreUserProfile;
+      const userData = userSnap.data() as FirestoreUserProfile;
+      console.log('FirestoreUserService: User data retrieved successfully:', userData);
+      return userData;
     } catch (error: any) {
       console.error('FirestoreUserService: Error getting user:', error, { uid });
+      console.error('FirestoreUserService: Error details:', {
+        code: error.code,
+        message: error.message,
+        uid: uid
+      });
       
       if (error.code === 'permission-denied') {
         console.error('FirestoreUserService: Permission denied for user:', uid);
@@ -220,6 +234,24 @@ export class FirestoreUserService {
     try {
       const token = await user.getIdToken(true);
       console.log('FirestoreUserService: Token refreshed successfully, length:', token.length);
+      
+      // Decode token to check claims and expiration
+      const tokenParts = token.split('.');
+      if (tokenParts.length === 3) {
+        try {
+          const payload = JSON.parse(atob(tokenParts[1]));
+          console.log('FirestoreUserService: Token payload:', {
+            uid: payload.user_id,
+            email: payload.email,
+            exp: new Date(payload.exp * 1000).toISOString(),
+            iat: new Date(payload.iat * 1000).toISOString(),
+            auth_time: new Date(payload.auth_time * 1000).toISOString()
+          });
+        } catch (e) {
+          console.log('FirestoreUserService: Could not decode token payload');
+        }
+      }
+      
       await this.delay(200);
     } catch (error: any) {
       console.error('FirestoreUserService: Token refresh failed:', error);

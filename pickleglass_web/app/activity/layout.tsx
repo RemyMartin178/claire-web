@@ -1,6 +1,5 @@
 'use client'
 
-import ClientLayout from '@/components/ClientLayout'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function ActivityLayout({
@@ -9,10 +8,8 @@ export default function ActivityLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClientLayout>
-      <ProtectedRoute>
-        {children}
-      </ProtectedRoute>
-    </ClientLayout>
+    <ProtectedRoute>
+      {children}
+    </ProtectedRoute>
   )
 } 
