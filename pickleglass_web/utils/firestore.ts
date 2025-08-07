@@ -65,10 +65,10 @@ export interface FirestorePromptPreset {
   createdAt: Timestamp;
 }
 
-class FirestoreUserService {
-  private static readonly MAX_RETRIES = 3;
-  private static readonly RETRY_DELAY = 1000;
-  private static readonly TOKEN_REFRESH_DELAY = 2000;
+export class FirestoreUserService {
+  private static readonly MAX_RETRIES = 2; // Reduced from 3
+  private static readonly RETRY_DELAY = 500; // Reduced from 1000
+  private static readonly TOKEN_REFRESH_DELAY = 1000; // Reduced from 2000
 
   static createUser = trackUserOperation('firestore_create_user', async (uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>): Promise<void> => {
     console.log('FirestoreUserService: Creating user with uid:', uid, 'profile:', profile);
@@ -200,7 +200,7 @@ class FirestoreUserService {
     
     try {
       await user.getIdToken(true);
-      await this.delay(500);
+      await this.delay(200); // Reduced from 500
     } catch (error: any) {
       console.error('FirestoreUserService: Token refresh failed:', error);
       throw new Error('Authentication token is invalid. Please sign in again.');
@@ -211,8 +211,6 @@ class FirestoreUserService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
-
-export { FirestoreUserService };
 
 export class FirestoreSessionService {
   static async createSession(uid: string, session: Omit<FirestoreSession, 'startedAt'>): Promise<string> {

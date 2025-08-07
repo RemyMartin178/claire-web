@@ -68,18 +68,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const handleUserAuthentication = async (firebaseUser: User) => {
-    const MAX_RETRIES = 5;
-    const RETRY_DELAY = 1000;
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 500;
     
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 200));
         
-        console.log('AuthContext: Fetching user profile for:', firebaseUser.uid)
         const userProfile = await getUserProfile()
         
         if (userProfile) {
-          console.log('AuthContext: User profile fetched:', userProfile)
           setUser(userProfile)
           setIsAuthenticated(true)
           setLoading(false)
@@ -87,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (attempt === MAX_RETRIES) {
-          console.warn('AuthContext: User profile not found after all retries, creating fallback profile')
+          console.warn('User profile not found, creating fallback profile')
           const fallbackProfile: UserProfile = {
             uid: firebaseUser.uid,
             display_name: firebaseUser.displayName || 'User',
@@ -99,13 +97,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return
         }
         
-        console.log('⏳ Profil Firestore non encore dispo, attente...');
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
       } catch (error: any) {
-        console.error(`AuthContext: Attempt ${attempt} failed:`, error)
+        console.error(`Auth attempt ${attempt} failed:`, error)
         
         if (attempt === MAX_RETRIES) {
-          console.error('AuthContext: All attempts failed, setting user to null')
+          console.error('All auth attempts failed')
           setUser(null)
           setIsAuthenticated(false)
           setLoading(false)

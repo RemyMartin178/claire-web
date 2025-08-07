@@ -18,6 +18,7 @@ export const signInWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider)
     const user = result.user
 
+    // Create Firestore profile immediately without delay
     await findOrCreateUser({
       uid: user.uid,
       display_name: user.displayName || 'User',
@@ -42,8 +43,8 @@ export const signInWithEmail = async (email: string, password: string) => {
 }
 
 export const createUserWithEmail = async (email: string, password: string, firstName?: string, lastName?: string) => {
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 1000;
+  const MAX_RETRIES = 2; // Reduced from 3
+  const RETRY_DELAY = 500; // Reduced from 1000
   
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {

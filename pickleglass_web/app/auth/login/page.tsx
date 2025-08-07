@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { signInWithGoogle, signInWithEmail } from '@/utils/auth'
+import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
@@ -34,15 +35,11 @@ export default function LoginPage() {
       sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
-      console.error('Login error:', error)
-      if (error.code === 'auth/user-not-found') {
-        setError('Aucun compte trouvé avec cette adresse email')
-      } else if (error.code === 'auth/wrong-password') {
-        setError('Mot de passe incorrect')
-      } else if (error.code === 'auth/invalid-email') {
-        setError('Adresse email invalide')
-      } else {
-        setError('Erreur lors de la connexion')
+      const errorMessage = handleFirebaseError(error)
+      setError(errorMessage)
+      
+      if (shouldLogError(error)) {
+        console.error('Login error:', error)
       }
     } finally {
       setIsLoading(false)
@@ -57,8 +54,12 @@ export default function LoginPage() {
       sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
-      setError('Erreur lors de la connexion avec Google')
-      console.error('Google sign in error:', error)
+      const errorMessage = handleFirebaseError(error)
+      setError(errorMessage)
+      
+      if (shouldLogError(error)) {
+        console.error('Google sign in error:', error)
+      }
     } finally {
       setIsLoading(false)
     }

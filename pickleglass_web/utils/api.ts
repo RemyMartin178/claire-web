@@ -81,7 +81,7 @@ export interface SessionDetails {
 }
 
 const isFirebaseMode = (): boolean => {
-  return typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+  return true; // Always use Firebase mode
 };
 
 const timestampToUnix = (timestamp: Timestamp): number => {
@@ -326,7 +326,9 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
 export const getUserProfile = async (): Promise<UserProfile | null> => {
   if (isFirebaseMode()) {
     const user = auth.currentUser;
-    if (!user) return null;
+    if (!user) {
+      return null;
+    }
     
     try {
       const firestoreProfile = await FirestoreUserService.getUser(user.uid);
@@ -335,13 +337,15 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
         return null;
       }
       
-      return {
+      const userProfile = {
         uid: user.uid,
         display_name: firestoreProfile.displayName || user.displayName || 'User',
         email: firestoreProfile.email || user.email || 'no-email@example.com'
       };
+      
+      return userProfile;
     } catch (error: any) {
-      console.error('getUserProfile: Error fetching profile:', error);
+      console.error('Error fetching profile:', error);
       return null;
     }
   } else {
@@ -377,6 +381,7 @@ export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> 
     if (!uid) throw new Error('No authenticated user');
     
     try {
+      // Create Firestore profile immediately
       await FirestoreUserService.createUser(uid, {
         displayName: user.display_name,
         email: user.email
@@ -548,8 +553,8 @@ export const logout = async () => {
 };
 
 export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
-  const MAX_RETRIES = 3;
-  const RETRY_DELAY = 1000;
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY = 500;
   
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -561,7 +566,7 @@ export const createUserAndProfileSafely = async (email: string, password: string
       }
       
       await user.getIdToken(true);
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       await FirestoreUserService.createUser(user.uid, {
         displayName: data.displayName,
@@ -570,7 +575,7 @@ export const createUserAndProfileSafely = async (email: string, password: string
       
       return user;
     } catch (error: any) {
-      console.error(`createUserAndProfileSafely: Attempt ${attempt} failed:`, error);
+      console.error(`Registration attempt ${attempt} failed:`, error);
       
       if (error.code === 'auth/email-already-in-use') {
         throw new Error('Cette adresse email est déjà utilisée');
