@@ -247,6 +247,13 @@ export class FirestoreUserService {
             iat: new Date(payload.iat * 1000).toISOString(),
             auth_time: new Date(payload.auth_time * 1000).toISOString()
           });
+          
+          // Check if token is expired
+          const now = Math.floor(Date.now() / 1000);
+          if (payload.exp < now) {
+            console.error('FirestoreUserService: Token is expired');
+            throw new Error('Authentication token is expired');
+          }
         } catch (e) {
           console.log('FirestoreUserService: Could not decode token payload');
         }
