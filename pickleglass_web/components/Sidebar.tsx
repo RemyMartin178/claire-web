@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, createElement, useEffect, useMemo, useCallback, memo } from 'react';
-import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, Home } from 'lucide-react';
+import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, Home, MessageSquare } from 'lucide-react';
+import ProfileMenu from '@/components/sidebar/ProfileMenu';
 import { logout, checkApiKeyStatus } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -156,6 +157,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const pathname = usePathname();
     const router = useRouter();
     const [isSettingsExpanded, setIsSettingsExpanded] = useState(pathname.startsWith('/settings'));
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const { user: userInfo, loading: authLoading } = useAuth();
     const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
 
@@ -177,23 +179,36 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         }
     }, [pathname]);
 
+    // Fermer le menu profil au clic extérieur / escape
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsUserMenuOpen(false);
+        };
+        const onClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // si on clique en dehors du conteneur du menu, on ferme
+            if (!target.closest('#sidebar-user-row') && !target.closest('#sidebar-user-menu')) {
+                setIsUserMenuOpen(false);
+            }
+        };
+        document.addEventListener('keydown', onKey);
+        document.addEventListener('mousedown', onClick);
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('mousedown', onClick);
+        };
+    }, []);
+
     const navigation = useMemo<NavigationItem[]>(
         () => {
             const baseNavigation = [
                 {
-                    name: 'Accueil',
+                    name: 'Dashboard',
                     href: '/dashboard',
                     icon: Home,
                     isLucide: true,
-                    ariaLabel: 'Accueil',
+                    ariaLabel: 'Dashboard',
                     isActive: pathname === '/dashboard',
-                },
-                {
-                    name: 'Mon activité',
-                    href: '/activity',
-                    icon: Activity,
-                    isLucide: true,
-                    ariaLabel: 'Voir mon activité',
                 },
                 {
                     name: 'Personnaliser',
@@ -203,13 +218,13 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                     ariaLabel: 'Paramètres de personnalisation',
                 },
                 {
-                    name: 'Paramètres',
-                    href: '/settings',
-                    icon: Settings,
+                    name: 'Mon activité',
+                    href: '/activity',
+                    icon: Activity,
                     isLucide: true,
-                    hasSubmenu: true,
-                    ariaLabel: 'Menu des paramètres',
+                    ariaLabel: 'Voir mon activité',
                 },
+                // Bouton Paramètres retiré du menu principal, déplacé dans le menu profil bas de sidebar
             ];
 
             // Ajouter l'admin uniquement pour martin.remy178@gmail.com
@@ -517,26 +532,15 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         >
             <header className={`group relative h-6 flex shrink-0 items-center justify-between text-text-main`}>
                 <Link href="/" className="flex items-center">
-                    {/* Logo long (word.png) pour sidebar ouverte, logo court (symbol.svg) pour sidebar fermée */}
-                    {isCollapsed ? (
-                        <Image
-                            src="/symbol.svg"
-                            alt="Logo Claire"
-                            width={32}
-                            height={32}
-                            className="ml-1 shrink-0 mt-4"
-                            priority
-                        />
-                    ) : (
+                    {/* Logo Claire - même logo pour sidebar ouverte et fermée */}
                     <Image
-                            src="/word.png"
-                            alt="Claire"
-                        width={50}
-                            height={32}
-                            className="ml-0 shrink-0 mt-4"
-                            priority
+                        src="/word.png"
+                        alt="Claire"
+                        width={isCollapsed ? 32 : 50}
+                        height={32}
+                        className={`ml-${isCollapsed ? '1' : '0'} shrink-0 mt-4`}
+                        priority
                     />
-                    )}
                 </Link>
                 <button
                     onClick={toggleSidebar}
@@ -610,45 +614,14 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                     <div className="w-full h-[1px] bg-[#d9d9d9]"></div>
                 </div>
 
-                <div
-                    className={`mt-[0px] flex items-center ${isCollapsed ? '' : 'gap-x-[10px]'}`}
-                    style={{
-                        padding: isCollapsed ? '6px 8px' : '6px 8px',
-                        justifyContent: isCollapsed ? 'flex-start' : 'flex-start',
-                        transition: `all ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-                    }}
-                    role="region"
-                    aria-label="Profil utilisateur"
-                >
-                    <div
-                        className={`
-              h-[30px] w-[30px] rounded-full border border-[#8d8d8d] flex items-center justify-center text-white text-[13px] 
-              shrink-0 cursor-pointer transition-all duration-${ANIMATION_DURATION.ICON_HOVER} 
-              hover:bg-[#f7f7f7] focus:outline-none
-            `}
-                        title={getUserDisplayName()}
-                        style={{ willChange: 'background-color, transform' }}
-                        tabIndex={0}
-                        role="button"
-                        aria-label={`Utilisateur: ${getUserDisplayName()}`}
-                        onKeyDown={e =>
-                            handleKeyDown(e, () => {
-                                if (isFirebaseUser) {
-                                    router.push('/settings');
-                                } else {
-                                    router.push('/login');
-                                }
-                            })
-                        }
-                    >
-                        {getUserInitial()}
-                    </div>
-
-                    <div className="ml-[0px] overflow-hidden" style={getTextContainerStyle()}>
-                        <span className="block text-[13px] leading-6 text-white" style={getUniformTextStyle()}>
-                            {getUserDisplayName()}
-                        </span>
-                    </div>
+                <div className="mt-[0px]">
+                    <ProfileMenu
+                        onLogout={handleLogout}
+                        name={getUserDisplayName()}
+                        email={userInfo?.email || 'user@example.com'}
+                        plan={hasApiKey ? 'Claire Pro' : 'Claire Gratuit'}
+                        sidebarWidthPx={isCollapsed ? 60 : 220}
+                    />
                 </div>
                 
 

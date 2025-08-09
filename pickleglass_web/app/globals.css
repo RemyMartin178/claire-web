@@ -69,3 +69,22 @@ body, input, textarea, button, select {
     text-wrap: balance;
   }
 } 
+
+/* Neutraliser TOUT effet visuel de focus globalement */
+*:focus, *:focus-visible, *:focus-within {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Désactiver les anneaux Tailwind éventuels */
+*[class*="ring-"] {
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  box-shadow: none !important;
+}
+
+/* Empêcher l'autofocus visuel sur les popovers/dialogs */
+[data-radix-popper-content-wrapper] :focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
