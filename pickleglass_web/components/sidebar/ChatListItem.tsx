@@ -137,11 +137,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
       </ContextMenu.Trigger>
 
       <ContextMenu.Portal>
-        <ContextMenu.Content
-          className="min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg p-1 shadow-lg"
-          sideOffset={5}
-          align="start"
-        >
+          <ContextMenu.Content className="min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg p-1 shadow-lg">
           <ContextMenu.Item
             className="flex items-center px-3 py-2 text-sm text-white hover:bg-white/10 rounded cursor-pointer"
             onClick={() => onSelect(chat.id)}
