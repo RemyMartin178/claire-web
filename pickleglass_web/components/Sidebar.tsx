@@ -530,26 +530,28 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
             aria-label="main navigation"
             aria-expanded={!isCollapsed}
         >
-            <header className={`group relative h-6 flex shrink-0 items-center justify-between text-text-main`}>
-                <Link href="/" className="flex items-center">
+            <header className={`group relative w-full flex shrink-0 items-center ${isCollapsed ? 'justify-center' : 'justify-between'} text-text-main`}>
+                <Link href="/" className={`flex items-center ${isCollapsed ? 'mx-auto' : ''}`}>
                     {/* Logo Claire - même logo pour sidebar ouverte et fermée */}
                     <Image
                         src="/word.png"
                         alt="Claire"
                         width={isCollapsed ? 32 : 50}
                         height={32}
-                        className={`ml-${isCollapsed ? '1' : '0'} shrink-0 mt-4`}
+                        className={`shrink-0 mt-4`}
                         priority
                     />
                 </Link>
-                <button
-                    onClick={toggleSidebar}
-                    onKeyDown={e => handleKeyDown(e, toggleSidebar)}
-                    className={`text-gray-500 hover:text-gray-800 p-1 rounded-[4px] hover:bg-[#f7f7f7] h-6 w-6 transition-colors focus:outline-none`}
-                    aria-label={isCollapsed ? "Ouvrir la barre latérale" : "Fermer la barre latérale"}
-                >
-                    <Image src="/unfold.svg" alt={isCollapsed ? "Ouvrir" : "Fermer"} width={18} height={18} className={isCollapsed ? "h-4.5 w-4.5" : "transform rotate-180"} />
-                </button>
+                {!isCollapsed && (
+                    <button
+                        onClick={toggleSidebar}
+                        onKeyDown={e => handleKeyDown(e, toggleSidebar)}
+                        className={`text-gray-500 hover:text-gray-800 p-1 rounded-[4px] hover:bg-[#f7f7f7] h-6 w-6 transition-colors focus:outline-none`}
+                        aria-label="Fermer la barre latérale"
+                    >
+                        <Image src="/unfold.svg" alt="Fermer" width={18} height={18} className="transform rotate-180" />
+                    </button>
+                )}
             </header>
 
             <nav className="flex flex-1 flex-col pt-8 text-text-main" role="navigation" aria-label="Menu principal">
@@ -615,13 +617,21 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                 </div>
 
                 <div className="mt-[0px]">
-                    <ProfileMenu
-                        onLogout={handleLogout}
-                        name={getUserDisplayName()}
-                        email={userInfo?.email || 'user@example.com'}
-                        plan={hasApiKey ? 'Claire Pro' : 'Claire Gratuit'}
-                        sidebarWidthPx={isCollapsed ? 60 : 220}
-                    />
+                    {isCollapsed ? (
+                        <div className="flex items-center justify-center py-2">
+                            <div className="h-[30px] w-[30px] rounded-full border border-[#8d8d8d] flex items-center justify-center text-white text-[13px]">
+                                {getUserInitial()}
+                            </div>
+                        </div>
+                    ) : (
+                        <ProfileMenu
+                            onLogout={handleLogout}
+                            name={getUserDisplayName()}
+                            email={userInfo?.email || 'user@example.com'}
+                            plan={hasApiKey ? 'Claire Pro' : 'Claire Gratuit'}
+                            sidebarWidthPx={220}
+                        />
+                    )}
                 </div>
                 
 

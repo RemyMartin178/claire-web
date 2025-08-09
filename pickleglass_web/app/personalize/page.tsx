@@ -156,7 +156,7 @@ export default function PersonalizePage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col gap-8 px-4 py-8 md:px-12 md:py-12 bg-transparent">
+    <div className="min-h-screen w-full flex flex-col gap-8 px-4 py-8 md:px-12 md:py-12" style={{ background: '#202123' }}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <div>
