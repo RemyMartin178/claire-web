@@ -165,7 +165,7 @@ function SessionDetailsContent() {
                 )}
                 
                 {sessionDetails.transcripts && sessionDetails.transcripts.length > 0 && (
-                    <Section title="Listen: Transcript">
+                    <Section title="Écouter: Transcription">
                         <div className="space-y-3">
                             {sessionDetails.transcripts.map((item) => (
                                 <p key={item.id} className="text-gray-700">
@@ -178,7 +178,7 @@ function SessionDetailsContent() {
                 )}
                 
                 {askMessages.length > 0 && (
-                    <Section title="Ask: Q&A">
+                    <Section title="Demander: Q&A">
                         <div className="space-y-4">
                             {askMessages.map((item) => (
                                 <div key={item.id} className={`p-3 rounded-lg ${item.role === 'user' ? 'bg-gray-100' : 'bg-blue-50'}`}>

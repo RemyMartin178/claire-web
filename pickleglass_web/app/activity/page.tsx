@@ -115,7 +115,7 @@ export default function ActivityPage() {
                     </button>
                   </div>
                   <span className={`capitalize inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${session.session_type === 'listen' ? 'bg-accent-light text-white' : 'bg-accent-light text-white'}`}>
-                    {session.session_type || 'ask'}
+                    {session.session_type === 'ask' ? 'Demander' : session.session_type || 'Demander'}
                   </span>
                 </div>
               ))}

@@ -7,6 +7,7 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata = {
   title: 'Claire - Assistant IA',
   description: 'Personalized AI Assistant for various contexts',
+  // no site icon (favicon) per request
 }
 
 export default function RootLayout({

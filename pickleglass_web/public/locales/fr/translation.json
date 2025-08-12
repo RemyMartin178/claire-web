@@ -27,7 +27,19 @@
     "greeting_evening": "Bonsoir",
     "your_past_activity": "Votre activité passée",
     "loading_conversations": "Chargement des conversations...",
-    "no_conversations": "Aucune conversation pour l’instant. Démarrez une conversation dans l’application de bureau pour voir votre activité ici.",
-    "tip": "💡 Astuce : Utilisez l’application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement."
+    "no_conversations": "Aucune conversation pour l'instant. Démarrez une conversation dans l'application de bureau pour voir votre activité ici.",
+    "tip": "💡 Astuce : Utilisez l'application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement."
+  },
+  "ask": {
+    "button": "Demander",
+    "placeholder": "Demander à propos de votre écran ou audio",
+    "thinking": "Réflexion...",
+    "ai_response": "Réponse IA",
+    "submit": "Envoyer"
+  },
+  "listen": {
+    "button": "Écouter",
+    "transcript": "Transcription",
+    "summary": "Résumé"
   }
 } 

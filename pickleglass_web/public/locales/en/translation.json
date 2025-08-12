@@ -20,5 +20,17 @@
     "signin_with_google": "Sign in with Google",
     "continue_local_mode": "Continue in local mode",
     "terms": "By signing in, you agree to our Terms of Service and Privacy Policy."
+  },
+  "ask": {
+    "button": "Ask",
+    "placeholder": "Ask about your screen or audio",
+    "thinking": "Thinking...",
+    "ai_response": "AI Response",
+    "submit": "Submit"
+  },
+  "listen": {
+    "button": "Listen",
+    "transcript": "Transcript",
+    "summary": "Summary"
   }
 } 
