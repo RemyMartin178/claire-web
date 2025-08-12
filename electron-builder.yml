@@ -46,11 +46,7 @@ win:
         - target: portable
           arch: x64
     requestedExecutionLevel: asInvoker
-    signAndEditExecutable: true
-    cscLink: build\certs\glass-dev.pfx
-    cscKeyPassword: "${env.CSC_KEY_PASSWORD}"
-    signtoolOptions:
-      certificateSubjectName: "Glass Dev Code Signing"
+    signAndEditExecutable: false
 
 # NSIS installer configuration for Windows
 nsis:
