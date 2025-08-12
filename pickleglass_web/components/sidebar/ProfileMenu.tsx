@@ -61,14 +61,14 @@ export default function ProfileMenu({
 
       <Popover.Root open={open} onOpenChange={setOpen}>
         <Popover.Trigger asChild>
-          <button
-            type="button"
-            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none hover:bg-white/5`}
-            aria-expanded={open}
-            aria-haspopup="menu"
-          >
+                     <button
+             type="button"
+             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 hover:bg-hover-bg active:bg-active-bg focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-2`}
+             aria-expanded={open}
+             aria-haspopup="menu"
+           >
             {/* Avatar */}
-            <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center text-white text-xs overflow-hidden">
+            <div className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-white text-sm overflow-hidden">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img alt={name} src={avatarUrl} className="h-full w-full object-cover" />
@@ -76,10 +76,10 @@ export default function ProfileMenu({
                 <span>{initials}</span>
               )}
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm text-white truncate">{name}</div>
-              <div className="text-xs text-gray-400 truncate">{plan}</div>
-            </div>
+                         <div className="min-w-0 flex-1">
+               <div className="text-sm font-medium text-text-main truncate">{name}</div>
+               <div className="text-xs text-text-secondary truncate">{plan}</div>
+             </div>
             {/* Chevron removed as requested */}
           </button>
         </Popover.Trigger>
@@ -94,22 +94,22 @@ export default function ProfileMenu({
           onCloseAutoFocus={(e) => e.preventDefault()}
           className="z-50 outline-none"
         >
-          <div
-            role="menu"
-            aria-label="Menu utilisateur"
-            className="w-[var(--profile-menu-width,280px)] bg-[#202123] text-white rounded-xl shadow-xl border border-white/10 p-2"
-            style={{
-              // Expand to container width with 16px lateral paddings to match sidebar paddings
-              width: sidebarWidthPx ? sidebarWidthPx : undefined,
-            }}
-          >
-            {/* Email */}
-            <div className="px-2 py-2 text-xs text-gray-400 truncate" aria-hidden>
-              {email}
-            </div>
+                     <div
+             role="menu"
+             aria-label="Menu utilisateur"
+             className="w-[var(--profile-menu-width,280px)] bg-card-bg text-text-main rounded-2xl shadow-large border border-sidebar-border p-3 animate-fade-in"
+             style={{
+               // Expand to container width with 16px lateral paddings to match sidebar paddings
+               width: sidebarWidthPx ? sidebarWidthPx : undefined,
+             }}
+           >
+                         {/* Email */}
+             <div className="px-2 py-2 text-xs text-text-muted truncate" aria-hidden>
+               {email}
+             </div>
 
-            {/* Items */}
-            <nav className="mt-1 flex flex-col gap-1" aria-label="Actions">
+             {/* Items */}
+             <nav className="mt-2 flex flex-col gap-1" aria-label="Actions">
               <MenuItem
                 icon={<Gem className="w-4 h-4" />}
                 label="Passer au plan supérieur"
@@ -137,7 +137,7 @@ export default function ProfileMenu({
                 }}
               />
 
-              <div className="my-1 border-t border-white/10" />
+                             <div className="my-2 border-t border-sidebar-border" />
 
               <MenuItem
                 id="profile-menu-logout"
@@ -171,13 +171,13 @@ function MenuItem({ id, icon, label, onSelect, variant = "default" }: MenuItemPr
       id={id}
       role="menuitem"
       onClick={onSelect}
-      className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:outline-none ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 hover:bg-hover-bg active:bg-active-bg focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-2 ${
         variant === "danger"
-          ? "text-red-400 hover:bg-white/10"
-          : "text-white hover:bg-white/10"
+          ? "text-red-400 hover:bg-red-500/10"
+          : "text-text-main hover:bg-hover-bg"
       }`}
     >
-      <span aria-hidden className="shrink-0 text-gray-300">{icon}</span>
+      <span aria-hidden className="shrink-0 text-text-secondary">{icon}</span>
       <span className="truncate text-left flex-1">{label}</span>
     </button>
   )

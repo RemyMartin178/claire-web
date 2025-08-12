@@ -220,7 +220,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   chats: mockChats,
   selectedChatId: '1',
   searchQuery: '',
-  sidebarWidth: 280,
+  sidebarWidth: 420,
   isCollapsed: false,
   collapsedSections: new Set(),
 
@@ -299,7 +299,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   setSidebarWidth: (width: number) => {
-    set({ sidebarWidth: Math.max(240, Math.min(420, width)) })
+    set({ sidebarWidth: Math.max(400, Math.min(600, width)) })
   },
 
   toggleCollapse: () => {

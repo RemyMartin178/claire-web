@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useChatStore } from '@/stores/chatStore'
 import { useLocalStorage } from '@/lib/useLocalStorage'
+import { useAuth } from '@/contexts/AuthContext'
 import { Header } from './Header'
 import { Search } from './Search'
 import { ChatList } from './ChatList'
@@ -22,9 +23,11 @@ export function Sidebar({ onChatSelect }: SidebarProps) {
     selectedChatId,
     selectChat 
   } = useChatStore()
+  
+  const { user } = useAuth()
 
   // Persist sidebar width in localStorage
-  const [storedWidth, setStoredWidth] = useLocalStorage('sidebar-width', 280)
+  const [storedWidth, setStoredWidth] = useLocalStorage('sidebar-width', 420)
   const [storedCollapsed, setStoredCollapsed] = useLocalStorage('sidebar-collapsed', false)
 
   // Initialize from localStorage
@@ -71,11 +74,11 @@ export function Sidebar({ onChatSelect }: SidebarProps) {
 
   if (isCollapsed) {
     return (
-      <div className="w-16 bg-[#0f1115] border-r border-white/10 flex flex-col relative">
-        <div className="p-3 border-b border-white/10">
+      <div className="w-16 bg-sidebar-bg border-r border-sidebar-border flex flex-col relative animate-slide-in">
+        <div className="p-3 border-b border-sidebar-border">
           <button
             onClick={() => useChatStore.getState().toggleCollapse()}
-            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="w-10 h-10 flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-hover-bg rounded-xl transition-all duration-200"
             title="Développer la sidebar"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +90,7 @@ export function Sidebar({ onChatSelect }: SidebarProps) {
         <div className="flex-1 flex flex-col items-center py-4 space-y-2">
           <button
             onClick={() => useChatStore.getState().createChat()}
-            className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="w-10 h-10 flex items-center justify-center text-text-secondary hover:text-text-main hover:bg-hover-bg rounded-xl transition-all duration-200"
             title="Nouvelle conversation"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,10 +104,10 @@ export function Sidebar({ onChatSelect }: SidebarProps) {
               key={chat.id}
               onClick={() => handleChatSelect(chat.id)}
               className={clsx(
-                'w-10 h-10 flex items-center justify-center rounded-lg transition-colors',
+                'w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-200',
                 selectedChatId === chat.id
-                  ? 'bg-blue-500/20 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  ? 'bg-primary-500/20 text-text-main'
+                  : 'text-text-secondary hover:text-text-main hover:bg-hover-bg'
               )}
               title={chat.title}
             >
@@ -114,13 +117,26 @@ export function Sidebar({ onChatSelect }: SidebarProps) {
             </button>
           ))}
         </div>
+
+        {/* User avatar at bottom - same as expanded version */}
+        <div className="p-3 border-t border-sidebar-border">
+          <div className="flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+              {(() => {
+                if (!user) return 'U'
+                const name = user.display_name || user.email || 'User'
+                return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+              })()}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div 
-      className="bg-[#0f1115] border-r border-white/10 flex flex-col relative"
+      className="bg-sidebar-bg border-r border-sidebar-border flex flex-col relative animate-slide-in"
       style={{ width: `${sidebarWidth}px` }}
     >
       <Header />
