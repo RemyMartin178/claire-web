@@ -65,20 +65,20 @@ export class MainHeader extends LitElement {
             z-index: -1;
         }
 
-        .header::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 9000px;
-            padding: 1px;
-            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%); 
-            -webkit-mask:
-                linear-gradient(#fff 0 0) content-box,
-                linear-gradient(#fff 0 0);
-            -webkit-mask-composite: destination-out;
-            mask-composite: exclude;
-            pointer-events: none;
-        }
+                 .header::after {
+             content: '';
+             position: absolute;
+             top: 0; left: 0; right: 0; bottom: 0;
+             border-radius: 9000px;
+             padding: 1px;
+             background: rgba(156, 163, 175, 0.3);
+             -webkit-mask:
+                 linear-gradient(#fff 0 0) content-box,
+                 linear-gradient(#fff 0 0);
+             -webkit-mask-composite: destination-out;
+             mask-composite: exclude;
+             pointer-events: none;
+         }
 
         .listen-button {
             -webkit-app-region: no-drag;
@@ -141,20 +141,20 @@ export class MainHeader extends LitElement {
             transition: background 0.15s ease;
         }
 
-        .listen-button::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 9000px;
-            padding: 1px;
-            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
-            -webkit-mask:
-                linear-gradient(#fff 0 0) content-box,
-                linear-gradient(#fff 0 0);
-            -webkit-mask-composite: destination-out;
-            mask-composite: exclude;
-            pointer-events: none;
-        }
+                 .listen-button::after {
+             content: '';
+             position: absolute;
+             top: 0; left: 0; right: 0; bottom: 0;
+             border-radius: 9000px;
+             padding: 1px;
+             background: rgba(156, 163, 175, 0.25);
+             -webkit-mask:
+                 linear-gradient(#fff 0 0) content-box,
+                 linear-gradient(#fff 0 0);
+             -webkit-mask-composite: destination-out;
+             mask-composite: exclude;
+             pointer-events: none;
+         }
 
         .listen-button.done::after {
             display: none;
@@ -646,9 +646,6 @@ export class MainHeader extends LitElement {
                     <div class="action-text">
                         <div class="action-text-content">Ask</div>
                     </div>
-                    <div class="icon-container">
-                        ${this.renderShortcut(this.shortcuts.nextStep)}
-                    </div>
                 </div>
 
                 <div class="header-actions" @click=${() => this._handleToggleAllWindowsVisibility()}>
@@ -656,7 +653,10 @@ export class MainHeader extends LitElement {
                         <div class="action-text-content">Show/Hide</div>
                     </div>
                     <div class="icon-container">
-                        ${this.renderShortcut(this.shortcuts.toggleVisibility)}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
+                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="1" y1="1" x2="23" y2="23" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </div>
                 </div>
 

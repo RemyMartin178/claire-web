@@ -19,10 +19,10 @@ export function Footer() {
   }
 
   return (
-    <div className="p-4 border-t border-white/10">
+    <div className="p-4 border-t border-white/20 border-l border-r border-b border-white/30 rounded-t-lg bg-[#1E1E1E]/95 backdrop-blur-sm shadow-xl">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-medium shadow-sm">
             {getUserInitials()}
           </div>
           <div className="flex-1 min-w-0">
@@ -37,19 +37,19 @@ export function Footer() {
         
         <div className="flex items-center space-x-1">
           <button
-            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+            className="p-2 text-gray-300 hover:text-white hover:bg-white/15 rounded-md transition-all duration-150"
             title="Paramètres"
           >
             <Settings className="w-4 h-4" />
           </button>
           <button
-            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+            className="p-2 text-gray-300 hover:text-white hover:bg-white/15 rounded-md transition-all duration-150"
             title="Aide"
           >
             <HelpCircle className="w-4 h-4" />
           </button>
           <button
-            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+            className="p-2 text-gray-300 hover:text-white hover:bg-white/15 rounded-md transition-all duration-150"
             title="Menu utilisateur"
           >
             <ChevronDown className="w-4 h-4" />
