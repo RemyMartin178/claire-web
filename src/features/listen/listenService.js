@@ -61,8 +61,7 @@ class ListenService {
         try {
             switch (listenButtonText) {
                 case 'Listen':
-                case 'Reprendre':
-                    console.log('[ListenService] changeSession to "Listen/Reprendre"');
+                    console.log('[ListenService] changeSession to "Listen"');
                     internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
                     await this.initializeSession();
                     if (listenWindow && !listenWindow.isDestroyed()) {
@@ -71,22 +70,16 @@ class ListenService {
                     break;
         
                 case 'Stop':
-                case 'Arrêter':
-                    console.log('[ListenService] changeSession to "Stop/Arrêter"');
-                    // Instead of closing the session, just pause it
-                    this.sendToRenderer('change-listen-capture-state', { status: "stop" });
-                    await this.sttService.closeSessions();
-                    await this.stopMacOSAudioCapture();
+                    console.log('[ListenService] changeSession to "Stop"');
+                    await this.closeSession();
                     if (listenWindow && !listenWindow.isDestroyed()) {
                         listenWindow.webContents.send('session-state-changed', { isActive: false });
                     }
                     break;
         
                 case 'Done':
-                case 'Terminé':
-                    console.log('[ListenService] changeSession to "Done/Terminé"');
+                    console.log('[ListenService] changeSession to "Done"');
                     internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
-                    await this.closeSession();
                     listenWindow.webContents.send('session-state-changed', { isActive: false });
                     break;
         

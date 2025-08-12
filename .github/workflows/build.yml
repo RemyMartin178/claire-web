@@ -1,34 +1,45 @@
-name: build
+name: Build & Verify
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ] # Runs on every push to main branch
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: pickleglass_web
+    # Currently runs on macOS only, can add windows-latest later
+    runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: 🚚 Checkout code
+        uses: actions/checkout@v4
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
+      - name: ⚙️ Setup Node.js environment
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20.x' # Node.js version compatible with project
+          cache: 'npm' # npm dependency caching for speed improvement
 
-      - name: Install dependencies
+      - name: 📦 Install root dependencies
         run: npm install
 
-      - name: Build
+      - name: 🌐 Install and build web (Renderer) part
+        # Move to pickleglass_web directory and run commands
+        working-directory: ./pickleglass_web
+        run: |
+          npm install
+          npm run build
+
+      - name: 🖥️ Build Electron app
+        # Run Electron build script from root directory
         run: npm run build
 
-      - name: Debug CI path
-        run: |
-          echo "CI working dir:"
-          pwd
-          ls -la
+      - name: 🚨 Send failure notification to Slack
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_CHANNEL: general
+          SLACK_TITLE: "🚨 Build Failed"
+          SLACK_MESSAGE: "😭 Build failed for `${{ github.repository }}` repo on main branch."
+          SLACK_COLOR: 'danger'
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
 

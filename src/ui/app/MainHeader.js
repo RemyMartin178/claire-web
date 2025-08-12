@@ -41,34 +41,57 @@ export class MainHeader extends LitElement {
         .header {
             -webkit-app-region: drag;
             width: max-content;
-            height: 40px;
-            padding: 6px 10px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
+            height: 47px;
+            padding: 2px 10px 2px 13px;
+            background: transparent;
+            overflow: hidden;
+            border-radius: 9000px;
+            /* backdrop-filter: blur(1px); */
             justify-content: space-between;
             align-items: center;
             display: inline-flex;
             box-sizing: border-box;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+            position: relative;
         }
 
-        .header::before { display: none; }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 9000px;
+            z-index: -1;
+        }
 
-        .header::after { display: none; }
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 9000px;
+            padding: 1px;
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%); 
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
 
         .listen-button {
             -webkit-app-region: no-drag;
-            height: 28px;
-            padding: 0 12px;
+            height: 26px;
+            padding: 0 13px;
             background: transparent;
-            border-radius: 10px;
+            border-radius: 9000px;
             justify-content: center;
-            width: auto;
+            width: 78px;
             align-items: center;
             gap: 6px;
             display: flex;
-            border: 1px solid transparent;
+            border: none;
             cursor: pointer;
             position: relative;
         }
@@ -78,69 +101,60 @@ export class MainHeader extends LitElement {
             opacity: 0.8;
         }
 
-        .listen-button.active { background: rgba(215, 0, 0, 0.18); }
-        .listen-button.active:hover { background: rgba(255, 20, 20, 0.22); }
+        .listen-button.active::before {
+            background: rgba(215, 0, 0, 0.5);
+        }
 
-        .listen-button.paused { background: rgba(128, 128, 128, 0.3); }
-        .listen-button.paused:hover { background: rgba(150, 150, 150, 0.4); }
+        .listen-button.active:hover::before {
+            background: rgba(255, 20, 20, 0.6);
+        }
 
         .listen-button.done {
-            background-color: #d70000;
+            background-color: rgba(255, 255, 255, 0.6);
             transition: background-color 0.15s ease;
         }
 
         .listen-button.done .action-text-content {
-            color: white;
+            color: black;
         }
         
         .listen-button.done .listen-icon svg rect,
         .listen-button.done .listen-icon svg path {
-            fill: white;
+            fill: black;
         }
 
         .listen-button.done:hover {
-            background-color: #ff0000;
+            background-color: #f0f0f0;
         }
 
-        .listen-button:hover { background: rgba(255, 255, 255, 0.10); }
-
-        .sound-level-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-left: 8px;
-            opacity: 0.8;
+        .listen-button:hover::before {
+            background: rgba(255, 255, 255, 0.18);
         }
 
-        .sound-bar {
-            animation: soundWave 1.5s ease-in-out infinite;
+        .listen-button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 9000px;
+            z-index: -1;
+            transition: background 0.15s ease;
         }
 
-        .sound-bar-1 {
-            animation-delay: 0s;
+        .listen-button::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 9000px;
+            padding: 1px;
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            pointer-events: none;
         }
-
-        .sound-bar-2 {
-            animation-delay: 0.2s;
-        }
-
-        .sound-bar-3 {
-            animation-delay: 0.4s;
-        }
-
-        @keyframes soundWave {
-            0%, 100% {
-                opacity: 0.4;
-                transform: scaleY(0.6);
-            }
-            50% {
-                opacity: 1;
-                transform: scaleY(1.2);
-            }
-        }
-
-        .listen-button::before,
-        .listen-button::after { display: none; }
 
         .listen-button.done::after {
             display: none;
@@ -176,14 +190,14 @@ export class MainHeader extends LitElement {
 
         .header-actions {
             -webkit-app-region: no-drag;
-            height: 28px;
+            height: 26px;
             box-sizing: border-box;
             justify-content: flex-start;
             align-items: center;
             gap: 9px;
             display: flex;
-            padding: 0 10px;
-            border-radius: 8px;
+            padding: 0 8px;
+            border-radius: 6px;
             transition: background 0.15s ease;
         }
 
@@ -345,11 +359,10 @@ export class MainHeader extends LitElement {
 
     _getListenButtonText(status) {
         switch (status) {
-            case 'beforeSession': return 'Écouter';
-            case 'inSession'   : return '';
-            case 'paused'      : return '';
-            case 'afterSession': return 'Terminé';
-            default            : return 'Écouter';
+            case 'beforeSession': return 'Listen';
+            case 'inSession'   : return 'Stop';
+            case 'afterSession': return 'Done';
+            default            : return 'Listen';
         }
     }
 
@@ -462,16 +475,15 @@ export class MainHeader extends LitElement {
 
             this._sessionStateTextListener = (event, { success }) => {
                 if (success) {
-                    // Only change state if we're not manually handling it
-                    if (this.listenSessionStatus === 'beforeSession') {
-                        this.listenSessionStatus = 'inSession';
-                    } else if (this.listenSessionStatus === 'afterSession') {
-                        this.listenSessionStatus = 'beforeSession';
-                    }
+                    this.listenSessionStatus = ({
+                        beforeSession: 'inSession',
+                        inSession: 'afterSession',
+                        afterSession: 'beforeSession',
+                    })[this.listenSessionStatus] || 'beforeSession';
                 } else {
                     this.listenSessionStatus = 'beforeSession';
                 }
-                this.isTogglingSession = false;
+                this.isTogglingSession = false; // ✨ 로딩 상태만 해제
             };
             window.api.mainHeader.onListenChangeSessionResult(this._sessionStateTextListener);
 
@@ -529,29 +541,8 @@ export class MainHeader extends LitElement {
 
         try {
             const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
-            
-            // Handle state transitions for pause/resume
-            if (this.listenSessionStatus === 'inSession') {
-                // When pausing, change to paused state
-                this.listenSessionStatus = 'paused';
-                this.requestUpdate();
-            } else if (this.listenSessionStatus === 'paused') {
-                // When resuming from paused state, change back to inSession state
-                this.listenSessionStatus = 'inSession';
-                this.requestUpdate();
-            }
-            
-            // Map UI label (FR) to backend command (EN) expected by main process
-            const commandMap = {
-                'Écouter': 'Listen',
-                'Terminé': 'Done',
-                'Listen': 'Listen',
-                'Stop': 'Stop',
-                'Done': 'Done',
-            };
-            const commandToSend = commandMap[listenButtonText] || 'Listen';
             if (window.api) {
-                await window.api.mainHeader.sendListenButtonClick(commandToSend);
+                await window.api.mainHeader.sendListenButtonClick(listenButtonText);
             }
         } catch (error) {
             console.error('IPC invoke for session change failed:', error);
@@ -583,29 +574,6 @@ export class MainHeader extends LitElement {
         }
     }
 
-    async _handleTerminateClick() {
-        if (this.wasJustDragged) return;
-        if (this.isTogglingSession) {
-            return;
-        }
-
-        this.isTogglingSession = true;
-
-        try {
-            // Force return to initial state
-            this.listenSessionStatus = 'beforeSession';
-            this.requestUpdate();
-            
-            if (window.api) {
-                await window.api.mainHeader.sendListenButtonClick('Done');
-            }
-        } catch (error) {
-            console.error('IPC invoke for terminate button failed:', error);
-        } finally {
-            this.isTogglingSession = false;
-        }
-    }
-
 
     renderShortcut(accelerator) {
         if (!accelerator) return html``;
@@ -634,16 +602,13 @@ export class MainHeader extends LitElement {
         const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
     
         const buttonClasses = {
-            active: this.listenSessionStatus === 'inSession',
-            paused: this.listenSessionStatus === 'paused',
-            done: listenButtonText === 'Terminé',
+            active: listenButtonText === 'Stop',
+            done: listenButtonText === 'Done',
         };
-        const showPauseIcon = this.listenSessionStatus === 'inSession';
-        const showPlayIcon = this.listenSessionStatus === 'paused';
-        const showStopIcon = listenButtonText === 'Terminé';
+        const showStopIcon = listenButtonText === 'Stop' || listenButtonText === 'Done';
 
         return html`
-            <div class="header">
+            <div class="header" @mousedown=${this.handleMouseDown}>
                 <button 
                     class="listen-button ${Object.keys(buttonClasses).filter(k => buttonClasses[k]).join(' ')}"
                     @click=${this._handleListenClick}
@@ -656,33 +621,18 @@ export class MainHeader extends LitElement {
                             </div>
                         `
                         : html`
-                            ${listenButtonText ? html`
-                                <div class="action-text">
-                                    <div class="action-text-content">${listenButtonText}</div>
-                                </div>
-                            ` : ''}
+                            <div class="action-text">
+                                <div class="action-text-content">${listenButtonText}</div>
+                            </div>
                             <div class="listen-icon">
-                                ${showPauseIcon
+                                ${showStopIcon
                                     ? html`
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <rect x="6" y="4" width="4" height="16" rx="1" fill="white"/>
-                                            <rect x="14" y="4" width="4" height="16" rx="1" fill="white"/>
-                                        </svg>
-                                    `
-                                    : showPlayIcon
-                                    ? html`
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <polygon points="5,3 19,12 5,21" fill="white"/>
-                                        </svg>
-                                    `
-                                    : showStopIcon
-                                    ? html`
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <rect x="6" y="6" width="12" height="12" rx="1" fill="white"/>
+                                        <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <rect width="9" height="9" rx="1" fill="white"/>
                                         </svg>
                                     `
                                     : html`
-                                        <svg width="16" height="16" viewBox="0 0 12 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <svg width="12" height="11" viewBox="0 0 12 11" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M1.69922 2.7515C1.69922 2.37153 2.00725 2.0635 2.38722 2.0635H2.73122C3.11119 2.0635 3.41922 2.37153 3.41922 2.7515V8.2555C3.41922 8.63547 3.11119 8.9435 2.73122 8.9435H2.38722C2.00725 8.9435 1.69922 8.63547 1.69922 8.2555V2.7515Z" fill="white"/>
                                             <path d="M5.13922 1.3755C5.13922 0.995528 5.44725 0.6875 5.82722 0.6875H6.17122C6.55119 0.6875 6.85922 0.995528 6.85922 1.3755V9.6315C6.85922 10.0115 6.55119 10.3195 6.17122 10.3195H5.82722C5.44725 10.3195 5.13922 10.0115 5.13922 9.6315V1.3755Z" fill="white"/>
                                             <path d="M8.57922 3.0955C8.57922 2.71553 8.88725 2.4075 9.26722 2.4075H9.61122C9.99119 2.4075 10.2992 2.71553 10.2992 3.0955V7.9115C10.2992 8.29147 9.99119 8.5995 9.61122 8.5995H9.26722C8.88725 8.5995 8.57922 8.29147 8.57922 7.9115V3.0955Z" fill="white"/>
@@ -691,50 +641,22 @@ export class MainHeader extends LitElement {
                             </div>
                         `}
                 </button>
-                
-                ${this.listenSessionStatus === 'inSession' ? html`
-                    <div class="sound-level-icon">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="4" y="8" width="2" height="8" rx="1" fill="white" class="sound-bar sound-bar-1"/>
-                            <rect x="8" y="6" width="2" height="12" rx="1" fill="white" class="sound-bar sound-bar-2"/>
-                            <rect x="12" y="4" width="2" height="16" rx="1" fill="white" class="sound-bar sound-bar-3"/>
-                        </svg>
-                    </div>
-                ` : ''}
-                
-                ${this.listenSessionStatus === 'paused' ? html`
-                    <button 
-                        class="listen-button done"
-                        @click=${() => this._handleTerminateClick()}
-                        ?disabled=${this.isTogglingSession}
-                    >
-                        <div class="action-text">
-                            <div class="action-text-content">Terminé</div>
-                        </div>
-                        <div class="listen-icon">
-                            <svg width="9" height="9" viewBox="0 0 9 9" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <rect width="9" height="9" rx="1" fill="white"/>
-                            </svg>
-                        </div>
-                    </button>
-                ` : ''}
 
                 <div class="header-actions ask-action" @click=${() => this._handleAskClick()}>
                     <div class="action-text">
-                        <div class="action-text-content">Demander</div>
+                        <div class="action-text-content">Ask</div>
+                    </div>
+                    <div class="icon-container">
+                        ${this.renderShortcut(this.shortcuts.nextStep)}
                     </div>
                 </div>
 
                 <div class="header-actions" @click=${() => this._handleToggleAllWindowsVisibility()}>
                     <div class="action-text">
-                        <div class="action-text-content">Cacher</div>
+                        <div class="action-text-content">Show/Hide</div>
                     </div>
                     <div class="icon-container">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: rgba(255, 255, 255, 0.7);">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <line x1="1" y1="1" x2="23" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
+                        ${this.renderShortcut(this.shortcuts.toggleVisibility)}
                     </div>
                 </div>
 

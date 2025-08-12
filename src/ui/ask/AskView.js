@@ -1146,7 +1146,7 @@ export class AskView extends LitElement {
         }
 
         this.headerAnimationTimeout = setTimeout(() => {
-            this.animateHeaderText('réflexion...');
+            this.animateHeaderText('thinking...');
         }, 1500);
     }
 
@@ -1330,7 +1330,7 @@ export class AskView extends LitElement {
 
     render() {
         const hasResponse = this.isLoading || this.currentResponse || this.isStreaming;
-        const headerText = this.isLoading ? 'Réflexion...' : 'Réponse IA';
+        const headerText = this.isLoading ? 'Thinking...' : 'AI Response';
 
         return html`
             <div class="ask-container">
@@ -1385,7 +1385,7 @@ export class AskView extends LitElement {
                     <input
                         type="text"
                         id="textInput"
-                        placeholder="Demander à propos de votre écran ou audio"
+                        placeholder="Ask about your screen or audio"
                         @keydown=${this.handleTextKeydown}
                         @focus=${this.handleInputFocus}
                     />
@@ -1393,7 +1393,7 @@ export class AskView extends LitElement {
                         class="submit-btn"
                         @click=${this.handleSendText}
                     >
-                        <span class="btn-label">Envoyer</span>
+                        <span class="btn-label">Submit</span>
                         <span class="btn-icon">
                             ↵
                         </span>
