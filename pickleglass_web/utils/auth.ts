@@ -38,9 +38,7 @@ export const signInWithGoogle = async () => {
 
     const fallbackErrors = [
       'auth/popup-blocked',
-      'auth/popup-closed-by-user',
       'auth/unauthorized-domain',
-      'auth/cancelled-popup-request',
       'auth/operation-not-supported-in-this-environment',
     ]
 

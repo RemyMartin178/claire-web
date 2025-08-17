@@ -7,6 +7,11 @@ import { createUserWithEmail, signInWithGoogle, handleGoogleRedirectResult } fro
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 
+export const metadata = {
+  title: 'Inscription — Claire',
+  description: 'Créez votre compte Claire.'
+}
+
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -91,8 +96,13 @@ export default function RegisterPage() {
       sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
-      const errorMessage = handleFirebaseError(error)
-      setError(errorMessage)
+      const code = error?.code
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setError('')
+      } else {
+        const errorMessage = handleFirebaseError(error)
+        setError(errorMessage)
+      }
       
       if (shouldLogError(error)) {
         console.error('Google sign in error:', error)
@@ -288,7 +298,7 @@ export default function RegisterPage() {
                     fill="#EA4335"
                   />
                 </svg>
-                Se connecter avec Google
+                S'inscrire avec Google
               </button>
             </div>
           </div>

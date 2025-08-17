@@ -7,6 +7,11 @@ import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
+export const metadata = {
+  title: 'Connexion — Claire',
+  description: 'Connectez-vous à Claire pour continuer.'
+}
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -76,8 +81,14 @@ export default function LoginPage() {
       sessionStorage.removeItem('manuallyLoggedOut')
       router.push('/accueil')
     } catch (error: any) {
-      const errorMessage = handleFirebaseError(error)
-      setError(errorMessage)
+      // Si l'utilisateur ferme/annule le popup, on arrête juste le spinner sans message intrusif
+      const code = error?.code
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setError('')
+      } else {
+        const errorMessage = handleFirebaseError(error)
+        setError(errorMessage)
+      }
       
       if (shouldLogError(error)) {
         console.error('Google sign in error:', error)
