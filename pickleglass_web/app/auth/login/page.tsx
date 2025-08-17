@@ -7,11 +7,6 @@ import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
-export const metadata = {
-  title: 'Connexion — Claire',
-  description: 'Connectez-vous à Claire pour continuer.'
-}
-
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({

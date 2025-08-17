@@ -7,11 +7,6 @@ import { createUserWithEmail, signInWithGoogle, handleGoogleRedirectResult } fro
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 
-export const metadata = {
-  title: 'Inscription — Claire',
-  description: 'Créez votre compte Claire.'
-}
-
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
