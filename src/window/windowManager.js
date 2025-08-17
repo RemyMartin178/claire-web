@@ -191,8 +191,9 @@ function setupWindowController(windowPool, layoutManager, movementManager) {
     internalBridge.on('window:moveHeaderTo', ({ newX, newY }) => {
         const header = windowPool.get('header');
         if (header) {
-            const newPosition = layoutManager.calculateClampedPosition(header, { x: newX, y: newY });
-            header.setPosition(newPosition.x, newPosition.y);
+            // Conserver l'axe Y courant (déplacement horizontal uniquement) et ne pas contraindre aux bords d'écran
+            const [, currentY] = header.getPosition();
+            header.setPosition(Math.round(newX), Math.round(currentY), false);
         }
     });
     internalBridge.on('window:adjustWindowHeight', ({ winName, targetHeight }) => {
@@ -288,7 +289,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
         }
     };
 
-    if (name === 'settings') {
+        if (name === 'settings') {
         if (shouldBeVisible) {
             // Cancel any pending hide operations
             if (settingsHideTimer) {
@@ -302,6 +303,8 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                 win.show();
                 win.moveTop();
                 win.setAlwaysOnTop(true);
+                    // Reflow child windows to avoid overlap with settings
+                    updateChildWindowLayouts(true);
             } else {
                 console.warn('[WindowManager] Could not calculate settings window position.');
             }
@@ -314,6 +317,8 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                 if (win && !win.isDestroyed()) {
                     win.setAlwaysOnTop(false);
                     win.hide();
+                        // Reflow child windows after hiding settings
+                        updateChildWindowLayouts(true);
                 }
                 settingsHideTimer = null;
             }, 200);
@@ -482,9 +487,7 @@ function createFeatureWindows(header, namesToCreate) {
                         }
                     });
                 }
-                if (!app.isPackaged) {
-                    listen.webContents.openDevTools({ mode: 'detach' });
-                }
+                // DevTools auto-open disabled
                 windowPool.set('listen', listen);
                 break;
             }
@@ -515,9 +518,7 @@ function createFeatureWindows(header, namesToCreate) {
                 }
                 
                 // Open DevTools in development
-                if (!app.isPackaged) {
-                    ask.webContents.openDevTools({ mode: 'detach' });
-                }
+                // DevTools auto-open disabled
                 windowPool.set('ask', ask);
                 break;
             }
@@ -550,9 +551,7 @@ function createFeatureWindows(header, namesToCreate) {
                 }
                 windowPool.set('settings', settings);  
 
-                if (!app.isPackaged) {
-                    settings.webContents.openDevTools({ mode: 'detach' });
-                }
+                // DevTools auto-open disabled
                 break;
             }
 
@@ -588,9 +587,7 @@ function createFeatureWindows(header, namesToCreate) {
                 }
 
                 windowPool.set('shortcut-settings', shortcutEditor);
-                if (!app.isPackaged) {
-                    shortcutEditor.webContents.openDevTools({ mode: 'detach' });
-                }
+                // DevTools auto-open disabled
                 break;
             }
         }
@@ -723,9 +720,7 @@ function createWindows() {
     header.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     
     // Open DevTools in development
-    if (!app.isPackaged) {
-        header.webContents.openDevTools({ mode: 'detach' });
-    }
+    // DevTools auto-open disabled
 
     header.on('focus', () => {
         console.log('[WindowManager] Header gained focus');

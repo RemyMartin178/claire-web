@@ -25,7 +25,7 @@ export class WelcomeHeader extends LitElement {
             align-items: flex-start;
             gap: 32px;
             display: inline-flex;
-            -webkit-app-region: drag;
+            -webkit-app-region: no-drag;
         }
         .close-button {
             -webkit-app-region: no-drag;

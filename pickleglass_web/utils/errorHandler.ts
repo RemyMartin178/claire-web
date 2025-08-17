@@ -12,8 +12,14 @@ export class FirebaseErrorHandler {
     AUTH_INVALID_EMAIL: 'auth/invalid-email',
     AUTH_USER_NOT_FOUND: 'auth/user-not-found',
     AUTH_WRONG_PASSWORD: 'auth/wrong-password',
+    AUTH_INVALID_CREDENTIAL: 'auth/invalid-credential',
     AUTH_TOO_MANY_REQUESTS: 'auth/too-many-requests',
     AUTH_NETWORK_REQUEST_FAILED: 'auth/network-request-failed',
+    AUTH_OPERATION_NOT_SUPPORTED: 'auth/operation-not-supported-in-this-environment',
+    AUTH_POPUP_BLOCKED: 'auth/popup-blocked',
+    AUTH_POPUP_CLOSED: 'auth/popup-closed-by-user',
+    AUTH_CANCELLED_POPUP_REQUEST: 'auth/cancelled-popup-request',
+    AUTH_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL: 'auth/account-exists-with-different-credential',
     
     // Firestore errors
     FIRESTORE_PERMISSION_DENIED: 'permission-denied',
@@ -46,10 +52,22 @@ export class FirebaseErrorHandler {
         return 'Aucun compte trouvé avec cette adresse email';
       case this.ERROR_CODES.AUTH_WRONG_PASSWORD:
         return 'Mot de passe incorrect';
+      case this.ERROR_CODES.AUTH_INVALID_CREDENTIAL:
+        return 'Email ou mot de passe incorrect';
       case this.ERROR_CODES.AUTH_TOO_MANY_REQUESTS:
         return 'Trop de tentatives. Veuillez réessayer plus tard';
       case this.ERROR_CODES.AUTH_NETWORK_REQUEST_FAILED:
         return 'Erreur de connexion. Vérifiez votre connexion internet';
+      case this.ERROR_CODES.AUTH_OPERATION_NOT_SUPPORTED:
+        return 'La connexion par fenêtre n’est pas supportée dans cet environnement';
+      case this.ERROR_CODES.AUTH_POPUP_BLOCKED:
+        return 'La fenêtre de connexion a été bloquée par votre navigateur';
+      case this.ERROR_CODES.AUTH_POPUP_CLOSED:
+        return 'La fenêtre de connexion a été fermée avant la fin';
+      case this.ERROR_CODES.AUTH_CANCELLED_POPUP_REQUEST:
+        return 'La demande de connexion a été annulée';
+      case this.ERROR_CODES.AUTH_ACCOUNT_EXISTS_WITH_DIFFERENT_CREDENTIAL:
+        return 'Un compte existe déjà avec une autre méthode pour cet email';
       
       // Firestore errors
       case this.ERROR_CODES.FIRESTORE_PERMISSION_DENIED:

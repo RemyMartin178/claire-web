@@ -106,13 +106,8 @@ class WindowLayoutManager {
     }
     
     calculateClampedPosition(header, { x: newX, y: newY }) {
-        if (!header) return null;
-        const targetDisplay = screen.getDisplayNearestPoint({ x: newX, y: newY });
-        const { x: workAreaX, y: workAreaY, width, height } = targetDisplay.workArea;
-        const headerBounds = header.getBounds();
-        const clampedX = Math.max(workAreaX, Math.min(newX, workAreaX + width - headerBounds.width));
-        const clampedY = Math.max(workAreaY, Math.min(newY, workAreaY + height - headerBounds.height));
-        return { x: clampedX, y: clampedY };
+        // Unbounded movement requested: return raw coordinates
+        return { x: Math.round(newX), y: Math.round(newY) };
     }
     
     calculateWindowHeightAdjustment(senderWindow, targetHeight) {
@@ -150,6 +145,7 @@ class WindowLayoutManager {
     
         const ask = this.windowPool.get('ask');
         const listen = this.windowPool.get('listen');
+        const settings = this.windowPool.get('settings');
     
         const askVis = visibility.ask && ask && !ask.isDestroyed();
         const listenVis = visibility.listen && listen && !listen.isDestroyed();
@@ -167,6 +163,8 @@ class WindowLayoutManager {
     
         const askB = askVis ? ask.getBounds() : null;
         const listenB = listenVis ? listen.getBounds() : null;
+        const settingsVis = settings && !settings.isDestroyed() && settings.isVisible();
+        const settingsB = settingsVis ? settings.getBounds() : null;
 
         if (askVis) {
             console.log(`[Layout Debug] Ask Window Bounds: height=${askB.height}, width=${askB.width}`);
@@ -181,14 +179,7 @@ class WindowLayoutManager {
             let askXRel = headerCenterXRel - (askB.width / 2);
             let listenXRel = askXRel - listenB.width - PAD;
     
-            if (listenXRel < PAD) {
-                listenXRel = PAD;
-                askXRel = listenXRel + listenB.width + PAD;
-            }
-            if (askXRel + askB.width > screenWidth - PAD) {
-                askXRel = screenWidth - PAD - askB.width;
-                listenXRel = askXRel - listenB.width - PAD;
-            }
+            // No screen clamping: allow windows to go off-screen when needed
             
             if (strategy.primary === 'above') {
                 const windowBottomAbs = headerBounds.y - PAD;
@@ -196,6 +187,16 @@ class WindowLayoutManager {
                 layout.listen = { x: Math.round(listenXRel + workAreaX), y: Math.round(windowBottomAbs - listenB.height), width: listenB.width, height: listenB.height };
             } else { // 'below'
                 const yAbs = headerBounds.y + headerBounds.height + PAD;
+                // If settings is visible below the header (default), avoid any horizontal overlap by reserving space to its left
+                if (settingsVis && settingsB) {
+                    const allowedMaxRight = settingsB.x - PAD - workAreaX;
+                    // Place ask so that its right edge does not exceed allowedMaxRight
+                    const desiredAskRight = Math.min(askXRel + askB.width, allowedMaxRight);
+                    askXRel = Math.max(PAD, desiredAskRight - askB.width);
+                    // Place listen to the left of ask
+                    listenXRel = askXRel - listenB.width - PAD;
+                    // No further screen clamp; only ensure relative spacing
+                }
                 layout.ask = { x: Math.round(askXRel + workAreaX), y: Math.round(yAbs), width: askB.width, height: askB.height };
                 layout.listen = { x: Math.round(listenXRel + workAreaX), y: Math.round(yAbs), width: listenB.width, height: listenB.height };
             }
@@ -205,13 +206,18 @@ class WindowLayoutManager {
             if (!winB) return {};
     
             let xRel = headerCenterXRel - winB.width / 2;
-            xRel = Math.max(PAD, Math.min(screenWidth - winB.width - PAD, xRel));
+            // No screen clamping for single window
     
             let yPos;
             if (strategy.primary === 'above') {
                 yPos = (headerBounds.y - workAreaY) - PAD - winB.height;
             } else { // 'below'
                 yPos = (headerBounds.y - workAreaY) + headerBounds.height + PAD;
+                if (settingsVis && settingsB) {
+                    const allowedMaxRight = settingsB.x - PAD - workAreaX;
+                    const desiredRight = Math.min(xRel + winB.width, allowedMaxRight);
+                    xRel = Math.max(PAD, desiredRight - winB.width);
+                }
             }
             
             layout[winName] = { x: Math.round(xRel + workAreaX), y: Math.round(yPos + workAreaY), width: winB.width, height: winB.height };

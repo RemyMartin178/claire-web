@@ -39,7 +39,7 @@ export class MainHeader extends LitElement {
         }
 
         .header {
-            -webkit-app-region: drag;
+            -webkit-app-region: no-drag;
             width: max-content;
             height: 47px;
             padding: 2px 10px 2px 13px;

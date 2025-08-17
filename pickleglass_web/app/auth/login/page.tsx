@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { signInWithGoogle, signInWithEmail } from '@/utils/auth'
+import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
@@ -24,6 +24,28 @@ export default function LoginPage() {
     router.push('/accueil')
     return null
   }
+
+  // Traitement du retour Google (redirect result)
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        const redirectUser = await handleGoogleRedirectResult()
+        if (!mounted) return
+        if (redirectUser) {
+          sessionStorage.removeItem('manuallyLoggedOut')
+          router.push('/accueil')
+        }
+      } catch (error: any) {
+        const errorMessage = handleFirebaseError(error)
+        setError(errorMessage)
+        if (shouldLogError(error)) {
+          console.error('Google redirect error:', error)
+        }
+      }
+    })()
+    return () => { mounted = false }
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

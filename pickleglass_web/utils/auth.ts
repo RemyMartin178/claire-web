@@ -1,5 +1,9 @@
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -10,15 +14,18 @@ import {
 } from "firebase/auth"
 import { auth } from "./firebase"
 import { findOrCreateUser, createUserAndProfileSafely } from "./api"
+import { FirebaseErrorHandler } from "./errorHandler"
 
 const googleProvider = new GoogleAuthProvider()
+googleProvider.setCustomParameters({ prompt: 'select_account' })
 
 export const signInWithGoogle = async () => {
   try {
+    await setPersistence(auth, browserLocalPersistence)
+
     const result = await signInWithPopup(auth, googleProvider)
     const user = result.user
 
-    // Create Firestore profile immediately without delay
     await findOrCreateUser({
       uid: user.uid,
       display_name: user.displayName || 'User',
@@ -26,9 +33,44 @@ export const signInWithGoogle = async () => {
     })
 
     return user
-  } catch (error) {
-    console.error("Error signing in with Google:", error)
-    throw error
+  } catch (error: any) {
+    console.error("Error signing in with Google (popup):", error)
+
+    const fallbackErrors = [
+      'auth/popup-blocked',
+      'auth/popup-closed-by-user',
+      'auth/unauthorized-domain',
+      'auth/cancelled-popup-request',
+      'auth/operation-not-supported-in-this-environment',
+    ]
+
+    if (error && fallbackErrors.includes(error.code)) {
+      // Fallback to redirect for environments where popups are blocked or unsupported
+      await setPersistence(auth, browserLocalPersistence)
+      await signInWithRedirect(auth, googleProvider)
+      return
+    }
+
+    throw FirebaseErrorHandler.wrapError(error)
+  }
+}
+
+export const handleGoogleRedirectResult = async () => {
+  try {
+    const result = await getRedirectResult(auth)
+    if (result?.user) {
+      const user = result.user
+      await findOrCreateUser({
+        uid: user.uid,
+        display_name: user.displayName || 'User',
+        email: user.email || 'no-email@example.com'
+      })
+      return user
+    }
+    return null
+  } catch (error: any) {
+    console.error('Error handling Google redirect result:', error)
+    throw FirebaseErrorHandler.wrapError(error)
   }
 }
 
@@ -38,7 +80,7 @@ export const signInWithEmail = async (email: string, password: string) => {
     return result.user
   } catch (error) {
     console.error("Error signing in with email:", error)
-    throw error
+    throw FirebaseErrorHandler.wrapError(error)
   }
 }
 
@@ -95,7 +137,7 @@ export const sendPasswordResetEmail = async (email: string) => {
     await firebaseSendPasswordResetEmail(auth, email)
   } catch (error) {
     console.error("Error sending password reset email:", error)
-    throw error
+    throw FirebaseErrorHandler.wrapError(error)
   }
 }
 
@@ -104,7 +146,7 @@ export const signOut = async () => {
     await firebaseSignOut(auth)
   } catch (error) {
     console.error("Error signing out:", error)
-    throw error
+    throw FirebaseErrorHandler.wrapError(error)
   }
 }
 
