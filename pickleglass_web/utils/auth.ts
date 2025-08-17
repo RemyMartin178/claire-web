@@ -17,7 +17,8 @@ import { findOrCreateUser, createUserAndProfileSafely } from "./api"
 import { FirebaseErrorHandler } from "./errorHandler"
 
 const googleProvider = new GoogleAuthProvider()
-googleProvider.setCustomParameters({ prompt: 'select_account' })
+// Force l'affichage de l'écran de consentement + sélection de compte
+googleProvider.setCustomParameters({ prompt: 'consent select_account' })
 
 export const signInWithGoogle = async () => {
   try {
