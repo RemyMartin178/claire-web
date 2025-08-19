@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { createUserWithEmail, signInWithGoogle, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
+import { getApiBase } from '@/utils/http'
 
 function RegisterContent() {
   const [showPassword, setShowPassword] = useState(false)
