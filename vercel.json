@@ -1,8 +1,0 @@
-{
-  "framework": "nextjs",
-  "builds": [
-    { "src": "pickleglass_web/package.json", "use": "@vercel/next" }
-  ]
-}
-
-
