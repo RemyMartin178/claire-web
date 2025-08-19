@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('api', {
     // App Control
       quitApplication: () => ipcRenderer.invoke('quit-application'),
       openExternal: (url) => ipcRenderer.invoke('open-external', url),
+      getWebUrl: () => ipcRenderer.invoke('get-web-url'),
 
     // User state listener (used by multiple components)
       onUserStateChanged: (callback) => ipcRenderer.on('user-state-changed', callback),
@@ -205,6 +206,7 @@ contextBridge.exposeInMainWorld('api', {
     openPersonalizePage: () => ipcRenderer.invoke('open-personalize-page'),
     firebaseLogout: () => ipcRenderer.invoke('firebase-logout'),
     startFirebaseAuth: () => ipcRenderer.invoke('start-firebase-auth'),
+    mobileCreatePendingSession: () => ipcRenderer.invoke('mobile:createPendingSession'),
 
     // Model & Provider Management
     getModelSettings: () => ipcRenderer.invoke('settings:get-model-settings'), // Facade call

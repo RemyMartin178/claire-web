@@ -898,12 +898,23 @@ export class SettingsView extends LitElement {
     }
 
 
-    handleUsePicklesKey(e) {
+    async handleUsePicklesKey(e) {
         e.preventDefault()
         if (this.wasJustDragged) return
-    
-        console.log("Requesting Firebase authentication from main process...")
-        window.api.settingsView.startFirebaseAuth();
+        try {
+            // Create pending session via IPC (stores verifier in main)
+            const { session_id, state } = await window.api.settingsView.mobileCreatePendingSession?.() || {};
+            if (!session_id) {
+                console.error('[SettingsView] Failed to create pending session');
+                return;
+            }
+            const webUrl = (await window.api.common?.getWebUrl?.()) || 'https://app.clairia.app';
+            const target = `${webUrl.replace(/\/$/, '')}/auth/login?flow=mobile&session_id=${encodeURIComponent(session_id)}`;
+            console.log('[SettingsView] Opening external login URL:', target);
+            await window.api.common.openExternal(target);
+        } catch (err) {
+            console.error('[SettingsView] Mobile login flow failed:', err);
+        }
     }
     //////// after_modelStateService ////////
 
