@@ -141,16 +141,48 @@ router.post('/exchange', async (req, res) => {
 // SECURITY: revoke refresh tokens and clear cookie
 router.post('/logout', async (req, res) => {
   try {
-    const admin = initFirebaseAdmin();
-    const { uid } = req.body || {};
-    if (!uid) return res.status(400).json({ success: false, error: 'missing_uid' });
+    const { uid, id_token } = req.body || {};
+    let finalUid = uid;
+    if (!finalUid && id_token && process.env.SKIP_FIREBASE_VERIFY !== '1') {
+      const admin = initFirebaseAdmin();
+      const decoded = await admin.auth().verifyIdToken(id_token, true);
+      finalUid = decoded.uid;
+    }
+    if (!finalUid && process.env.SKIP_FIREBASE_VERIFY === '1') {
+      finalUid = 'test-user';
+    }
+    if (!finalUid) return res.status(400).json({ success: false, error: 'missing_uid' });
 
-    await admin.auth().revokeRefreshTokens(uid);
+    if (process.env.SKIP_FIREBASE_VERIFY !== '1') {
+      const admin = initFirebaseAdmin();
+      await admin.auth().revokeRefreshTokens(finalUid);
+    }
     res.clearCookie('session', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' });
     res.json({ success: true });
   } catch (error) {
     console.error('[Auth] logout error', error);
     res.status(500).json({ success: false, error: 'logout_failed' });
+  }
+});
+
+// GET /auth/me - Verify ID token via Firebase Admin and return user info
+router.get('/me', async (req, res) => {
+  try {
+    const authHeader = req.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : (req.query.id_token || req.body?.id_token);
+    if (!token && process.env.SKIP_FIREBASE_VERIFY !== '1') {
+      return res.status(401).json({ success: false, error: 'missing_token' });
+    }
+    if (process.env.SKIP_FIREBASE_VERIFY === '1') {
+      return res.json({ success: true, uid: 'test-user', email: 'test@example.com' });
+    }
+    const admin = initFirebaseAdmin();
+    const decoded = await admin.auth().verifyIdToken(token, true);
+    const { uid, email } = decoded;
+    return res.json({ success: true, uid, email });
+  } catch (error) {
+    console.error('[Auth] /me error', error);
+    return res.status(401).json({ success: false, error: 'invalid_token' });
   }
 });
 

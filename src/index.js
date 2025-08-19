@@ -606,6 +606,29 @@ async function handleMobileAuthCallback(params) {
             refreshTokenEncrypted: encryptionService.encrypt(refresh_token),
             savedAt: Date.now()
         };
+        // Fetch user info to broadcast email to renderers
+        try {
+            const meResp = await fetch(`${baseUrl}/api/auth/me`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${id_token}` }
+            });
+            const me = await meResp.json().catch(() => ({}));
+            const userState = {
+                uid: me?.uid || 'mobile-user',
+                email: me?.email || undefined,
+                displayName: me?.email || 'User',
+                mode: 'mobile-token',
+                isLoggedIn: true,
+            };
+            const { BrowserWindow } = require('electron');
+            BrowserWindow.getAllWindows().forEach(win => {
+                if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+                    win.webContents.send('user-state-changed', userState);
+                }
+            });
+        } catch (e) {
+            console.warn('[Mobile Auth] Failed to fetch /me:', e.message);
+        }
 
         // Focus app window
         focusMainWindow();

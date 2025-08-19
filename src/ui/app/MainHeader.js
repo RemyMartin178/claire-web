@@ -5,6 +5,7 @@ export class MainHeader extends LitElement {
         isTogglingSession: { type: Boolean, state: true },
         shortcuts: { type: Object, state: true },
         listenSessionStatus: { type: String, state: true },
+        firebaseUser: { type: Object, state: true },
     };
 
     static styles = css`
@@ -350,6 +351,7 @@ export class MainHeader extends LitElement {
         this.isTogglingSession = false;
         this.listenSessionStatus = 'beforeSession';
         this.animationEndTimer = null;
+        this.firebaseUser = null;
         this.handleAnimationEnd = this.handleAnimationEnd.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -492,6 +494,12 @@ export class MainHeader extends LitElement {
                 this.shortcuts = keybinds;
             };
             window.api.mainHeader.onShortcutsUpdated(this._shortcutListener);
+
+            this._userStateListener = (event, userState) => {
+                this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
+                this.requestUpdate();
+            };
+            window.api.headerController.onUserStateChanged(this._userStateListener);
         }
     }
 
@@ -510,6 +518,9 @@ export class MainHeader extends LitElement {
             }
             if (this._shortcutListener) {
                 window.api.mainHeader.removeOnShortcutsUpdated(this._shortcutListener);
+            }
+            if (this._userStateListener) {
+                window.api.headerController.removeOnUserStateChanged(this._userStateListener);
             }
         }
     }
@@ -599,6 +610,7 @@ export class MainHeader extends LitElement {
     }
 
     render() {
+        const isLoggedIn = !!this.firebaseUser;
         const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
     
         const buttonClasses = {
@@ -609,6 +621,21 @@ export class MainHeader extends LitElement {
 
         return html`
             <div class="header">
+                ${!isLoggedIn ? html`
+                    <div class="header-actions" @click=${async () => {
+                        try {
+                            const { session_id } = await window.api.settingsView.mobileCreatePendingSession();
+                            if (!session_id) return;
+                            const webUrl = await window.api.common.getWebUrl();
+                            const target = `${webUrl.replace(/\/$/, '')}/auth/login?flow=mobile&session_id=${encodeURIComponent(session_id)}`;
+                            await window.api.common.openExternal(target);
+                        } catch (e) { console.error('[MainHeader] Mobile login failed:', e); }
+                    }}>
+                        <div class="action-text">
+                            <div class="action-text-content">Se connecter</div>
+                        </div>
+                    </div>
+                ` : html``}
                 <button 
                     class="listen-button ${Object.keys(buttonClasses).filter(k => buttonClasses[k]).join(' ')}"
                     @click=${this._handleListenClick}
@@ -642,13 +669,13 @@ export class MainHeader extends LitElement {
                         `}
                 </button>
 
-                <div class="header-actions ask-action" @click=${() => this._handleAskClick()}>
+                ${isLoggedIn ? html`<div class="header-actions ask-action" @click=${() => this._handleAskClick()}>
                     <div class="action-text">
                         <div class="action-text-content">Ask</div>
                     </div>
-                </div>
+                </div>` : html``}
 
-                <div class="header-actions" @click=${() => this._handleToggleAllWindowsVisibility()}>
+                ${isLoggedIn ? html`<div class="header-actions" @click=${() => this._handleToggleAllWindowsVisibility()}>
                     <div class="action-text">
                         <div class="action-text-content">Show/Hide</div>
                     </div>
@@ -658,7 +685,7 @@ export class MainHeader extends LitElement {
                             <line x1="1" y1="1" x2="23" y2="23" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
-                </div>
+                </div>` : html``}
 
                 <button 
                     class="settings-button"
