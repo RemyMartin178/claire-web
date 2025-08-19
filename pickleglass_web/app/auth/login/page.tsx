@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 
-export default function LoginPage() {
+function LoginContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -277,3 +277,11 @@ export default function LoginPage() {
     </div>
   )
 } 
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  )
+}

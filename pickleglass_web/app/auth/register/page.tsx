@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createUserWithEmail, signInWithGoogle, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
 
-export default function RegisterPage() {
+function RegisterContent() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState({
@@ -342,3 +342,11 @@ export default function RegisterPage() {
     </div>
   )
 } 
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterContent />
+    </Suspense>
+  )
+}
