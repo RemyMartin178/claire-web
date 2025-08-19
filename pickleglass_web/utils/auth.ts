@@ -39,18 +39,7 @@ export const signInWithGoogle = async () => {
   } catch (error: any) {
     console.error("Error signing in with Google (popup):", error)
 
-    const fallbackErrors = [
-      'auth/popup-blocked',
-      'auth/unauthorized-domain',
-      'auth/operation-not-supported-in-this-environment',
-    ]
-
-    if (error && fallbackErrors.includes(error.code)) {
-      // Fallback to redirect for environments where popups are blocked or unsupported
-      await setPersistence(auth, browserLocalPersistence)
-      await signInWithRedirect(auth, googleProvider)
-      return
-    }
+    // Ne plus fallback en redirect pour éviter remount App Router → erreurs #300/#310
 
     throw FirebaseErrorHandler.wrapError(error)
   }
