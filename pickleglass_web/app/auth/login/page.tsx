@@ -23,11 +23,12 @@ function LoginContent() {
   const isMobileFlow = useMemo(() => params?.get('flow') === 'mobile', [params])
   const sessionId = useMemo(() => params?.get('session_id') || '', [params])
 
-  // Redirection si déjà connecté (hors flow mobile)
-  if (user && !isMobileFlow) {
-    router.push('/accueil')
-    return null
-  }
+  // Redirection si déjà connecté (hors flow mobile) sans casser l'ordre des hooks
+  useEffect(() => {
+    if (user && !isMobileFlow) {
+      router.push('/accueil')
+    }
+  }, [user, isMobileFlow, router])
 
   // Traitement du retour Google (redirect result)
   useEffect(() => {
@@ -54,7 +55,7 @@ function LoginContent() {
       }
     })()
     return () => { mounted = false }
-  }, [router])
+  }, [router, isMobileFlow, sessionId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -27,10 +27,11 @@ function RegisterContent() {
   const isMobileFlow = useMemo(() => params?.get('flow') === 'mobile', [params])
   const sessionId = useMemo(() => params?.get('session_id') || '', [params])
 
-  if (user && !isMobileFlow) {
-    router.push('/accueil')
-    return null
-  }
+  useEffect(() => {
+    if (user && !isMobileFlow) {
+      router.push('/accueil')
+    }
+  }, [user, isMobileFlow, router])
 
   // Traitement du retour Google (redirect result)
   useEffect(() => {
@@ -56,7 +57,7 @@ function RegisterContent() {
       }
     })()
     return () => { mounted = false }
-  }, [router])
+  }, [router, isMobileFlow, sessionId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
