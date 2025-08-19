@@ -138,7 +138,7 @@ function SessionDetailsContent() {
 
                 {sessionDetails.summary && (
                     <Section title="Summary">
-                        <p className="text-lg italic text-gray-600 mb-4">"{sessionDetails.summary.tldr}"</p>
+                        <p className="text-lg italic text-gray-600 mb-4">&quot;{sessionDetails.summary.tldr}&quot;</p>
                         
                         {sessionDetails.summary.bullet_json && JSON.parse(sessionDetails.summary.bullet_json).length > 0 &&
                             <div className="mt-4">

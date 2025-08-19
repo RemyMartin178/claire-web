@@ -95,9 +95,9 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
           <div className="flex items-center text-sm text-gray-600">
             <span>Tapez</span>
             <span className="mx-2 px-1.5 py-0.5 bg-white border border-gray-200 rounded text-xs font-mono" style={{ color: '#000' }}>#</span>
-            <span>pour accéder aux résumés,</span>
+            <span>pour acc&eacute;der aux r&eacute;sum&eacute;s,</span>
             <span className="mx-2 px-1.5 py-0.5 bg-white border border-gray-200 rounded text-xs font-mono" style={{ color: '#000' }}>?</span>
-            <span>pour l'aide.</span>
+            <span>pour l&apos;aide.</span>
           </div>
         </div>
 
@@ -140,7 +140,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
             ) : (
               <div className="p-6 text-center">
                 <Search className="h-8 w-8 text-[#9ca3af] mx-auto mb-3" />
-                <p className="text-[#9ca3af] text-sm">Aucun résultat trouvé pour "{searchQuery}"</p>
+                <p className="text-[#9ca3af] text-sm">Aucun r&eacute;sultat trouv&eacute; pour &quot;{searchQuery}&quot;</p>
               </div>
             )}
           </div>
