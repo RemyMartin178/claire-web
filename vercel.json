@@ -3,9 +3,9 @@
   "builds": [
     { "src": "pickleglass_web/package.json", "use": "@vercel/next" }
   ],
-  "installCommand": "npm ci",
-  "buildCommand": "npm run build",
-  "outputDirectory": "out"
+  "installCommand": "cd pickleglass_web && npm ci",
+  "buildCommand": "cd pickleglass_web && npm run build",
+  "outputDirectory": "pickleglass_web/out"
 }
 
 
