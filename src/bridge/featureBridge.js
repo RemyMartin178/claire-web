@@ -64,6 +64,10 @@ module.exports = {
     ipcMain.handle('get-preset-templates', () => presetRepository.getPresetTemplates());
     ipcMain.handle('get-web-url', () => process.env.pickleglass_WEB_URL || 'http://localhost:3000');
 
+    // Mobile auth (desktop helper)
+    const windowManager = require('../window/windowManager');
+    ipcMain.handle('mobile:createPendingSession', async () => await windowManager.createPendingMobileSession(process.env.pickleglass_API_URL));
+
     // Ollama
     ipcMain.handle('ollama:get-status', async () => await ollamaService.handleGetStatus());
     ipcMain.handle('ollama:install', async () => await ollamaService.handleInstall());

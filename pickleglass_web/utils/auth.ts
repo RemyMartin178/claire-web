@@ -70,7 +70,7 @@ export const handleGoogleRedirectResult = async () => {
       const refreshToken = user.refreshToken
       const params = new URLSearchParams(window.location.search)
       if (params.get('flow') === 'mobile' && params.get('session_id')) {
-        await apiCall('/api/auth/associate', {
+        const resp = await apiCall('/api/auth/associate', {
           method: 'POST',
           body: JSON.stringify({
             session_id: params.get('session_id'),
@@ -79,6 +79,12 @@ export const handleGoogleRedirectResult = async () => {
           }),
           headers: { 'Content-Type': 'application/json' },
         })
+        if (resp.ok) {
+          const data = await resp.json().catch(() => null)
+          if (data?.state) {
+            sessionStorage.setItem('mobile_state', data.state)
+          }
+        }
       }
       return user
     }

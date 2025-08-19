@@ -9,3 +9,18 @@ module.exports = internalBridge;
 // internalBridge.on('content-protection-changed', (enabled) => {
 //   // windowManager에서 처리
 // });
+
+// In-memory store for pending-session verifiers (desktop)
+const pendingSessionVerifiers = new Map();
+
+// API for other parts of the app to set/get verifier
+internalBridge.on('mobile:setCodeVerifier', ({ session_id, code_verifier }) => {
+  if (session_id && code_verifier) {
+    pendingSessionVerifiers.set(session_id, code_verifier);
+  }
+});
+
+internalBridge.on('mobile:getCodeVerifier', ({ session_id, reply }) => {
+  const v = pendingSessionVerifiers.get(session_id);
+  if (typeof reply === 'function') reply(v);
+});

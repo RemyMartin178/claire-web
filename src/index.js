@@ -449,7 +449,7 @@ async function handleCustomUrl(url) {
         console.log('[Custom URL] Processing URL:', url);
         
         // Validate and clean URL
-        if (!url || typeof url !== 'string' || !url.startsWith('pickleglass://')) {
+        if (!url || typeof url !== 'string' || (!url.startsWith('pickleglass://') && !url.startsWith('clairia://'))) {
             console.error('[Custom URL] Invalid URL format:', url);
             return;
         }
@@ -470,10 +470,13 @@ async function handleCustomUrl(url) {
         console.log('[Custom URL] Action:', action, 'Params:', params);
 
         switch (action) {
-            case 'login':
-            case 'auth-success':
-                await handleFirebaseAuthCallback(params);
+            case 'auth': {
+                const subPath = (urlObj.pathname || '').replace(/^\//, '');
+                if (subPath === 'callback') {
+                    await handleMobileAuthCallback(params);
+                }
                 break;
+            }
             case 'personalize':
                 handlePersonalizeFromUrl(params);
                 break;
@@ -558,6 +561,57 @@ async function handleFirebaseAuthCallback(params) {
         if (header) {
             header.webContents.send('auth-failed', { message: error.message });
         }
+    }
+}
+
+async function handleMobileAuthCallback(params) {
+    try {
+        const { code, state } = params;
+        if (!code || !state) {
+            console.error('[Mobile Auth] Missing code/state in deep link');
+            return;
+        }
+
+        // Try to get state saved by web (associate) as a quick sanity check (optional)
+        // Not available in main process; we trust backend validation.
+
+        // Retrieve code_verifier previously created at pending-session creation
+        const internalBridge = require('./bridge/internalBridge');
+        const getVerifier = new Promise((resolve) => {
+            internalBridge.emit('mobile:getCodeVerifier', { session_id: code, reply: resolve });
+        });
+        const code_verifier = await getVerifier;
+        if (!code_verifier) {
+            console.error('[Mobile Auth] code_verifier not available');
+            return;
+        }
+
+        const baseUrl = process.env.pickleglass_API_URL || 'http://localhost:3001';
+        const fetch = require('node-fetch');
+        const resp = await fetch(`${baseUrl}/api/auth/exchange`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, state, code_verifier })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) {
+            console.error('[Mobile Auth] Exchange failed:', data.error);
+            return;
+        }
+
+        const { id_token, refresh_token } = data;
+        const encryptionService = require('./features/common/services/encryptionService');
+        global.mobileAuthTokens = {
+            idTokenEncrypted: encryptionService.encrypt(id_token),
+            refreshTokenEncrypted: encryptionService.encrypt(refresh_token),
+            savedAt: Date.now()
+        };
+
+        // Focus app window
+        focusMainWindow();
+        console.log('[Mobile Auth] Tokens stored and app focused');
+    } catch (err) {
+        console.error('[Mobile Auth] Error handling callback:', err);
     }
 }
 

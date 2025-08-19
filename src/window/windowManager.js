@@ -96,6 +96,18 @@ const moveHeaderTo = (newX, newY) => {
     internalBridge.emit('window:moveHeaderTo', { newX, newY });
 };
 
+// Mobile auth helper: create pending-session and store code_verifier for later exchange
+async function createPendingMobileSession(apiBaseUrl) {
+    const fetch = require('node-fetch');
+    const base = apiBaseUrl || process.env.pickleglass_API_URL || 'http://localhost:3001';
+    const resp = await fetch(`${base}/api/auth/pending-session`, { method: 'POST' });
+    const data = await resp.json();
+    if (!resp.ok || !data.success) throw new Error(data.error || 'pending_session_failed');
+    const { session_id, state, code_verifier } = data;
+    internalBridge.emit('mobile:setCodeVerifier', { session_id, code_verifier });
+    return { session_id, state };
+}
+
 const adjustWindowHeight = (winName, targetHeight) => {
     internalBridge.emit('window:adjustWindowHeight', { winName, targetHeight });
 };
