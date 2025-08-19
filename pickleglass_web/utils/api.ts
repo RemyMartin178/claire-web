@@ -162,7 +162,7 @@ const convertFirestorePreset = (preset: { id: string } & any, uid: string): Prom
 
 const loadRuntimeConfig = async (): Promise<string | null> => {
   try {
-    const response = await fetch('/api/config');
+    const response = await fetch('/runtime-config.json');
     if (response.ok) {
       const config = await response.json();
       return config.apiUrl || null;

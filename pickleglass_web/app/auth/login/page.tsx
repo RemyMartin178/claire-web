@@ -66,7 +66,8 @@ function LoginContent() {
       if (isMobileFlow && user) {
         const idToken = await user.getIdToken(true)
         const refreshToken = user.refreshToken
-        await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/associate', {
+        const baseUrl = (window as any).__API_URL__ || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+        await fetch(baseUrl + '/api/auth/associate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
