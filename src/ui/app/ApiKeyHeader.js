@@ -51,7 +51,7 @@ export class ApiKeyHeader extends LitElement {
             align-items: flex-start;
             gap: 24px;
             display: flex;
-            -webkit-app-region: drag;
+            -webkit-app-region: no-drag;
         }
         .header {
             width: 100%;
@@ -401,6 +401,8 @@ export class ApiKeyHeader extends LitElement {
         this.handleSttModelChange = this.handleSttModelChange.bind(this);
         this.handleBack = this.handleBack.bind(this);
         this.handleClose = this.handleClose.bind(this);
+        this.handleMouseMove = this.handleMouseMove.bind(this);
+        this.handleMouseUp = this.handleMouseUp.bind(this);
     }
 
     updated(changedProperties) {

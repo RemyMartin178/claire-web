@@ -608,7 +608,7 @@ export class MainHeader extends LitElement {
         const showStopIcon = listenButtonText === 'Stop' || listenButtonText === 'Done';
 
         return html`
-            <div class="header" @mousedown=${this.handleMouseDown}>
+            <div class="header">
                 <button 
                     class="listen-button ${Object.keys(buttonClasses).filter(k => buttonClasses[k]).join(' ')}"
                     @click=${this._handleListenClick}
