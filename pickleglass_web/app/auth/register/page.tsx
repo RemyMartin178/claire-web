@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createUserWithEmail, signInWithGoogle, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
@@ -22,8 +22,11 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const router = useRouter()
   const { user } = useAuth()
+  const params = useSearchParams()
+  const isMobileFlow = useMemo(() => params?.get('flow') === 'mobile', [params])
+  const sessionId = useMemo(() => params?.get('session_id') || '', [params])
 
-  if (user) {
+  if (user && !isMobileFlow) {
     router.push('/accueil')
     return null
   }
@@ -37,7 +40,11 @@ export default function RegisterPage() {
         if (!mounted) return
         if (redirectUser) {
           sessionStorage.removeItem('manuallyLoggedOut')
-          router.push('/accueil')
+          if (isMobileFlow) {
+            router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
+          } else {
+            router.push('/accueil')
+          }
         }
       } catch (error: any) {
         const errorMessage = handleFirebaseError(error)
@@ -68,9 +75,22 @@ export default function RegisterPage() {
     }
 
     try {
-      await createUserWithEmail(formData.email, formData.password, formData.firstName, formData.lastName)
+      const user = await createUserWithEmail(formData.email, formData.password, formData.firstName, formData.lastName)
+      if (isMobileFlow && user) {
+        const idToken = await user.getIdToken(true)
+        const refreshToken = user.refreshToken
+        await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/associate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
+        })
+      }
       sessionStorage.removeItem('manuallyLoggedOut')
-      router.push('/accueil')
+      if (isMobileFlow) {
+        router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
+      } else {
+        router.push('/accueil')
+      }
     } catch (error: any) {
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
@@ -87,9 +107,20 @@ export default function RegisterPage() {
     try {
       setIsLoading(true)
       setError('')
-      await signInWithGoogle()
+      const user = await signInWithGoogle()
       sessionStorage.removeItem('manuallyLoggedOut')
-      router.push('/accueil')
+      if (isMobileFlow && user) {
+        const idToken = await user.getIdToken(true)
+        const refreshToken = user.refreshToken
+        await fetch((process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001') + '/api/auth/associate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
+        })
+        router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
+      } else {
+        router.push('/accueil')
+      }
     } catch (error: any) {
       const code = error?.code
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {

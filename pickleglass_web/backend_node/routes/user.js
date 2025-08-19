@@ -1,6 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { ipcRequest } = require('../ipcBridge');
+const path = require('node:path');
+const Database = require('better-sqlite3');
+
+// For associating authenticated user to pending session (web flow)
+const dbPath = path.join(process.cwd(), 'pending_sessions.sqlite');
+const db = new Database(dbPath);
+const nowMs = () => Date.now();
 
 router.put('/profile', async (req, res) => {
     try {

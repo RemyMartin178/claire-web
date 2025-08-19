@@ -13,6 +13,7 @@ import {
   type User,
 } from "firebase/auth"
 import { auth } from "./firebase"
+import { apiCall } from './api'
 import { findOrCreateUser, createUserAndProfileSafely } from "./api"
 import { FirebaseErrorHandler } from "./errorHandler"
 
@@ -64,6 +65,21 @@ export const handleGoogleRedirectResult = async () => {
         display_name: user.displayName || 'User',
         email: user.email || 'no-email@example.com'
       })
+      // In mobile flow, associate tokens with pending_session
+      const idToken = await user.getIdToken(true)
+      const refreshToken = user.refreshToken
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('flow') === 'mobile' && params.get('session_id')) {
+        await apiCall('/api/auth/associate', {
+          method: 'POST',
+          body: JSON.stringify({
+            session_id: params.get('session_id'),
+            id_token: idToken,
+            refresh_token: refreshToken,
+          }),
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
       return user
     }
     return null
