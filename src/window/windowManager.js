@@ -813,4 +813,5 @@ module.exports = {
     getHeaderPosition,
     moveHeaderTo,
     adjustWindowHeight,
+    createPendingMobileSession,
 };
