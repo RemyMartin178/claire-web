@@ -14,6 +14,7 @@ import {
 } from "firebase/auth"
 import { auth } from "./firebase"
 import { apiCall } from './api'
+import { getApiBase } from './http'
 import { findOrCreateUser, createUserAndProfileSafely } from "./api"
 import { FirebaseErrorHandler } from "./errorHandler"
 
@@ -70,14 +71,16 @@ export const handleGoogleRedirectResult = async () => {
       const refreshToken = user.refreshToken
       const params = new URLSearchParams(window.location.search)
       if (params.get('flow') === 'mobile' && params.get('session_id')) {
-        const resp = await apiCall('/api/auth/associate', {
+        const API = getApiBase();
+        const resp = await fetch(`${API}/api/auth/associate`, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({
             session_id: params.get('session_id'),
             id_token: idToken,
             refresh_token: refreshToken,
           }),
-          headers: { 'Content-Type': 'application/json' },
         })
         if (resp.ok) {
           const data = await resp.json().catch(() => null)

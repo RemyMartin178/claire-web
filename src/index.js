@@ -613,10 +613,16 @@ async function handleMobileAuthCallback(params) {
                 headers: { Authorization: `Bearer ${id_token}` }
             });
             const me = await meResp.json().catch(() => ({}));
-            const userState = {
-                uid: me?.uid || 'mobile-user',
-                email: me?.email || undefined,
-                displayName: me?.email || 'User',
+            const userState = me?.success ? {
+                uid: me.uid,
+                email: me.email,
+                displayName: me.email || 'User',
+                mode: 'firebase',
+                isLoggedIn: true,
+            } : {
+                uid: 'mobile-user',
+                email: undefined,
+                displayName: 'User',
                 mode: 'mobile-token',
                 isLoggedIn: true,
             };
