@@ -99,7 +99,13 @@ const moveHeaderTo = (newX, newY) => {
 // Mobile auth helper: create pending-session and store code_verifier for later exchange
 async function createPendingMobileSession(apiBaseUrl) {
     const fetch = require('node-fetch');
-    const base = apiBaseUrl || process.env.pickleglass_API_URL || 'http://localhost:3001';
+    const base = (() => {
+        if (apiBaseUrl) return apiBaseUrl;
+        const env = process.env.PICKLEGLASS_API_URL || process.env.pickleglass_API_URL || process.env.APP_API_URL;
+        if (env) return env.replace(/\/$/, '');
+        if (process.env.NODE_ENV === 'production') return 'https://api.clairia.app';
+        return 'http://localhost:3001';
+    })();
     const resp = await fetch(`${base}/api/auth/pending-session`, { method: 'POST' });
     const data = await resp.json();
     if (!resp.ok || !data.success) throw new Error(data.error || 'pending_session_failed');

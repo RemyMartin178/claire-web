@@ -62,7 +62,12 @@ module.exports = {
        
     // General
     ipcMain.handle('get-preset-templates', () => presetRepository.getPresetTemplates());
-    ipcMain.handle('get-web-url', () => process.env.pickleglass_WEB_URL || 'http://localhost:3000');
+    ipcMain.handle('get-web-url', () => {
+      const explicit = process.env.PICKLEGLASS_WEB_URL || process.env.pickleglass_WEB_URL || process.env.APP_WEB_URL;
+      if (explicit) return explicit.replace(/\/$/, '');
+      if (app.isPackaged || process.env.NODE_ENV === 'production') return 'https://app.clairia.app';
+      return 'http://localhost:3000';
+    });
 
     // Mobile auth (desktop helper)
     const windowManager = require('../window/windowManager');

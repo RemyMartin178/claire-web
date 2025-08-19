@@ -586,7 +586,12 @@ async function handleMobileAuthCallback(params) {
             return;
         }
 
-        const baseUrl = process.env.pickleglass_API_URL || 'http://localhost:3001';
+        const baseUrl = (() => {
+            const env = process.env.PICKLEGLASS_API_URL || process.env.pickleglass_API_URL || process.env.APP_API_URL;
+            if (env) return env.replace(/\/$/, '');
+            if (process.env.NODE_ENV === 'production') return 'https://api.clairia.app';
+            return 'http://localhost:3001';
+        })();
         const fetch = require('node-fetch');
         const resp = await fetch(`${baseUrl}/api/auth/exchange`, {
             method: 'POST',

@@ -6,12 +6,24 @@ const { identifyUser } = require('./middleware/auth');
 function createApp(eventBridge) {
     const app = express();
 
-    const webUrl = process.env.pickleglass_WEB_URL || 'http://localhost:3000';
-    console.log(`🔧 Backend CORS configured for: ${webUrl}`);
+    const allowedOrigins = [
+        process.env.PICKLEGLASS_WEB_URL,
+        process.env.pickleglass_WEB_URL,
+        process.env.APP_WEB_URL,
+        'https://app.clairia.app',
+        'http://localhost:3000',
+    ].filter(Boolean);
+    console.log(`🔧 Backend CORS allowed: ${allowedOrigins.join(', ')}`);
 
     app.use(cors({
-        origin: webUrl,
+        origin: (origin, cb) => {
+            if (!origin) return cb(null, true);
+            if (allowedOrigins.includes(origin)) return cb(null, true);
+            return cb(null, false);
+        },
         credentials: true,
+        methods: ['GET','POST','OPTIONS'],
+        allowedHeaders: ['content-type','authorization']
     }));
 
     app.use(express.json());
