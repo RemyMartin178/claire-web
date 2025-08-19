@@ -1,8 +1,8 @@
 {
   "framework": "nextjs",
-  "installCommand": "echo Skipping root install; cd pickleglass_web && npm ci",
-  "buildCommand": "cd pickleglass_web && npm run build",
-  "outputDirectory": "pickleglass_web/out"
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "out"
 }
 
 
