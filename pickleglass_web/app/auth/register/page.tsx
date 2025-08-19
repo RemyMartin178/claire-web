@@ -273,9 +273,9 @@ function RegisterContent() {
                 className="w-4 h-4 text-accent-light bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-accent-light focus:ring-2"
               />
               <label className="ml-2 text-sm text-white">
-                J'accepte les{' '}
+                J&apos;accepte les{' '}
                 <a href="/terms" className="text-accent-light hover:text-accent-light/80 font-medium">
-                  conditions d'utilisation
+                  conditions d&apos;utilisation
                 </a>
               </label>
             </div>
@@ -328,7 +328,7 @@ function RegisterContent() {
                     fill="#EA4335"
                   />
                 </svg>
-                S'inscrire avec Google
+                S&apos;inscrire avec Google
               </button>
             </div>
           </div>
