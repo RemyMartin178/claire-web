@@ -474,6 +474,13 @@ export class MainHeader extends LitElement {
         this.addEventListener('animationend', this.handleAnimationEnd);
 
         if (window.api) {
+            // Initialize auth state immediately to avoid UI flash
+            if (window.api.common?.getCurrentUser) {
+                window.api.common.getCurrentUser().then(userState => {
+                    this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
+                    this.requestUpdate();
+                }).catch(() => {});
+            }
 
             this._sessionStateTextListener = (event, { success }) => {
                 if (success) {
@@ -553,6 +560,7 @@ export class MainHeader extends LitElement {
         try {
             const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
             if (window.api) {
+                if (!this.firebaseUser) return;
                 await window.api.mainHeader.sendListenButtonClick(listenButtonText);
             }
         } catch (error) {
@@ -636,6 +644,7 @@ export class MainHeader extends LitElement {
                         </div>
                     </div>
                 ` : html``}
+                ${isLoggedIn ? html`
                 <button 
                     class="listen-button ${Object.keys(buttonClasses).filter(k => buttonClasses[k]).join(' ')}"
                     @click=${this._handleListenClick}
@@ -667,7 +676,7 @@ export class MainHeader extends LitElement {
                                     `}
                             </div>
                         `}
-                </button>
+                </button>` : html``}
 
                 ${isLoggedIn ? html`<div class="header-actions ask-action" @click=${() => this._handleAskClick()}>
                     <div class="action-text">

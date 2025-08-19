@@ -1,4 +1,5 @@
 import { auth } from './firebase'
+import { getApiBase } from './http'
 import { FirestoreUserService, FirestoreSessionService, FirestoreTranscriptService, FirestoreAiMessageService, FirestoreSummaryService, FirestorePromptPresetService } from './firestore'
 import { Timestamp } from 'firebase/firestore'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
@@ -160,27 +161,8 @@ const convertFirestorePreset = (preset: { id: string } & any, uid: string): Prom
   };
 };
 
-const loadRuntimeConfig = async (): Promise<string | null> => {
-  try {
-    const response = await fetch('/runtime-config.json');
-    if (response.ok) {
-      const config = await response.json();
-      return config.apiUrl || null;
-    }
-  } catch (error) {
-    console.warn('Failed to load runtime config:', error);
-  }
-  return null;
-};
-
-const initializeApiUrl = async () => {
-  if (typeof window === 'undefined') return;
-  
-  const runtimeConfig = await loadRuntimeConfig();
-  if (runtimeConfig) {
-    window.__API_URL__ = runtimeConfig;
-  }
-};
+// In prod, rely on NEXT_PUBLIC_API_URL; fallback to host-based heuristic
+const initializeApiUrl = async () => {};
 
 export const getUserInfo = (): UserProfile | null => {
   if (typeof window === 'undefined') return null;
@@ -223,9 +205,7 @@ export const getApiHeaders = (): HeadersInit => {
 };
 
 export const apiCall = async (path: string, options: RequestInit = {}) => {
-  const baseUrl = typeof window !== 'undefined' && window.__API_URL__ 
-    ? window.__API_URL__ 
-    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const baseUrl = getApiBase();
   
   const url = `${baseUrl}${path}`;
   const config: RequestInit = {

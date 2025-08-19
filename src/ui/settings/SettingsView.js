@@ -1117,6 +1117,10 @@ export class SettingsView extends LitElement {
 
     async handlePersonalize() {
         console.log('Personalize clicked');
+        if (!this.firebaseUser) {
+            console.warn('[SettingsView] Block personalize: not authenticated');
+            return;
+        }
         try {
             await window.api.settingsView.openPersonalizePage();
         } catch (error) {
