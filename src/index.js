@@ -383,6 +383,11 @@ function setupWebDataHandlers() {
                     result = await userRepository.deleteById();
                     break;
 
+                // MOBILE AUTH
+                case 'mobile-auth-exchange':
+                    result = await handleMobileAuthExchange(payload);
+                    break;
+
                 // PRESET
                 case 'get-presets':
                     // Adapter injects UID
@@ -646,6 +651,60 @@ async function handleMobileAuthCallback(params) {
         console.log('[Mobile Auth] Tokens stored and app focused');
     } catch (err) {
         console.error('[Mobile Auth] Error handling callback:', err);
+    }
+}
+
+async function handleMobileAuthExchange(payload) {
+    const { session_id } = payload;
+    if (!session_id) {
+        console.error('[Mobile Auth] Missing session_id in mobile-auth-exchange payload');
+        return { success: false, error: 'Missing session_id' };
+    }
+
+    try {
+        // Récupérer les tokens associés à cette session depuis la base SQLite
+        const Database = require('better-sqlite3');
+        const path = require('path');
+        const dbPath = path.join(process.cwd(), 'pending_sessions.sqlite');
+        const db = new Database(dbPath);
+        
+        const row = db.prepare('SELECT uid, id_token, refresh_token FROM pending_sessions WHERE session_id = ?').get(session_id);
+        db.close();
+        
+        if (!row || !row.id_token || !row.refresh_token) {
+            console.error('[Mobile Auth] No tokens found for session:', session_id);
+            return { success: false, error: 'tokens_not_ready' };
+        }
+
+        // Stocker les tokens de manière sécurisée
+        const encryptionService = require('./features/common/services/encryptionService');
+        global.mobileAuthTokens = {
+            idTokenEncrypted: encryptionService.encrypt(row.id_token),
+            refreshTokenEncrypted: encryptionService.encrypt(row.refresh_token),
+            savedAt: Date.now()
+        };
+
+        // Notifier tous les renderers du changement d'état utilisateur
+        const userState = {
+            uid: row.uid || 'mobile-user',
+            email: undefined,
+            displayName: 'User',
+            mode: 'mobile-token',
+            isLoggedIn: true,
+        };
+
+        const { BrowserWindow } = require('electron');
+        BrowserWindow.getAllWindows().forEach(win => {
+            if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+                win.webContents.send('user-state-changed', userState);
+            }
+        });
+
+        console.log('[Mobile Auth] Successfully exchanged tokens for session:', session_id);
+        return { success: true, idToken: row.id_token, refreshToken: row.refresh_token };
+    } catch (err) {
+        console.error('[Mobile Auth] Error during mobile auth exchange:', err);
+        return { success: false, error: err.message };
     }
 }
 

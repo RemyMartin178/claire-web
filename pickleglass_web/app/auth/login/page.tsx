@@ -7,6 +7,7 @@ import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { getApiBase } from '@/utils/http'
+import { auth } from '@/utils/firebase'
 
 function LoginContent() {
   const [showPassword, setShowPassword] = useState(false)
@@ -69,11 +70,16 @@ function LoginContent() {
         const idToken = await user.getIdToken(true)
         const refreshToken = user.refreshToken
         const API = getApiBase()
-        await fetch(API + '/api/auth/associate', {
+        const response = await fetch(API + '/api/auth/associate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
         })
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Échec de l\'association des tokens')
+        }
       }
       sessionStorage.removeItem('manuallyLoggedOut')
       if (isMobileFlow) {
@@ -98,6 +104,27 @@ function LoginContent() {
       setIsLoading(true)
       setError('')
       await signInWithGoogle()
+      
+      // Associate tokens to pending session if mobile flow
+      if (isMobileFlow) {
+        const user = auth.currentUser
+        if (user) {
+          const idToken = await user.getIdToken(true)
+          const refreshToken = user.refreshToken
+          const API = getApiBase()
+          const response = await fetch(API + '/api/auth/associate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
+          })
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || 'Échec de l\'association des tokens')
+          }
+        }
+      }
+      
       sessionStorage.removeItem('manuallyLoggedOut')
       if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
@@ -131,85 +158,85 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#202123' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in" style={{ background: '#202123' }}>
       <div className="w-full max-w-md mx-auto">
-        {/* Logo en haut à gauche */}
-        <div className="absolute top-8 left-8 flex items-center gap-3">
-          <img src="/word.png" alt="Claire Logo" className="w-16 h-16" />
+        {/* Logo en haut à gauche avec animation */}
+        <div className="absolute top-8 left-8 flex items-center gap-3 animate-slide-in">
+          <img src="/word.png" alt="Claire Logo" className="w-16 h-16 animate-bounce-gentle" />
           <h1 className="text-2xl font-bold text-white">Claire</h1>
         </div>
         
-        {/* Formulaire */}
-        <div className="bg-[#232329] rounded-xl shadow-lg border border-[#3a3a4a] p-8">
-          <div className="text-center mb-6">
+        {/* Formulaire avec finitions Cluely */}
+        <div className="bg-[#232329] rounded-2xl shadow-cluely border border-[#3a3a4a] p-8 hover-lift backdrop-blur-md animate-scale-in">
+          <div className="text-center mb-6 animate-fade-in">
             <h2 className="text-2xl font-bold text-white mb-2">Bienvenue sur Claire</h2>
             <p className="text-[#bbb] text-sm">Connectez-vous à votre compte pour continuer</p>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div className="mb-4 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm animate-slide-up backdrop-blur-sm">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white mb-1">
+          <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
+            <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
                 Adresse email
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 group-focus-within:text-accent-light transition-colors duration-200" />
                 <input
                   id="email"
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
+                  className="w-full pl-12 pr-4 py-4 bg-[#2a2a32] border border-[#3a3a4a] rounded-xl focus:outline-none focus:border-accent-light focus:ring-2 focus:ring-accent-light/20 text-white placeholder-[#bbb] text-sm transition-all duration-200 backdrop-blur-sm hover:border-[#4a4a5a] focus:shadow-glow"
                   placeholder="name@work-email.com"
                   required
                 />
               </div>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-white mb-1">
+            <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+              <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
                 Mot de passe
               </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 group-focus-within:text-accent-light transition-colors duration-200" />
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-12 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
+                  className="w-full pl-12 pr-12 py-4 bg-[#2a2a32] border border-[#3a3a4a] rounded-xl focus:outline-none focus:border-accent-light focus:ring-2 focus:ring-accent-light/20 text-white placeholder-[#bbb] text-sm transition-all duration-200 backdrop-blur-sm hover:border-[#4a4a5a] focus:shadow-glow"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-white transition-colors"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-white transition-all duration-200 hover:scale-110"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
+            <div className="flex items-center justify-between animate-slide-up" style={{ animationDelay: '0.3s' }}>
+              <label className="flex items-center group cursor-pointer">
                 <input
                   type="checkbox"
                   name="rememberMe"
                   checked={formData.rememberMe}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-accent-light bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-accent-light focus:ring-2"
+                  className="w-4 h-4 text-accent-light bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-2 focus:ring-accent-light/20 transition-all duration-200 group-hover:border-[#4a4a5a]"
                 />
-                <span className="ml-2 text-white text-sm">Se souvenir de moi</span>
+                <span className="ml-2 text-white text-sm group-hover:text-white/90 transition-colors duration-200">Se souvenir de moi</span>
               </label>
-              <a href="/auth/forgot-password" className="text-accent-light hover:text-accent-light/80 text-sm font-medium">
+              <a href="/auth/forgot-password" className="text-accent-light hover:text-accent-light/80 text-sm font-medium transition-all duration-200 hover:underline">
                 Mot de passe oublié ?
               </a>
             </div>
@@ -217,34 +244,42 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-accent-light hover:bg-accent-light/90 text-white py-3 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 text-sm flex items-center justify-center"
+              className="w-full bg-accent-light hover:bg-accent-light/90 text-white py-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 text-sm flex items-center justify-center hover:shadow-cluely-hover group animate-slide-up"
+              style={{ animationDelay: '0.4s' }}
             >
-              {isLoading ? 'Connexion...' : 'Continuer'}
-              {!isLoading && (
-                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Connexion...
+                </div>
+              ) : (
+                <>
+                  Continuer
+                  <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </>
               )}
             </button>
           </form>
 
-          <div className="mt-6">
+          <div className="mt-8 animate-fade-in" style={{ animationDelay: '0.5s' }}>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#3a3a4a]" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-[#232329] px-3 text-[#bbb]">OU</span>
+                <span className="bg-[#232329] px-4 text-[#bbb] backdrop-blur-sm">OU</span>
               </div>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-6">
               <button
                 onClick={handleGoogleSignIn}
                 disabled={isLoading}
-                className="w-full flex items-center justify-center px-4 py-3 border border-[#3a3a4a] rounded-lg hover:bg-[#2a2a32] transition-colors text-white text-sm bg-[#232329] disabled:opacity-50"
+                className="w-full flex items-center justify-center px-4 py-4 border border-[#3a3a4a] rounded-xl hover:bg-[#2a2a32] transition-all duration-200 text-white text-sm bg-[#232329] disabled:opacity-50 hover:shadow-cluely-hover group"
               >
-                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -267,10 +302,10 @@ function LoginContent() {
             </div>
           </div>
 
-          <div className="mt-6 text-center">
+          <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '0.6s' }}>
             <p className="text-[#bbb] text-sm">
               Pas encore de compte ?{' '}
-              <a href="/auth/register" className="text-accent-light hover:text-accent-light/80 font-medium">
+              <a href="/auth/register" className="text-accent-light hover:text-accent-light/80 font-medium transition-all duration-200 hover:underline">
                 Créer un compte
               </a>
             </p>

@@ -41,6 +41,22 @@ function sha256Base64Url(input) {
 // Cleanup old/used sessions opportunistically
 const cleanupStmt = db.prepare('DELETE FROM pending_sessions WHERE expires_at < ? OR used_at IS NOT NULL');
 
+// Fonction de nettoyage améliorée
+function cleanupExpiredSessions() {
+    try {
+        const deletedCount = cleanupStmt.run(nowMs());
+        if (deletedCount.changes > 0) {
+            console.log(`[Auth] Cleaned up ${deletedCount.changes} expired/used sessions`);
+        }
+    } catch (error) {
+        console.error('[Auth] Error during session cleanup:', error);
+    }
+}
+
+// Nettoyage au démarrage et toutes les 5 minutes
+cleanupExpiredSessions();
+setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
+
 // POST /pending-session
 // SECURITY: Generates PKCE state/challenge, stores verifier hash, TTL 2 min, one-time
 router.post('/pending-session', async (req, res) => {
@@ -71,26 +87,44 @@ router.post('/pending-session', async (req, res) => {
 router.post('/associate', async (req, res) => {
   try {
     const { session_id, id_token, refresh_token } = req.body || {};
+    console.log('[Auth] /associate called with session_id:', session_id ? 'present' : 'missing');
+    
     if (!session_id || !id_token || !refresh_token) {
+      console.error('[Auth] /associate missing required fields:', { 
+        hasSessionId: !!session_id, 
+        hasIdToken: !!id_token, 
+        hasRefreshToken: !!refresh_token 
+      });
       return res.status(400).json({ success: false, error: 'invalid_request' });
     }
 
     const row = db.prepare('SELECT * FROM pending_sessions WHERE session_id = ?').get(session_id);
-    if (!row) return res.status(400).json({ success: false, error: 'unknown_session' });
-    if (row.used_at) return res.status(400).json({ success: false, error: 'session_already_used' });
-    if (row.expires_at < nowMs()) return res.status(400).json({ success: false, error: 'session_expired' });
+    if (!row) {
+      console.error('[Auth] /associate unknown session:', session_id);
+      return res.status(400).json({ success: false, error: 'unknown_session' });
+    }
+    if (row.used_at) {
+      console.error('[Auth] /associate session already used:', session_id);
+      return res.status(400).json({ success: false, error: 'session_already_used' });
+    }
+    if (row.expires_at < nowMs()) {
+      console.error('[Auth] /associate session expired:', session_id, 'expired at:', new Date(row.expires_at));
+      return res.status(400).json({ success: false, error: 'session_expired' });
+    }
 
     const admin = initFirebaseAdmin();
     const decoded = await admin.auth().verifyIdToken(id_token, true);
     const uid = decoded.uid;
+    console.log('[Auth] /associate verified token for user:', uid);
 
     // Bind tokens to session (one-time)
     db.prepare('UPDATE pending_sessions SET uid=?, id_token=?, refresh_token=? WHERE session_id = ?')
       .run(uid, id_token, refresh_token, session_id);
 
+    console.log('[Auth] /associate successfully bound tokens to session:', session_id);
     return res.json({ success: true, state: row.state });
   } catch (error) {
-    console.error('[Auth] /associate error', error);
+    console.error('[Auth] /associate error:', error);
     res.status(500).json({ success: false, error: 'associate_failed' });
   }
 });
@@ -100,18 +134,38 @@ router.post('/associate', async (req, res) => {
 router.post('/exchange', async (req, res) => {
   try {
     const { code, state, code_verifier } = req.body || {};
+    console.log('[Auth] /exchange called with code:', code ? 'present' : 'missing');
+    
     if (!code || !state || !code_verifier) {
+      console.error('[Auth] /exchange missing required fields:', { 
+        hasCode: !!code, 
+        hasState: !!state, 
+        hasCodeVerifier: !!code_verifier 
+      });
       return res.status(400).json({ success: false, error: 'invalid_request' });
     }
 
     const row = db.prepare('SELECT * FROM pending_sessions WHERE session_id = ?').get(code);
-    if (!row) return res.status(400).json({ success: false, error: 'unknown_session' });
-    if (row.used_at) return res.status(400).json({ success: false, error: 'session_already_used' });
-    if (row.expires_at < nowMs()) return res.status(400).json({ success: false, error: 'session_expired' });
-    if (row.state !== state) return res.status(400).json({ success: false, error: 'state_mismatch' });
+    if (!row) {
+      console.error('[Auth] /exchange unknown session:', code);
+      return res.status(400).json({ success: false, error: 'unknown_session' });
+    }
+    if (row.used_at) {
+      console.error('[Auth] /exchange session already used:', code);
+      return res.status(400).json({ success: false, error: 'session_already_used' });
+    }
+    if (row.expires_at < nowMs()) {
+      console.error('[Auth] /exchange session expired:', code, 'expired at:', new Date(row.expires_at));
+      return res.status(400).json({ success: false, error: 'session_expired' });
+    }
+    if (row.state !== state) {
+      console.error('[Auth] /exchange state mismatch:', { expected: row.state, received: state });
+      return res.status(400).json({ success: false, error: 'state_mismatch' });
+    }
 
     const verifierHash = sha256Base64Url(code_verifier);
     if (verifierHash !== row.code_verifier_hash) {
+      console.error('[Auth] /exchange PKCE verifier mismatch');
       return res.status(400).json({ success: false, error: 'pkce_verifier_mismatch' });
     }
 
@@ -120,19 +174,22 @@ router.post('/exchange', async (req, res) => {
     let tokens;
     try {
       tokens = await ipcRequest(req, 'mobile-auth-exchange', { session_id: code });
+      console.log('[Auth] /exchange IPC call successful');
     } catch (e) {
-      console.error('[Auth] exchange IPC failed', e);
+      console.error('[Auth] /exchange IPC failed:', e);
       return res.status(400).json({ success: false, error: 'exchange_unavailable' });
     }
 
     if (!tokens || !tokens.idToken || !tokens.refreshToken) {
+      console.error('[Auth] /exchange tokens not ready:', { hasTokens: !!tokens, hasIdToken: !!tokens?.idToken, hasRefreshToken: !!tokens?.refreshToken });
       return res.status(400).json({ success: false, error: 'tokens_not_ready' });
     }
 
     db.prepare('UPDATE pending_sessions SET used_at = ? WHERE session_id = ?').run(nowMs(), code);
+    console.log('[Auth] /exchange successfully completed for session:', code);
     return res.json({ success: true, id_token: tokens.idToken, refresh_token: tokens.refreshToken });
   } catch (error) {
-    console.error('[Auth] /exchange error', error);
+    console.error('[Auth] /exchange error:', error);
     res.status(500).json({ success: false, error: 'exchange_failed' });
   }
 });
