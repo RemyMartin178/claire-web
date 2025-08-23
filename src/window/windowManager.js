@@ -448,10 +448,14 @@ const toggleContentProtection = () => {
 
 
 const openLoginPage = () => {
-    const webUrl = process.env.pickleglass_WEB_URL || 'http://localhost:3000';
-    const personalizeUrl = `${webUrl}/personalize?desktop=true`;
-    shell.openExternal(personalizeUrl);
-    console.log('Opening personalization page:', personalizeUrl);
+    // Toujours utiliser clairia.app sauf si on est explicitement en développement
+    // car l'application définit toujours pickleglass_WEB_URL vers localhost
+    const webUrl = process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3000'
+        : 'https://app.clairia.app';
+    const loginUrl = `${webUrl}/auth/login?flow=mobile`;
+    shell.openExternal(loginUrl);
+    console.log('Opening login page:', loginUrl);
 };
 
 

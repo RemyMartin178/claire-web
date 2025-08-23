@@ -127,7 +127,10 @@ class AuthService {
 
     async startFirebaseAuthFlow() {
         try {
-            const webUrl = process.env.pickleglass_WEB_URL || 'http://localhost:3000';
+            // Utiliser la même logique que openLoginPage pour éviter les conflits
+            const webUrl = process.env.NODE_ENV === 'development'
+                ? 'http://localhost:3000'
+                : 'https://app.clairia.app';
             const authUrl = `${webUrl}/login?mode=electron`;
             console.log(`[AuthService] Opening Firebase auth URL in browser: ${authUrl}`);
             await shell.openExternal(authUrl);

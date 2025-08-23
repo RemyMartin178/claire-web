@@ -40,7 +40,22 @@ case 'mobile-auth-exchange':
     break;
 ```
 
-### ❌ Problème 2 : Gestion d'erreurs incomplète
+### ❌ Problème 2 : URL de connexion incorrecte
+**Symptôme** : Le bouton "Se connecter" ouvre localhost au lieu de clairia.app
+**Cause** : `openLoginPage()` utilisait `process.env.pickleglass_WEB_URL` qui pointe vers localhost
+**Correction** : Logique conditionnelle basée sur `NODE_ENV`
+
+```javascript
+const openLoginPage = () => {
+    const webUrl = process.env.NODE_ENV === 'development' 
+        ? (process.env.pickleglass_WEB_URL || 'http://localhost:3000')
+        : 'https://app.clairia.app';
+    const loginUrl = `${webUrl}/auth/login?flow=mobile`;
+    shell.openExternal(loginUrl);
+};
+```
+
+### ❌ Problème 3 : Gestion d'erreurs incomplète
 **Symptôme** : Erreurs silencieuses lors de l'association des tokens
 **Cause** : Pas de vérification des réponses HTTP
 **Correction** : Ajout de vérifications dans `handleSubmit()` et `handleGoogleSignIn()`
@@ -52,7 +67,7 @@ if (!response.ok) {
 }
 ```
 
-### ❌ Problème 3 : Nettoyage des sessions expirées
+### ❌ Problème 4 : Nettoyage des sessions expirées
 **Symptôme** : Accumulation de sessions inutilisées en base
 **Cause** : Nettoyage seulement opportuniste
 **Correction** : Nettoyage automatique toutes les 5 minutes
@@ -67,7 +82,7 @@ function cleanupExpiredSessions() {
 setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
 ```
 
-### ❌ Problème 4 : Logs insuffisants pour le débogage
+### ❌ Problème 5 : Logs insuffisants pour le débogage
 **Symptôme** : Difficulté à diagnostiquer les problèmes
 **Cause** : Logs limités dans les routes d'authentification
 **Correction** : Ajout de logs détaillés dans `/associate` et `/exchange`

@@ -43,9 +43,13 @@ class Config {
             console.log(`[Config] API URL from env: ${this.config.apiUrl}`);
         }
         
-        if (process.env.pickleglass_WEB_URL) {
+        // Utiliser clairia.app en production, ignorer pickleglass_WEB_URL qui pointe vers localhost
+        if (process.env.NODE_ENV === 'development' && process.env.pickleglass_WEB_URL) {
             this.config.webUrl = process.env.pickleglass_WEB_URL;
-            console.log(`[Config] Web URL from env: ${this.config.webUrl}`);
+            console.log(`[Config] Web URL from env (dev): ${this.config.webUrl}`);
+        } else if (process.env.NODE_ENV === 'production' || !process.env.NODE_ENV) {
+            this.config.webUrl = 'https://app.clairia.app';
+            console.log(`[Config] Web URL set to production: ${this.config.webUrl}`);
         }
         
         if (process.env.pickleglass_API_TIMEOUT) {

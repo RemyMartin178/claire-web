@@ -6,7 +6,8 @@
     "main": "src/index.js",
     "scripts": {
         "setup": "npm install && cd pickleglass_web && npm install && npm run build && cd .. && npm start",
-        "start": "npm run build:renderer && electron .",
+        "start": "npm run build:renderer && cross-env NODE_ENV=production electron .",
+        "start:dev": "npm run build:renderer && cross-env NODE_ENV=development electron .",
         "package": "npm run build:all && electron-builder --dir",
         "make": "npm run build:renderer && electron-forge make",
         "build": "npm run build:all && electron-builder --config electron-builder.yml --publish never",
@@ -60,6 +61,7 @@
     "devDependencies": {
         "@electron/fuses": "^1.8.0",
         "@electron/notarize": "^2.5.0",
+        "cross-env": "^10.0.0",
         "electron": "^30.5.1",
         "electron-builder": "^26.0.12",
         "electron-reloader": "^1.2.3",

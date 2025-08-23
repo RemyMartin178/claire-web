@@ -63,10 +63,13 @@ module.exports = {
     // General
     ipcMain.handle('get-preset-templates', () => presetRepository.getPresetTemplates());
     ipcMain.handle('get-web-url', () => {
-      const explicit = process.env.PICKLEGLASS_WEB_URL || process.env.pickleglass_WEB_URL || process.env.APP_WEB_URL;
-      if (explicit) return explicit.replace(/\/$/, '');
-      if (app.isPackaged || process.env.NODE_ENV === 'production') return 'https://app.clairia.app';
-      return 'http://localhost:3000';
+      // Toujours utiliser clairia.app sauf si on est explicitement en développement
+      // car l'application définit toujours pickleglass_WEB_URL vers localhost
+      if (process.env.NODE_ENV === 'development') {
+        return 'http://localhost:3000';
+      } else {
+        return 'https://app.clairia.app';
+      }
     });
 
     // Mobile auth (desktop helper)
