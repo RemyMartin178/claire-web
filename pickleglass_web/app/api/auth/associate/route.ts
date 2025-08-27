@@ -11,7 +11,7 @@ function getDbPath() {
   return path.join(process.cwd(), 'pending_sessions.sqlite');
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   try {
     const { session_id, id_token, refresh_token } = await request.json();
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const dbPath = getDbPath();
     const db = new sqlite3.Database(dbPath);
 
-    return new Promise((resolve) => {
+    return new Promise<Response>((resolve) => {
       // Vérifier si la session existe et n'est pas expirée
       const now = Date.now();
       const checkStmt = db.prepare(`
@@ -74,12 +74,12 @@ export async function POST(request: NextRequest) {
             success: true, 
             message: 'Tokens associés avec succès' 
           }));
+
+          updateStmt.finalize();
         });
 
-        updateStmt.finalize();
+        checkStmt.finalize();
       });
-
-      checkStmt.finalize();
     });
 
   } catch (error) {

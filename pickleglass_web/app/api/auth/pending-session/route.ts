@@ -49,7 +49,7 @@ function sha256Base64Url(input: string): string {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<Response> {
   try {
     // Ouvrir la base de données
     const dbPath = getDbPath();
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const created_at = now;
     const expires_at = created_at + (2 * 60 * 1000); // 2 minutes TTL
 
-    return new Promise((resolve) => {
+    return new Promise<Response>((resolve) => {
       // Insérer la session
       const stmt = db.prepare(`
         INSERT INTO pending_sessions(session_id, state, code_challenge, code_verifier_hash, created_at, expires_at)
