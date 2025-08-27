@@ -103,10 +103,12 @@ async function createPendingMobileSession(apiBaseUrl) {
         if (apiBaseUrl) return apiBaseUrl;
         const env = process.env.PICKLEGLASS_API_URL || process.env.pickleglass_API_URL || process.env.APP_API_URL;
         if (env) return env.replace(/\/$/, '');
-        if (process.env.NODE_ENV === 'production') return 'https://api.clairia.app';
-        return 'http://localhost:3001';
+        if (process.env.NODE_ENV === 'production') return 'https://app.clairia.app';
+        return 'http://localhost:3000';
     })();
+    console.log('[Mobile Auth] Creating pending session with URL:', `${base}/api/auth/pending-session`);
     const resp = await fetch(`${base}/api/auth/pending-session`, { method: 'POST' });
+    console.log('[Mobile Auth] Pending session response status:', resp.status);
     const data = await resp.json();
     if (!resp.ok || !data.success) throw new Error(data.error || 'pending_session_failed');
     const { session_id, state, code_verifier } = data;
