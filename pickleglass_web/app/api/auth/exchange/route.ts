@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 
+// Interface pour typer les résultats SQLite
+interface PendingSession {
+  session_id: string;
+  state: string;
+  code_challenge: string;
+  code_verifier_hash: string;
+  created_at: number;
+  expires_at: number;
+  used_at?: number;
+  uid?: string;
+  id_token?: string;
+  refresh_token?: string;
+}
+
 // Fonction pour obtenir le chemin de la base de données
 function getDbPath() {
   if (process.env.NODE_ENV === 'development') {
@@ -34,7 +48,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         WHERE session_id = ? AND expires_at > ? AND used = 0
       `);
 
-      checkStmt.get([session_id, now], (err, row) => {
+      checkStmt.get([session_id, now], (err, row: PendingSession | undefined) => {
         if (err) {
           console.error('[API] Erreur lors de la vérification de session:', err);
           resolve(NextResponse.json(
