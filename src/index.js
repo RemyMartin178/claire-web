@@ -598,11 +598,13 @@ async function handleMobileAuthCallback(params) {
             return 'http://localhost:3000';
         })();
         const fetch = require('node-fetch');
+        console.log('[Mobile Auth] Calling exchange API:', `${baseUrl}/api/auth/exchange`);
         const resp = await fetch(`${baseUrl}/api/auth/exchange`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code, state, code_verifier })
         });
+        console.log('[Mobile Auth] Exchange response status:', resp.status);
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data.success) {
             console.error('[Mobile Auth] Exchange failed:', data.error);
@@ -618,10 +620,12 @@ async function handleMobileAuthCallback(params) {
         };
         // Fetch user info to broadcast email to renderers
         try {
+            console.log('[Mobile Auth] Calling /me API:', `${baseUrl}/api/auth/me`);
             const meResp = await fetch(`${baseUrl}/api/auth/me`, {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${id_token}` }
             });
+            console.log('[Mobile Auth] /me response status:', meResp.status);
             const me = await meResp.json().catch(() => ({}));
             const userState = me?.success ? {
                 uid: me.uid,
@@ -644,6 +648,10 @@ async function handleMobileAuthCallback(params) {
             });
         } catch (e) {
             console.warn('[Mobile Auth] Failed to fetch /me:', e.message);
+            // Si l'erreur est due à un bloqueur, on continue avec les données de base
+            if (e.message.includes('ERR_BLOCKED_BY_CLIENT') || e.message.includes('net::ERR_BLOCKED_BY_CLIENT')) {
+                console.log('[Mobile Auth] Request blocked by client (adblocker/antivirus), using fallback user state');
+            }
         }
 
         // Focus app window
