@@ -6,6 +6,7 @@ export class MainHeader extends LitElement {
         shortcuts: { type: Object, state: true },
         listenSessionStatus: { type: String, state: true },
         firebaseUser: { type: Object, state: true },
+        isConnecting: { type: Boolean, state: true },
     };
 
     static styles = css`
@@ -31,7 +32,6 @@ export class MainHeader extends LitElement {
             transform: translateY(-150%) scale(0.85);
             pointer-events: none;
         }
-
 
         * {
             font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -98,164 +98,110 @@ export class MainHeader extends LitElement {
         }
 
         .listen-button:disabled {
-            cursor: default;
-            opacity: 0.8;
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        .listen-button.active::before {
-            background: rgba(215, 0, 0, 0.5);
+        .listen-button:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        .listen-button.active:hover::before {
-            background: rgba(255, 20, 20, 0.6);
+        .listen-button.active {
+            background: rgba(239, 68, 68, 0.2);
         }
 
         .listen-button.done {
-            background-color: rgba(255, 255, 255, 0.6);
-            transition: background-color 0.15s ease;
-        }
-
-        .listen-button.done .action-text-content {
-            color: black;
-        }
-        
-        .listen-button.done .listen-icon svg rect,
-        .listen-button.done .listen-icon svg path {
-            fill: black;
-        }
-
-        .listen-button.done:hover {
-            background-color: #f0f0f0;
-        }
-
-        .listen-button:hover::before {
-            background: rgba(255, 255, 255, 0.18);
-        }
-
-        .listen-button::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255, 255, 255, 0.14);
-            border-radius: 9000px;
-            z-index: -1;
-            transition: background 0.15s ease;
-        }
-
-                 .listen-button::after {
-             content: '';
-             position: absolute;
-             top: 0; left: 0; right: 0; bottom: 0;
-             border-radius: 9000px;
-             padding: 1px;
-             background: rgba(156, 163, 175, 0.25);
-             -webkit-mask:
-                 linear-gradient(#fff 0 0) content-box,
-                 linear-gradient(#fff 0 0);
-             -webkit-mask-composite: destination-out;
-             mask-composite: exclude;
-             pointer-events: none;
-         }
-
-        .listen-button.done::after {
-            display: none;
+            background: rgba(34, 197, 94, 0.2);
         }
 
         .loading-dots {
             display: flex;
+            gap: 2px;
             align-items: center;
-            gap: 5px;
         }
 
         .loading-dots span {
-            width: 6px;
-            height: 6px;
-            background-color: white;
+            width: 3px;
+            height: 3px;
+            background: white;
             border-radius: 50%;
-            animation: pulse 1.4s infinite ease-in-out both;
+            animation: loadingDots 1.4s infinite ease-in-out;
         }
-        .loading-dots span:nth-of-type(1) {
-            animation-delay: -0.32s;
-        }
-        .loading-dots span:nth-of-type(2) {
-            animation-delay: -0.16s;
-        }
-        @keyframes pulse {
+
+        .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes loadingDots {
             0%, 80%, 100% {
-                opacity: 0.2;
+                transform: scale(0);
+                opacity: 0.5;
             }
             40% {
-                opacity: 1.0;
+                transform: scale(1);
+                opacity: 1;
             }
         }
 
         .header-actions {
             -webkit-app-region: no-drag;
             height: 26px;
-            box-sizing: border-box;
-            justify-content: flex-start;
+            padding: 0 13px;
+            background: transparent;
+            border-radius: 9000px;
+            justify-content: center;
             align-items: center;
-            gap: 9px;
+            gap: 6px;
             display: flex;
-            padding: 0 8px;
-            border-radius: 6px;
-            transition: background 0.15s ease;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s ease;
         }
 
         .header-actions:hover {
             background: rgba(255, 255, 255, 0.1);
         }
 
-        .ask-action {
-            margin-left: 4px;
+        .header-actions.connecting {
+            background: rgba(59, 130, 246, 0.2);
+            pointer-events: none;
         }
 
-        .action-button,
         .action-text {
-            padding-bottom: 1px;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
             display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .action-text-content {
             color: white;
             font-size: 12px;
-            font-family: 'Helvetica Neue', sans-serif;
-            font-weight: 500; /* Medium */
-            word-wrap: break-word;
+            font-weight: 500;
+            white-space: nowrap;
         }
 
-        .icon-container {
-            justify-content: flex-start;
-            align-items: center;
-            gap: 4px;
-            display: flex;
-        }
-
-        .icon-container.ask-icons svg,
-        .icon-container.showhide-icons svg {
+        .connecting-icon {
             width: 12px;
             height: 12px;
+            animation: connectingPulse 1.5s infinite ease-in-out;
         }
 
-        .listen-icon svg {
-            width: 12px;
-            height: 11px;
-            position: relative;
-            top: 1px;
+        @keyframes connectingPulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
         }
 
-        .icon-box {
-            color: white;
-            font-size: 12px;
-            font-family: 'Helvetica Neue', sans-serif;
-            font-weight: 500;
-            background-color: rgba(255, 255, 255, 0.1);
-            border-radius: 13%;
-            width: 18px;
-            height: 18px;
+        .connecting-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .listen-icon {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -263,16 +209,17 @@ export class MainHeader extends LitElement {
 
         .settings-button {
             -webkit-app-region: no-drag;
-            padding: 5px;
-            border-radius: 50%;
+            height: 26px;
+            width: 26px;
             background: transparent;
-            transition: background 0.15s ease;
-            color: white;
+            border-radius: 9000px;
+            justify-content: center;
+            align-items: center;
+            display: flex;
             border: none;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            position: relative;
+            transition: background 0.2s ease;
         }
 
         .settings-button:hover {
@@ -283,80 +230,69 @@ export class MainHeader extends LitElement {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 3px;
         }
 
-        .settings-icon svg {
-            width: 16px;
-            height: 16px;
-        }
-        /* ────────────────[ GLASS BYPASS ]─────────────── */
-        :host-context(body.has-glass) .header,
-        :host-context(body.has-glass) .listen-button,
-        :host-context(body.has-glass) .header-actions,
-        :host-context(body.has-glass) .settings-button {
-            background: transparent !important;
-            filter: none !important;
-            box-shadow: none !important;
-            backdrop-filter: none !important;
-        }
-        :host-context(body.has-glass) .icon-box {
-            background: transparent !important;
-            border: none !important;
+        .icon-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        :host-context(body.has-glass) .header::before,
-        :host-context(body.has-glass) .header::after,
-        :host-context(body.has-glass) .listen-button::before,
-        :host-context(body.has-glass) .listen-button::after {
-            display: none !important;
+        @keyframes slideUp {
+            to {
+                transform: translateY(-150%) scale(0.85);
+                opacity: 0;
+            }
         }
 
-        :host-context(body.has-glass) .header-actions:hover,
-        :host-context(body.has-glass) .settings-button:hover,
-        :host-context(body.has-glass) .listen-button:hover::before {
-            background: transparent !important;
-        }
-        :host-context(body.has-glass) * {
-            animation: none !important;
-            transition: none !important;
-            transform: none !important;
-            filter: none !important;
-            backdrop-filter: none !important;
-            box-shadow: none !important;
+        @keyframes slideDown {
+            from {
+                transform: translateY(-150%) scale(0.85);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
         }
 
-        :host-context(body.has-glass) .header,
-        :host-context(body.has-glass) .listen-button,
-        :host-context(body.has-glass) .header-actions,
-        :host-context(body.has-glass) .settings-button,
-        :host-context(body.has-glass) .icon-box {
-            border-radius: 0 !important;
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
         }
-        :host-context(body.has-glass) {
-            animation: none !important;
-            transition: none !important;
-            transform: none !important;
-            will-change: auto !important;
-        }
-        `;
+    `;
 
     constructor() {
         super();
-        this.shortcuts = {};
-        this.isVisible = true;
-        this.isAnimating = false;
-        this.hasSlidIn = false;
-        this.settingsHideTimer = null;
         this.isTogglingSession = false;
-        this.listenSessionStatus = 'beforeSession';
-        this.animationEndTimer = null;
+        this.shortcuts = {};
+        this.listenSessionStatus = 'idle';
         this.firebaseUser = null;
-        this.handleAnimationEnd = this.handleAnimationEnd.bind(this);
-        this.handleMouseMove = this.handleMouseMove.bind(this);
-        this.handleMouseUp = this.handleMouseUp.bind(this);
-        this.dragState = null;
-        this.wasJustDragged = false;
+        this.isConnecting = false;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        
+        // Écouter les changements d'état utilisateur
+        window.addEventListener('user-state-changed', (event) => {
+            const userState = event.detail;
+            this.firebaseUser = userState;
+            
+            // Si l'utilisateur se connecte, réinitialiser l'état de connexion
+            if (userState && userState.isLoggedIn) {
+                this.isConnecting = false;
+            }
+        });
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('user-state-changed', this._handleUserStateChange);
     }
 
     _getListenButtonText(status) {
@@ -469,130 +405,52 @@ export class MainHeader extends LitElement {
         this.classList.add('sliding-in');
     }
 
-    connectedCallback() {
-        super.connectedCallback();
-        this.addEventListener('animationend', this.handleAnimationEnd);
-
-        if (window.api) {
-            // Initialize auth state immediately to avoid UI flash
-            if (window.api.common?.getCurrentUser) {
-                window.api.common.getCurrentUser().then(userState => {
-                    this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
-                    this.requestUpdate();
-                }).catch(() => {});
-            }
-
-            this._sessionStateTextListener = (event, { success }) => {
-                if (success) {
-                    this.listenSessionStatus = ({
-                        beforeSession: 'inSession',
-                        inSession: 'afterSession',
-                        afterSession: 'beforeSession',
-                    })[this.listenSessionStatus] || 'beforeSession';
-                } else {
-                    this.listenSessionStatus = 'beforeSession';
-                }
-                this.isTogglingSession = false; // ✨ 로딩 상태만 해제
-            };
-            window.api.mainHeader.onListenChangeSessionResult(this._sessionStateTextListener);
-
-            this._shortcutListener = (event, keybinds) => {
-                console.log('[MainHeader] Received updated shortcuts:', keybinds);
-                this.shortcuts = keybinds;
-            };
-            window.api.mainHeader.onShortcutsUpdated(this._shortcutListener);
-
-            this._userStateListener = (event, userState) => {
-                this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
-                this.requestUpdate();
-            };
-            window.api.headerController.onUserStateChanged(this._userStateListener);
-        }
-    }
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        this.removeEventListener('animationend', this.handleAnimationEnd);
+    _handleUserStateChange(event) {
+        const userState = event.detail;
+        this.firebaseUser = userState;
         
-        if (this.animationEndTimer) {
-            clearTimeout(this.animationEndTimer);
-            this.animationEndTimer = null;
-        }
-        
-        if (window.api) {
-            if (this._sessionStateTextListener) {
-                window.api.mainHeader.removeOnListenChangeSessionResult(this._sessionStateTextListener);
-            }
-            if (this._shortcutListener) {
-                window.api.mainHeader.removeOnShortcutsUpdated(this._shortcutListener);
-            }
-            if (this._userStateListener) {
-                window.api.headerController.removeOnUserStateChanged(this._userStateListener);
-            }
-        }
-    }
-
-    showSettingsWindow(element) {
-        if (this.wasJustDragged) return;
-        if (window.api) {
-            console.log(`[MainHeader] showSettingsWindow called at ${Date.now()}`);
-            window.api.mainHeader.showSettingsWindow();
-
-        }
-    }
-
-    hideSettingsWindow() {
-        if (this.wasJustDragged) return;
-        if (window.api) {
-            console.log(`[MainHeader] hideSettingsWindow called at ${Date.now()}`);
-            window.api.mainHeader.hideSettingsWindow();
+        // Si l'utilisateur se connecte, réinitialiser l'état de connexion
+        if (userState && userState.isLoggedIn) {
+            this.isConnecting = false;
         }
     }
 
     async _handleListenClick() {
-        if (this.wasJustDragged) return;
-        if (this.isTogglingSession) {
-            return;
-        }
-
+        if (this.isTogglingSession) return;
+        
         this.isTogglingSession = true;
-
         try {
-            const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
-            if (window.api) {
-                if (!this.firebaseUser) return;
-                await window.api.mainHeader.sendListenButtonClick(listenButtonText);
-            }
+            await window.api.listenView.toggleListenSession();
         } catch (error) {
-            console.error('IPC invoke for session change failed:', error);
+            console.error('[MainHeader] Listen session toggle failed:', error);
+        } finally {
             this.isTogglingSession = false;
         }
     }
 
     async _handleAskClick() {
-        if (this.wasJustDragged) return;
-
         try {
-            if (window.api) {
-                await window.api.mainHeader.sendAskButtonClick();
-            }
+            await window.api.askView.toggleAskWindow();
         } catch (error) {
-            console.error('IPC invoke for ask button failed:', error);
+            console.error('[MainHeader] Ask window toggle failed:', error);
         }
     }
 
     async _handleToggleAllWindowsVisibility() {
-        if (this.wasJustDragged) return;
-
         try {
-            if (window.api) {
-                await window.api.mainHeader.sendToggleAllWindowsVisibility();
-            }
+            await window.api.shortcut.toggleAllWindowsVisibility();
         } catch (error) {
-            console.error('IPC invoke for all windows visibility button failed:', error);
+            console.error('[MainHeader] Toggle windows visibility failed:', error);
         }
     }
 
+    showSettingsWindow(target) {
+        window.api.settingsView.showSettingsWindow();
+    }
+
+    hideSettingsWindow() {
+        window.api.settingsView.hideSettingsWindow();
+    }
 
     renderShortcut(accelerator) {
         if (!accelerator) return html``;
@@ -630,17 +488,40 @@ export class MainHeader extends LitElement {
         return html`
             <div class="header">
                 ${!isLoggedIn ? html`
-                    <div class="header-actions" @click=${async () => {
+                    <div class="header-actions ${this.isConnecting ? 'connecting' : ''}" @click=${async () => {
+                        if (this.isConnecting) return;
+                        
                         try {
+                            this.isConnecting = true;
                             const { session_id } = await window.api.settingsView.mobileCreatePendingSession();
-                            if (!session_id) return;
+                            if (!session_id) {
+                                this.isConnecting = false;
+                                return;
+                            }
                             const webUrl = await window.api.common.getWebUrl();
                             const target = `${webUrl.replace(/\/$/, '')}/auth/login?flow=mobile&session_id=${encodeURIComponent(session_id)}`;
                             await window.api.common.openExternal(target);
-                        } catch (e) { console.error('[MainHeader] Mobile login failed:', e); }
+                            
+                            // Reset connecting state after 30 seconds if no response
+                            setTimeout(() => {
+                                this.isConnecting = false;
+                            }, 30000);
+                        } catch (e) { 
+                            console.error('[MainHeader] Mobile login failed:', e);
+                            this.isConnecting = false;
+                        }
                     }}>
                         <div class="action-text">
-                            <div class="action-text-content">Se connecter</div>
+                            <div class="action-text-content">
+                                ${this.isConnecting ? 'Connexion en cours...' : 'Se connecter'}
+                            </div>
+                            ${this.isConnecting ? html`
+                                <div class="connecting-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.9 1 3 1.9 3 3V21C3 22.1 3.9 23 5 23H19C20.1 23 21 22.1 21 21V9ZM19 9H14V4H5V21H19V9Z" fill="white"/>
+                                    </svg>
+                                </div>
+                            ` : html``}
                         </div>
                     </div>
                 ` : html``}
@@ -713,3 +594,4 @@ export class MainHeader extends LitElement {
 }
 
 customElements.define('main-header', MainHeader);
+
