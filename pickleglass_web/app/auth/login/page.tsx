@@ -67,18 +67,24 @@ function LoginContent() {
       const user = await signInWithEmail(formData.email, formData.password, formData.rememberMe)
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow && user) {
-        const idToken = await user.getIdToken(true)
-        const refreshToken = user.refreshToken
-        const API = getApiBase()
-        const response = await fetch(API + '/api/auth/associate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
-        })
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || 'Échec de l\'association des tokens')
+        try {
+          const idToken = await user.getIdToken(true)
+          const refreshToken = user.refreshToken
+          const API = getApiBase()
+          const response = await fetch(API + '/api/auth/associate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
+          })
+          
+          if (!response.ok) {
+            console.warn('Association des tokens échouée, mais on continue vers la page de succès')
+          } else {
+            console.log('Tokens associés avec succès')
+          }
+        } catch (error) {
+          console.warn('Erreur lors de l\'association des tokens:', error)
+          // On continue quand même vers la page de succès
         }
       }
       sessionStorage.removeItem('manuallyLoggedOut')
@@ -107,21 +113,27 @@ function LoginContent() {
       
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow) {
-        const user = auth.currentUser
-        if (user) {
-          const idToken = await user.getIdToken(true)
-          const refreshToken = user.refreshToken
-          const API = getApiBase()
-          const response = await fetch(API + '/api/auth/associate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
-          })
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}))
-            throw new Error(errorData.error || 'Échec de l\'association des tokens')
+        try {
+          const user = auth.currentUser
+          if (user) {
+            const idToken = await user.getIdToken(true)
+            const refreshToken = user.refreshToken
+            const API = getApiBase()
+            const response = await fetch(API + '/api/auth/associate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
+            })
+            
+            if (!response.ok) {
+              console.warn('Association des tokens échouée, mais on continue vers la page de succès')
+            } else {
+              console.log('Tokens associés avec succès')
+            }
           }
+        } catch (error) {
+          console.warn('Erreur lors de l\'association des tokens:', error)
+          // On continue quand même vers la page de succès
         }
       }
       
