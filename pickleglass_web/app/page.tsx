@@ -11,8 +11,8 @@ export default function HomePage() {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        // Utilisateur connecté → redirection vers le dashboard
-        router.push('/dashboard')
+        // Utilisateur connecté → redirection vers l'accueil
+router.push('/accueil')
       } else {
         // Utilisateur non connecté → redirection vers clairia.app
         router.push('https://clairia.app')

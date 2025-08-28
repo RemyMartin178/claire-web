@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, createElement, useEffect, useMemo, useCallback, memo } from 'react';
-import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, Home, MessageSquare } from 'lucide-react';
+import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, MessageSquare } from 'lucide-react';
 import ProfileMenu from '@/components/sidebar/ProfileMenu';
 import { logout, checkApiKeyStatus } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -202,14 +202,6 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const navigation = useMemo<NavigationItem[]>(
         () => {
             const baseNavigation = [
-                {
-                    name: 'Dashboard',
-                    href: '/dashboard',
-                    icon: Home,
-                    isLucide: true,
-                    ariaLabel: 'Dashboard',
-                    isActive: pathname === '/dashboard',
-                },
                 {
                     name: 'Personnaliser',
                     href: '/personalize',

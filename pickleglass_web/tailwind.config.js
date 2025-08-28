@@ -44,7 +44,7 @@ module.exports = {
         'text-main': '#ffffff',
         'text-secondary': '#9ca3af',
         'text-muted': '#6b7280',
-        'accent-light': '#10a37f',
+        'accent-light': '#9ca3af',
         'hover-bg': 'rgba(255, 255, 255, 0.05)',
         'active-bg': 'rgba(255, 255, 255, 0.1)',
       },

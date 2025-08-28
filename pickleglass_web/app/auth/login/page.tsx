@@ -64,7 +64,7 @@ function LoginContent() {
     setError('')
 
     try {
-      const user = await signInWithEmail(formData.email, formData.password)
+      const user = await signInWithEmail(formData.email, formData.password, formData.rememberMe)
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow && user) {
         const idToken = await user.getIdToken(true)
@@ -103,7 +103,7 @@ function LoginContent() {
     try {
       setIsLoading(true)
       setError('')
-      await signInWithGoogle()
+      await signInWithGoogle(formData.rememberMe)
       
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow) {
@@ -167,10 +167,9 @@ function LoginContent() {
         </div>
         
         {/* Formulaire avec finitions Cluely */}
-        <div className="bg-[#232329] rounded-2xl shadow-cluely border border-[#3a3a4a] p-8 hover-lift backdrop-blur-md animate-scale-in">
+        <div className="animate-scale-in w-full max-w-lg">
           <div className="text-center mb-6 animate-fade-in">
             <h2 className="text-2xl font-bold text-white mb-2">Bienvenue sur Claire</h2>
-            <p className="text-[#bbb] text-sm">Connectez-vous à votre compte pour continuer</p>
           </div>
 
           {error && (
@@ -185,15 +184,14 @@ function LoginContent() {
                 Adresse email
               </label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 group-focus-within:text-accent-light transition-colors duration-200" />
                 <input
                   id="email"
                   name="email"
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full pl-12 pr-4 py-4 bg-[#2a2a32] border border-[#3a3a4a] rounded-xl focus:outline-none focus:border-accent-light focus:ring-2 focus:ring-accent-light/20 text-white placeholder-[#bbb] text-sm transition-all duration-200 backdrop-blur-sm hover:border-[#4a4a5a] focus:shadow-glow"
-                  placeholder="name@work-email.com"
+                  className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                  placeholder="exemple@email.com"
                   required
                 />
               </div>
@@ -204,21 +202,21 @@ function LoginContent() {
                 Mot de passe
               </label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 group-focus-within:text-accent-light transition-colors duration-200" />
                 <input
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full pl-12 pr-12 py-4 bg-[#2a2a32] border border-[#3a3a4a] rounded-xl focus:outline-none focus:border-accent-light focus:ring-2 focus:ring-accent-light/20 text-white placeholder-[#bbb] text-sm transition-all duration-200 backdrop-blur-sm hover:border-[#4a4a5a] focus:shadow-glow"
-                  placeholder="••••••••"
+                  className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                  placeholder=""
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-white transition-all duration-200 hover:scale-110"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
+                  style={{ transform: 'translate(-50%, -50%)' }}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -232,11 +230,11 @@ function LoginContent() {
                   name="rememberMe"
                   checked={formData.rememberMe}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-accent-light bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-2 focus:ring-accent-light/20 transition-all duration-200 group-hover:border-[#4a4a5a]"
+                  className="w-4 h-4 text-[#9ca3af] bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-2 focus:ring-[#9ca3af]/20 transition-all duration-200 group-hover:border-[#4a4a5a]"
                 />
                 <span className="ml-2 text-white text-sm group-hover:text-white/90 transition-colors duration-200">Se souvenir de moi</span>
               </label>
-              <a href="/auth/forgot-password" className="text-accent-light hover:text-accent-light/80 text-sm font-medium transition-all duration-200 hover:underline">
+              <a href="/auth/forgot-password" className="text-[#9ca3af] hover:text-[#e5e5e5] text-sm font-medium transition-colors duration-200 hover:underline">
                 Mot de passe oublié ?
               </a>
             </div>
@@ -244,7 +242,7 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-accent-light hover:bg-accent-light/90 text-white py-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 text-sm flex items-center justify-center hover:shadow-cluely-hover group animate-slide-up"
+              className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center group animate-slide-up border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
               style={{ animationDelay: '0.4s' }}
             >
               {isLoading ? (
@@ -255,7 +253,7 @@ function LoginContent() {
               ) : (
                 <>
                   Continuer
-                  <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </>
@@ -274,12 +272,12 @@ function LoginContent() {
             </div>
 
             <div className="mt-6">
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center px-4 py-4 border border-[#3a3a4a] rounded-xl hover:bg-[#2a2a32] transition-all duration-200 text-white text-sm bg-[#232329] disabled:opacity-50 hover:shadow-cluely-hover group"
-              >
-                <svg className="w-5 h-5 mr-3 group-hover:scale-110 transition-transform duration-200" viewBox="0 0 24 24">
+                              <button
+                  onClick={handleGoogleSignIn}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-[#3a3a4a] bg-[#232329] text-[#e5e5e5] hover:bg-[#2a2a32] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none group"
+                >
+                                  <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -305,9 +303,9 @@ function LoginContent() {
           <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '0.6s' }}>
             <p className="text-[#bbb] text-sm">
               Pas encore de compte ?{' '}
-              <a href="/auth/register" className="text-accent-light hover:text-accent-light/80 font-medium transition-all duration-200 hover:underline">
-                Créer un compte
-              </a>
+                           <a href="/auth/register" className="text-[#9ca3af] hover:text-[#e5e5e5] font-medium transition-colors duration-200 hover:underline">
+               Créer un compte
+             </a>
             </p>
           </div>
         </div>

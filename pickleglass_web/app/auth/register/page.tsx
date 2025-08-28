@@ -110,7 +110,7 @@ function RegisterContent() {
     try {
       setIsLoading(true)
       setError('')
-      const user = await signInWithGoogle()
+      const user = await signInWithGoogle(true) // Toujours se souvenir lors de l'inscription
       sessionStorage.removeItem('manuallyLoggedOut')
       if (isMobileFlow && user) {
         const idToken = await user.getIdToken(true)
@@ -158,11 +158,10 @@ function RegisterContent() {
           <h1 className="text-2xl font-bold text-white">Claire</h1>
         </div>
         
-        <div className="bg-[#232329] rounded-xl shadow-lg border border-[#3a3a4a] p-8">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-white mb-2">Créer votre compte</h2>
-            <p className="text-[#bbb] text-sm">Rejoignez Claire et commencez votre expérience IA</p>
-          </div>
+        <div className="w-full max-w-lg">
+                     <div className="text-center mb-6">
+             <h2 className="text-2xl font-bold text-white mb-2">Créer votre compte</h2>
+           </div>
 
           {error && (
             <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
@@ -174,94 +173,91 @@ function RegisterContent() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-white mb-1">Prénom</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
-                    placeholder="Prénom"
-                  />
-                </div>
+                                 <div className="relative">
+                   <input
+                     type="text"
+                     name="firstName"
+                     value={formData.firstName}
+                     onChange={handleInputChange}
+                     className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                     placeholder=""
+                   />
+                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-white mb-1">Nom</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
-                    placeholder="Nom"
-                  />
-                </div>
+                                 <div className="relative">
+                   <input
+                     type="text"
+                     name="lastName"
+                     value={formData.lastName}
+                     onChange={handleInputChange}
+                     className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                     placeholder=""
+                   />
+                 </div>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-white mb-1">Email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full pl-10 pr-4 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
-                  placeholder="name@work-email.com"
-                />
-              </div>
+                             <div className="relative">
+                 <input
+                   type="email"
+                   name="email"
+                   value={formData.email}
+                   onChange={handleInputChange}
+                   required
+                   className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                   placeholder="exemple@email.com"
+                 />
+               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-white mb-1">Mot de passe</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full pl-10 pr-12 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-white transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+                             <div className="relative">
+                 <input
+                   type={showPassword ? "text" : "password"}
+                   name="password"
+                   value={formData.password}
+                   onChange={handleInputChange}
+                   required
+                   className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                   placeholder=""
+                 />
+                                   <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
+                    style={{ transform: 'translate(-50%, -50%)' }}
+                  >
+                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                 </button>
+               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-white mb-1">Confirmer le mot de passe</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full pl-10 pr-12 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] hover:text-white transition-colors"
-                >
-                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+                             <div className="relative">
+                 <input
+                   type={showConfirmPassword ? "text" : "password"}
+                   name="confirmPassword"
+                   value={formData.confirmPassword}
+                   onChange={handleInputChange}
+                   required
+                   className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                   placeholder=""
+                 />
+                                   <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
+                    style={{ transform: 'translate(-50%, -50%)' }}
+                  >
+                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                 </button>
+               </div>
             </div>
 
             <div className="flex items-center">
@@ -270,21 +266,21 @@ function RegisterContent() {
                 name="agreeToTerms"
                 checked={formData.agreeToTerms}
                 onChange={handleInputChange}
-                className="w-4 h-4 text-accent-light bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-accent-light focus:ring-2"
+                className="w-4 h-4 text-[#9ca3af] bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-[#9ca3af] focus:ring-2"
               />
               <label className="ml-2 text-sm text-white">
                 J&apos;accepte les{' '}
-                <a href="/terms" className="text-accent-light hover:text-accent-light/80 font-medium">
+                <a href="/terms" className="text-[#9ca3af] hover:text-[#e5e5e5] font-medium transition-colors duration-200 hover:underline">
                   conditions d&apos;utilisation
                 </a>
               </label>
             </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-accent-light hover:bg-accent-light/90 text-white py-3 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 text-sm flex items-center justify-center"
-            >
+                         <button
+               type="submit"
+               disabled={isLoading}
+                                                                                                                               className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
+             >
               {isLoading ? 'Création du compte...' : 'Créer mon compte'}
               {!isLoading && (
                 <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -305,11 +301,11 @@ function RegisterContent() {
             </div>
 
             <div className="mt-4">
-              <button
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-                className="w-full flex items-center justify-center px-4 py-3 border border-[#3a3a4a] rounded-lg hover:bg-[#2a2a32] transition-colors text-white text-sm bg-[#232329] disabled:opacity-50"
-              >
+                             <button
+                 onClick={handleGoogleSignIn}
+                 disabled={isLoading}
+                                                                                                                                               className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-[#3a3a4a] bg-[#232329] text-[#e5e5e5] hover:bg-[#2a2a32] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
+               >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -336,7 +332,7 @@ function RegisterContent() {
           <div className="mt-6 text-center">
             <p className="text-[#bbb] text-sm">
               Déjà un compte ?{' '}
-              <a href="/auth/login" className="text-accent-light hover:text-accent-light/80 font-medium">
+              <a href="/auth/login" className="text-[#9ca3af] hover:text-[#e5e5e5] font-medium transition-colors duration-200 hover:underline">
                 Se connecter
               </a>
             </p>

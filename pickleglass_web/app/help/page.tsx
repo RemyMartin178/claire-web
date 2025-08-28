@@ -11,29 +11,12 @@ export default function HelpPage() {
   const { user: userInfo, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && !userInfo) {
-      router.push('/login');
-    }
-  }, [userInfo, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!userInfo) {
-    return null;
+  if (loading || !userInfo) {
+    return null
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 animate-fade-in">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Centre d’aide</h1>
         
@@ -54,7 +37,7 @@ export default function HelpPage() {
 
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <div className="flex items-center mb-4">
-              <HelpCircle className="h-6 w-6 text-green-600 mr-3" />
+              <HelpCircle className="h-6 w-6 text-[#9ca3af] mr-3" />
               <h2 className="text-xl font-semibold text-gray-900">Questions fréquentes</h2>
             </div>
             <p className="text-gray-600 mb-4">Consultez les questions fréquemment posées et les réponses des autres utilisateurs.</p>

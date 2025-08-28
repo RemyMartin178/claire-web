@@ -9,21 +9,8 @@ export default function PrivacySettingsPage() {
   const { user: userInfo, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && !userInfo) {
-      router.push('/login');
-    }
-  }, [userInfo, loading, router]);
-
-  if (!userInfo) {
-    return (
-      <div className="min-h-screen bg-[#1E1E1E] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    )
+  if (loading || !userInfo) {
+    return null
   }
 
   const tabs = [
@@ -33,7 +20,7 @@ export default function PrivacySettingsPage() {
   ]
 
   return (
-    <div className="bg-transparent min-h-screen text-white">
+    <div className="bg-transparent min-h-screen text-white animate-fade-in">
       <div className="px-8 py-8">
         <div className="mb-6">
           <p className="text-xs text-white mb-1">Paramètres</p>
@@ -48,8 +35,8 @@ export default function PrivacySettingsPage() {
                 href={tab.href}
                 className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                   tab.id === 'privacy'
-                    ? 'border-accent-light text-white'
-                    : 'border-transparent text-white hover:text-accent-light hover:border-accent-light'
+                    ? 'border-[#9ca3af] text-white'
+                    : 'border-transparent text-white hover:text-[#9ca3af] hover:border-[#9ca3af]'
                 }`}
               >
                 {tab.name}

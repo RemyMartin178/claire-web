@@ -16,7 +16,7 @@ export default function ConditionalLayout({
   
   if (isAuthPage) {
     return (
-      <div className="min-h-screen" style={{ background: '#1E1E1E' }}>
+      <div className="min-h-screen" style={{ background: '#202123' }}>
         {children}
       </div>
     )

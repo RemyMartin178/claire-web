@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function SuccessPage() {
+function SuccessContent() {
   const sp = useSearchParams();
   const router = useRouter();
   const flow = sp.get('flow');
@@ -60,7 +60,7 @@ export default function SuccessPage() {
   return (
     <main className="mx-auto max-w-md p-6">
       <h1 className="text-xl font-semibold">connexion réussie</h1>
-      <p className="mt-2">on te renvoie vers l'app claire…</p>
+              <p className="mt-2">on te renvoie vers l&apos;app claire...</p>
       {manual && deep && (
         <a
           href={deep}
@@ -79,6 +79,14 @@ state=${state}`}
         </pre>
       )}
     </main>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={null}>
+      <SuccessContent />
+    </Suspense>
   );
 }
 

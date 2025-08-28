@@ -53,10 +53,10 @@ export default function ForgotPasswordPage() {
           </div>
           
           {/* Succès */}
-          <div className="bg-[#232329] rounded-xl shadow-lg border border-[#3a3a4a] p-8">
+          <div className="w-full max-w-lg">
             <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-green-900/20 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-16 h-16 bg-[#9ca3af]/20 border border-[#9ca3af]/30 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
               </p>
               <button
                 onClick={() => router.push('/auth/login')}
-                className="w-full bg-accent-light hover:bg-accent-light/90 text-white py-3 rounded-lg font-medium transition-all duration-200 text-sm flex items-center justify-center"
+                className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Retour à la connexion
@@ -94,13 +94,10 @@ export default function ForgotPasswordPage() {
         </div>
         
         {/* Formulaire */}
-        <div className="bg-[#232329] rounded-xl shadow-lg border border-[#3a3a4a] p-8">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-white mb-2">Mot de passe oublié ?</h2>
-            <p className="text-[#bbb] text-sm">
-              Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
-            </p>
-          </div>
+        <div className="w-full max-w-lg">
+                     <div className="text-center mb-6">
+             <h2 className="text-2xl font-bold text-white mb-2">Mot de passe oublié ?</h2>
+           </div>
 
           {error && (
             <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
@@ -113,25 +110,24 @@ export default function ForgotPasswordPage() {
               <label htmlFor="email" className="block text-sm font-medium text-white mb-1">
                 Adresse email
               </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-[#2a2a32] border border-[#3a3a4a] rounded-lg focus:outline-none focus:border-accent-light focus:ring-1 focus:ring-accent-light text-white placeholder-[#bbb] text-sm transition-all"
-                  placeholder="name@work-email.com"
-                  required
-                />
-              </div>
+                             <div className="relative">
+                 <input
+                   id="email"
+                   name="email"
+                   type="email"
+                   value={email}
+                   onChange={(e) => setEmail(e.target.value)}
+                   className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                   placeholder="exemple@email.com"
+                   required
+                 />
+               </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-accent-light hover:bg-accent-light/90 text-white py-3 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 text-sm flex items-center justify-center"
+              className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
             >
               {isLoading ? 'Envoi...' : 'Envoyer le lien de réinitialisation'}
               {!isLoading && (
@@ -145,7 +141,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-6 text-center">
             <button
               onClick={() => router.push('/auth/login')}
-              className="text-accent-light hover:text-accent-light/80 text-sm font-medium flex items-center justify-center mx-auto"
+              className="text-[#9ca3af] hover:text-[#e5e5e5] text-sm font-medium flex items-center justify-center mx-auto transition-colors duration-200 hover:underline"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Retour à la connexion

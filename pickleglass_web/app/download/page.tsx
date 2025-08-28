@@ -9,29 +9,12 @@ export default function DownloadPage() {
   const { user: userInfo, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && !userInfo) {
-      router.push('/login');
-    }
-  }, [userInfo, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!userInfo) {
-    return null;
+  if (loading || !userInfo) {
+    return null
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 animate-fade-in">
       <div className="max-w-4xl mx-auto text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Télécharger PickleGlass</h1>
         <p className="text-lg text-gray-600 mb-12">
@@ -50,14 +33,14 @@ export default function DownloadPage() {
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-shadow">
-            <Smartphone className="h-16 w-16 text-green-600 mx-auto mb-4" />
+            <Smartphone className="h-16 w-16 text-[#9ca3af] mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">Mobile</h3>
             <p className="text-gray-600 mb-6">iOS, Android</p>
             <div className="space-y-3">
               <button className="w-full bg-gray-900 text-white py-3 px-6 rounded-lg hover:bg-gray-800 transition-colors">
                 App Store
               </button>
-              <button className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors">
+              <button className="w-full bg-[#9ca3af] text-white py-3 px-6 rounded-lg hover:bg-[#8b8b8b] transition-colors">
                 Google Play
               </button>
             </div>

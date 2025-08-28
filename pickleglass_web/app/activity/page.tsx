@@ -31,28 +31,17 @@ export default function ActivityPage() {
   }
 
   useEffect(() => {
-    if (!loading && !userInfo) {
-      router.push('/login');
-      return;
-    }
     if (userInfo) {
       fetchSessions()
     }
-  }, [userInfo, loading, router])
+  }, [userInfo])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    )
+    if (loading) {
+    return null
   }
 
   if (!userInfo) {
-    return null; // Will redirect to login
+    return null
   }
 
   const getGreeting = () => {
@@ -77,7 +66,7 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#202123' }}>
+    <div className="min-h-screen animate-fade-in" style={{ background: '#202123' }}>
       <div className="max-w-4xl mx-auto px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-2xl text-white">
@@ -91,7 +80,7 @@ export default function ActivityPage() {
           {isLoading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-              <p className="mt-4 text-gray-600">Chargement des conversations...</p>
+                             <p className="mt-4 text-white">Chargement des conversations...</p>
             </div>
           ) : sessions.length > 0 ? (
             <div className="space-y-4">
@@ -114,7 +103,7 @@ export default function ActivityPage() {
                       {deletingId === session.id ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
-                  <span className={`capitalize inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${session.session_type === 'listen' ? 'bg-accent-light text-white' : 'bg-accent-light text-white'}`}>
+                                     <span className={`capitalize inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${session.session_type === 'listen' ? 'bg-[#9ca3af] text-white' : 'bg-[#9ca3af] text-white'}`}>
                     {session.session_type === 'ask' ? 'Demander' : session.session_type || 'Demander'}
                   </span>
                 </div>

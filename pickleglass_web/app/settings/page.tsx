@@ -75,19 +75,7 @@ export default function SettingsPage() {
     }
   }, [userInfo])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#1E1E1E] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!userInfo) {
-    window.location.replace('https://clairia.app')
+       if (loading || !userInfo) {
     return null
   }
 
@@ -162,11 +150,11 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <div className={`p-4 rounded-lg border ${isFirebaseMode ? 'bg-card-bg border-sidebar-border' : 'bg-card-bg border-sidebar-border text-white'}`}>
         <div className="flex items-center gap-2 mb-2">
-          {isFirebaseMode ? (
-            <Cloud className="h-5 w-5 text-accent-light" />
-          ) : (
-            <HardDrive className="h-5 w-5 text-accent-light" />
-          )}
+                     {isFirebaseMode ? (
+             <Cloud className="h-5 w-5 text-[#9ca3af]" />
+           ) : (
+             <HardDrive className="h-5 w-5 text-[#9ca3af]" />
+           )}
           <h3 className={`font-semibold text-white`}>
             {isFirebaseMode ? 'Firebase Hosting Mode' : 'Local Execution Mode'}
           </h3>
@@ -182,21 +170,21 @@ export default function SettingsPage() {
       <div className="flex gap-2">
         <button
           onClick={() => setBillingCycle('monthly')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            billingCycle === 'monthly'
-              ? 'bg-accent-light text-white'
-              : 'text-[#9ca3af] hover:text-white'
-          }`}
+                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+             billingCycle === 'monthly'
+               ? 'bg-[#9ca3af] text-white'
+               : 'text-[#9ca3af] hover:text-white'
+           }`}
         >
           Monthly
         </button>
         <button
           onClick={() => setBillingCycle('annually')}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            billingCycle === 'annually'
-              ? 'bg-accent-light text-white'
-              : 'text-[#9ca3af] hover:text-white'
-          }`}
+                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+             billingCycle === 'annually'
+               ? 'bg-[#9ca3af] text-white'
+               : 'text-[#9ca3af] hover:text-white'
+           }`}
         >
           Annually
         </button>
@@ -217,27 +205,27 @@ export default function SettingsPage() {
           
           <ul className="space-y-3 mb-8">
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Daily unlimited responses</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Unlimited access to free models</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Unlimited text output</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Screen viewing, audio listening</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Custom system prompts</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Community support only</span>
             </li>
           </ul>
@@ -261,23 +249,23 @@ export default function SettingsPage() {
           
           <ul className="space-y-3 mb-8">
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Unlimited pro responses</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Unlimited access to latest models</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Full access to conversation dashboard</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">Priority support</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-500" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-700">All features from free plan</span>
             </li>
           </ul>
@@ -299,31 +287,31 @@ export default function SettingsPage() {
           
           <ul className="space-y-3 mb-8">
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-300">Custom integrations</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-300">User provisioning & role-based access</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-300">Advanced post-call analytics</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-300">Single sign-on</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-300">Advanced security features</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-300">Centralized billing</span>
             </li>
             <li className="flex items-center gap-3">
-              <Check className="h-5 w-5 text-green-400" />
+              <Check className="h-5 w-5 text-[#9ca3af]" />
               <span className="text-sm text-gray-300">Usage analytics & reporting dashboard</span>
             </li>
           </ul>
@@ -334,12 +322,12 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <Check className="h-6 w-6 text-green-600" />
-          <div>
-            <h4 className="font-semibold text-green-900">All features are currently free!</h4>
-            <p className="text-green-700 text-sm">
+             <div className="bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg p-6">
+         <div className="flex items-center gap-3">
+           <Check className="h-6 w-6 text-[#9ca3af]" />
+           <div>
+             <h4 className="font-semibold text-white">All features are currently free!</h4>
+             <p className="text-[#9ca3af] text-sm">
               {isFirebaseMode 
                 ? 'Enjoy all Pickle Glass features for free in Firebase hosting mode. Pro and Enterprise plans will be released soon with additional premium features.'
                 : 'Enjoy all Pickle Glass features for free in local mode. You can use personal API keys or continue using the free system.'
@@ -367,7 +355,7 @@ export default function SettingsPage() {
                     id="display-name"
                     value={displayNameInput}
                     onChange={(e) => setDisplayNameInput(e.target.value)}
-                    className="block w-full rounded-md border border-[#3a3a4a] bg-[#232329] text-white placeholder-[#9ca3af] focus:ring-2 focus:ring-accent-light sm:text-sm"
+                                         className="block w-full rounded-md border border-[#3a3a4a] bg-[#232329] text-white placeholder-[#9ca3af] focus:outline-none focus:border-[#3f3f46] sm:text-sm"
                     maxLength={32}
                   />
                   <p className="text-xs text-[#E0E0E0] mt-2">Vous pouvez utiliser jusqu’à 32 caractères.</p>
@@ -376,7 +364,7 @@ export default function SettingsPage() {
                 <button
                     onClick={handleUpdateDisplayName}
                     disabled={isSaving || !displayNameInput || displayNameInput === profile?.display_name}
-                    className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none focus:ring-2 focus:ring-accent-light disabled:opacity-50"
+                    className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none disabled:opacity-50"
                   >
                     Mettre à jour
                   </button>
@@ -398,13 +386,13 @@ export default function SettingsPage() {
                       id="api-key"
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
-                      className="block w-full rounded-md border border-[#3a3a4a] bg-[#232329] text-white placeholder-white focus:ring-2 focus:ring-accent-light sm:text-sm"
+                                             className="block w-full rounded-md border border-[#3a3a4a] bg-[#232329] text-white placeholder-white focus:outline-none focus:border-[#3f3f46] sm:text-sm"
                       placeholder="Saisir une nouvelle clé API ou une clé existante"
                     />
                   </div>
-                  {hasApiKey ? (
-                    <p className="text-xs text-green-600 mt-2">Clé API actuellement définie.</p>
-                  ) : (
+                                     {hasApiKey ? (
+                     <p className="text-xs text-[#9ca3af] mt-2">Clé API actuellement définie.</p>
+                   ) : (
                     <p className="text-xs text-white mt-2">Aucune clé API définie. Utilisation du système gratuit.</p>
                   )}
                 </div>
@@ -413,7 +401,7 @@ export default function SettingsPage() {
                    <button
                       onClick={handleSaveApiKey}
                       disabled={isSaving || !apiKeyInput}
-                      className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none focus:ring-2 focus:ring-accent-light disabled:opacity-50"
+                      className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none disabled:opacity-50"
                     >
                       {isSaving ? 'Enregistrement...' : 'Enregistrer'}
                     </button>
@@ -445,7 +433,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="bg-transparent min-h-screen text-white">
+    <div className="bg-transparent min-h-screen text-white animate-fade-in">
       <div className="px-8 py-8">
         <div className="mb-6">
           <p className="text-xs text-white mb-1">Paramètres</p>
@@ -459,11 +447,11 @@ export default function SettingsPage() {
                 key={tab.id}
                 href={tab.href}
                 onClick={tab.id === 'privacy' ? undefined : () => setActiveTab(tab.id)}
-                className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-accent-light text-white'
-                    : 'border-transparent text-white hover:text-accent-light hover:border-accent-light'
-                }`}
+                                 className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                   activeTab === tab.id
+                     ? 'border-[#9ca3af] text-white'
+                     : 'border-transparent text-white hover:text-[#9ca3af] hover:border-[#9ca3af]'
+                 }`}
               >
                 {tab.name}
               </a>

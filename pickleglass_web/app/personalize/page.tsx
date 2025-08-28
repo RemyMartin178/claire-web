@@ -3,20 +3,22 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, Plus, Copy } from 'lucide-react'
 import { getPresets, updatePreset, createPreset, PromptPreset } from '@/utils/api'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function PersonalizePage() {
+  const { user: userInfo, loading } = useAuth()
   const [allPresets, setAllPresets] = useState<PromptPreset[]>([]);
   const [selectedPreset, setSelectedPreset] = useState<PromptPreset | null>(null);
   const [showPresets, setShowPresets] = useState(true);
   const [editorContent, setEditorContent] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
+        setIsLoading(true);
         const presetsData = await getPresets();
         setAllPresets(presetsData);
         
@@ -28,7 +30,7 @@ export default function PersonalizePage() {
       } catch (error) {
         console.error("Failed to fetch presets:", error);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
     
@@ -147,16 +149,12 @@ export default function PersonalizePage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500">Loading...</div>
-      </div>
-    );
+  if (loading || !userInfo || isLoading) {
+    return null
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col gap-8 px-4 py-8 md:px-12 md:py-12" style={{ background: '#202123' }}>
+    <div className="min-h-screen w-full flex flex-col gap-8 px-4 py-8 md:px-12 md:py-12 animate-fade-in" style={{ background: '#202123' }}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-2">
         <div>
@@ -167,7 +165,7 @@ export default function PersonalizePage() {
           <button
             onClick={handleCreateNewPreset}
             disabled={saving}
-            className="flex items-center gap-2 bg-accent-light hover:opacity-90 text-white px-6 py-3 rounded-lg font-semibold text-lg shadow transition-all disabled:opacity-50"
+            className="flex items-center gap-2 bg-[#9ca3af] hover:opacity-90 text-white px-6 py-3 rounded-lg font-semibold text-lg shadow transition-all disabled:opacity-50"
           >
             <Plus className="w-5 h-5" />
             Nouveau préréglage
@@ -190,7 +188,7 @@ export default function PersonalizePage() {
                 ? 'bg-[#232329] border border-[#3a3a4a] text-[#bbb] cursor-default'
                 : saving 
                   ? 'bg-[#232329] border border-[#3a3a4a] text-[#bbb] cursor-not-allowed' 
-                  : 'bg-accent-light text-white hover:opacity-90'
+                  : 'bg-[#9ca3af] text-white hover:opacity-90'
             }`}
           >
             {!isDirty && !saving ? 'Enregistré' : saving ? 'Enregistrement...' : 'Enregistrer'}
@@ -223,8 +221,8 @@ export default function PersonalizePage() {
                   p-4 rounded-lg cursor-pointer transition-all duration-200 bg-[#2a2a32]
                   h-48 flex flex-col shadow-sm hover:shadow-md relative border
                   ${selectedPreset?.id === preset.id
-                    ? 'border-2 border-accent-light shadow-md'
-                    : 'border-[#3a3a4a] hover:border-accent-light'
+                    ? 'border-2 border-[#9ca3af] shadow-md'
+                    : 'border-[#3a3a4a] hover:border-[#9ca3af]'
                   }
                 `}
               >

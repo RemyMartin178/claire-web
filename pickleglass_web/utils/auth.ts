@@ -4,6 +4,7 @@ import {
   getRedirectResult,
   setPersistence,
   browserLocalPersistence,
+  browserSessionPersistence,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -22,9 +23,11 @@ const googleProvider = new GoogleAuthProvider()
 // Force l'affichage de l'écran de consentement + sélection de compte
 googleProvider.setCustomParameters({ prompt: 'consent select_account' })
 
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (rememberMe: boolean = true) => {
   try {
-    await setPersistence(auth, browserLocalPersistence)
+    // Définir la persistance selon le choix de l'utilisateur
+    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
+    await setPersistence(auth, persistence)
 
     const result = await signInWithPopup(auth, googleProvider)
     const user = result.user
@@ -87,8 +90,12 @@ export const handleGoogleRedirectResult = async () => {
   }
 }
 
-export const signInWithEmail = async (email: string, password: string) => {
+export const signInWithEmail = async (email: string, password: string, rememberMe: boolean = true) => {
   try {
+    // Définir la persistance selon le choix de l'utilisateur
+    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
+    await setPersistence(auth, persistence)
+    
     const result = await signInWithEmailAndPassword(auth, email, password)
     return result.user
   } catch (error) {

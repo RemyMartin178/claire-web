@@ -32,7 +32,7 @@ export default function ClientLayout({
         onToggle={setIsSidebarCollapsed}
         onSearchClick={() => setIsSearchOpen(true)}
       />
-      <main className="flex-1 overflow-auto" style={{ background: '#1E1E1E' }}>
+      <main className="flex-1 overflow-auto" style={{ background: '#202123' }}>
         {children}
       </main>
       <SearchPopup

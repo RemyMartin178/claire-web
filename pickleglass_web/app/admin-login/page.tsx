@@ -17,7 +17,7 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#202123]">
+    <div className="min-h-screen flex items-center justify-center bg-[#202123] animate-fade-in">
       <div className="bg-[#232329] p-8 rounded-xl shadow-lg border border-[#3a3a4a]">
         <h1 className="text-2xl font-bold text-white mb-4">Espace Admin</h1>
         <input
@@ -29,7 +29,7 @@ export default function AdminLogin() {
         />
         <button
           onClick={handleLogin}
-          className="w-full bg-accent-light text-white py-2 rounded font-medium"
+                      className="w-full bg-[#9ca3af] text-white py-2 rounded font-medium"
         >
           Entrer
         </button>
