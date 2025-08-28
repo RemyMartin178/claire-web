@@ -43,7 +43,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#202123' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9ca3af] mx-auto"></div>
-          <p className="mt-4 text-white">Vérification de l'authentification...</p>
+          <p className="mt-4 text-white">Vérification de l&apos;authentification...</p>
         </div>
       </div>
     )
