@@ -60,11 +60,14 @@ function LoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('[Login] Début de la connexion email/mot de passe')
     setIsLoading(true)
     setError('')
 
     try {
+      console.log('[Login] Appel de signInWithEmail...')
       const user = await signInWithEmail(formData.email, formData.password, formData.rememberMe)
+      console.log('[Login] signInWithEmail terminé avec succès')
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow && user) {
         try {
@@ -94,6 +97,7 @@ function LoginContent() {
         router.push('/accueil')
       }
     } catch (error: any) {
+      console.log('[Login] Erreur lors de la connexion email/mot de passe:', error)
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
       
@@ -101,15 +105,19 @@ function LoginContent() {
         console.error('Login error:', error)
       }
     } finally {
+      console.log('[Login] Fin de handleSubmit, setIsLoading(false)')
       setIsLoading(false)
     }
   }
 
   const handleGoogleSignIn = async () => {
     try {
+      console.log('[Login] Début de la connexion Google')
       setIsLoading(true)
       setError('')
+      console.log('[Login] Appel de signInWithGoogle...')
       await signInWithGoogle(formData.rememberMe)
+      console.log('[Login] signInWithGoogle terminé avec succès')
       
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow) {
@@ -143,22 +151,24 @@ function LoginContent() {
       } else {
         router.push('/accueil')
       }
-    } catch (error: any) {
-      // Si l'utilisateur ferme/annule le popup, on arrête juste le spinner sans message intrusif
-      const code = error?.code
-      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        setError('')
-      } else {
-        const errorMessage = handleFirebaseError(error)
-        setError(errorMessage)
+          } catch (error: any) {
+        console.log('[Login] Erreur lors de la connexion Google:', error)
+        // Si l'utilisateur ferme/annule le popup, on arrête juste le spinner sans message intrusif
+        const code = error?.code
+        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+          setError('')
+        } else {
+          const errorMessage = handleFirebaseError(error)
+          setError(errorMessage)
+        }
+        
+        if (shouldLogError(error)) {
+          console.error('Google sign in error:', error)
+        }
+      } finally {
+        console.log('[Login] Fin de handleGoogleSignIn, setIsLoading(false)')
+        setIsLoading(false)
       }
-      
-      if (shouldLogError(error)) {
-        console.error('Google sign in error:', error)
-      }
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
