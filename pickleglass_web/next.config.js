@@ -15,7 +15,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https:",
               "img-src 'self' https: data: blob:",
               "connect-src 'self' https: wss:",
-              "frame-src 'self' https:",
+                               "frame-src 'self' https: pickleglass:",
               "navigate-to 'self' https: http: pickleglass:",
             ].join("; ")
           }
