@@ -72,14 +72,21 @@ function LoginContent() {
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow && user) {
         try {
+          console.log('[Login] Début association des tokens...')
+          const startTime = Date.now()
           const idToken = await user.getIdToken(true)
+          console.log('[Login] getIdToken terminé en', Date.now() - startTime, 'ms')
+          
           const refreshToken = user.refreshToken
           const API = getApiBase()
+          console.log('[Login] Appel API associate...')
+          const apiStartTime = Date.now()
           const response = await fetch(API + '/api/auth/associate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken })
           })
+          console.log('[Login] API associate terminée en', Date.now() - apiStartTime, 'ms')
           
           if (!response.ok) {
             console.warn('Association des tokens échouée, mais on continue vers la page de succès')

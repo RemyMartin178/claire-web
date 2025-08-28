@@ -674,10 +674,7 @@ export class MainHeader extends LitElement {
                             const target = `${webUrl.replace(/\/$/, '')}/auth/login?flow=mobile&session_id=${encodeURIComponent(session_id)}`;
                             await window.api.common.openExternal(target);
                             
-                            // Reset connecting state after 35 seconds if no response
-                            setTimeout(() => {
-                                this.isConnecting = false;
-                            }, 35000);
+                            // Pas de timeout - l'état sera réinitialisé quand l'utilisateur se connecte
                         } catch (e) { 
                             console.error('[MainHeader] Mobile login failed:', e);
                             this.isConnecting = false;
