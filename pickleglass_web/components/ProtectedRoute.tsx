@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import type { UserProfile } from '@/utils/api'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -10,7 +11,7 @@ interface ProtectedRouteProps {
 
 // Variable globale pour mémoriser l'état d'authentification
 let globalAuthChecked = false
-let globalAuthUser = null
+let globalAuthUser: UserProfile | null = null
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
