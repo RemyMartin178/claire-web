@@ -68,6 +68,7 @@ function LoginContent() {
       console.log('[Login] Appel de signInWithEmail...')
       const user = await signInWithEmail(formData.email, formData.password, formData.rememberMe)
       console.log('[Login] signInWithEmail terminé avec succès')
+      console.log('[Login] isMobileFlow:', isMobileFlow, 'user:', !!user)
       // Associate tokens to pending session if mobile flow
       if (isMobileFlow && user) {
         try {
@@ -90,10 +91,13 @@ function LoginContent() {
           // On continue quand même vers la page de succès
         }
       }
+      console.log('[Login] Suppression de manuallyLoggedOut')
       sessionStorage.removeItem('manuallyLoggedOut')
       if (isMobileFlow) {
+        console.log('[Login] Redirection vers page de succès mobile')
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
+        console.log('[Login] Redirection vers accueil')
         router.push('/accueil')
       }
     } catch (error: any) {
