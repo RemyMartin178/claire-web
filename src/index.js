@@ -48,15 +48,20 @@ let pendingDeepLinkUrl = null;
 function setupProtocolHandling() {
     // Protocol registration - must be done before app is ready
     try {
-        if (!app.isDefaultProtocolClient('pickleglass')) {
-            const success = app.setAsDefaultProtocolClient('pickleglass');
+        if (process.defaultApp) {
+            const success = app.setAsDefaultProtocolClient('pickleglass', process.execPath, [process.argv[1]]);
             if (success) {
-                console.log('[Protocol] Successfully set as default protocol client for pickleglass://');
+                console.log('[Protocol] Successfully set as default protocol client for pickleglass:// (dev mode)');
             } else {
-                console.warn('[Protocol] Failed to set as default protocol client - this may affect deep linking');
+                console.warn('[Protocol] Failed to set as default protocol client in dev mode');
             }
         } else {
-            console.log('[Protocol] Already registered as default protocol client for pickleglass://');
+            const success = app.setAsDefaultProtocolClient('pickleglass');
+            if (success) {
+                console.log('[Protocol] Successfully set as default protocol client for pickleglass:// (prod mode)');
+            } else {
+                console.warn('[Protocol] Failed to set as default protocol client in prod mode');
+            }
         }
     } catch (error) {
         console.error('[Protocol] Error during protocol registration:', error);
@@ -451,11 +456,11 @@ function setupWebDataHandlers() {
 
 async function handleCustomUrl(url) {
     try {
-        console.log('[Custom URL] Processing URL:', url);
+        console.log('[deeplink] Processing URL:', url);
         
         // Validate and clean URL
-        if (!url || typeof url !== 'string' || (!url.startsWith('pickleglass://') && !url.startsWith('clairia://'))) {
-            console.error('[Custom URL] Invalid URL format:', url);
+        if (!url || typeof url !== 'string' || !url.startsWith('pickleglass://')) {
+            console.error('[deeplink] Invalid URL format:', url);
             return;
         }
         
@@ -464,7 +469,7 @@ async function handleCustomUrl(url) {
         
         // Additional validation
         if (cleanUrl !== url) {
-            console.log('[Custom URL] Cleaned URL from:', url, 'to:', cleanUrl);
+            console.log('[deeplink] Cleaned URL from:', url, 'to:', cleanUrl);
             url = cleanUrl;
         }
         
@@ -472,34 +477,50 @@ async function handleCustomUrl(url) {
         const action = urlObj.hostname;
         const params = Object.fromEntries(urlObj.searchParams);
         
-        console.log('[Custom URL] Action:', action, 'Params:', params);
+        console.log('[deeplink] Action:', action, 'Params:', params);
 
-        switch (action) {
-            case 'auth': {
-                const subPath = (urlObj.pathname || '').replace(/^\//, '');
-                if (subPath === 'callback') {
-                    await handleMobileAuthCallback(params);
-                }
-                break;
-            }
-            case 'personalize':
-                handlePersonalizeFromUrl(params);
-                break;
-            default:
+        if (action === 'auth') {
+            const subPath = (urlObj.pathname || '').replace(/^\//, '');
+            if (subPath === 'callback') {
+                const code = params.code;
+                const state = params.state;
+                console.log('[deeplink] received auth callback', { code, state });
+                
+                // Focus the app window
                 const { windowPool } = require('./window/windowManager.js');
                 const header = windowPool.get('header');
                 if (header) {
                     if (header.isMinimized()) header.restore();
                     header.focus();
-                    
-                    const targetUrl = `http://localhost:${WEB_PORT}/${action}`;
-                    console.log(`[Custom URL] Navigating webview to: ${targetUrl}`);
-                    header.webContents.loadURL(targetUrl);
                 }
+                
+                // Send to renderer process
+                const { BrowserWindow } = require('electron');
+                BrowserWindow.getAllWindows().forEach(win => {
+                    if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+                        win.webContents.send('mobile-auth:callback', { code, state });
+                    }
+                });
+                
+                await handleMobileAuthCallback(params);
+            }
+        } else if (action === 'personalize') {
+            handlePersonalizeFromUrl(params);
+        } else {
+            const { windowPool } = require('./window/windowManager.js');
+            const header = windowPool.get('header');
+            if (header) {
+                if (header.isMinimized()) header.restore();
+                header.focus();
+                
+                const targetUrl = `http://localhost:${WEB_PORT}/${action}`;
+                console.log(`[deeplink] Navigating webview to: ${targetUrl}`);
+                header.webContents.loadURL(targetUrl);
+            }
         }
 
     } catch (error) {
-        console.error('[Custom URL] Error parsing URL:', error);
+        console.error('[deeplink] Error parsing URL:', error);
     }
 }
 

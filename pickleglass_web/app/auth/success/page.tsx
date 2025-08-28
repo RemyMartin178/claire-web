@@ -1,49 +1,85 @@
-'use client'
+'use client';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-import { Suspense, useEffect, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+export default function SuccessPage() {
+  const sp = useSearchParams();
+  const router = useRouter();
+  const flow = sp.get('flow');
+  const sessionId = sp.get('session_id') || sp.get('sessionId');
+  const debug = sp.get('debug') === '1';
+  const [manual, setManual] = useState(false);
 
-function SuccessContent() {
-  const params = useSearchParams()
-  const router = useRouter()
-  const { user } = useAuth()
-
-  const sessionId = useMemo(() => params?.get('session_id') || '', [params])
-  const flow = useMemo(() => params?.get('flow') || '', [params])
+  const state = useMemo(
+    () => 'st-' + Math.random().toString(36).slice(2, 10),
+    []
+  );
+  const deep = useMemo(() => {
+    if (!sessionId) return null;
+    return `pickleglass://auth/callback?code=${encodeURIComponent(sessionId)}&state=${encodeURIComponent(state)}`;
+  }, [sessionId, state]);
 
   useEffect(() => {
     if (flow !== 'mobile') {
-      router.replace('/accueil')
-      return
+      debug && console.log('[success] non-mobile flow → redirect /accueil');
+      router.replace('/accueil');
+      return;
     }
-    const state = 'state-' + Math.random().toString(36).slice(2, 10)
-    const deepLink = `clairia://auth/callback?code=${encodeURIComponent(sessionId)}&state=${encodeURIComponent(state)}`
-    window.location.href = deepLink
-  }, [flow, router, sessionId, user])
+    if (!deep) {
+      debug && console.warn('[success] missing sessionId, abort deep link');
+      return;
+    }
+
+    // 1) tentative immédiate
+    const t1 = setTimeout(() => {
+      debug && console.log('[success] attempting window.location to', deep);
+      try { (window.location as any).href = deep; } catch (e) { console.error(e); }
+    }, 200);
+
+    // 2) iframe fallback
+    const t2 = setTimeout(() => {
+      debug && console.log('[success] attempting iframe fallback');
+      const ifr = document.createElement('iframe');
+      ifr.style.display = 'none';
+      ifr.src = deep!;
+      document.body.appendChild(ifr);
+      setTimeout(() => { try { ifr.remove(); } catch {} }, 2500);
+    }, 1000);
+
+    // 3) afficher bouton manuel
+    const t3 = setTimeout(() => {
+      debug && console.log('[success] enabling manual button');
+      setManual(true);
+    }, 1800);
+
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [flow, deep, router, debug]);
+
+  if (flow !== 'mobile') return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#202123' }}>
-      <div className="w-full max-w-md mx-auto text-center">
-        <div className="flex items-center gap-3 justify-center mb-6">
-          <img src="/word.png" alt="Claire Logo" className="w-12 h-12" />
-          <h1 className="text-2xl font-bold text-white">Claire</h1>
-        </div>
-        <div className="bg-[#232329] rounded-xl shadow-lg border border-[#3a3a4a] p-8">
-          <h2 className="text-xl font-bold text-white mb-2">✅ Vous êtes connecté</h2>
-          <p className="text-[#bbb] text-sm">Ouverture de Claire…</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default function AuthSuccessPage() {
-  return (
-    <Suspense fallback={null}>
-      <SuccessContent />
-    </Suspense>
-  )
+    <main className="mx-auto max-w-md p-6">
+      <h1 className="text-xl font-semibold">connexion réussie</h1>
+      <p className="mt-2">on te renvoie vers l'app claire…</p>
+      {manual && deep && (
+        <a
+          href={deep}
+          className="mt-4 inline-flex items-center rounded-md border px-4 py-2"
+          onClick={() => debug && console.log('[success] manual click →', deep)}
+        >
+          ouvrir claire
+        </a>
+      )}
+      {debug && (
+        <pre className="mt-4 text-xs whitespace-pre-wrap">
+{`flow=${flow}
+sessionId=${sessionId}
+deep=${deep}
+state=${state}`}
+        </pre>
+      )}
+    </main>
+  );
 }
 
 
