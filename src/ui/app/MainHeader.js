@@ -541,6 +541,18 @@ export class MainHeader extends LitElement {
             this._deepLinkListener = (event, data) => {
                 console.log('[MainHeader] Deep link received, resetting connecting state');
                 this.isConnecting = false;
+                
+                // Mettre à jour l'état utilisateur après le deep link
+                if (window.api.common?.getCurrentUser) {
+                    window.api.common.getCurrentUser().then(userState => {
+                        this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
+                        console.log('[MainHeader] Updated firebaseUser after deep link:', this.firebaseUser);
+                        this.requestUpdate();
+                    }).catch((error) => {
+                        console.error('[MainHeader] Error getting current user after deep link:', error);
+                    });
+                }
+                
                 this.requestUpdate();
             };
             window.api.headerController.onDeepLinkReceived(this._deepLinkListener);
