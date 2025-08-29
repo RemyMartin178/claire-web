@@ -6,22 +6,19 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export default function HomePage() {
   const router = useRouter()
-  const { user, loading } = useAuth()
+  const { user, loading, isAuthenticated } = useAuth()
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        // Utilisateur connecté → redirection vers l'accueil
-        router.push('/accueil')
-      } else {
-        // Utilisateur non connecté → redirection vers la page de connexion
-        router.push('/login')
-      }
+    // Redirection immédiate basée sur l'état d'authentification
+    if (isAuthenticated && user) {
+      router.replace('/accueil')
+    } else if (!loading && !isAuthenticated) {
+      router.replace('/login')
     }
-  }, [user, loading, router])
+  }, [user, loading, isAuthenticated, router])
 
-  // Afficher un loader pendant la vérification
-  if (loading) {
+  // Afficher un loader seulement si on est en cours de chargement ET qu'on n'a pas encore déterminé l'état
+  if (loading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#202123' }}>
         <div className="text-center">
@@ -32,5 +29,6 @@ export default function HomePage() {
     )
   }
 
+  // Ne rien afficher pendant les redirections
   return null
 } 

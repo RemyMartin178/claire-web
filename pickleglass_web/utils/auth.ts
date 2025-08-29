@@ -25,6 +25,9 @@ googleProvider.setCustomParameters({ prompt: 'consent select_account' })
 
 export const signInWithGoogle = async (rememberMe: boolean = true) => {
   try {
+    // Nettoyer le flag de déconnexion manuelle
+    sessionStorage.removeItem('manuallyLoggedOut')
+    
     // Définir la persistance selon le choix de l'utilisateur
     const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
     await setPersistence(auth, persistence)
@@ -92,6 +95,9 @@ export const handleGoogleRedirectResult = async () => {
 
 export const signInWithEmail = async (email: string, password: string, rememberMe: boolean = true) => {
   try {
+    // Nettoyer le flag de déconnexion manuelle
+    sessionStorage.removeItem('manuallyLoggedOut')
+    
     // Définir la persistance selon le choix de l'utilisateur
     const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
     await setPersistence(auth, persistence)
@@ -163,6 +169,9 @@ export const sendPasswordResetEmail = async (email: string) => {
 
 export const signOut = async () => {
   try {
+    // Marquer que l'utilisateur s'est déconnecté manuellement
+    sessionStorage.setItem('manuallyLoggedOut', 'true')
+    
     // Nettoyer le sessionStorage pour forcer une nouvelle vérification d'auth
     sessionStorage.removeItem('authChecked')
     sessionStorage.removeItem('authUserId')

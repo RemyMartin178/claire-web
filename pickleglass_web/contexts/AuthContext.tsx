@@ -68,49 +68,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   const handleUserAuthentication = async (firebaseUser: User) => {
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 500;
-    
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      // Créer un profil de fallback immédiatement pour éviter les flashs
+      const fallbackProfile: UserProfile = {
+        uid: firebaseUser.uid,
+        display_name: firebaseUser.displayName || 'User',
+        email: firebaseUser.email || 'no-email@example.com'
+      }
+      
+      // Définir l'utilisateur immédiatement
+      setUser(fallbackProfile)
+      setIsAuthenticated(true)
+      setLoading(false)
+      
+      // Ensuite, essayer de récupérer le profil complet en arrière-plan
       try {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
         const userProfile = await getUserProfile()
-        
         if (userProfile) {
           setUser(userProfile)
-          setIsAuthenticated(true)
-          setLoading(false)
-          return
         }
-        
-        if (attempt === MAX_RETRIES) {
-          console.warn('User profile not found, creating fallback profile')
-          const fallbackProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            display_name: firebaseUser.displayName || 'User',
-            email: firebaseUser.email || 'no-email@example.com'
-          }
-          setUser(fallbackProfile)
-          setIsAuthenticated(true)
-          setLoading(false)
-          return
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
-      } catch (error: any) {
-        console.error(`Auth attempt ${attempt} failed:`, error)
-        
-        if (attempt === MAX_RETRIES) {
-          console.error('All auth attempts failed')
-          setUser(null)
-          setIsAuthenticated(false)
-          setLoading(false)
-          return
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt))
+      } catch (error) {
+        console.warn('Failed to fetch user profile, using fallback:', error)
       }
+    } catch (error: any) {
+      console.error('Auth failed:', error)
+      setUser(null)
+      setIsAuthenticated(false)
+      setLoading(false)
     }
   }
 

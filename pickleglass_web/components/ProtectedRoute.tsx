@@ -10,26 +10,25 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
+  const { user, loading, isAuthenticated } = useAuth()
   const router = useRouter()
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
-    if (!loading) {
-      // Si pas d'utilisateur, nettoyer le sessionStorage et rediriger
-      if (!user) {
-        sessionStorage.removeItem('authChecked')
-        sessionStorage.removeItem('authUserId')
-        window.location.replace('/login')
-        return
-      }
+    // Si pas d'authentification et pas en cours de chargement, rediriger immédiatement
+    if (!loading && !isAuthenticated) {
+      sessionStorage.removeItem('authChecked')
+      sessionStorage.removeItem('authUserId')
+      window.location.replace('/login')
+      return
+    }
 
-      // Si on a un utilisateur, vérifier si on a déjà fait la vérification d'auth dans cette session
+    // Si authentifié, vérifier le sessionStorage pour éviter les re-vérifications
+    if (isAuthenticated && user) {
       const authChecked = sessionStorage.getItem('authChecked')
       const authUserId = sessionStorage.getItem('authUserId')
       
       if (authChecked === 'true' && authUserId === user?.uid) {
-        // On a déjà vérifié l'auth pour cet utilisateur dans cette session
         setHasCheckedAuth(true)
         return
       }
@@ -39,10 +38,10 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       sessionStorage.setItem('authUserId', user?.uid || '')
       setHasCheckedAuth(true)
     }
-  }, [user, loading])
+  }, [user, loading, isAuthenticated])
 
-  // Afficher un loader seulement lors de la première vérification
-  if (loading || !hasCheckedAuth) {
+  // Afficher un loader seulement si on est en cours de chargement ET qu'on n'a pas encore vérifié l'auth
+  if (loading || (!hasCheckedAuth && isAuthenticated)) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#202123' }}>
         <div className="text-center">
@@ -53,11 +52,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  // Si pas d'utilisateur, ne rien afficher (redirection en cours)
-  if (!user) {
+  // Si pas d'utilisateur ou pas authentifié, ne rien afficher (redirection en cours)
+  if (!user || !isAuthenticated) {
     return null
   }
 
-  // Si utilisateur connecté, afficher le contenu
+  // Si utilisateur connecté et authentifié, afficher le contenu
   return <>{children}</>
 } 
