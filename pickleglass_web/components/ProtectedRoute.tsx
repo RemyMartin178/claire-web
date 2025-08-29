@@ -15,11 +15,19 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
-    // Vérifier si on a déjà fait la vérification d'auth dans cette session
-    const authChecked = sessionStorage.getItem('authChecked')
-    const authUserId = sessionStorage.getItem('authUserId')
-    
     if (!loading) {
+      // Si pas d'utilisateur, nettoyer le sessionStorage et rediriger
+      if (!user) {
+        sessionStorage.removeItem('authChecked')
+        sessionStorage.removeItem('authUserId')
+        window.location.replace('/login')
+        return
+      }
+
+      // Si on a un utilisateur, vérifier si on a déjà fait la vérification d'auth dans cette session
+      const authChecked = sessionStorage.getItem('authChecked')
+      const authUserId = sessionStorage.getItem('authUserId')
+      
       if (authChecked === 'true' && authUserId === user?.uid) {
         // On a déjà vérifié l'auth pour cet utilisateur dans cette session
         setHasCheckedAuth(true)
@@ -30,11 +38,6 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
       sessionStorage.setItem('authChecked', 'true')
       sessionStorage.setItem('authUserId', user?.uid || '')
       setHasCheckedAuth(true)
-
-      if (!user) {
-        // Rediriger vers la landing page au lieu de /login
-        window.location.replace('https://clairia.app')
-      }
     }
   }, [user, loading])
 

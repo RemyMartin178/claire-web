@@ -12,10 +12,10 @@ export default function HomePage() {
     if (!loading) {
       if (user) {
         // Utilisateur connecté → redirection vers l'accueil
-router.push('/accueil')
+        router.push('/accueil')
       } else {
-        // Utilisateur non connecté → redirection vers clairia.app
-        router.push('https://clairia.app')
+        // Utilisateur non connecté → redirection vers la page de connexion
+        router.push('/login')
       }
     }
   }, [user, loading, router])
@@ -23,10 +23,10 @@ router.push('/accueil')
   // Afficher un loader pendant la vérification
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#202123' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">V&eacute;rification de l&apos;authentification...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9ca3af] mx-auto"></div>
+          <p className="mt-4 text-white">Vérification de l&apos;authentification...</p>
         </div>
       </div>
     )

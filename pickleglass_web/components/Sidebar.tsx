@@ -272,8 +272,8 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const handleLogout = useCallback(async () => {
         try {
             await logout();
-            // Rediriger vers la landing page
-            window.location.href = 'https://clairia.app';
+            // Rediriger vers la page de connexion
+            window.location.href = '/login';
         } catch (error) {
             console.error('An error occurred during logout:', error);
         }

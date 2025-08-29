@@ -163,7 +163,14 @@ export const sendPasswordResetEmail = async (email: string) => {
 
 export const signOut = async () => {
   try {
+    // Nettoyer le sessionStorage pour forcer une nouvelle vérification d'auth
+    sessionStorage.removeItem('authChecked')
+    sessionStorage.removeItem('authUserId')
+    
     await firebaseSignOut(auth)
+    
+    // Rediriger vers la page de connexion au lieu de la landing page
+    window.location.href = '/login'
   } catch (error) {
     console.error("Error signing out:", error)
     throw FirebaseErrorHandler.wrapError(error)

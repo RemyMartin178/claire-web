@@ -124,7 +124,7 @@ export default function SettingsPage() {
     if (window.confirm(confirmMessage)) {
       try {
         await deleteAccount()
-        window.location.replace('https://clairia.app')
+        window.location.replace('/login')
       } catch (error) {
         console.error("Failed to delete account:", error)
       }
@@ -142,7 +142,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Settings: Error during logout:', error)
       // En cas d'erreur, rediriger quand même
-      window.location.replace('https://clairia.app')
+      window.location.replace('/login')
     }
   }
 
