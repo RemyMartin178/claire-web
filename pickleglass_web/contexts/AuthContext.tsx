@@ -36,6 +36,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const wasManuallyLoggedOut = sessionStorage.getItem('manuallyLoggedOut')
     
+    // Vérifier immédiatement l'état actuel de Firebase
+    const currentUser = auth.currentUser
+    if (currentUser && wasManuallyLoggedOut !== 'true') {
+      // Si on a déjà un utilisateur connecté, l'utiliser immédiatement
+      handleUserAuthentication(currentUser)
+    }
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('AuthContext: Auth state changed', { 
         hasUser: !!firebaseUser, 
