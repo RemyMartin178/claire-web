@@ -3,7 +3,6 @@
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import ClientLayout from './ClientLayout'
-import SkeletonLoader from './SkeletonLoader'
 
 export default function ConditionalLayout({
   children,
@@ -24,9 +23,9 @@ export default function ConditionalLayout({
     )
   }
   
-  // Si on est en cours de chargement et qu'on n'est pas sur une page d'auth, afficher le skeleton
-  if (loading && !isAuthenticated) {
-    return <SkeletonLoader />
+  // Si on n'est pas authentifié OU en cours de chargement, ne rien afficher
+  if (!isAuthenticated || loading) {
+    return null
   }
   
   // For all other pages, use the full ClientLayout with sidebar

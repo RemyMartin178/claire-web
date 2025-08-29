@@ -27,6 +27,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [user, loading, isAuthenticated, pathname, router])
 
-  // Toujours afficher le contenu - les redirections se feront automatiquement
+  // Si on est sur une page d'auth, toujours afficher le contenu
+  if (pathname?.startsWith('/auth/') || pathname === '/login' || pathname === '/register') {
+    return <>{children}</>
+  }
+
+  // Pour les autres pages, ne rien afficher si pas authentifié ou en cours de chargement
+  if (!isAuthenticated || loading) {
+    return null
+  }
+
+  // Afficher le contenu seulement si authentifié
   return <>{children}</>
 }
