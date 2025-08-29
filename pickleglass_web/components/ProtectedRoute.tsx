@@ -9,27 +9,27 @@ interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
-// Variable globale pour mémoriser l'état d'authentification
-let globalAuthChecked = false
-let globalAuthUser: UserProfile | null = null
-
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [localLoading, setLocalLoading] = useState(true)
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
+    // Vérifier si on a déjà fait la vérification d'auth dans cette session
+    const authChecked = sessionStorage.getItem('authChecked')
+    const authUserId = sessionStorage.getItem('authUserId')
+    
     if (!loading) {
-      // Si on a déjà vérifié l'auth et qu'on a un utilisateur, on ne recharge plus
-      if (globalAuthChecked && globalAuthUser) {
-        setLocalLoading(false)
+      if (authChecked === 'true' && authUserId === user?.uid) {
+        // On a déjà vérifié l'auth pour cet utilisateur dans cette session
+        setHasCheckedAuth(true)
         return
       }
 
-      // Première vérification ou utilisateur changé
-      globalAuthChecked = true
-      globalAuthUser = user
-      setLocalLoading(false)
+      // Première vérification ou utilisateur différent
+      sessionStorage.setItem('authChecked', 'true')
+      sessionStorage.setItem('authUserId', user?.uid || '')
+      setHasCheckedAuth(true)
 
       if (!user) {
         // Rediriger vers la landing page au lieu de /login
@@ -39,7 +39,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [user, loading])
 
   // Afficher un loader seulement lors de la première vérification
-  if (loading || localLoading) {
+  if (loading || !hasCheckedAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#202123' }}>
         <div className="text-center">
