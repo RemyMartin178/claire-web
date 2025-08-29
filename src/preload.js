@@ -99,6 +99,8 @@ contextBridge.exposeInMainWorld('api', {
     removeOnAuthFailed: (callback) => ipcRenderer.removeListener('auth-failed', callback),
     onForceShowApiKeyHeader: (callback) => ipcRenderer.on('force-show-apikey-header', callback),
     removeOnForceShowApiKeyHeader: (callback) => ipcRenderer.removeListener('force-show-apikey-header', callback),
+    onDeepLinkReceived: (callback) => ipcRenderer.on('header-controller:deep-link-received', callback),
+    removeOnDeepLinkReceived: (callback) => ipcRenderer.removeListener('header-controller:deep-link-received', callback),
   },
 
   // src/ui/app/MainHeader.js

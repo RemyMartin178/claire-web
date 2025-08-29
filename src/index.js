@@ -499,6 +499,8 @@ async function handleCustomUrl(url) {
                 BrowserWindow.getAllWindows().forEach(win => {
                     if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
                         win.webContents.send('mobile-auth:callback', { code, state });
+                        // Notify header controller about deep link
+                        win.webContents.send('header-controller:deep-link-received', { action: 'auth', subPath: 'callback' });
                     }
                 });
                 

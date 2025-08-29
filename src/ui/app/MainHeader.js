@@ -536,6 +536,14 @@ export class MainHeader extends LitElement {
                 
                 this.requestUpdate();
             };
+
+            // Écouter les deep links pour réinitialiser l'état de connexion
+            this._deepLinkListener = (event, data) => {
+                console.log('[MainHeader] Deep link received, resetting connecting state');
+                this.isConnecting = false;
+                this.requestUpdate();
+            };
+            window.api.headerController.onDeepLinkReceived(this._deepLinkListener);
             window.api.headerController.onUserStateChanged(this._userStateListener);
         }
     }
@@ -558,6 +566,9 @@ export class MainHeader extends LitElement {
             }
             if (this._userStateListener) {
                 window.api.headerController.removeOnUserStateChanged(this._userStateListener);
+            }
+            if (this._deepLinkListener) {
+                window.api.headerController.removeOnDeepLinkReceived(this._deepLinkListener);
             }
         }
     }
