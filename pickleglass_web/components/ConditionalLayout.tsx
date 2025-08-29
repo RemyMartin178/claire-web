@@ -1,8 +1,9 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import ClientLayout from './ClientLayout'
-// AuthProvider is now at root layout to avoid multiple React roots
+import SkeletonLoader from './SkeletonLoader'
 
 export default function ConditionalLayout({
   children,
@@ -10,6 +11,7 @@ export default function ConditionalLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const { loading, isAuthenticated } = useAuth()
   
   // Check if current path is an auth page
   const isAuthPage = pathname?.startsWith('/auth/') || pathname === '/login' || pathname === '/register'
@@ -20,6 +22,11 @@ export default function ConditionalLayout({
         {children}
       </div>
     )
+  }
+  
+  // Si on est en cours de chargement et qu'on n'est pas sur une page d'auth, afficher le skeleton
+  if (loading && !isAuthenticated) {
+    return <SkeletonLoader />
   }
   
   // For all other pages, use the full ClientLayout with sidebar
