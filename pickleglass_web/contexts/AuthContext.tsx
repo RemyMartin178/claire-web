@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (currentUser && wasManuallyLoggedOut !== 'true') {
       // Si on a déjà un utilisateur connecté, l'utiliser immédiatement
       handleUserAuthentication(currentUser)
-    } else if (!currentUser) {
+    } else {
       // Si pas d'utilisateur, marquer comme non authentifié immédiatement
       setUser(null)
       setIsAuthenticated(false)

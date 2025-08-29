@@ -32,6 +32,11 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return <>{children}</>
   }
 
+  // Pour la page racine, ne rien afficher si pas authentifié ou en cours de chargement
+  if (pathname === '/' && (!isAuthenticated || loading)) {
+    return null
+  }
+
   // Pour les autres pages, ne rien afficher si pas authentifié ou en cours de chargement
   if (!isAuthenticated || loading) {
     return null

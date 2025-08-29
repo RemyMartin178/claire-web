@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export default function HomePage() {
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, loading } = useAuth()
 
   useEffect(() => {
     // Redirection immédiate - l'AuthGuard gère déjà les cas de non-authentification
@@ -15,6 +15,6 @@ export default function HomePage() {
     }
   }, [user, isAuthenticated, router])
 
-  // Cette page ne devrait jamais être affichée directement
+  // Ne jamais afficher cette page - laisser l'AuthGuard gérer les redirections
   return null
 } 
