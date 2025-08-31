@@ -22,7 +22,7 @@ declare global {
   }
 }
 
-type Tab = 'profile' | 'privacy' | 'billing'
+type Tab = 'profile' | 'privacy' | 'billing' | 'security'
 type BillingCycle = 'monthly' | 'yearly'
 
 export default function SettingsPage() {
@@ -84,9 +84,16 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'profile' as Tab, name: 'Profil personnel', href: '/settings' },
+    { id: 'security' as Tab, name: 'Sécurité', href: '/settings/security' },
     { id: 'privacy' as Tab, name: 'Données et confidentialité', href: '/settings/privacy' },
     { id: 'billing' as Tab, name: 'Facturation', href: '/settings/billing' },
   ]
+
+  // Détection plus précise de l'utilisateur Google
+  const isGoogleUser = userInfo?.email?.includes('@gmail.com') || 
+                      userInfo?.email?.includes('@google.com') ||
+                      userInfo?.email?.includes('@googlemail.com') ||
+                      (userInfo?.email && userInfo.email.endsWith('@gmail.com'))
 
   const handleSaveApiKey = async () => {
     setIsSaving(true)
@@ -146,6 +153,84 @@ export default function SettingsPage() {
       window.location.replace('/login')
     }
   }
+
+  const renderSecurityContent = () => (
+    <div className="space-y-6">
+      {/* Mot de passe */}
+      <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
+        <h3 className="text-lg font-semibold text-white mb-1">Mot de passe</h3>
+        <p className="text-sm text-[#E0E0E0] mb-4">
+          {isGoogleUser 
+            ? 'Ajoutez un mot de passe à votre compte Google pour une sécurité renforcée.'
+            : 'Modifiez votre mot de passe pour sécuriser votre compte.'
+          }
+        </p>
+        <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">
+          <button
+            className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none"
+          >
+            {isGoogleUser ? 'Ajouter un mot de passe' : 'Modifier le mot de passe'}
+          </button>
+        </div>
+      </div>
+
+      {/* Appareils connectés */}
+      <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
+        <h3 className="text-lg font-semibold text-white mb-1">Appareils connectés</h3>
+        <p className="text-sm text-[#E0E0E0] mb-4">Gérez les appareils connectés à votre compte et surveillez l&apos;activité de connexion.</p>
+        
+        <div className="space-y-4">
+          {/* Appareil actuel */}
+          <div className="flex items-center justify-between p-3 bg-[#1f1f1f] rounded-md">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <div>
+                <p className="text-sm font-medium text-white">Cet appareil</p>
+                <p className="text-xs text-[#9ca3af]">Windows 10 • Chrome • Paris, France</p>
+                <p className="text-xs text-[#9ca3af]">IP: 192.168.1.100 • Connecté maintenant</p>
+              </div>
+            </div>
+            <span className="text-xs text-green-500 font-medium">Actuel</span>
+          </div>
+
+          {/* Autres appareils (exemples) */}
+          <div className="flex items-center justify-between p-3 bg-[#1f1f1f] rounded-md">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+              <div>
+                <p className="text-sm font-medium text-white">iPhone 14</p>
+                <p className="text-xs text-[#9ca3af]">iOS 17 • Safari • Lyon, France</p>
+                <p className="text-xs text-[#9ca3af]">IP: 185.220.101.45 • Il y a 2 heures</p>
+              </div>
+            </div>
+            <button className="text-xs text-red-400 hover:text-red-300 font-medium">
+              Déconnecter
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-[#1f1f1f] rounded-md">
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+              <div>
+                <p className="text-sm font-medium text-white">MacBook Pro</p>
+                <p className="text-xs text-[#9ca3af]">macOS 14 • Chrome • Marseille, France</p>
+                <p className="text-xs text-[#9ca3af]">IP: 92.184.105.12 • Il y a 1 jour</p>
+              </div>
+            </div>
+            <button className="text-xs text-red-400 hover:text-red-300 font-medium">
+              Déconnecter
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">
+          <button className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none">
+            Déconnecter tous les appareils
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 
   const renderBillingContent = () => (
     <div className="space-y-8">
@@ -345,6 +430,8 @@ export default function SettingsPage() {
     switch (activeTab) {
       case 'billing':
         return renderBillingContent()
+      case 'security':
+        return renderSecurityContent()
       case 'profile':
         return (
           <div className="space-y-6">

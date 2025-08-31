@@ -588,3 +588,46 @@ export const createUserAndProfileSafely = async (email: string, password: string
     }
   }
 }; 
+
+export const getAuthType = async (): Promise<{ authType: 'google' | 'email', email: string, providerId: string }> => {
+  if (isFirebaseMode()) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No authenticated user');
+    
+    // Récupérer les informations du provider depuis Firebase
+    const providerData = currentUser.providerData;
+    
+    // Détecter le type d'authentification
+    let authType: 'google' | 'email' = 'email'; // Par défaut
+    
+    if (providerData && providerData.length > 0) {
+      const provider = providerData[0];
+      
+      if (provider.providerId === 'google.com') {
+        authType = 'google';
+      } else if (provider.providerId === 'password') {
+        authType = 'email';
+      }
+    } else {
+      // Fallback basé sur l'email si pas de provider data
+      const email = currentUser.email || '';
+      if (email.includes('@gmail.com') || 
+          email.includes('@google.com') || 
+          email.includes('@googlemail.com')) {
+        authType = 'google';
+      } else {
+        authType = 'email';
+      }
+    }
+
+    return {
+      authType,
+      email: currentUser.email || '',
+      providerId: providerData?.[0]?.providerId || 'unknown'
+    };
+  } else {
+    const response = await apiCall('/api/auth/type', { method: 'GET' });
+    if (!response.ok) throw new Error('Failed to get auth type');
+    return response.json();
+  }
+}; 

@@ -6,6 +6,7 @@ import Link from 'next/link'
 export default function BillingPage() {
   const tabs = [
     { id: 'profile', name: 'Profil personnel', href: '/settings' },
+    { id: 'security', name: 'Sécurité', href: '/settings/security' },
     { id: 'privacy', name: 'Données et confidentialité', href: '/settings/privacy' },
     { id: 'billing', name: 'Facturation', href: '/settings/billing' },
   ]
