@@ -29,7 +29,7 @@ function RegisterContent() {
 
   useEffect(() => {
     if (user && !isMobileFlow) {
-      router.push('/accueil')
+      router.push('/activity')
     }
   }, [user, isMobileFlow, router])
 
@@ -45,7 +45,7 @@ function RegisterContent() {
           if (isMobileFlow) {
             router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
           } else {
-            router.push('/accueil')
+            router.push('/activity')
           }
         }
       } catch (error: any) {
@@ -92,7 +92,7 @@ function RegisterContent() {
       if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
-        router.push('/accueil')
+        router.push('/activity')
       }
     } catch (error: any) {
       const errorMessage = handleFirebaseError(error)
@@ -123,7 +123,7 @@ function RegisterContent() {
         })
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
-        router.push('/accueil')
+        router.push('/activity')
       }
     } catch (error: any) {
       const code = error?.code

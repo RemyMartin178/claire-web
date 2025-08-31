@@ -21,8 +21,8 @@ function SuccessContent() {
 
   useEffect(() => {
     if (flow !== 'mobile') {
-      debug && console.log('[success] non-mobile flow → redirect /accueil');
-      router.replace('/accueil');
+      debug && console.log('[success] non-mobile flow → redirect /activity');
+      router.replace('/activity');
       return;
     }
     if (!deep) {

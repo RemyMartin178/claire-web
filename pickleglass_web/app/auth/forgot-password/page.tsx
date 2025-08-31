@@ -16,7 +16,7 @@ export default function ForgotPasswordPage() {
 
   // Redirection si déjà connecté
   if (user) {
-    router.push('/accueil')
+    router.push('/activity')
     return null
   }
 

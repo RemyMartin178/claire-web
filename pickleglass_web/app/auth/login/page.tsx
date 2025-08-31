@@ -27,7 +27,7 @@ function LoginContent() {
   // Redirection si déjà connecté (hors flow mobile) sans casser l'ordre des hooks
   useEffect(() => {
     if (user && !isMobileFlow) {
-      router.push('/accueil')
+      router.push('/activity')
     }
   }, [user, isMobileFlow, router])
 
