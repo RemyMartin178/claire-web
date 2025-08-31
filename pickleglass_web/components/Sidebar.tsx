@@ -359,37 +359,37 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                             role="region"
                             aria-labelledby="settings-button"
                         >
-                                                         <ul className="mt-[4px] space-y-0 pl-[22px]" role="menu">
-                                 {settingsSubmenu.map((subItem, subIndex) => (
-                                     <li key={subItem.name} role="none">
-                                         <button
-                                             onClick={() => router.push(subItem.href)}
-                                             className={`
-                                   group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px] w-full text-left
-                       focus:outline-none
-                                   ${
-                                       pathname === subItem.href
-                                           ? 'bg-[rgba(20,20,20,0.85)] text-white'
-                                           : 'text-white hover:text-white hover:bg-[#232323]'
-                                   }
-                       transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
-                                 `}
-                                             style={{
-                                                 willChange: 'background-color, color',
-                                             }}
-                                             role="menuitem"
-                                             aria-label={subItem.ariaLabel || subItem.name}
-                                         >
-                                             <IconComponent
-                                                 icon={subItem.icon}
-                                                 isLucide={subItem.isLucide}
-                                                 alt={`${subItem.name} icon`}
-                                                 className="h-4 w-4 shrink-0"
-                                             />
-                                             <span className="whitespace-nowrap">{subItem.name}</span>
-                                         </button>
-                                     </li>
-                                 ))}
+                                                                                                                   <ul className="mt-[4px] space-y-0 pl-[22px]" role="menu">
+                                  {settingsSubmenu.map((subItem, subIndex) => (
+                                      <li key={subItem.name} role="none">
+                                          <Link
+                                              href={subItem.href}
+                                              className={`
+                                    group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px] w-full text-left
+                        focus:outline-none
+                                    ${
+                                        pathname === subItem.href
+                                            ? 'bg-[rgba(20,20,20,0.85)] text-white'
+                                            : 'text-white hover:text-white hover:bg-[#232323]'
+                                    }
+                        transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
+                                  `}
+                                              style={{
+                                                  willChange: 'background-color, color',
+                                              }}
+                                              role="menuitem"
+                                              aria-label={subItem.ariaLabel || subItem.name}
+                                          >
+                                              <IconComponent
+                                                  icon={subItem.icon}
+                                                  isLucide={subItem.isLucide}
+                                                  alt={`${subItem.name} icon`}
+                                                  className="h-4 w-4 shrink-0"
+                                              />
+                                              <span className="whitespace-nowrap">{subItem.name}</span>
+                                          </Link>
+                                      </li>
+                                  ))}
                                 <li role="none">
                                         <button
                                         onClick={handleLogout}
