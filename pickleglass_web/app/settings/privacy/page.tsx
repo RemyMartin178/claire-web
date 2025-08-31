@@ -1,28 +1,8 @@
 'use client'
 
 import { ExternalLink } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 
 export default function PrivacySettingsPage() {
-  const { user: userInfo, loading } = useAuth();
-
-  // Afficher un loader pendant le chargement au lieu de rediriger
-  if (loading) {
-    return (
-      <div className="bg-transparent min-h-screen text-white animate-fade-in">
-        <div className="px-8 py-8">
-          <div className="mb-6">
-            <p className="text-xs text-white mb-1">Paramètres</p>
-            <h1 className="text-3xl font-bold text-white">Paramètres personnels</h1>
-          </div>
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   const tabs = [
     { id: 'profile', name: 'Profil personnel', href: '/settings' },
     { id: 'privacy', name: 'Données et confidentialité', href: '/settings/privacy' },

@@ -21,14 +21,8 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     }
 
     // Si on n'est pas authentifié et qu'on n'est pas sur une page d'auth, rediriger vers login
-    // Mais seulement si on n'est pas en cours de chargement
+    // Mais seulement si on n'est pas en cours de chargement ET pas sur une page settings
     if (!loading && !isAuthenticated && !pathname?.startsWith('/auth/') && pathname !== '/login' && pathname !== '/register' && !pathname?.startsWith('/settings/') && pathname !== '/settings') {
-      router.replace('/login')
-      return
-    }
-
-    // Pour les pages settings, rediriger vers login seulement si on n'est pas en cours de chargement ET pas authentifié
-    if (!loading && !isAuthenticated && (pathname?.startsWith('/settings/') || pathname === '/settings')) {
       router.replace('/login')
       return
     }
@@ -44,9 +38,8 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     return null
   }
 
-  // Pour les pages settings, permettre l'accès même si en cours de chargement
+  // Pour les pages settings, TOUJOURS afficher le contenu (pas de vérification d'auth)
   if (pathname?.startsWith('/settings/') || pathname === '/settings') {
-    // Toujours afficher le contenu pour les pages settings, même pendant le chargement
     return <>{children}</>
   }
 
