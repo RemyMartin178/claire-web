@@ -76,9 +76,9 @@ export default function PrivacySettingsPage() {
 
           <div className="rounded-lg p-6 flex flex-col" style={{ background: '#262626', color: '#E0E0E0', border: '1px solid #3a3a4a' }}>
             <div className="flex-grow">
-              <h3 className="text-lg font-semibold text-white mb-3">Conditions d'utilisation</h3>
+              <h3 className="text-lg font-semibold text-white mb-3">Conditions d&apos;utilisation</h3>
               <p className="text-[#E0E0E0] text-sm leading-relaxed">
-                Comprenez vos droits et responsabilités lors de l'utilisation de notre plateforme.
+                Comprenez vos droits et responsabilités lors de l&apos;utilisation de notre plateforme.
               </p>
             </div>
             <div className="flex justify-end mt-6">

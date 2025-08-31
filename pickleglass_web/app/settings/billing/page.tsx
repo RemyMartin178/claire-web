@@ -56,7 +56,7 @@ export default function BillingPage() {
 
         <div className="flex items-center justify-center h-96">
           <h2 className="text-8xl font-black bg-gradient-to-r from-black to-gray-500 bg-clip-text text-transparent">
-            Gratuit pour l'instant
+            Gratuit pour l&apos;instant
           </h2>
         </div>
       </div>
