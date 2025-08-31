@@ -2,15 +2,25 @@
 
 import { ExternalLink } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 
 export default function PrivacySettingsPage() {
   const { user: userInfo, loading } = useAuth();
-  const router = useRouter();
 
-  if (loading || !userInfo) {
-    return null
+  // Afficher un loader pendant le chargement au lieu de rediriger
+  if (loading) {
+    return (
+      <div className="bg-transparent min-h-screen text-white animate-fade-in">
+        <div className="px-8 py-8">
+          <div className="mb-6">
+            <p className="text-xs text-white mb-1">Paramètres</p>
+            <h1 className="text-3xl font-bold text-white">Paramètres personnels</h1>
+          </div>
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const tabs = [
@@ -66,9 +76,9 @@ export default function PrivacySettingsPage() {
 
           <div className="rounded-lg p-6 flex flex-col" style={{ background: '#262626', color: '#E0E0E0', border: '1px solid #3a3a4a' }}>
             <div className="flex-grow">
-              <h3 className="text-lg font-semibold text-white mb-3">Conditions d’utilisation</h3>
+              <h3 className="text-lg font-semibold text-white mb-3">Conditions d'utilisation</h3>
               <p className="text-[#E0E0E0] text-sm leading-relaxed">
-                Comprenez vos droits et responsabilités lors de l’utilisation de notre plateforme.
+                Comprenez vos droits et responsabilités lors de l'utilisation de notre plateforme.
               </p>
             </div>
             <div className="flex justify-end mt-6">

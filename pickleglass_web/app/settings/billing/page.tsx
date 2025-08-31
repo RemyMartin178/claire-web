@@ -1,15 +1,25 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 
 export default function BillingPage() {
   const { user: userInfo, loading } = useAuth();
-  const router = useRouter();
 
-  if (loading || !userInfo) {
-    return null
+  // Afficher un loader pendant le chargement au lieu de rediriger
+  if (loading) {
+    return (
+      <div className="bg-transparent min-h-screen text-white animate-fade-in">
+        <div className="px-8 py-8">
+          <div className="mb-6">
+            <p className="text-xs text-white mb-1">Paramètres</p>
+            <h1 className="text-3xl font-bold text-white">Paramètres personnels</h1>
+          </div>
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const tabs = [
@@ -46,7 +56,7 @@ export default function BillingPage() {
 
         <div className="flex items-center justify-center h-96">
           <h2 className="text-8xl font-black bg-gradient-to-r from-black to-gray-500 bg-clip-text text-transparent">
-            Gratuit pour l’instant
+            Gratuit pour l'instant
           </h2>
         </div>
       </div>
