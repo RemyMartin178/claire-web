@@ -3,6 +3,7 @@
 import * as React from "react"
 import * as Popover from "@radix-ui/react-popover"
 import { LogOut, Settings, SlidersHorizontal, Gem } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export type ProfilePlan = "Claire Pro" | "Claire Gratuit"
 
@@ -25,6 +26,7 @@ export default function ProfileMenu({
   sidebarWidthPx,
 }: ProfileMenuProps) {
   const [open, setOpen] = React.useState(false)
+  const router = useRouter()
 
   // Keyboard shortcuts when open
   React.useEffect(() => {
@@ -115,8 +117,7 @@ export default function ProfileMenu({
                 label="Passer au plan supérieur"
                 onSelect={() => {
                   setOpen(false)
-                  // route outside (placeholder)
-                  window.location.href = "/settings/billing"
+                  router.push("/settings/billing")
                 }}
               />
               <MenuItem
@@ -124,7 +125,7 @@ export default function ProfileMenu({
                 label="Personnaliser"
                 onSelect={() => {
                   setOpen(false)
-                  window.location.href = "/personalize"
+                  router.push("/personalize")
                 }}
               />
               <MenuItem
@@ -133,7 +134,7 @@ export default function ProfileMenu({
                 label="Paramètres"
                 onSelect={() => {
                   setOpen(false)
-                  window.location.href = "/settings"
+                  router.push("/settings")
                 }}
               />
 
