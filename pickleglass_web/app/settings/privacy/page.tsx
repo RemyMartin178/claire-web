@@ -1,6 +1,7 @@
 'use client'
 
 import { ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 
 export default function PrivacySettingsPage() {
   const tabs = [
@@ -20,7 +21,7 @@ export default function PrivacySettingsPage() {
         <div className="mb-8">
           <nav className="flex space-x-10">
             {tabs.map((tab) => (
-              <a
+              <Link
                 key={tab.id}
                 href={tab.href}
                 className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
@@ -30,7 +31,7 @@ export default function PrivacySettingsPage() {
                 }`}
               >
                 {tab.name}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>

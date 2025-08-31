@@ -14,6 +14,7 @@ import {
 } from '@/utils/api'
 import { signOut } from '@/utils/auth'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 declare global {
   interface Window {
@@ -22,7 +23,7 @@ declare global {
 }
 
 type Tab = 'profile' | 'privacy' | 'billing'
-type BillingCycle = 'monthly' | 'annually'
+type BillingCycle = 'monthly' | 'yearly'
 
 export default function SettingsPage() {
   const { user: userInfo, loading } = useAuth()
@@ -179,21 +180,22 @@ export default function SettingsPage() {
           Monthly
         </button>
         <button
-          onClick={() => setBillingCycle('annually')}
-                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-             billingCycle === 'annually'
-               ? 'bg-[#9ca3af] text-white'
-               : 'text-[#9ca3af] hover:text-white'
-           }`}
+          onClick={() => setBillingCycle('yearly')}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            billingCycle === 'yearly'
+              ? 'bg-[#9ca3af] text-white'
+              : 'text-[#9ca3af] hover:text-white'
+          }`}
         >
-          Annually
+          Yearly
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Plan Gratuit */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <div className="mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">Free</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Gratuit</h3>
             <div className="text-3xl font-bold text-gray-900">
               $0<span className="text-lg font-normal text-gray-600">/month</span>
             </div>
@@ -348,7 +350,7 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
               <h3 className="text-lg font-semibold text-white mb-1">Nom affiché</h3>
-              <p className="text-sm text-[#E0E0E0] mb-4">Saisissez votre nom complet ou un nom d’affichage de votre choix.</p>
+              <p className="text-sm text-[#E0E0E0] mb-4">Saisissez votre nom complet ou un nom d&apos;affichage de votre choix.</p>
               <div className="max-w-sm">
                  <input
                     type="text"
@@ -358,7 +360,7 @@ export default function SettingsPage() {
                                          className="block w-full rounded-md border border-[#3a3a4a] bg-[#232329] text-white placeholder-[#9ca3af] focus:outline-none focus:border-[#3f3f46] sm:text-sm"
                     maxLength={32}
                   />
-                  <p className="text-xs text-[#E0E0E0] mt-2">Vous pouvez utiliser jusqu’à 32 caractères.</p>
+                  <p className="text-xs text-[#E0E0E0] mt-2">Vous pouvez utiliser jusqu&apos;à 32 caractères.</p>
               </div>
               <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">
                 <button
@@ -374,7 +376,7 @@ export default function SettingsPage() {
             {!isFirebaseMode && (
               <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
                 <h3 className="text-lg font-semibold text-white mb-1">Clé API</h3>
-                <p className="text-sm text-white mb-4">Si vous souhaitez utiliser votre propre clé API LLM, vous pouvez l’ajouter ici. Elle sera utilisée pour toutes les requêtes faites par l’application locale.</p>
+                <p className="text-sm text-white mb-4">Si vous souhaitez utiliser votre propre clé API LLM, vous pouvez l&apos;ajouter ici. Elle sera utilisée pour toutes les requêtes faites par l&apos;application locale.</p>
                 
                 <div className="max-w-sm">
                   <label htmlFor="api-key" className="block text-sm font-medium text-gray-700 mb-1">
@@ -443,18 +445,17 @@ export default function SettingsPage() {
         <div className="mb-8">
           <nav className="flex space-x-10">
             {tabs.map((tab) => (
-              <a
+              <Link
                 key={tab.id}
                 href={tab.href}
-                onClick={tab.id === 'privacy' ? undefined : () => setActiveTab(tab.id)}
-                                 className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                   activeTab === tab.id
-                     ? 'border-[#9ca3af] text-white'
-                     : 'border-transparent text-white hover:text-[#9ca3af] hover:border-[#9ca3af]'
-                 }`}
+                className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-[#9ca3af] text-white'
+                    : 'border-transparent text-white hover:text-[#9ca3af] hover:border-[#9ca3af]'
+                }`}
               >
                 {tab.name}
-              </a>
+              </Link>
             ))}
           </nav>
         </div>
