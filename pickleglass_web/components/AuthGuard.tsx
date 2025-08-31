@@ -14,9 +14,9 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const pathname = usePathname()
 
   useEffect(() => {
-    // Si on est sur une page d'auth et qu'on est connecté, rediriger vers l'accueil
+    // Si on est sur une page d'auth et qu'on est connecté, rediriger vers l'activité
     if (isAuthenticated && user && (pathname === '/login' || pathname === '/register' || pathname === '/')) {
-      router.replace('/accueil')
+      router.replace('/activity')
       return
     }
 

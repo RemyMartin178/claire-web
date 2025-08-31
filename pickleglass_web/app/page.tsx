@@ -11,7 +11,7 @@ export default function HomePage() {
   useEffect(() => {
     // Redirection immédiate - l'AuthGuard gère déjà les cas de non-authentification
     if (isAuthenticated && user) {
-      router.replace('/accueil')
+      router.replace('/activity')
     }
   }, [user, isAuthenticated, router])
 

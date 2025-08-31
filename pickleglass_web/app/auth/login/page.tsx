@@ -44,7 +44,7 @@ function LoginContent() {
             // Page neutre + deep link
             router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
           } else {
-            router.push('/accueil')
+            router.push('/activity')
           }
         }
       } catch (error: any) {
@@ -114,8 +114,8 @@ function LoginContent() {
         console.log('[Login] Redirection vers page de succès mobile')
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
-        console.log('[Login] Redirection vers accueil')
-        router.push('/accueil')
+              console.log('[Login] Redirection vers activity')
+      router.push('/activity')
       }
     } catch (error: any) {
       console.log('[Login] Erreur lors de la connexion email/mot de passe:', error)
@@ -181,7 +181,7 @@ function LoginContent() {
       if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
-        router.push('/accueil')
+        router.push('/activity')
       }
           } catch (error: any) {
         console.log('[Login] Erreur lors de la connexion Google:', error)

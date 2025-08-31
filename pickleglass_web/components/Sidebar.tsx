@@ -201,23 +201,23 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
     const navigation = useMemo<NavigationItem[]>(
         () => {
-            const baseNavigation = [
-                {
-                    name: 'Personnaliser',
-                    href: '/personalize',
-                    icon: Book,
-                    isLucide: true,
-                    ariaLabel: 'Paramètres de personnalisation',
-                },
-                {
-                    name: 'Mon activité',
-                    href: '/activity',
-                    icon: Activity,
-                    isLucide: true,
-                    ariaLabel: 'Voir mon activité',
-                },
-                // Bouton Paramètres retiré du menu principal, déplacé dans le menu profil bas de sidebar
-            ];
+                         const baseNavigation = [
+                 {
+                     name: 'Mon activité',
+                     href: '/activity',
+                     icon: Activity,
+                     isLucide: true,
+                     ariaLabel: 'Voir mon activité',
+                 },
+                 {
+                     name: 'Personnaliser',
+                     href: '/personalize',
+                     icon: Book,
+                     isLucide: true,
+                     ariaLabel: 'Paramètres de personnalisation',
+                 },
+                 // Bouton Paramètres retiré du menu principal, déplacé dans le menu profil bas de sidebar
+             ];
 
             // Admin section removed - no longer needed
 
