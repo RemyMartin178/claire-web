@@ -219,19 +219,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                 // Bouton Paramètres retiré du menu principal, déplacé dans le menu profil bas de sidebar
             ];
 
-            // Ajouter l'admin uniquement pour martin.remy178@gmail.com
-            // Vérifier que l'auth est chargée et que l'utilisateur est connecté
-            const isAdmin = !authLoading && userInfo?.email === 'martin.remy178@gmail.com';
-            
-            if (isAdmin) {
-                baseNavigation.splice(2, 0, {
-                    name: 'Administration',
-                    href: '/admin',
-                    icon: Shield,
-                    isLucide: true,
-                    ariaLabel: 'Panel d\'administration',
-                });
-            }
+            // Admin section removed - no longer needed
 
             return baseNavigation;
         },
@@ -371,37 +359,37 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                             role="region"
                             aria-labelledby="settings-button"
                         >
-                            <ul className="mt-[4px] space-y-0 pl-[22px]" role="menu">
-                                {settingsSubmenu.map((subItem, subIndex) => (
-                                    <li key={subItem.name} role="none">
-                                        <Link
-                                            href={subItem.href}
-                                            className={`
-                                  group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px]
-                      focus:outline-none
-                                  ${
-                                      pathname === subItem.href
-                                          ? 'bg-[rgba(20,20,20,0.85)] text-white'
-                                          : 'text-white hover:text-white hover:bg-[#232323]'
-                                  }
-                      transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
-                                `}
-                                            style={{
-                                                willChange: 'background-color, color',
-                                            }}
-                                            role="menuitem"
-                                            aria-label={subItem.ariaLabel || subItem.name}
-                                        >
-                                            <IconComponent
-                                                icon={subItem.icon}
-                                                isLucide={subItem.isLucide}
-                                                alt={`${subItem.name} icon`}
-                                                className="h-4 w-4 shrink-0"
-                                            />
-                                            <span className="whitespace-nowrap">{subItem.name}</span>
-                                        </Link>
-                                    </li>
-                                ))}
+                                                         <ul className="mt-[4px] space-y-0 pl-[22px]" role="menu">
+                                 {settingsSubmenu.map((subItem, subIndex) => (
+                                     <li key={subItem.name} role="none">
+                                         <button
+                                             onClick={() => router.push(subItem.href)}
+                                             className={`
+                                   group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px] w-full text-left
+                       focus:outline-none
+                                   ${
+                                       pathname === subItem.href
+                                           ? 'bg-[rgba(20,20,20,0.85)] text-white'
+                                           : 'text-white hover:text-white hover:bg-[#232323]'
+                                   }
+                       transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
+                                 `}
+                                             style={{
+                                                 willChange: 'background-color, color',
+                                             }}
+                                             role="menuitem"
+                                             aria-label={subItem.ariaLabel || subItem.name}
+                                         >
+                                             <IconComponent
+                                                 icon={subItem.icon}
+                                                 isLucide={subItem.isLucide}
+                                                 alt={`${subItem.name} icon`}
+                                                 className="h-4 w-4 shrink-0"
+                                             />
+                                             <span className="whitespace-nowrap">{subItem.name}</span>
+                                         </button>
+                                     </li>
+                                 ))}
                                 <li role="none">
                                         <button
                                         onClick={handleLogout}
