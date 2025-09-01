@@ -119,12 +119,20 @@ export const createUserWithEmail = async (email: string, password: string, first
       console.log('Auth: Starting user creation for email:', email)
       console.log('Auth: Firebase auth instance:', auth)
       console.log('Auth: Current auth state:', auth.currentUser)
+      console.log('Auth: firstName:', firstName, 'lastName:', lastName)
       
       let displayName = 'User'
-      if (firstName && lastName) {
+      if (firstName && lastName && firstName.trim() && lastName.trim()) {
         displayName = `${firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()} ${lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase()}`
-      } else if (firstName) {
+        console.log('Auth: Using full name:', displayName)
+      } else if (firstName && firstName.trim()) {
         displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()
+        console.log('Auth: Using first name only:', displayName)
+      } else if (lastName && lastName.trim()) {
+        displayName = lastName.charAt(0).toUpperCase() + lastName.slice(1).toLowerCase()
+        console.log('Auth: Using last name only:', displayName)
+      } else {
+        console.log('Auth: Using default name:', displayName)
       }
 
       const user = await createUserAndProfileSafely(email, password, '', {

@@ -9,6 +9,13 @@ import { Check } from 'lucide-react'
 
 type Tab = 'profile' | 'billing' | 'security' | 'privacy'
 
+interface Notification {
+  id: string
+  message: string
+  type: 'success' | 'error' | 'info'
+  progress: number
+}
+
 export default function SettingsPage() {
   const { user: userInfo, loading } = useAuth()
   const [activeTab, setActiveTab] = useState<Tab>('profile')
@@ -23,10 +30,49 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   
+  // États pour les notifications
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Détection de l'utilisateur Google vs Email/MDP
   const isGoogleUser = userInfo?.email?.includes('@gmail.com') || userInfo?.email?.includes('@google.com')
+
+  // Fonction pour ajouter une notification
+  const addNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now().toString()
+    const newNotification: Notification = { id, message, type, progress: 100 }
+    setNotifications(prev => [...prev, newNotification])
+    
+    // Animation du compte à rebours
+    const startTime = Date.now()
+    const duration = 4000 // 4 secondes
+    
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
+      
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === id ? { ...n, progress: remaining } : n
+        )
+      )
+      
+      if (remaining > 0) {
+        requestAnimationFrame(updateProgress)
+      } else {
+        // Supprimer la notification quand le compte à rebours est terminé
+        setNotifications(prev => prev.filter(n => n.id !== id))
+      }
+    }
+    
+    requestAnimationFrame(updateProgress)
+  }
+
+  // Fonction pour supprimer une notification
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id))
+  }
 
   useEffect(() => {
     if (userInfo?.display_name) {
@@ -61,9 +107,10 @@ export default function SettingsPage() {
     setIsSaving(true)
     try {
       await updateUserProfile({ displayName: displayNameInput.trim() })
-      alert('Nom affiché mis à jour avec succès !')
+      addNotification('Nom affiché mis à jour avec succès !', 'success')
     } catch (error) {
         console.error("Failed to update display name:", error);
+        addNotification('Erreur lors de la mise à jour du nom affiché', 'error')
     } finally {
         setIsSaving(false);
     }
@@ -76,8 +123,14 @@ export default function SettingsPage() {
     try {
       await deleteAccount()
       setShowDeleteModal(false)
-      alert('Compte supprimé avec succès. Vous allez être redirigé vers la page de connexion.')
-      window.location.replace('/login')
+      
+      // Afficher la notification de succès
+      addNotification('Compte supprimé avec succès. Redirection...', 'success')
+      
+      // Rediriger après un court délai pour que l'utilisateur voie la notification
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 2000)
     } catch (error: any) {
       console.error("Failed to delete account:", error)
       
@@ -93,6 +146,7 @@ export default function SettingsPage() {
       }
       
       setDeleteError(errorMessage);
+      addNotification(errorMessage, 'error')
     } finally {
       setIsDeleting(false)
     }
@@ -307,6 +361,39 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Notifications */}
+      <div className="fixed bottom-4 right-4 z-50 space-y-2">
+        {notifications.map((notification) => (
+          <div
+            key={notification.id}
+            className={`relative overflow-hidden rounded-lg shadow-lg ${
+              notification.type === 'success'
+                ? 'bg-green-600'
+                : notification.type === 'error'
+                ? 'bg-red-600'
+                : 'bg-blue-600'
+            }`}
+          >
+            {/* Barre de progression */}
+            <div 
+              className="absolute top-0 left-0 h-1 bg-white transition-all duration-100 ease-linear"
+              style={{ width: `${notification.progress}%` }}
+            />
+            
+            {/* Contenu de la notification */}
+            <div className="flex items-center justify-between p-3 text-white">
+              <span className="text-sm font-medium">{notification.message}</span>
+              <button 
+                onClick={() => removeNotification(notification.id)} 
+                className="ml-3 text-white hover:text-gray-200 transition-colors text-lg font-bold"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 } 

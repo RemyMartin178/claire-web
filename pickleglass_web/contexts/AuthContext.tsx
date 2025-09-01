@@ -82,10 +82,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleUserAuthentication = async (firebaseUser: User) => {
     try {
       // Créer un profil de fallback immédiatement pour éviter les flashs
+      // Utiliser l'email comme nom temporaire au lieu de 'User'
+      const email = firebaseUser.email || 'no-email@example.com'
+      const displayName = firebaseUser.displayName || email.split('@')[0] || 'Utilisateur'
+      
       const fallbackProfile: UserProfile = {
         uid: firebaseUser.uid,
-        display_name: firebaseUser.displayName || 'User',
-        email: firebaseUser.email || 'no-email@example.com'
+        display_name: displayName,
+        email: email
       }
       
       // Définir l'utilisateur immédiatement

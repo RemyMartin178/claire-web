@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 import SearchPopup from '@/components/SearchPopup'
+import PasswordModal from '@/components/PasswordModal'
 // AuthProvider provided at root layout to ensure single provider instance
 
 export default function ClientLayout({
@@ -39,6 +40,7 @@ export default function ClientLayout({
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
       />
+      <PasswordModal />
     </div>
   )
 } 

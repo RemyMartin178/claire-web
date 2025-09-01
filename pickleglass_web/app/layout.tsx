@@ -2,6 +2,7 @@ import './globals.css'
 import { Inter } from 'next/font/google'
 import ConditionalLayout from '@/components/ConditionalLayout'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { PasswordModalProvider } from '@/contexts/PasswordModalContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,9 +21,11 @@ export default function RootLayout({
     <html lang="fr">
       <body className={inter.className} style={{ background: '#202123' }}>
         <AuthProvider>
-          <ConditionalLayout>
-            {children}
-          </ConditionalLayout>
+          <PasswordModalProvider>
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
+          </PasswordModalProvider>
         </AuthProvider>
       </body>
     </html>

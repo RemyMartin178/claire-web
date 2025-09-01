@@ -1,4 +1,5 @@
 import { auth } from './firebase'
+import { signOut } from 'firebase/auth'
 import { getApiBase } from './http'
 import { FirestoreUserService, FirestoreSessionService, FirestoreTranscriptService, FirestoreAiMessageService, FirestoreSummaryService, FirestorePromptPresetService } from './firestore'
 import { Timestamp } from 'firebase/firestore'
@@ -429,20 +430,38 @@ export const deleteAccount = async (): Promise<void> => {
       // 2. Supprimer le compte Firebase Authentication
       await currentUser.delete();
       
-      console.log('Account deleted successfully from both Firestore and Firebase Auth');
+      // 3. Nettoyer toutes les données locales
+      sessionStorage.clear();
+      localStorage.clear();
+      
+      // 4. Déconnecter l'utilisateur immédiatement
+      await signOut(auth);
+      
+      console.log('Account deleted successfully from both Firestore and Firebase Auth, user signed out and local data cleared');
     } catch (error: any) {
       console.error('Error deleting account:', error);
       
       // Si la suppression du compte Auth échoue, on peut avoir besoin de réauthentifier
       if (error.code === 'auth/requires-recent-login') {
-        throw new Error('Pour des raisons de sécurité, vous devez vous reconnecter avant de supprimer votre compte. Veuillez vous déconnecter et vous reconnecter, puis réessayer.');
+        throw new Error('requires-recent-login');
+      } else if (error.code === 'auth/network-request-failed') {
+        throw new Error('network');
+      } else if (error.code === 'permission-denied') {
+        throw new Error('permission');
       }
       
-      throw new Error(`Erreur lors de la suppression du compte: ${error.message}`);
+      throw error;
     }
   } else {
-    const response = await apiCall('/api/user/profile', { method: 'DELETE' });
+    const response = await apiCall('/api/auth/delete-account', { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete account');
+    
+    // Nettoyer toutes les données locales
+    sessionStorage.clear();
+    localStorage.clear();
+    
+    // Déconnecter l'utilisateur après suppression réussie
+    await signOut(auth);
   }
 };
 
@@ -591,6 +610,10 @@ export const createUserAndProfileSafely = async (email: string, password: string
       });
       
       console.log('Firestore profile created successfully');
+      
+      // Attendre un peu plus pour s'assurer que Firestore est synchronisé
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
       return user;
     } catch (error: any) {
       console.error(`Registration attempt ${attempt} failed:`, error);
