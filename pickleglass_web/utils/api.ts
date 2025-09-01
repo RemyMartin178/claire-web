@@ -417,10 +417,29 @@ export const checkApiKeyStatus = async (): Promise<{ hasApiKey: boolean }> => {
 
 export const deleteAccount = async (): Promise<void> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
-    if (!uid) throw new Error('No authenticated user');
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No authenticated user');
     
-    await FirestoreUserService.deleteUser(uid);
+    const uid = currentUser.uid;
+    
+    try {
+      // 1. Supprimer toutes les données Firestore
+      await FirestoreUserService.deleteUser(uid);
+      
+      // 2. Supprimer le compte Firebase Authentication
+      await currentUser.delete();
+      
+      console.log('Account deleted successfully from both Firestore and Firebase Auth');
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      
+      // Si la suppression du compte Auth échoue, on peut avoir besoin de réauthentifier
+      if (error.code === 'auth/requires-recent-login') {
+        throw new Error('Pour des raisons de sécurité, vous devez vous reconnecter avant de supprimer votre compte. Veuillez vous déconnecter et vous reconnecter, puis réessayer.');
+      }
+      
+      throw new Error(`Erreur lors de la suppression du compte: ${error.message}`);
+    }
   } else {
     const response = await apiCall('/api/user/profile', { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete account');

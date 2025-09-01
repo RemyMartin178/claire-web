@@ -126,15 +126,29 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async () => {
     const confirmMessage = isFirebaseMode
-      ? "Are you sure you want to delete your account? This action cannot be undone and all data stored in Firebase will be deleted."
-      : "Are you sure you want to delete your account? This action cannot be undone and all data will be deleted."
+      ? "Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données de Firebase (sessions, presets, profil)."
+      : "Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données."
     
     if (window.confirm(confirmMessage)) {
       try {
         await deleteAccount()
+        alert('Compte supprimé avec succès. Vous allez être redirigé vers la page de connexion.')
         window.location.replace('/login')
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to delete account:", error)
+        
+        // Afficher un message d'erreur plus clair à l'utilisateur
+        let errorMessage = 'Erreur lors de la suppression du compte. Veuillez réessayer.';
+        
+        if (error.message.includes('requires-recent-login')) {
+          errorMessage = 'Pour des raisons de sécurité, vous devez vous reconnecter avant de supprimer votre compte. Veuillez vous déconnecter et vous reconnecter, puis réessayer.';
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Erreur de connexion. Vérifiez votre connexion internet et réessayez.';
+        } else if (error.message.includes('permission')) {
+          errorMessage = 'Vous n\'avez pas les permissions nécessaires pour supprimer ce compte.';
+        }
+        
+        alert(errorMessage);
       }
     }
   }
