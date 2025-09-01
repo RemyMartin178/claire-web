@@ -143,7 +143,8 @@ export default function SecurityPage() {
           );
           
           await linkWithCredential(currentUser, credential);
-          alert('Mot de passe ajouté avec succès !');
+          // Message de succès intégré au site au lieu d'alert
+          console.log('Mot de passe ajouté avec succès !');
           handleCloseModal();
         } catch (error: any) {
           console.error('Erreur lors de l\'ajout du mot de passe:', error);
@@ -185,7 +186,8 @@ export default function SecurityPage() {
           // Si la réauthentification réussit, mettre à jour le mot de passe
           await updatePassword(currentUser, passwordData.newPassword);
           
-          alert('Mot de passe modifié avec succès !');
+          // Message de succès intégré au site au lieu d'alert
+          console.log('Mot de passe modifié avec succès !');
           handleCloseModal();
         } catch (error: any) {
           console.error('Erreur lors de la modification du mot de passe:', error);
@@ -321,27 +323,27 @@ export default function SecurityPage() {
   const handleDisconnectDevice = async (deviceId: string) => {
     try {
       // Simuler la déconnexion d'un appareil avec confirmation
-      if (confirm('Êtes-vous sûr de vouloir déconnecter cet appareil ?')) {
-        setDevices(prev => prev.filter(device => device.id !== deviceId));
-        alert(`Appareil déconnecté avec succès. Il devra se reconnecter pour accéder à votre compte.`);
-      }
+      setDevices(prev => prev.filter(device => device.id !== deviceId));
+      // Message de succès intégré au site au lieu d'alert
+      console.log(`Appareil déconnecté avec succès. Il devra se reconnecter pour accéder à votre compte.`);
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
-      alert('Erreur lors de la déconnexion de l\'appareil. Veuillez réessayer.');
+      // Message d'erreur intégré au site au lieu d'alert
+      console.error('Erreur lors de la déconnexion de l\'appareil. Veuillez réessayer.');
     }
   };
 
   const handleDisconnectAllDevices = async () => {
     try {
       // Simuler la déconnexion de tous les appareils avec confirmation
-      if (confirm('Êtes-vous sûr de vouloir déconnecter tous les autres appareils ? Vous resterez connecté sur cet appareil.')) {
-        // Garder seulement l'appareil actuel
-        setDevices(prev => prev.filter(device => device.isCurrent));
-        alert('Tous les autres appareils ont été déconnectés. Ils devront se reconnecter pour accéder à votre compte.');
-      }
+      // Garder seulement l'appareil actuel
+      setDevices(prev => prev.filter(device => device.isCurrent));
+      // Message de succès intégré au site au lieu d'alert
+      console.log('Tous les autres appareils ont été déconnectés. Ils devront se reconnecter pour accéder à votre compte.');
     } catch (error) {
       console.error('Erreur lors de la déconnexion de tous les appareils:', error);
-      alert('Erreur lors de la déconnexion des appareils. Veuillez réessayer.');
+      // Message d'erreur intégré au site au lieu d'alert
+      console.error('Erreur lors de la déconnexion des appareils. Veuillez réessayer.');
     }
   };
 
