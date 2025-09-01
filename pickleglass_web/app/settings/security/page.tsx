@@ -237,45 +237,111 @@ export default function SecurityPage() {
     if (userInfo) {
       detectAuthType();
       
-      // Détecter l'appareil actuel automatiquement
-      const currentDevice: Device = {
-        id: 'current',
-        name: 'Cet appareil',
-        os: navigator.platform.includes('Win') ? 'Windows' : 
-            navigator.platform.includes('Mac') ? 'macOS' : 
-            navigator.platform.includes('Linux') ? 'Linux' : 'Unknown',
-        browser: navigator.userAgent.includes('Chrome') ? 'Chrome' :
-                navigator.userAgent.includes('Firefox') ? 'Firefox' :
-                navigator.userAgent.includes('Safari') ? 'Safari' : 'Unknown',
-        location: 'France', // À remplacer par géolocalisation réelle
-        ip: '192.168.1.100', // À remplacer par IP réelle
-        lastSeen: 'Connecté maintenant',
-        isCurrent: true
+      // Fonction pour récupérer les vraies informations de l'appareil
+      const detectCurrentDevice = async () => {
+        try {
+          // Récupérer l'IP publique et la géolocalisation
+          const ipResponse = await fetch('https://api.ipify.org?format=json');
+          const ipData = await ipResponse.json();
+          
+          const geoResponse = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
+          const geoData = await geoResponse.json();
+          
+          // Détecter le navigateur et l'OS plus précisément
+          const userAgent = navigator.userAgent;
+          let browser = 'Unknown';
+          let os = 'Unknown';
+          
+          // Détection du navigateur
+          if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
+            browser = 'Chrome';
+          } else if (userAgent.includes('Firefox')) {
+            browser = 'Firefox';
+          } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+            browser = 'Safari';
+          } else if (userAgent.includes('Edg')) {
+            browser = 'Edge';
+          } else if (userAgent.includes('Opera')) {
+            browser = 'Opera';
+          }
+          
+          // Détection de l'OS
+          if (userAgent.includes('Windows')) {
+            os = 'Windows';
+          } else if (userAgent.includes('Mac')) {
+            os = 'macOS';
+          } else if (userAgent.includes('Linux')) {
+            os = 'Linux';
+          } else if (userAgent.includes('Android')) {
+            os = 'Android';
+          } else if (userAgent.includes('iOS')) {
+            os = 'iOS';
+          }
+          
+          // Créer l'appareil avec les vraies informations
+          const currentDevice: Device = {
+            id: 'current',
+            name: 'Cet appareil',
+            os: os,
+            browser: browser,
+            location: `${geoData.city || 'Inconnu'}, ${geoData.country_name || 'Inconnu'}`,
+            ip: ipData.ip,
+            lastSeen: 'Connecté maintenant',
+            isCurrent: true
+          };
+          
+          setDevices([currentDevice]);
+        } catch (error) {
+          console.error('Erreur lors de la détection de l\'appareil:', error);
+          
+          // Fallback avec les informations de base si les APIs échouent
+          const fallbackDevice: Device = {
+            id: 'current',
+            name: 'Cet appareil',
+            os: navigator.platform.includes('Win') ? 'Windows' : 
+                navigator.platform.includes('Mac') ? 'macOS' : 
+                navigator.platform.includes('Linux') ? 'Linux' : 'Unknown',
+            browser: navigator.userAgent.includes('Chrome') ? 'Chrome' :
+                    navigator.userAgent.includes('Firefox') ? 'Firefox' :
+                    navigator.userAgent.includes('Safari') ? 'Safari' : 'Unknown',
+            location: 'Localisation non disponible',
+            ip: 'IP non disponible',
+            lastSeen: 'Connecté maintenant',
+            isCurrent: true
+          };
+          
+          setDevices([fallbackDevice]);
+        }
       };
-
-      // Pour l'instant, on ne montre que l'appareil actuel
-      // Les autres appareils seront récupérés depuis la vraie API plus tard
-      setDevices([currentDevice]);
+      
+      detectCurrentDevice();
     }
   }, [userInfo]);
 
   const handleDisconnectDevice = async (deviceId: string) => {
     try {
-      // Simuler la déconnexion d'un appareil
-      setDevices(prev => prev.filter(device => device.id !== deviceId));
-      alert(`Appareil déconnecté avec succès`);
+      // Simuler la déconnexion d'un appareil avec confirmation
+      if (confirm('Êtes-vous sûr de vouloir déconnecter cet appareil ?')) {
+        setDevices(prev => prev.filter(device => device.id !== deviceId));
+        alert(`Appareil déconnecté avec succès. Il devra se reconnecter pour accéder à votre compte.`);
+      }
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
+      alert('Erreur lors de la déconnexion de l\'appareil. Veuillez réessayer.');
     }
   };
 
   const handleDisconnectAllDevices = async () => {
     try {
-      // Garder seulement l'appareil actuel
-      setDevices(prev => prev.filter(device => device.isCurrent));
-      alert('Tous les autres appareils ont été déconnectés');
+      // Simuler la déconnexion de tous les appareils avec confirmation
+      if (confirm('Êtes-vous sûr de vouloir déconnecter tous les autres appareils ? Vous resterez connecté sur cet appareil.')) {
+        // Garder seulement l'appareil actuel
+        setDevices(prev => prev.filter(device => device.isCurrent));
+        alert('Tous les autres appareils ont été déconnectés. Ils devront se reconnecter pour accéder à votre compte.');
+      }
     } catch (error) {
       console.error('Erreur lors de la déconnexion de tous les appareils:', error);
+      alert('Erreur lors de la déconnexion des appareils. Veuillez réessayer.');
     }
   };
 
