@@ -15,6 +15,7 @@ export interface UserProfile {
   uid: string;
   display_name: string;
   email: string;
+  isAdmin?: boolean;
 }
 
 export interface Session {
@@ -321,7 +322,8 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       const userProfile = {
         uid: user.uid,
         display_name: firestoreProfile.displayName || user.displayName || 'User',
-        email: firestoreProfile.email || user.email || 'no-email@example.com'
+        email: firestoreProfile.email || user.email || 'no-email@example.com',
+        isAdmin: (firestoreProfile as any)?.isAdmin === true
       };
       
       return userProfile;

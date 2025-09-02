@@ -1,0 +1,93 @@
+:root,
+html.light {
+  --sidebar-width: 260px;
+  --spacing: .25rem;
+  --sidebar-rail-width: calc(var(--spacing) * 13); /* ≈ 52px */
+  /* Sidebar / elevated surfaces */
+  --bg-elevated-secondary: #f9f9f9;
+  --main-surface-primary: #ffffff;    /* page/main background */
+  --main-surface-secondary: #f9f9f9; /* profile/secondary panels */
+  --main-surface-tertiary: #ececec;
+  --surface-hover: rgba(0,0,0,.05);
+
+  /* Borders */
+  --border-default: #e3e3e3;
+  --border-light: #ececec;
+  --border-heavy: #e8e8e8;
+  /* Mappings for sidebar */
+  --sidebar-border: var(--border-default);
+
+  /* Texts */
+  --text-primary: #0d0d0d;
+  --text-secondary: #676767;
+  --text-tertiary: #8f8f8f;
+
+  /* Avatar placeholder */
+  --avatar-bg: #e5e7eb;
+
+  /* Card (profile overlay) */
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+
+  /* Back-compat mappings */
+  --sidebar-surface-primary: #f9f9f9;
+  --sidebar-surface-secondary: #ececec;
+  --sidebar-surface-tertiary: #e3e3e3;
+  --sidebar-bg: var(--sidebar-surface-primary);
+  --sidebar-border: var(--border-default);
+  --menu-bg: var(--main-surface-secondary);
+  --page-bg: var(--main-surface-primary);
+  --profile-bg: var(--card-bg);
+  --profile-border: var(--border-default);
+  --profile-text-primary: var(--text-primary);
+  --profile-text-secondary: var(--text-secondary);
+  --profile-hover: var(--surface-hover);
+}
+
+:root.dark,
+html.dark {
+  --sidebar-width: 260px;
+  --spacing: .25rem;
+  --sidebar-rail-width: calc(var(--spacing) * 13);
+  /* Sidebar / elevated surfaces */
+  --bg-elevated-secondary: #181818;
+  --main-surface-primary: #212121;   /* page/main background */
+  --main-surface-secondary: #2f2f2f; /* profile/secondary panels */
+  --main-surface-tertiary: #424242;
+  --surface-hover: #ffffff14;        /* ~ rgba(255,255,255,.08) */
+
+  /* Borders */
+  --border-default: #2a2a2a;
+  --border-light: #212121;
+  --border-heavy: #3d3d3d;
+  /* Mappings for sidebar */
+  --sidebar-border: var(--border-default);
+
+  /* Texts */
+  --text-primary: #ececec;
+  --text-secondary: #b4b4b4;
+  --text-tertiary: #8f8f8f; /* often reduced opacity in dark */
+
+  /* Avatar placeholder */
+  --avatar-bg: #374151;
+
+  /* Card (profile overlay) - softened dark */
+  --card-bg: #1f1f1f;
+  --card-border: #2a2a2a;
+
+  /* Back-compat mappings */
+  --sidebar-surface-primary: #171717;
+  --sidebar-surface-secondary: #212121;
+  --sidebar-surface-tertiary: #2f2f2f;
+  --sidebar-bg: var(--sidebar-surface-primary);
+  --sidebar-border: var(--border-default);
+  --menu-bg: var(--main-surface-secondary);
+  --page-bg: var(--main-surface-primary);
+  --profile-bg: var(--card-bg);
+  --profile-border: var(--card-border);
+  --profile-text-primary: var(--text-primary);
+  --profile-text-secondary: var(--text-secondary);
+  --profile-hover: var(--surface-hover);
+}
+
+

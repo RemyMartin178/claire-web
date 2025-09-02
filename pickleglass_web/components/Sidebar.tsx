@@ -4,25 +4,27 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useState, createElement, useEffect, useMemo, useCallback, memo } from 'react';
-import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, MessageSquare } from 'lucide-react';
+import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, ChevronDown, LucideIcon, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProfileMenu from '@/components/sidebar/ProfileMenu';
+
+import Avatar from '@/components/Avatar';
 import { logout, checkApiKeyStatus } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 const ANIMATION_DURATION = {
-    SIDEBAR: 500,
-    TEXT: 300,
-    SUBMENU: 500,
+    SIDEBAR: 300,
+    TEXT: 200,
+    SUBMENU: 300,
     ICON_HOVER: 200,
     COLOR_TRANSITION: 200,
     HOVER_SCALE: 200,
 } as const;
 
 const DIMENSIONS = {
-    SIDEBAR_EXPANDED: 220,
-    SIDEBAR_COLLAPSED: 64,
-    ICON_SIZE: 18,
-    USER_AVATAR_SIZE: 32,
+    SIDEBAR_EXPANDED: 260,
+    SIDEBAR_COLLAPSED: 52,
+    ICON_SIZE: 20, // ChatGPT uses 20px icons
+    USER_AVATAR_SIZE: 24, // ChatGPT profile avatar is 24px
     HEADER_HEIGHT: 64,
 } as const;
 
@@ -98,7 +100,7 @@ const useAnimationStyles = (isCollapsed: boolean) => {
     const sidebarContainerStyle: React.CSSProperties = useMemo(
         () => ({
             willChange: 'width',
-            transition: `width ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+            transition: `width ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
         }),
         []
     );
@@ -107,7 +109,7 @@ const useAnimationStyles = (isCollapsed: boolean) => {
         (): React.CSSProperties => ({
             width: isCollapsed ? '0px' : '150px',
             overflow: 'hidden',
-            transition: `width ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+            transition: `width ${ANIMATION_DURATION.SIDEBAR}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
         }),
         [isCollapsed]
     );
@@ -116,8 +118,9 @@ const useAnimationStyles = (isCollapsed: boolean) => {
         (): React.CSSProperties => ({
             willChange: 'opacity',
             opacity: isCollapsed ? 0 : 1,
-            transition: `opacity 300ms ease ${isCollapsed ? '0ms' : '200ms'}`,
+            transition: `opacity ${ANIMATION_DURATION.TEXT}ms ease ${isCollapsed ? '0ms' : '100ms'}`,
             whiteSpace: 'nowrap' as const,
+            pointerEvents: isCollapsed ? 'none' : 'auto',
         }),
         [isCollapsed]
     );
@@ -137,7 +140,7 @@ const IconComponent = memo<{
     isLucide: boolean;
     alt: string;
     className?: string;
-}>(({ icon, isLucide, alt, className = 'h-[18px] w-[18px] transition-transform duration-200' }) => {
+}>(({ icon, isLucide, alt, className = 'h-5 w-5 transition-transform duration-200' }) => {
     if (isLucide) {
         return createElement(icon as LucideIcon, { className, 'aria-hidden': true });
     }
@@ -163,6 +166,8 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
     const { isAnimating, getTextAnimationStyle, getSubmenuAnimationStyle, sidebarContainerStyle, getTextContainerStyle, getUniformTextStyle } =
         useAnimationStyles(isCollapsed);
+
+    
 
     useEffect(() => {
         checkApiKeyStatus()
@@ -299,13 +304,13 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                         <button
                             onClick={item.action}
                             onKeyDown={e => handleKeyDown(e, item.action)}
-                            className={`${baseButtonClasses} ${getStateClasses(false)}`}
+                            className={`${baseButtonClasses} ${getStateClasses(false)} h-9 touch:h-10`}
                             title={isCollapsed ? item.name : undefined}
                             aria-label={item.ariaLabel || item.name}
                             style={{ willChange: 'background-color, color' }}
                         >
-                            <div className="shrink-0 flex items-center justify-center w-5 h-5">
-                                <IconComponent icon={item.icon} isLucide={item.isLucide} alt={`${item.name} icon`} />
+                            <div className="shrink-0 flex items-center justify-center">
+                                <IconComponent icon={item.icon} isLucide={item.isLucide} alt={`${item.name} icon`} className="h-5 w-5" />
                             </div>
 
                             <div className="ml-[12px] overflow-hidden" style={getTextContainerStyle()}>
@@ -324,15 +329,15 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                         <button
                             onClick={toggleSettings}
                             onKeyDown={e => handleKeyDown(e, toggleSettings)}
-                            className={`${baseButtonClasses} ${getStateClasses(isActive)}`}
+                            className={`${baseButtonClasses} ${getStateClasses(isActive)} h-9 touch:h-10`}
                             title={isCollapsed ? item.name : undefined}
                             aria-label={item.ariaLabel || item.name}
                             aria-expanded={isSettingsExpanded}
                             aria-controls="settings-submenu"
                             style={{ willChange: 'background-color, color' }}
                         >
-                            <div className="shrink-0 flex items-center justify-center w-5 h-5">
-                                <IconComponent icon={item.icon} isLucide={item.isLucide} alt={`${item.name} icon`} />
+                            <div className="shrink-0 flex items-center justify-center">
+                                <IconComponent icon={item.icon} isLucide={item.isLucide} alt={`${item.name} icon`} className="h-5 w-5" />
                             </div>
 
                             <div className="ml-[12px] overflow-hidden flex items-center" style={getTextContainerStyle()}>
@@ -417,19 +422,18 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                 <li key={item.name}>
                     <Link
                         href={item.href || '#'}
-                        className={`
-                        group flex items-center rounded-[8px] text-[14px] px-[12px] py-[10px] relative
+                                                    className={`
+                        group flex items-center rounded-lg text-sm ${isCollapsed ? 'justify-center' : 'px-2'} py-2 h-9 touch:h-10
             focus:outline-none
             ${getStateClasses(isActive)}
             transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
-                        ${isCollapsed ? '' : ''}
                       `}
                         title={isCollapsed ? item.name : undefined}
                         aria-label={item.ariaLabel || item.name}
                         style={{ willChange: 'background-color, color' }}
                     >
-                        <div className="shrink-0 flex items-center justify-center w-5 h-5">
-                            <IconComponent icon={item.icon} isLucide={item.isLucide} alt={`${item.name} icon`} />
+                        <div className="shrink-0 flex items-center justify-center">
+                            <IconComponent icon={item.icon} isLucide={item.isLucide} alt={`${item.name} icon`} className="h-5 w-5" />
                         </div>
 
                         <div className="ml-[12px] overflow-hidden" style={getTextContainerStyle()}>
@@ -504,21 +508,21 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
     return (
         <aside
-            className={`flex h-full flex-col bg-[#1E1E1E] py-3 px-2 relative ${isCollapsed ? 'w-[60px]' : 'w-[220px]'}`}
+            className={`flex h-full flex-col bg-[color:var(--sidebar-bg)] py-3 px-0 relative ${isCollapsed ? 'w-[52px]' : 'w-[260px]'}`}
             style={sidebarContainerStyle}
             role="navigation"
             aria-label="main navigation"
             aria-expanded={!isCollapsed}
         >
-            <header className={`group relative w-full flex shrink-0 items-center ${isCollapsed ? 'justify-center' : 'justify-between'} text-text-main`}>
-                <Link href="/" className={`flex items-center ${isCollapsed ? 'mx-auto' : ''}`}>
+            <header className={`group relative w-full flex shrink-0 items-center ${isCollapsed ? 'justify-center py-1.5' : 'justify-between'} text-text-main`}>
+                <Link href="/" className={`${isCollapsed ? 'h-12 w-12 inline-flex items-center justify-center' : 'flex items-center'}`}>
                     {/* Logo Claire - même logo pour sidebar ouverte et fermée */}
                     <Image
                         src="/word.png"
                         alt="Claire"
-                        width={isCollapsed ? 32 : 50}
-                        height={32}
-                        className={`shrink-0 mt-4`}
+                        width={isCollapsed ? 28 : 50}
+                        height={isCollapsed ? 28 : 20}
+                        className={`shrink-0`}
                         priority
                     />
                 </Link>
@@ -526,16 +530,21 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                     <button
                         onClick={toggleSidebar}
                         onKeyDown={e => handleKeyDown(e, toggleSidebar)}
-                        className={`text-gray-500 hover:text-gray-800 p-1 rounded-[4px] hover:bg-[#f7f7f7] h-6 w-6 transition-colors focus:outline-none`}
+                        className={`h-9 w-9 inline-flex items-center justify-center rounded-full hover:bg-[color:var(--surface-hover)] text-gray-500 transition-colors focus:outline-none`}
                         aria-label="Fermer la barre latérale"
+                        title="Fermer la barre latérale"
                     >
-                        <Image src="/unfold.svg" alt="Fermer" width={18} height={18} className="transform rotate-180" />
+                        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                     </button>
                 )}
             </header>
 
-            <nav className="flex flex-1 flex-col pt-8 text-text-main" role="navigation" aria-label="Menu principal">
-                <ul role="list" className="flex flex-1 flex-col">
+            <nav
+                className={`flex flex-1 flex-col text-text-main ${isCollapsed ? 'items-center pt-3' : 'pt-8'}`}
+                role="navigation"
+                aria-label="Historique de chat"
+            >
+                <ul role="list" className={`flex flex-1 flex-col ${isCollapsed ? 'items-center' : ''}`}>
                     <li>
                         <ul role="list" className="">
                             {navigation.map(renderNavigationItem)}
@@ -543,22 +552,24 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                     </li>
                 </ul>
 
-                <button
-                    onClick={toggleSidebar}
-                    onKeyDown={e => handleKeyDown(e, toggleSidebar)}
-                    className={`${
-                        isCollapsed ? '' : 'opacity-0'
-                    } "absolute inset-0 flex items-center justify-center w-full h-[36px] mb-[8px] rounded-[20px] flex justify-center items-center text-gray-500 hover:text-gray-800 rounded-md scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 ease-out focus:outline-none`}
-                    aria-label="Ouvrir la barre latérale"
-                >
-                    <div className="w-[36px] h-[36px] flex items-center justify-center bg-[#f7f7f7] rounded-[20px]">
-                        <Image src="/unfold.svg" alt="Ouvrir" width={18} height={18} className="h-4.5 w-4.5" />
-                    </div>
-                </button>
+                
 
 
 
-                <div className="mt-auto space-y-[0px]" role="navigation" aria-label="Liens supplémentaires">
+                <div className="mt-auto py-1.5" role="navigation" aria-label="Liens supplémentaires">
+                    {isCollapsed && (
+                        <div className="mb-2 flex items-center justify-center">
+                            <button
+                                onClick={toggleSidebar}
+                                onKeyDown={e => handleKeyDown(e, toggleSidebar)}
+                                className={`h-9 w-9 inline-flex items-center justify-center rounded-full hover:bg-[color:var(--surface-hover)] text-gray-500 focus:outline-none`}
+                                aria-label="Ouvrir la barre latérale"
+                                title="Ouvrir la barre latérale"
+                            >
+                                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                            </button>
+                        </div>
+                    )}
                     {bottomItems.map((item, index) => (
                         <Link
                             key={item.text}
@@ -566,26 +577,23 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                             target="_blank"
                             rel="noopener noreferrer"
                             className={`
-                group flex items-center rounded-[6px] px-[12px] py-[8px] text-[13px] text-white
-                hover:text-white hover:bg-[#232323] ${isCollapsed ? '' : 'gap-x-[10px]'}
-                transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out 
-                focus:outline-none
+                group ${isCollapsed ? 'h-9 w-9 inline-flex items-center justify-center rounded-lg' : 'flex items-center rounded-[6px] px-[12px] py-[8px] gap-x-[10px]'}
+                text-[13px] text-[color:var(--text-primary)] hover:text-[color:var(--text-primary)] hover:bg-[color:var(--surface-hover)]
+                transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out focus:outline-none
               `}
-                            title={isCollapsed ? item.text : undefined}
+                            title={item.text}
                             aria-label={item.ariaLabel}
                             style={{ willChange: 'background-color, color' }}
                         >
-                            <div className=" overflow-hidden">
-                                <span className="" style={getUniformTextStyle()}>
-                                    {item.text}
-                                </span>
-                            </div>
-                            <div className="shrink-0 flex items-center justify-center w-4 h-4">
+                            {!isCollapsed && (
+                                <span style={getUniformTextStyle()}>{item.text}</span>
+                            )}
+                            <div className={`${isCollapsed ? '' : 'shrink-0 flex items-center justify-center w-4 h-4'}`}>
                                 <IconComponent
                                     icon={item.icon}
                                     isLucide={false}
                                     alt={`${item.text} icon`}
-                                    className={`h-[16px] w-[16px] transition-transform duration-${ANIMATION_DURATION.ICON_HOVER} filter invert`}
+                                    className={`h-5 w-5 transition-transform duration-${ANIMATION_DURATION.ICON_HOVER} filter invert`}
                                 />
                             </div>
                         </Link>
@@ -599,9 +607,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                 <div className="mt-[0px]">
                     {isCollapsed ? (
                         <div className="flex items-center justify-center py-2">
-                            <div className="h-[30px] w-[30px] rounded-full border border-[#8d8d8d] flex items-center justify-center text-white text-[13px]">
-                                {getUserInitial()}
-                            </div>
+                            <Avatar name={getUserDisplayName()} size="sm" />
                         </div>
                     ) : (
                         <ProfileMenu
@@ -609,7 +615,8 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                             name={getUserDisplayName()}
                             email={userInfo?.email || 'user@example.com'}
                             plan={hasApiKey ? 'Claire Pro' : 'Claire Gratuit'}
-                            sidebarWidthPx={220}
+                            sidebarWidthPx={isCollapsed ? 64 : 260}
+                            isSidebarCollapsed={isCollapsed}
                         />
                     )}
                 </div>

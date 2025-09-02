@@ -10,12 +10,14 @@ interface AuthContextType {
   user: UserProfile | null
   loading: boolean
   isAuthenticated: boolean
+  isAdmin: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   isAuthenticated: false,
+  isAdmin: false,
 })
 
 export const useAuth = () => {
@@ -30,6 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     console.log('AuthContext: Setting up auth state listener')
@@ -95,27 +98,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Définir l'utilisateur immédiatement
       setUser(fallbackProfile)
       setIsAuthenticated(true)
-      setLoading(false)
+      // On garde loading à true jusqu'à la fin de la récupération du profil Firestore
       
       // Ensuite, essayer de récupérer le profil complet en arrière-plan
       try {
         const userProfile = await getUserProfile()
         if (userProfile) {
           setUser(userProfile)
+          const adminFlag = userProfile.isAdmin === true
+          setIsAdmin(adminFlag)
+          if (adminFlag) {
+            console.log('[ADMIN] Admin user connected:', userProfile.email || userProfile.uid)
+          }
         }
       } catch (error) {
         console.warn('Failed to fetch user profile, using fallback:', error)
+      } finally {
+        setLoading(false)
       }
     } catch (error: any) {
       console.error('Auth failed:', error)
       setUser(null)
       setIsAuthenticated(false)
+      setIsAdmin(false)
       setLoading(false)
     }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, loading, isAuthenticated, isAdmin }}>
       {children}
     </AuthContext.Provider>
   )

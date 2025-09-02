@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: ['class'],
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,6 +10,8 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: [
+          'Inter var',
+          'InterVariable',
           'Inter',
           '-apple-system',
           'BlinkMacSystemFont',
@@ -198,6 +201,7 @@ module.exports = {
         'cluely-hover': '0 12px 40px rgba(0, 0, 0, 0.15)',
       },
       borderRadius: {
+        'lg': '8px',
         'xl': '12px',
         '2xl': '16px',
         '3xl': '20px',

@@ -16,13 +16,15 @@ export default function ConditionalLayout({
   
   // Check if current path is an auth page
   const isAuthPage = pathname?.startsWith('/auth/') || pathname === '/login' || pathname === '/register'
+  const isDebugPage = pathname === '/fettywapdebug'
   
   // Rediriger vers le login si pas authentifié et pas sur une page d'auth
   useEffect(() => {
+    if (isDebugPage) return
     if (!loading && !isAuthenticated && !isAuthPage) {
       router.replace('/auth/login')
     }
-  }, [loading, isAuthenticated, isAuthPage, router])
+  }, [loading, isAuthenticated, isAuthPage, isDebugPage, router])
   
   if (isAuthPage) {
     return (
@@ -30,6 +32,12 @@ export default function ConditionalLayout({
         {children}
       </div>
     )
+  }
+
+  // Allow the debug page to render (AdminGuard inside the page will control access)
+  if (isDebugPage) {
+    if (loading) return null
+    return <ClientLayout>{children}</ClientLayout>
   }
   
   // Si on n'est pas authentifié OU en cours de chargement, ne rien afficher (redirection en cours)

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 import SearchPopup from '@/components/SearchPopup'
 import PasswordModal from '@/components/PasswordModal'
+
 // AuthProvider provided at root layout to ensure single provider instance
 
 export default function ClientLayout({
@@ -13,6 +14,9 @@ export default function ClientLayout({
 }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  
+
+  // tracking retiré
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

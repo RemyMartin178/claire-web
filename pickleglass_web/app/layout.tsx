@@ -1,4 +1,5 @@
 import './globals.css'
+import { ThemeProvider } from 'next-themes'
 import { Inter } from 'next/font/google'
 import ConditionalLayout from '@/components/ConditionalLayout'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -18,15 +19,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr">
-      <body className={inter.className} style={{ background: '#202123' }}>
-        <AuthProvider>
-          <PasswordModalProvider>
-            <ConditionalLayout>
-              {children}
-            </ConditionalLayout>
-          </PasswordModalProvider>
-        </AuthProvider>
+    <html lang="fr" suppressHydrationWarning>
+      <body className={inter.className} style={{ background: 'var(--page-bg)' }}>
+        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
+          <AuthProvider>
+            <PasswordModalProvider>
+              <ConditionalLayout>
+                {children}
+              </ConditionalLayout>
+            </PasswordModalProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

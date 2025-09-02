@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import * as Popover from "@radix-ui/react-popover"
 import { LogOut, Settings, SlidersHorizontal, Gem } from "lucide-react"
 import { useRouter } from "next/navigation"
+import Avatar from '@/components/Avatar'
+import { useAuth } from '@/contexts/AuthContext'
 
 export type ProfilePlan = "Claire Pro" | "Claire Gratuit"
 
@@ -15,6 +16,7 @@ export interface ProfileMenuProps {
   avatarUrl?: string | null
   // Optional: width of the sidebar for strict alignment. If not provided, the component stretches to its container width
   sidebarWidthPx?: number
+  isSidebarCollapsed?: boolean
 }
 
 export default function ProfileMenu({
@@ -24,9 +26,11 @@ export default function ProfileMenu({
   plan = "Claire Gratuit",
   avatarUrl = null,
   sidebarWidthPx,
+  isSidebarCollapsed = false,
 }: ProfileMenuProps) {
   const [open, setOpen] = React.useState(false)
   const router = useRouter()
+  const { isAdmin } = useAuth()
 
   // Keyboard shortcuts when open
   React.useEffect(() => {
@@ -47,74 +51,68 @@ export default function ProfileMenu({
     return () => document.removeEventListener("keydown", onKey)
   }, [open])
 
-  const initials = React.useMemo(() => {
-    if (avatarUrl) return ""
-    const parts = name.split(" ").filter(Boolean)
-    if (parts.length === 0) return "U"
-    if (parts.length === 1) return parts[0][0]?.toUpperCase() ?? "U"
-    return (parts[0][0] + parts[1][0]).toUpperCase()
-  }, [name, avatarUrl])
 
-  // Container to keep the menu strictly inside the sidebar
-  // The parent that uses this component should be relative; but we provide a fallback wrapper here
   return (
-    <div className="relative select-none" style={sidebarWidthPx ? { width: sidebarWidthPx } : undefined}>
-      {/* Overlay supprimé (plus d'assombrissement du fond) */}
-
-      <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger asChild>
-                     <button
-             type="button"
-             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all duration-200 hover:bg-hover-bg active:bg-active-bg focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-2`}
-             aria-expanded={open}
-             aria-haspopup="menu"
-           >
-            {/* Avatar */}
-            <div className="h-9 w-9 rounded-full bg-white/10 flex items-center justify-center text-white text-sm overflow-hidden">
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img alt={name} src={avatarUrl} className="h-full w-full object-cover" />
-              ) : (
-                <span>{initials}</span>
-              )}
-            </div>
-                         <div className="min-w-0 flex-1">
-               <div className="text-sm font-medium text-text-main truncate">{name}</div>
-               <div className="text-xs text-text-secondary truncate">{plan}</div>
-             </div>
-            {/* Chevron removed as requested */}
-          </button>
-        </Popover.Trigger>
-
-        {/* Content rendered inside the sidebar; no Portal to keep it within bounds */}
-        <Popover.Content
-          side="top"
-          align="center"
-          sideOffset={8}
-          avoidCollisions={false}
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-          className="z-50 outline-none"
+    <>
+      {/* Profile Button */}
+      <div className="relative select-none" style={sidebarWidthPx ? { width: sidebarWidthPx } : undefined}>
+        <button
+          type="button"
+          onClick={() => {
+            if (isSidebarCollapsed) return
+            setOpen(!open)
+          }}
+          className={`w-full ${isSidebarCollapsed ? 'h-9 justify-center px-0' : 'h-[52px] px-3'} flex items-center gap-3 py-[10px] rounded-lg text-left transition-all duration-200 hover:bg-[color:var(--profile-hover)]`}
+          aria-expanded={!isSidebarCollapsed && open}
+          aria-haspopup="menu"
+          aria-label={isSidebarCollapsed ? 'Profil' : 'Ouvrir le menu profil'}
+          title={isSidebarCollapsed ? 'Profil' : 'Ouvrir le menu profil'}
         >
-                     <div
-             role="menu"
-             aria-label="Menu utilisateur"
-             className="w-[var(--profile-menu-width,280px)] bg-card-bg text-text-main rounded-2xl shadow-large border border-sidebar-border p-3 animate-fade-in"
-             style={{
-               // Expand to container width with 16px lateral paddings to match sidebar paddings
-               width: sidebarWidthPx ? sidebarWidthPx : undefined,
-             }}
-           >
-                         {/* Email */}
-             <div className="px-2 py-2 text-xs text-text-muted truncate" aria-hidden>
-               {email}
-             </div>
+          {/* Avatar */}
+          <div className="relative">
+            <Avatar name={name} avatarUrl={avatarUrl} size="sm" />
+            {isAdmin && (
+              <span className="absolute -top-1 -right-1 text-[10px] px-[6px] py-[1px] rounded bg-green-600 text-white select-none">ADMIN</span>
+            )}
+          </div>
+          {!isSidebarCollapsed && (
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-[color:var(--profile-text-primary)] truncate">{name}</div>
+              <div className="text-xs text-[color:var(--profile-text-secondary)] truncate">{plan}</div>
+            </div>
+          )}
+        </button>
+      </div>
 
-             {/* Items */}
-             <nav className="mt-2 flex flex-col gap-1" aria-label="Actions">
+      {/* Global Overlay - hidden when collapsed */}
+      {open && !isSidebarCollapsed && (
+        <div className="fixed inset-0 z-[10000]" onClick={() => setOpen(false)}>
+          <div
+            className="absolute z-[10010] min-w-64 rounded-xl border shadow-xl p-2"
+            style={{
+              top: 'auto',
+              bottom: '80px',
+              left: '4px',
+              maxWidth: '240px',
+              backgroundColor: 'var(--profile-bg)',
+              borderColor: 'var(--profile-border)',
+              color: 'var(--profile-text-primary)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+            role="menu"
+            aria-modal="true"
+            aria-label="Menu utilisateur"
+          >
+            {/* Email */}
+            <div className="px-2 py-2 text-xs text-neutral-400 truncate" aria-hidden>
+              {email}
+            </div>
+
+            {/* Items */}
+            <nav className="mt-2 flex flex-col gap-1" aria-label="Actions">
               <MenuItem
                 icon={<Gem className="w-4 h-4" />}
-                label="Passer au plan supérieur"
+                label="Plan supérieur"
                 onSelect={() => {
                   setOpen(false)
                   router.push("/settings/billing")
@@ -138,7 +136,7 @@ export default function ProfileMenu({
                 }}
               />
 
-                             <div className="my-2 border-t border-sidebar-border" />
+              <div className="my-2 border-t" style={{ borderColor: 'var(--profile-border)' }} />
 
               <MenuItem
                 id="profile-menu-logout"
@@ -152,9 +150,9 @@ export default function ProfileMenu({
               />
             </nav>
           </div>
-        </Popover.Content>
-      </Popover.Root>
-    </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -172,13 +170,13 @@ function MenuItem({ id, icon, label, onSelect, variant = "default" }: MenuItemPr
       id={id}
       role="menuitem"
       onClick={onSelect}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 hover:bg-hover-bg active:bg-active-bg focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-2 ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 focus-visible:outline-2 focus-visible:outline-primary-500 focus-visible:outline-offset-2 ${
         variant === "danger"
           ? "text-red-400 hover:bg-red-500/10"
-          : "text-text-main hover:bg-hover-bg"
+          : "text-[color:var(--profile-text-primary)] hover:bg-[color:var(--profile-hover)]"
       }`}
     >
-      <span aria-hidden className="shrink-0 text-text-secondary">{icon}</span>
+      <span aria-hidden className="shrink-0 text-[color:var(--profile-text-secondary)]">{icon}</span>
       <span className="truncate text-left flex-1">{label}</span>
     </button>
   )

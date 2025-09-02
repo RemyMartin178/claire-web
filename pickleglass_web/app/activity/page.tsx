@@ -66,7 +66,7 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="min-h-screen animate-fade-in" style={{ background: '#202123' }}>
+    <div className="min-h-screen animate-fade-in" style={{ background: 'var(--main-surface-primary)', color: 'var(--text-primary)' }}>
       <div className="max-w-4xl mx-auto px-8 py-12">
         <div className="text-center mb-12">
           <h1 className="text-2xl text-white">

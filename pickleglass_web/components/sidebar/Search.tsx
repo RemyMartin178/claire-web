@@ -9,6 +9,7 @@ export function Search() {
   const [localQuery, setLocalQuery] = useState(searchQuery)
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
+  
 
   // Debounce search
   useEffect(() => {

@@ -226,6 +226,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   // Actions
   createChat: (title = 'Nouvelle conversation') => {
+    // tracking retiré
     const newChat: Chat = {
       id: Date.now().toString(),
       title,

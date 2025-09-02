@@ -11,6 +11,12 @@ const config = {
   
   // Mode de production
   IS_PROD: process.env.NODE_ENV === 'production'
+  ,
+  // Analytics
+  GTM_ID: process.env.NEXT_PUBLIC_GTM_ID || '',
+  FB_PIXEL_ID: process.env.NEXT_PUBLIC_FB_PIXEL_ID || '',
+  CLARITY_ID: process.env.NEXT_PUBLIC_CLARITY_ID || '',
+  TRACKER_API: process.env.NEXT_PUBLIC_TRACKER_API || '/api/collect'
 };
 
 export default config;

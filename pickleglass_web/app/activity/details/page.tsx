@@ -72,7 +72,7 @@ function SessionDetailsContent() {
 
   if (loading || isLoading) {
     return (
-      <div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--main-surface-primary)', color: 'var(--text-primary)' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading session details...</p>
@@ -87,7 +87,7 @@ function SessionDetailsContent() {
 
   if (!sessionDetails) {
     return (
-        <div className="min-h-screen bg-[#FDFCF9] flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--main-surface-primary)', color: 'var(--text-primary)' }}>
             <div className="max-w-4xl mx-auto px-8 py-12 text-center">
                 <h2 className="text-2xl font-semibold text-gray-900 mb-8">Session Not Found</h2>
                 <p className="text-gray-600">The requested session could not be found.</p>
@@ -102,7 +102,7 @@ function SessionDetailsContent() {
   const askMessages = sessionDetails.ai_messages || [];
 
   return (
-    <div className="min-h-screen bg-[#FDFCF9] text-gray-800 animate-fade-in">
+    <div className="min-h-screen animate-fade-in" style={{ background: 'var(--main-surface-primary)', color: 'var(--text-primary)' }}>
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
             <div className="mb-8">
                 <Link href="/activity" className="text-sm text-gray-500 hover:text-gray-700 flex items-center">

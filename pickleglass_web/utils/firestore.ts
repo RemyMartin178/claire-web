@@ -14,13 +14,14 @@ import {
   Timestamp 
 } from 'firebase/firestore'
 import { db as firestore, auth } from './firebase'
-import { trackUserOperation } from './monitoring'
 import { FirebaseErrorHandler } from './errorHandler'
 
 export interface FirestoreUserProfile {
   displayName: string;
   email: string;
   createdAt: Timestamp;
+  // Admin flag stored on the user document; should only be set by existing admins
+  isAdmin?: boolean;
 }
 
 export interface FirestoreSession {
@@ -70,7 +71,7 @@ export class FirestoreUserService {
   private static readonly RETRY_DELAY = 500; // Reduced from 1000
   private static readonly TOKEN_REFRESH_DELAY = 1000; // Reduced from 2000
 
-  static createUser = trackUserOperation('firestore_create_user', async (uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>): Promise<void> => {
+  static createUser = async (uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>): Promise<void> => {
     console.log('FirestoreUserService: Creating user with uid:', uid, 'profile:', profile);
     const userRef = doc(firestore, 'users', uid);
     
@@ -129,9 +130,9 @@ export class FirestoreUserService {
         throw error;
       }
     }
-  });
+  };
 
-  static getUser = trackUserOperation('firestore_get_user', async (uid: string): Promise<FirestoreUserProfile | null> => {
+  static getUser = async (uid: string): Promise<FirestoreUserProfile | null> => {
     try {
       console.log('FirestoreUserService: Getting user for uid:', uid);
       await this.ensureValidToken();
@@ -169,9 +170,9 @@ export class FirestoreUserService {
       
       return null;
     }
-  });
+  };
 
-  static updateUser = trackUserOperation('firestore_update_user', async (uid: string, updates: Partial<FirestoreUserProfile>): Promise<void> => {
+  static updateUser = async (uid: string, updates: Partial<FirestoreUserProfile>): Promise<void> => {
     try {
       await this.ensureValidToken();
       
@@ -181,9 +182,9 @@ export class FirestoreUserService {
       console.error('FirestoreUserService: Error updating user:', error, { uid, updates });
       throw new Error(`Failed to update user: ${FirebaseErrorHandler.getUserFriendlyMessage(error)}`);
     }
-  });
+  };
 
-  static deleteUser = trackUserOperation('firestore_delete_user', async (uid: string): Promise<void> => {
+  static deleteUser = async (uid: string): Promise<void> => {
     try {
       await this.ensureValidToken();
       
@@ -221,7 +222,7 @@ export class FirestoreUserService {
       console.error('FirestoreUserService: Error deleting user:', error, { uid });
       throw new Error(`Failed to delete user: ${FirebaseErrorHandler.getUserFriendlyMessage(error)}`);
     }
-  });
+  };
 
   private static async ensureValidToken(): Promise<void> {
     const user = auth.currentUser;

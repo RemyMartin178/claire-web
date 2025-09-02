@@ -1,9 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "@fontsource-variable/inter";
+@import "./styles/tokens.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root,
+html.light {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 30, 30, 30;
   --background-end-rgb: 30, 30, 30;
@@ -17,6 +19,72 @@
   --border-color: rgba(255, 255, 255, 0.1);
   --hover-bg: rgba(255, 255, 255, 0.05);
   --active-bg: rgba(255, 255, 255, 0.1);
+
+  /* ChatGPT exact tokens */
+  /* Tokens basés sur le dump ChatGPT */
+  --sidebar-bg: #f9f9f9;           /* bg-elevated-secondary */
+  --menu-bg: #f9f9f9;              /* main-surface-secondary */
+  --page-bg: #ffffff;              /* main-surface-primary */
+  --surface-hover: rgba(0,0,0,.05);
+  --border-default: #e3e3e3;
+  --border-light: #ececec;
+  --border-heavy: #e8e8e8;
+  --text-primary: #0d0d0d;
+  --text-secondary: #676767;
+
+  /* Profil overlay (light tokens kept for completeness) */
+  --profile-bg: #ffffff;
+  --profile-border: #e5e7eb;
+  --profile-text-primary: #0d0d0d;
+  --profile-text-secondary: #6b7280;
+  --profile-hover: rgba(0,0,0,.05);
+  --avatar-bg: #e5e7eb;
+}
+
+:root.dark,
+html.dark {
+  --sidebar-bg: #181818;
+  --menu-bg: #171717;
+  --page-bg: #0d0d0d;
+  --surface-hover: #ffffff14; /* ~ rgba(255,255,255,.08) */
+  --border-default: #2a2a2a;
+  --border-light: #212121;
+  --border-heavy: #3d3d3d;
+  --text-primary: #ececec;
+  --text-secondary: #b4b4b4;
+
+  /* Profil overlay (dark) */
+  --profile-bg: #1f1f1f; /* plus doux que #0d0d0d */
+  --profile-border: #2a2a2a;
+  --profile-text-primary: #e5e5e5;
+  --profile-text-secondary: #9ca3af;
+  --profile-hover: rgba(255,255,255,.08);
+  --avatar-bg: #374151;
+}
+
+/* Smooth sidebar animations */
+.sidebar-enter {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.sidebar-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.sidebar-exit {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.sidebar-exit-active {
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              opacity 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 @media (prefers-color-scheme: dark) {

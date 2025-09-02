@@ -8,6 +8,7 @@ import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import { getApiBase } from '@/utils/http'
 import { auth } from '@/utils/firebase'
+ 
 
 function LoginContent() {
   const [showPassword, setShowPassword] = useState(false)
@@ -23,6 +24,7 @@ function LoginContent() {
   const params = useSearchParams()
   const isMobileFlow = useMemo(() => params?.get('flow') === 'mobile', [params])
   const sessionId = useMemo(() => params?.get('session_id') || '', [params])
+  
 
   // Redirection si déjà connecté (hors flow mobile) sans casser l'ordre des hooks
   useEffect(() => {
@@ -67,6 +69,7 @@ function LoginContent() {
     try {
       console.log('[Login] Appel de signInWithEmail...')
       const user = await signInWithEmail(formData.email, formData.password, formData.rememberMe)
+      
       console.log('[Login] signInWithEmail terminé avec succès')
       console.log('[Login] isMobileFlow:', isMobileFlow, 'user:', !!user)
       // Associate tokens to pending session if mobile flow
@@ -137,7 +140,7 @@ function LoginContent() {
       setIsLoading(true)
       setError('')
       console.log('[Login] Appel de signInWithGoogle...')
-      await signInWithGoogle(formData.rememberMe)
+      const result = await signInWithGoogle(formData.rememberMe)
       console.log('[Login] signInWithGoogle terminé avec succès')
       
       // Associate tokens to pending session if mobile flow
