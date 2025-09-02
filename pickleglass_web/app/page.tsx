@@ -13,6 +13,10 @@ export default function HomePage() {
     if (isAuthenticated && user && !loading) {
       router.replace('/activity')
     }
+    // Rediriger vers le login si pas authentifié et pas en cours de chargement
+    else if (!loading && !isAuthenticated) {
+      router.replace('/auth/login')
+    }
   }, [user, isAuthenticated, loading, router])
 
   // Afficher un loader pendant le chargement
