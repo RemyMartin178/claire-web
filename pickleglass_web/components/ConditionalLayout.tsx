@@ -32,13 +32,9 @@ export default function ConditionalLayout({
     )
   }
   
-  // Si on n'est pas authentifié OU en cours de chargement, afficher un loader
+  // Si on n'est pas authentifié OU en cours de chargement, ne rien afficher (redirection en cours)
   if (!isAuthenticated || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-      </div>
-    )
+    return null
   }
   
   // For all other pages, use the full ClientLayout with sidebar

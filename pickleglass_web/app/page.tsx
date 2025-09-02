@@ -19,25 +19,9 @@ export default function HomePage() {
     }
   }, [user, isAuthenticated, loading, router])
 
-  // Afficher un loader pendant le chargement
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-      </div>
-    )
-  }
-
-  // Si pas authentifié, afficher un message ou rediriger vers login
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen text-white">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Bienvenue sur Claire</h1>
-          <p>Veuillez vous connecter pour continuer.</p>
-        </div>
-      </div>
-    )
+  // Pendant le chargement ou si pas authentifié, ne rien afficher (redirection en cours)
+  if (loading || !isAuthenticated) {
+    return null
   }
 
   return null
