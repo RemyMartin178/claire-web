@@ -120,30 +120,25 @@ function LoginContent() {
     
     console.log('[DIRECT-FIX] Got tokens - ID:', !!id_token, 'Refresh:', !!refresh_token)
 
-    // Stocker les tokens dans Firestore via Firebase Functions
-    console.log('[DIRECT-FIX] Storing tokens in Firestore for session:', sessionId)
+    // Stocker les tokens directement dans Firestore (client-side)
+    console.log('[DIRECT-FIX] Storing tokens directly in Firestore for session:', sessionId)
 
-    const functionUrl = 'https://us-west1-pickle-3651a.cloudfunctions.net/pickleGlassAuthCallback'
-    console.log('[DIRECT-FIX] Calling Firebase Function:', functionUrl)
-
-    const res = await fetch(functionUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ 
-        token: id_token,
-        session_id: sessionId
-      }),
-    })
-
-    console.log('[DIRECT-FIX] Response status:', res.status)
-    const j = await res.json().catch((err) => {
-      console.error('[DIRECT-FIX] JSON parse error:', err)
-      return { success: false }
-    })
-    console.log('[DIRECT-FIX] Response:', res.status, j)
-    
-    if (!res.ok || !(j as any)?.success) {
-      throw new Error((j as any)?.error || 'direct_fix_failed')
+    try {
+      const { db } = await import('../../../utils/firebase')
+      const { doc, setDoc } = await import('firebase/firestore')
+      
+      await setDoc(doc(db, 'pending_sessions', sessionId), {
+        uid: user.uid,
+        email: user.email,
+        created_at: new Date(),
+        expires_at: new Date(Date.now() + 120000), // 2 minutes
+        used: false
+      })
+      
+      console.log('[DIRECT-FIX] Session stored successfully in Firestore:', sessionId)
+    } catch (error) {
+      console.error('[DIRECT-FIX] Error storing session:', error)
+      throw new Error('firestore_storage_failed')
     }
   }
 

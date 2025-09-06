@@ -597,10 +597,10 @@ async function handleMobileAuthCallback(params) {
     const { code, state } = params;
     console.log('[CLOUD-FIX] Processing deep link - session_id:', code);
 
-    // Récupérer le custom token directement depuis Firestore
+    // Récupérer les infos de session depuis Firestore et créer custom token
     const admin = require('firebase-admin');
     
-    console.log('[CLOUD-FIX] Reading custom token from Firestore for session:', code);
+    console.log('[CLOUD-FIX] Reading session data from Firestore for session:', code);
     
     const sessionDoc = await admin.firestore().collection('pending_sessions').doc(code).get();
     
@@ -610,12 +610,17 @@ async function handleMobileAuthCallback(params) {
     }
     
     const sessionData = sessionDoc.data();
-    const custom_token = sessionData.custom_token;
+    const uid = sessionData.uid;
     
-    if (!custom_token) {
-      console.error('[CLOUD-FIX] No custom token found for session:', code);
-      throw new Error('no_custom_token_found');
+    if (!uid) {
+      console.error('[CLOUD-FIX] No UID found for session:', code);
+      throw new Error('no_uid_found');
     }
+    
+    console.log('[CLOUD-FIX] Creating custom token for UID:', uid);
+    
+    // Créer le custom token avec Firebase Admin
+    const custom_token = await admin.auth().createCustomToken(uid);
     
     // Marquer comme utilisé
     await admin.firestore().collection('pending_sessions').doc(code).update({
