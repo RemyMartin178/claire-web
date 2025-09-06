@@ -29,7 +29,7 @@ admin.initializeApp();
  * On success, return success response with user information.
  * On failure, return error message.
  *
- * @param {object} request - HTTPS request object. Contains { token: "..." } in body.
+ * @param {object} request - HTTPS request object. Contains { token: "..." }.
  * @param {object} response - HTTPS response object.
  */
 const authCallbackHandler = (request, response) => {
@@ -61,13 +61,11 @@ const authCallbackHandler = (request, response) => {
 
       const customToken = await admin.auth().createCustomToken(uid);
 
-      // If session_id is provided, store the custom token for later retrieval
+      // If sessionId is provided, store the custom token for later retrieval
       const sessionId = request.body.session_id;
       if (sessionId) {
         logger.info("Storing custom token for session:", sessionId);
-        await admin.firestore()
-            .collection("pending_sessions")
-            .doc(sessionId)
+        await admin.firestore().collection("pending_sessions").doc(sessionId)
             .set({
               uid: uid,
               custom_token: customToken,

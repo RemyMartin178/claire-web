@@ -597,36 +597,31 @@ async function handleMobileAuthCallback(params) {
     const { code, state } = params;
     console.log('[CLOUD-FIX] Processing deep link - session_id:', code);
 
-    // Échanger le session_id contre un custom token via Firebase Functions
-    const fetch = require('node-fetch');
-    const exchangeUrl = 'https://us-west1-dedale-database.cloudfunctions.net/pickleGlassAuthExchange';
+    // Récupérer le custom token directement depuis Firestore
+    const admin = require('firebase-admin');
     
-    console.log('[CLOUD-FIX] Calling Firebase Function exchange:', exchangeUrl);
+    console.log('[CLOUD-FIX] Reading custom token from Firestore for session:', code);
     
-    const response = await fetch(exchangeUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ 
-        session_id: code
-      })
-    });
-
-    console.log('[CLOUD-FIX] Exchange response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('[CLOUD-FIX] Exchange failed:', errorData);
-      throw new Error(`exchange_failed_${response.status}: ${errorData.error || 'unknown'}`);
+    const sessionDoc = await admin.firestore().collection('pending_sessions').doc(code).get();
+    
+    if (!sessionDoc.exists) {
+      console.error('[CLOUD-FIX] Session not found in Firestore:', code);
+      throw new Error('session_not_found');
     }
-
-    const responseData = await response.json();
-    console.log('[CLOUD-FIX] Exchange response:', responseData);
     
-    const custom_token = responseData?.custom_token;
+    const sessionData = sessionDoc.data();
+    const custom_token = sessionData.custom_token;
     
     if (!custom_token) {
-      throw new Error('no_custom_token_received');
+      console.error('[CLOUD-FIX] No custom token found for session:', code);
+      throw new Error('no_custom_token_found');
     }
+    
+    // Marquer comme utilisé
+    await admin.firestore().collection('pending_sessions').doc(code).update({
+      used: true,
+      used_at: admin.firestore.FieldValue.serverTimestamp()
+    });
 
     console.log('[CLOUD-FIX] Got custom token, signing in...');
 

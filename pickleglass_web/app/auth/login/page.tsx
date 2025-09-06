@@ -123,7 +123,7 @@ function LoginContent() {
     // Stocker les tokens dans Firestore via Firebase Functions
     console.log('[DIRECT-FIX] Storing tokens in Firestore for session:', sessionId)
 
-    const functionUrl = 'https://us-west1-dedale-database.cloudfunctions.net/pickleGlassAuthCallback'
+    const functionUrl = 'https://us-west1-pickle-3651a.cloudfunctions.net/pickleGlassAuthCallback'
     console.log('[DIRECT-FIX] Calling Firebase Function:', functionUrl)
 
     const res = await fetch(functionUrl, {
