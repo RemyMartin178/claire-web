@@ -123,7 +123,8 @@ function LoginContent() {
     // Stocker les tokens dans Firestore via API
     console.log('[DIRECT-FIX] Storing tokens in Firestore for session:', sessionId)
 
-    const apiUrl = `${getApiBase()}/api/auth/store-token`
+    // Force local server for store-token API
+    const apiUrl = window.location.origin + '/api/auth/store-token'
     console.log('[DIRECT-FIX] Calling store-token API:', apiUrl)
 
     const res = await fetch(apiUrl, {
