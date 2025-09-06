@@ -597,11 +597,11 @@ async function handleMobileAuthCallback(params) {
     const { code, state } = params;
     console.log('[CLOUD-FIX] Processing deep link - session_id:', code);
 
-    // Échanger le session_id contre un custom token via l'API cloud
+    // Échanger le session_id contre un custom token via Firebase Functions
     const fetch = require('node-fetch');
-    const exchangeUrl = 'https://app.clairia.app/api/mobile-auth/exchange';
+    const exchangeUrl = 'https://us-west1-dedale-database.cloudfunctions.net/pickleGlassAuthExchange';
     
-    console.log('[CLOUD-FIX] Calling exchange API:', exchangeUrl);
+    console.log('[CLOUD-FIX] Calling Firebase Function exchange:', exchangeUrl);
     
     const response = await fetch(exchangeUrl, {
       method: 'POST',

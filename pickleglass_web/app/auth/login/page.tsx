@@ -120,19 +120,17 @@ function LoginContent() {
     
     console.log('[DIRECT-FIX] Got tokens - ID:', !!id_token, 'Refresh:', !!refresh_token)
 
-    // Stocker les tokens dans Firestore via API cloud
+    // Stocker les tokens dans Firestore via Firebase Functions
     console.log('[DIRECT-FIX] Storing tokens in Firestore for session:', sessionId)
 
-    const apiUrl = '/api/mobile-auth/associate'
-    console.log('[DIRECT-FIX] Calling cloud associate API:', apiUrl)
+    const functionUrl = 'https://us-west1-dedale-database.cloudfunctions.net/pickleGlassAuthCallback'
+    console.log('[DIRECT-FIX] Calling Firebase Function:', functionUrl)
 
-    const res = await fetch(apiUrl, {
+    const res = await fetch(functionUrl, {
       method: 'POST',
-      headers: { 
-        'content-type': 'application/json',
-        'authorization': `Bearer ${id_token}`
-      },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ 
+        token: id_token,
         session_id: sessionId
       }),
     })
