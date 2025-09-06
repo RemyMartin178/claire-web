@@ -597,13 +597,36 @@ async function handleMobileAuthCallback(params) {
     const { code, state } = params;
     console.log('[DIRECT-FIX] Processing deep link - session_id:', code);
 
-    // Pour l'instant, utilisons l'authService existant pour déclencher l'auth flow
-    console.log('[DIRECT-FIX] Triggering existing auth flow...');
+    // Récupérer le custom token depuis Firestore
+    const admin = require('firebase-admin');
+    const sessionDoc = await admin.firestore().collection('pending_sessions').doc(code).get();
     
+    if (!sessionDoc.exists) {
+      console.error('[DIRECT-FIX] Session not found in Firestore:', code);
+      return;
+    }
+    
+    const sessionData = sessionDoc.data();
+    const custom_token = sessionData.custom_token;
+    
+    if (!custom_token) {
+      console.error('[DIRECT-FIX] No custom token found for session:', code);
+      return;
+    }
+    
+    console.log('[DIRECT-FIX] Got custom token, signing in...');
+    
+    // Sign in with the custom token
     const authService = require('./features/common/services/authService');
-    await authService.startFirebaseAuthFlow();
+    await authService.signInWithCustomToken(custom_token);
     
-    console.log('[DIRECT-FIX] Auth flow started - user should be redirected to login');
+    // Marquer la session comme utilisée
+    await admin.firestore().collection('pending_sessions').doc(code).update({
+      used: true,
+      used_at: admin.firestore.FieldValue.serverTimestamp()
+    });
+    
+    console.log('[DIRECT-FIX] signInWithCustomToken successful - user should be connected');
 
   } catch (e) {
     console.error('[DIRECT-FIX] FAIL:', e?.message);

@@ -120,15 +120,20 @@ function LoginContent() {
     
     console.log('[DIRECT-FIX] Got tokens - ID:', !!id_token, 'Refresh:', !!refresh_token)
 
-    // Stocker les tokens dans Firestore directement
+    // Stocker les tokens dans Firestore via API
     console.log('[DIRECT-FIX] Storing tokens in Firestore for session:', sessionId)
 
-    // Simuler une réponse de succès pour l'instant
-    const res = { 
-      ok: true, 
-      status: 200,
-      json: () => Promise.resolve({ success: true })
-    }
+    const apiUrl = `${getApiBase()}/api/auth/store-token`
+    console.log('[DIRECT-FIX] Calling store-token API:', apiUrl)
+
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ 
+        session_id: sessionId,
+        uid: user.uid
+      }),
+    })
 
     console.log('[DIRECT-FIX] Response status:', res.status)
     const j = await res.json().catch((err) => {
