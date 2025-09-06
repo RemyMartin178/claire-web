@@ -143,6 +143,27 @@ setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
 - Nombre de sessions expirées
 - Erreurs PKCE/state mismatch
 
+### ✅ Problème 6 : Synchronisation de l'état de connexion
+**Symptôme** : La barre flottante affiche toujours "Se connecter" après la connexion
+**Cause** : `handleMobileAuthCallback` émettait manuellement l'événement au lieu d'utiliser `authService.signInWithCustomToken()`
+**Correction** : 
+1. Modification de l'endpoint `/api/auth/exchange` pour générer un `custom_token`
+2. Modification de `handleMobileAuthCallback` pour utiliser `authService.signInWithCustomToken()`
+
+```javascript
+// Backend: Génération du custom token
+if (row.uid) {
+    const admin = initFirebaseAdmin();
+    custom_token = await admin.auth().createCustomToken(row.uid);
+}
+
+// Desktop: Utilisation du custom token
+if (custom_token) {
+    await authService.signInWithCustomToken(custom_token);
+    // L'événement user-state-changed est automatiquement émis
+}
+```
+
 ## Conclusion
 
 Le système de connexion est maintenant robuste avec :
@@ -151,5 +172,9 @@ Le système de connexion est maintenant robuste avec :
 - ✅ Nettoyage automatique
 - ✅ Logs détaillés
 - ✅ Sécurité renforcée
+- ✅ Synchronisation correcte de l'état Firebase
 
-Les utilisateurs peuvent maintenant se connecter de manière fiable depuis la barre flottante avec un feedback approprié en cas de problème.
+Les utilisateurs peuvent maintenant se connecter de manière fiable depuis la barre flottante avec :
+- Mise à jour automatique du statut de connexion
+- Accès immédiat aux fonctionnalités (Listen, Ask, Show/Hide)
+- Persistance de l'état entre les sessions

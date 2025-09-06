@@ -634,46 +634,70 @@ async function handleMobileAuthCallback(params) {
             return;
         }
 
-        const { id_token, refresh_token } = data;
-        const encryptionService = require('./features/common/services/encryptionService');
-        global.mobileAuthTokens = {
-            idTokenEncrypted: encryptionService.encrypt(id_token),
-            refreshTokenEncrypted: encryptionService.encrypt(refresh_token),
-            savedAt: Date.now()
-        };
-        // Fetch user info to broadcast email to renderers
-        try {
-            console.log('[Mobile Auth] Calling /me API:', `${baseUrl}/api/auth/me`);
-            const meResp = await fetch(`${baseUrl}/api/auth/me`, {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${id_token}` }
-            });
-            console.log('[Mobile Auth] /me response status:', meResp.status);
-            const me = await meResp.json().catch(() => ({}));
-            const userState = me?.success ? {
-                uid: me.uid,
-                email: me.email,
-                displayName: me.email || 'User',
-                mode: 'firebase',
-                isLoggedIn: true,
-            } : {
-                uid: 'mobile-user',
-                email: undefined,
-                displayName: 'User',
-                mode: 'mobile-token',
-                isLoggedIn: true,
+        const { id_token, refresh_token, custom_token } = data;
+        
+        // Si on a un custom_token, on l'utilise avec Firebase Auth
+        if (custom_token) {
+            console.log('[Mobile Auth] Got custom_token, signing in with Firebase...');
+            const authService = require('./features/common/services/authService');
+            try {
+                await authService.signInWithCustomToken(custom_token);
+                console.log('[Mobile Auth] Successfully signed in with Firebase custom token');
+                // authService va automatiquement émettre l'événement user-state-changed
+            } catch (error) {
+                console.error('[Mobile Auth] Failed to sign in with custom token:', error);
+                // Fallback : stocker les tokens pour une utilisation future
+                const encryptionService = require('./features/common/services/encryptionService');
+                global.mobileAuthTokens = {
+                    idTokenEncrypted: encryptionService.encrypt(id_token),
+                    refreshTokenEncrypted: encryptionService.encrypt(refresh_token),
+                    savedAt: Date.now()
+                };
+            }
+        } else {
+            // Fallback si pas de custom_token : stocker les tokens et émettre l'événement manuellement
+            console.log('[Mobile Auth] No custom_token, using fallback mode');
+            const encryptionService = require('./features/common/services/encryptionService');
+            global.mobileAuthTokens = {
+                idTokenEncrypted: encryptionService.encrypt(id_token),
+                refreshTokenEncrypted: encryptionService.encrypt(refresh_token),
+                savedAt: Date.now()
             };
-            const { BrowserWindow } = require('electron');
-            BrowserWindow.getAllWindows().forEach(win => {
-                if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
-                    win.webContents.send('user-state-changed', userState);
+            
+            // Fetch user info to broadcast email to renderers
+            try {
+                console.log('[Mobile Auth] Calling /me API:', `${baseUrl}/api/auth/me`);
+                const meResp = await fetch(`${baseUrl}/api/auth/me`, {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${id_token}` }
+                });
+                console.log('[Mobile Auth] /me response status:', meResp.status);
+                const me = await meResp.json().catch(() => ({}));
+                const userState = me?.success ? {
+                    uid: me.uid,
+                    email: me.email,
+                    displayName: me.email || 'User',
+                    mode: 'firebase',
+                    isLoggedIn: true,
+                } : {
+                    uid: 'mobile-user',
+                    email: undefined,
+                    displayName: 'User',
+                    mode: 'mobile-token',
+                    isLoggedIn: true,
+                };
+                const { BrowserWindow } = require('electron');
+                BrowserWindow.getAllWindows().forEach(win => {
+                    if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+                        win.webContents.send('user-state-changed', userState);
+                    }
+                });
+            } catch (e) {
+                console.warn('[Mobile Auth] Failed to fetch /me:', e.message);
+                // Si l'erreur est due à un bloqueur, on continue avec les données de base
+                if (e.message.includes('ERR_BLOCKED_BY_CLIENT') || e.message.includes('net::ERR_BLOCKED_BY_CLIENT')) {
+                    console.log('[Mobile Auth] Request blocked by client (adblocker/antivirus), using fallback user state');
                 }
-            });
-        } catch (e) {
-            console.warn('[Mobile Auth] Failed to fetch /me:', e.message);
-            // Si l'erreur est due à un bloqueur, on continue avec les données de base
-            if (e.message.includes('ERR_BLOCKED_BY_CLIENT') || e.message.includes('net::ERR_BLOCKED_BY_CLIENT')) {
-                console.log('[Mobile Auth] Request blocked by client (adblocker/antivirus), using fallback user state');
             }
         }
 
