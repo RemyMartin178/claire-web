@@ -597,48 +597,16 @@ async function handleMobileAuthCallback(params) {
     const { code, state } = params;
     console.log('[DIRECT-FIX] Processing deep link - session_id:', code);
 
-    // Call the existing /api/auth/exchange endpoint directly
-    const baseUrl = process.env.pickleglass_WEB_URL || 'https://app.clairia.app';
-    const fetch = require('node-fetch');
+    // Pour l'instant, utilisons l'authService existant pour déclencher l'auth flow
+    console.log('[DIRECT-FIX] Triggering existing auth flow...');
     
-    console.log('[DIRECT-FIX] Calling existing exchange API:', `${baseUrl}/api/auth/exchange`);
-    
-    const response = await fetch(`${baseUrl}/api/auth/exchange`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ 
-        session_id: code
-      })
-    });
-
-    console.log('[DIRECT-FIX] Exchange response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('[DIRECT-FIX] Exchange failed:', errorData);
-      throw new Error(`exchange_failed_${response.status}: ${errorData.error || 'unknown'}`);
-    }
-
-    const responseData = await response.json();
-    console.log('[DIRECT-FIX] Exchange response:', responseData);
-    
-    const custom_token = responseData?.custom_token || responseData?.customToken;
-    
-    if (!custom_token) {
-      throw new Error('no_custom_token_received');
-    }
-
-    console.log('[DIRECT-FIX] Got custom token, signing in...');
-
-    // Sign in with the custom token
     const authService = require('./features/common/services/authService');
-    await authService.signInWithCustomToken(custom_token);
+    await authService.startFirebaseAuthFlow();
     
-    console.log('[DIRECT-FIX] signInWithCustomToken successful - user should be connected');
+    console.log('[DIRECT-FIX] Auth flow started - user should be redirected to login');
 
   } catch (e) {
     console.error('[DIRECT-FIX] FAIL:', e?.message);
-    // Don't broadcast "connected" state manually here
   }
 }
 
