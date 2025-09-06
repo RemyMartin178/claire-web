@@ -63,6 +63,16 @@ class HeaderTransitionManager {
                 this.mainHeader = document.createElement('main-header');
                 this.headerContainer.appendChild(this.mainHeader);
                 this.mainHeader.startSlideInAnimation?.();
+                // Inject last known user state to avoid login flicker
+                if (this.lastUserState && this.lastUserState.isLoggedIn) {
+                    try {
+                        this.mainHeader.firebaseUser = this.lastUserState;
+                        this.mainHeader.requestUpdate?.();
+                        console.log('[HeaderController] Injected lastUserState into MainHeader');
+                    } catch (e) {
+                        console.warn('[HeaderController] Failed to inject lastUserState into MainHeader:', e?.message);
+                    }
+                }
             }
 
             this.currentHeaderType = type;
@@ -101,6 +111,23 @@ class HeaderTransitionManager {
                     this.ensureHeader('apikey');
                 }
             });            
+            // Forcer la barre principale après deep link
+            window.api.headerController.onDeepLinkReceived((event, data) => {
+                console.log('[HeaderController] Deep link received → ensure main header now:', data);
+                this.transitionToMainHeader();
+            });
+
+            // Handshake: récupérer l'état courant au mount
+            (async () => {
+                try {
+                    console.log('[HeaderController] mount, asking current user…');
+                    const u = await window.api.common.getCurrentUser();
+                    console.log('[HeaderController] current user at mount =', u);
+                    if (u) this.handleStateUpdate(u);
+                } catch (e) {
+                    console.warn('[HeaderController] failed to get current user at mount:', e?.message);
+                }
+            })();
         }
     }
 
@@ -127,17 +154,34 @@ class HeaderTransitionManager {
 
     //////// after_modelStateService ////////
     async handleStateUpdate(userState) {
+        console.log('[HeaderController] handleStateUpdate called with userState:', userState);
+        // Mémoriser le dernier état utilisateur connu pour éviter les clignotements
+        this.lastUserState = userState;
+
+        // 🔥 CORRECTION: Si l'utilisateur est connecté, rester sur le main header pour éviter la destruction
+        if (userState && userState.isLoggedIn) {
+            console.log('[HeaderController] User is logged in, ensuring main header to preserve connection state');
+            this.transitionToMainHeader();
+            return;
+        }
+
         const isConfigured = await window.api.apiKeyHeader.areProvidersConfigured();
+        console.log('[HeaderController] areProvidersConfigured result:', isConfigured);
 
         if (isConfigured) {
+            console.log('[HeaderController] Providers configured, checking permissions...');
             // If providers are configured, always check permissions regardless of login state.
             const permissionResult = await this.checkPermissions();
+            console.log('[HeaderController] Permission check result:', permissionResult);
             if (permissionResult.success) {
+                console.log('[HeaderController] Permissions OK, transitioning to main header');
                 this.transitionToMainHeader();
             } else {
+                console.log('[HeaderController] Permissions failed, showing permission setup');
                 this.transitionToPermissionHeader();
             }
         } else {
+            console.log('[HeaderController] Providers NOT configured, showing welcome header');
             // If no providers are configured, show the welcome header to prompt for setup.
             await this._resizeForWelcome();
             this.ensureHeader('welcome');

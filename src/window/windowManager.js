@@ -733,6 +733,14 @@ function createWindows() {
         shortcutsService.registerShortcuts();
     });
 
+    // Replay état utilisateur courant à chaque window au chargement
+    header.webContents.on('did-finish-load', () => {
+        try {
+            const authService = require('../features/common/services/authService');
+            header.webContents.send('user-state-changed', authService.getCurrentUser());
+        } catch {}
+    });
+
     setupIpcHandlers(windowPool, layoutManager);
     setupWindowController(windowPool, layoutManager, movementManager);
 

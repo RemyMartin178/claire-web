@@ -58,13 +58,12 @@ function createElectronStorePersistence(storeName = 'firebase-auth-session') {
 }
 
 const firebaseConfig = {
-    apiKey: 'AIzaSyAgtJrmsFWG1C7m9S55HyT1laICEzuUS2g',
-    authDomain: 'pickle-3651a.firebaseapp.com',
-    projectId: 'pickle-3651a',
-    storageBucket: 'pickle-3651a.firebasestorage.app',
-    messagingSenderId: '904706892885',
-    appId: '1:904706892885:web:0e42b3dda796674ead20dc',
-    measurementId: 'G-SQ0WM6S28T',
+    apiKey: 'AIzaSyDZz5iEcMo6eBpt5cZ4Hz4TaE4aDiWMqho',
+    authDomain: 'auth.clairia.app',
+    projectId: 'dedale-database',
+    storageBucket: 'dedale-database.firebasestorage.app',
+    messagingSenderId: '100635676468',
+    appId: '1:100635676468:web:46fdecfad3133fef4b5f61',
 };
 
 let firebaseApp = null;
@@ -88,11 +87,10 @@ function initializeFirebase() {
             persistence: [ElectronStorePersistence],
         });
 
-        // Initialize Firestore with the specific database ID
-        firestoreInstance = getFirestore(firebaseApp, 'pickle-glass');
+        // Initialize Firestore (default DB for dedale-database)
+        firestoreInstance = getFirestore(firebaseApp);
 
-        console.log('[FirebaseClient] Firebase initialized successfully with class-based electron-store persistence.');
-        console.log('[FirebaseClient] Firestore instance is targeting the "pickle-glass" database.');
+        console.log('[FirebaseClient] Firebase initialized for dedale-database with electron-store persistence.');
     } catch (error) {
         console.error('[FirebaseClient] Firebase initialization failed:', error);
     }

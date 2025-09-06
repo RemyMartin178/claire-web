@@ -54,6 +54,9 @@ class AuthService {
         this.initializationPromise = new Promise((resolve) => {
             const auth = getFirebaseAuth();
             onAuthStateChanged(auth, async (user) => {
+                try {
+                    console.log('[authService] onAuthStateChanged user=', !!user, 'uid=', user ? user.uid : undefined);
+                } catch {}
                 const previousUser = this.currentUser;
 
                 if (user) {

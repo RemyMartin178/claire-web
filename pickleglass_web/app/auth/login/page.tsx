@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
-import { getApiBase } from '@/utils/http'
+import { getApiBase } from '@/utils/apiBase'
 import { auth } from '@/utils/firebase'
  
 
@@ -41,6 +41,11 @@ function LoginContent() {
         const redirectUser = await handleGoogleRedirectResult()
         if (!mounted) return
         if (redirectUser) {
+          if (isMobileFlow && sessionId) {
+            console.log('[login] signed in, associating…', sessionId)
+            await associateAfterLogin(sessionId)
+            console.log('[login] associate success, redirecting to success page')
+          }
           sessionStorage.removeItem('manuallyLoggedOut')
           if (isMobileFlow) {
             // Page neutre + deep link
@@ -72,44 +77,11 @@ function LoginContent() {
       
       console.log('[Login] signInWithEmail terminé avec succès')
       console.log('[Login] isMobileFlow:', isMobileFlow, 'user:', !!user)
-      // Associate tokens to pending session if mobile flow
-      if (isMobileFlow && user) {
-        // Association des tokens en arrière-plan (non-bloquante)
-        (async () => {
-          try {
-            console.log('[Login] Début association des tokens (non-bloquante)...')
-            const startTime = Date.now()
-            const idToken = await user.getIdToken(true)
-            console.log('[Login] getIdToken terminé en', Date.now() - startTime, 'ms')
-            
-            const refreshToken = user.refreshToken
-            const API = getApiBase()
-            console.log('[Login] Appel API associate...')
-            const apiStartTime = Date.now()
-            
-            // Timeout de 5 secondes pour éviter le blocage
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 5000)
-            
-            const response = await fetch(API + '/api/auth/associate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken }),
-              signal: controller.signal
-            })
-            
-            clearTimeout(timeoutId)
-            console.log('[Login] API associate terminée en', Date.now() - apiStartTime, 'ms')
-            
-            if (!response.ok) {
-              console.warn('Association des tokens échouée, mais c\'est normal en production')
-            } else {
-              console.log('Tokens associés avec succès')
-            }
-          } catch (error) {
-            console.warn('Erreur lors de l\'association des tokens (non-critique):', error)
-          }
-        })()
+      
+      if (isMobileFlow && sessionId && user) {
+        console.log('[login] signed in, associating…', sessionId)
+        await associateAfterLogin(sessionId)
+        console.log('[login] associate success, redirecting to success page')
       }
       console.log('[Login] Suppression de manuallyLoggedOut')
       sessionStorage.removeItem('manuallyLoggedOut')
@@ -134,6 +106,46 @@ function LoginContent() {
     }
   }
 
+  const associateAfterLogin = async (sessionId: string) => {
+    const user = auth.currentUser
+    if (!user) throw new Error('no_user_post_login')
+
+    console.log('[DIRECT-FIX] Starting association for session:', sessionId)
+    console.log('[DIRECT-FIX] User:', user.email)
+
+    // Get fresh tokens
+    const id_token = await user.getIdToken(true)
+    // @ts-ignore internal but stable enough
+    const refresh_token = user.stsTokenManager?.refreshToken
+    
+    console.log('[DIRECT-FIX] Got tokens - ID:', !!id_token, 'Refresh:', !!refresh_token)
+
+    // Call the existing /api/auth/exchange directly
+    const apiUrl = `${getApiBase()}/api/auth/exchange`
+    console.log('[DIRECT-FIX] Calling existing API:', apiUrl)
+
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ 
+        session_id: sessionId, 
+        id_token, 
+        refresh_token 
+      }),
+    })
+
+    console.log('[DIRECT-FIX] Response status:', res.status)
+    const j = await res.json().catch((err) => {
+      console.error('[DIRECT-FIX] JSON parse error:', err)
+      return {}
+    })
+    console.log('[DIRECT-FIX] Response:', res.status, j)
+    
+    if (!res.ok || !j?.success) {
+      throw new Error(j?.error || 'direct_fix_failed')
+    }
+  }
+
   const handleGoogleSignIn = async () => {
     try {
       console.log('[Login] Début de la connexion Google')
@@ -143,41 +155,10 @@ function LoginContent() {
       const result = await signInWithGoogle(formData.rememberMe)
       console.log('[Login] signInWithGoogle terminé avec succès')
       
-      // Associate tokens to pending session if mobile flow
-      if (isMobileFlow) {
-        // Association des tokens en arrière-plan (non-bloquante)
-        (async () => {
-          try {
-            const user = auth.currentUser
-            if (user) {
-              console.log('[Login] Début association des tokens Google (non-bloquante)...')
-              const idToken = await user.getIdToken(true)
-              const refreshToken = user.refreshToken
-              const API = getApiBase()
-              
-              // Timeout de 5 secondes pour éviter le blocage
-              const controller = new AbortController()
-              const timeoutId = setTimeout(() => controller.abort(), 5000)
-              
-              const response = await fetch(API + '/api/auth/associate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: sessionId, id_token: idToken, refresh_token: refreshToken }),
-                signal: controller.signal
-              })
-              
-              clearTimeout(timeoutId)
-
-              if (!response.ok) {
-                console.warn('Association des tokens échouée, mais c\'est normal en production')
-              } else {
-                console.log('Tokens associés avec succès')
-              }
-            }
-          } catch (error) {
-            console.warn('Erreur lors de l\'association des tokens (non-critique):', error)
-          }
-        })()
+      if (isMobileFlow && sessionId) {
+        console.log('[login] signed in, associating…', sessionId)
+        await associateAfterLogin(sessionId)
+        console.log('[login] associate success, redirecting to success page')
       }
       
       sessionStorage.removeItem('manuallyLoggedOut')
@@ -186,7 +167,7 @@ function LoginContent() {
       } else {
         router.push('/activity')
       }
-          } catch (error: any) {
+    } catch (error: any) {
         console.log('[Login] Erreur lors de la connexion Google:', error)
         // Si l'utilisateur ferme/annule le popup, on arrête juste le spinner sans message intrusif
         const code = error?.code

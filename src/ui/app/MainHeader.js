@@ -376,6 +376,10 @@ export class MainHeader extends LitElement {
         this.animationEndTimer = null;
         this.firebaseUser = null;
         this.isConnecting = false;
+        console.log('[MainHeader] Constructor called, initial state:', {
+            firebaseUser: this.firebaseUser,
+            isConnecting: this.isConnecting
+        });
         this.handleAnimationEnd = this.handleAnimationEnd.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -495,12 +499,14 @@ export class MainHeader extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
+        console.log('[MainHeader] connectedCallback called');
         this.addEventListener('animationend', this.handleAnimationEnd);
 
         if (window.api) {
             // Initialize auth state immediately to avoid UI flash
             if (window.api.common?.getCurrentUser) {
                 window.api.common.getCurrentUser().then(userState => {
+                    console.log('[MainHeader] Initial user state from connectedCallback:', userState);
                     this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
                     this.requestUpdate();
                 }).catch(() => {});
@@ -527,32 +533,65 @@ export class MainHeader extends LitElement {
             window.api.mainHeader.onShortcutsUpdated(this._shortcutListener);
 
             this._userStateListener = (event, userState) => {
+                console.log('[MainHeader] User state changed:', userState);
                 this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
-                
+
                 // Si l'utilisateur se connecte, réinitialiser l'état de connexion
                 if (userState && userState.isLoggedIn) {
+                    console.log('[MainHeader] User logged in, resetting connecting state');
                     this.isConnecting = false;
                 }
-                
+
                 this.requestUpdate();
             };
 
             // Écouter les deep links pour réinitialiser l'état de connexion
             this._deepLinkListener = (event, data) => {
-                console.log('[MainHeader] Deep link received, resetting connecting state');
+                console.log('[MainHeader] Deep link received:', data, 'at', Date.now());
                 this.isConnecting = false;
-                
-                // Mettre à jour l'état utilisateur après le deep link
+
+                // Démarrer une courte attente active pour laisser le temps à l'état utilisateur d'être propagé
+                if (this._authPollTimer) {
+                    clearInterval(this._authPollTimer);
+                    this._authPollTimer = null;
+                }
+                const startedAt = Date.now();
+                const MAX_WAIT_MS = 6000; // Attente maximale de 6s pour capter user-state-changed côté main
+                this._authPollTimer = setInterval(() => {
+                    if (!window.api?.common?.getCurrentUser) return;
+                    window.api.common.getCurrentUser().then(userState => {
+                        const elapsed = Date.now() - startedAt;
+                        const loggedIn = !!(userState && userState.isLoggedIn);
+                        console.log('[MainHeader] Auth poll tick after deep link (', elapsed, 'ms ):', userState);
+                        if (loggedIn) {
+                            this.firebaseUser = userState;
+                            this.requestUpdate();
+                            clearInterval(this._authPollTimer);
+                            this._authPollTimer = null;
+                        } else if (elapsed >= MAX_WAIT_MS) {
+                            console.log('[MainHeader] Auth poll timeout reached; keeping existing firebaseUser');
+                            clearInterval(this._authPollTimer);
+                            this._authPollTimer = null;
+                        }
+                    }).catch(() => {});
+                }, 250);
+
+                // Ne pas écraser un état connecté par un état non connecté (vérification immédiate)
                 if (window.api.common?.getCurrentUser) {
                     window.api.common.getCurrentUser().then(userState => {
-                        this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
-                        console.log('[MainHeader] Updated firebaseUser after deep link:', this.firebaseUser);
-                        this.requestUpdate();
+                        console.log('[MainHeader] Current user state after deep link (immediate):', userState);
+                        if (userState && userState.isLoggedIn) {
+                            this.firebaseUser = userState;
+                            console.log('[MainHeader] Updated firebaseUser after deep link:', this.firebaseUser);
+                            this.requestUpdate();
+                        } else {
+                            console.log('[MainHeader] Deep link: keeping existing firebaseUser state (immediate check)');
+                        }
                     }).catch((error) => {
                         console.error('[MainHeader] Error getting current user after deep link:', error);
                     });
                 }
-                
+
                 this.requestUpdate();
             };
             window.api.headerController.onDeepLinkReceived(this._deepLinkListener);
@@ -562,8 +601,12 @@ export class MainHeader extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        console.log('[MainHeader] disconnectedCallback called, final state:', {
+            firebaseUser: this.firebaseUser,
+            isConnecting: this.isConnecting
+        });
         this.removeEventListener('animationend', this.handleAnimationEnd);
-        
+
         if (this.animationEndTimer) {
             clearTimeout(this.animationEndTimer);
             this.animationEndTimer = null;
@@ -581,6 +624,10 @@ export class MainHeader extends LitElement {
             }
             if (this._deepLinkListener) {
                 window.api.headerController.removeOnDeepLinkReceived(this._deepLinkListener);
+            }
+            if (this._authPollTimer) {
+                clearInterval(this._authPollTimer);
+                this._authPollTimer = null;
             }
         }
     }
@@ -693,7 +740,7 @@ export class MainHeader extends LitElement {
                                 this.isConnecting = false;
                                 return;
                             }
-                            const webUrl = await window.api.common.getWebUrl();
+                            const webUrl = 'https://app.clairia.app';
                             const target = `${webUrl.replace(/\/$/, '')}/auth/login?flow=mobile&session_id=${encodeURIComponent(session_id)}`;
                             await window.api.common.openExternal(target);
                             

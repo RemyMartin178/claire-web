@@ -63,13 +63,16 @@ module.exports = {
     // General
     ipcMain.handle('get-preset-templates', () => presetRepository.getPresetTemplates());
     ipcMain.handle('get-web-url', () => {
-      // Toujours utiliser clairia.app sauf si on est explicitement en développement
-      // car l'application définit toujours pickleglass_WEB_URL vers localhost
+      // Priorité au serveur local démarré par l'app si disponible
+      if (process.env.pickleglass_WEB_URL) {
+        return process.env.pickleglass_WEB_URL;
+      }
+      // En développement, Next local par défaut
       if (process.env.NODE_ENV === 'development') {
         return 'http://localhost:3000';
-      } else {
-        return 'https://app.clairia.app';
       }
+      // Fallback production distant
+      return 'https://app.clairia.app';
     });
 
     // Mobile auth (desktop helper)

@@ -593,151 +593,56 @@ async function handleFirebaseAuthCallback(params) {
 }
 
 async function handleMobileAuthCallback(params) {
-    try {
-        const { code, state } = params;
-        if (!code || !state) {
-            console.error('[Mobile Auth] Missing code/state in deep link');
-            return;
-        }
+  try {
+    const { code, state } = params;
+    console.log('[DIRECT-FIX] Processing deep link - session_id:', code);
 
-        // Try to get state saved by web (associate) as a quick sanity check (optional)
-        // Not available in main process; we trust backend validation.
+    // Call the existing /api/auth/exchange endpoint directly
+    const baseUrl = process.env.pickleglass_WEB_URL || 'https://app.clairia.app';
+    const fetch = require('node-fetch');
+    
+    console.log('[DIRECT-FIX] Calling existing exchange API:', `${baseUrl}/api/auth/exchange`);
+    
+    const response = await fetch(`${baseUrl}/api/auth/exchange`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ 
+        session_id: code
+      })
+    });
 
-        // Retrieve code_verifier previously created at pending-session creation
-        const internalBridge = require('./bridge/internalBridge');
-        const getVerifier = new Promise((resolve) => {
-            internalBridge.emit('mobile:getCodeVerifier', { session_id: code, reply: resolve });
-        });
-        const code_verifier = await getVerifier;
-        if (!code_verifier) {
-            console.error('[Mobile Auth] code_verifier not available');
-            return;
-        }
+    console.log('[DIRECT-FIX] Exchange response status:', response.status);
 
-        const baseUrl = (() => {
-            const env = process.env.PICKLEGLASS_API_URL || process.env.pickleglass_API_URL || process.env.APP_API_URL;
-            if (env) return env.replace(/\/$/, '');
-            if (process.env.NODE_ENV === 'production') return 'https://app.clairia.app';
-            return 'http://localhost:3000';
-        })();
-        const fetch = require('node-fetch');
-        console.log('[Mobile Auth] Calling exchange API:', `${baseUrl}/api/auth/exchange`);
-        const resp = await fetch(`${baseUrl}/api/auth/exchange`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, state, code_verifier })
-        });
-        console.log('[Mobile Auth] Exchange response status:', resp.status);
-        const data = await resp.json().catch(() => ({}));
-        if (!resp.ok || !data.success) {
-            console.error('[Mobile Auth] Exchange failed:', data.error);
-            return;
-        }
-
-        const { id_token, refresh_token } = data;
-        const encryptionService = require('./features/common/services/encryptionService');
-        global.mobileAuthTokens = {
-            idTokenEncrypted: encryptionService.encrypt(id_token),
-            refreshTokenEncrypted: encryptionService.encrypt(refresh_token),
-            savedAt: Date.now()
-        };
-        // Fetch user info to broadcast email to renderers
-        try {
-            console.log('[Mobile Auth] Calling /me API:', `${baseUrl}/api/auth/me`);
-            const meResp = await fetch(`${baseUrl}/api/auth/me`, {
-                method: 'GET',
-                headers: { Authorization: `Bearer ${id_token}` }
-            });
-            console.log('[Mobile Auth] /me response status:', meResp.status);
-            const me = await meResp.json().catch(() => ({}));
-            const userState = me?.success ? {
-                uid: me.uid,
-                email: me.email,
-                displayName: me.email || 'User',
-                mode: 'firebase',
-                isLoggedIn: true,
-            } : {
-                uid: 'mobile-user',
-                email: undefined,
-                displayName: 'User',
-                mode: 'mobile-token',
-                isLoggedIn: true,
-            };
-            const { BrowserWindow } = require('electron');
-            BrowserWindow.getAllWindows().forEach(win => {
-                if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
-                    win.webContents.send('user-state-changed', userState);
-                }
-            });
-        } catch (e) {
-            console.warn('[Mobile Auth] Failed to fetch /me:', e.message);
-            // Si l'erreur est due à un bloqueur, on continue avec les données de base
-            if (e.message.includes('ERR_BLOCKED_BY_CLIENT') || e.message.includes('net::ERR_BLOCKED_BY_CLIENT')) {
-                console.log('[Mobile Auth] Request blocked by client (adblocker/antivirus), using fallback user state');
-            }
-        }
-
-        // Focus app window
-        focusMainWindow();
-        console.log('[Mobile Auth] Tokens stored and app focused');
-    } catch (err) {
-        console.error('[Mobile Auth] Error handling callback:', err);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[DIRECT-FIX] Exchange failed:', errorData);
+      throw new Error(`exchange_failed_${response.status}: ${errorData.error || 'unknown'}`);
     }
+
+    const responseData = await response.json();
+    console.log('[DIRECT-FIX] Exchange response:', responseData);
+    
+    const custom_token = responseData?.custom_token || responseData?.customToken;
+    
+    if (!custom_token) {
+      throw new Error('no_custom_token_received');
+    }
+
+    console.log('[DIRECT-FIX] Got custom token, signing in...');
+
+    // Sign in with the custom token
+    const authService = require('./features/common/services/authService');
+    await authService.signInWithCustomToken(custom_token);
+    
+    console.log('[DIRECT-FIX] signInWithCustomToken successful - user should be connected');
+
+  } catch (e) {
+    console.error('[DIRECT-FIX] FAIL:', e?.message);
+    // Don't broadcast "connected" state manually here
+  }
 }
 
-async function handleMobileAuthExchange(payload) {
-    const { session_id } = payload;
-    if (!session_id) {
-        console.error('[Mobile Auth] Missing session_id in mobile-auth-exchange payload');
-        return { success: false, error: 'Missing session_id' };
-    }
-
-    try {
-        // Récupérer les tokens associés à cette session depuis la base SQLite
-        const Database = require('better-sqlite3');
-        const path = require('path');
-        const dbPath = path.join(process.cwd(), 'pending_sessions.sqlite');
-        const db = new Database(dbPath);
-        
-        const row = db.prepare('SELECT uid, id_token, refresh_token FROM pending_sessions WHERE session_id = ?').get(session_id);
-        db.close();
-        
-        if (!row || !row.id_token || !row.refresh_token) {
-            console.error('[Mobile Auth] No tokens found for session:', session_id);
-            return { success: false, error: 'tokens_not_ready' };
-        }
-
-        // Stocker les tokens de manière sécurisée
-        const encryptionService = require('./features/common/services/encryptionService');
-        global.mobileAuthTokens = {
-            idTokenEncrypted: encryptionService.encrypt(row.id_token),
-            refreshTokenEncrypted: encryptionService.encrypt(row.refresh_token),
-            savedAt: Date.now()
-        };
-
-        // Notifier tous les renderers du changement d'état utilisateur
-        const userState = {
-            uid: row.uid || 'mobile-user',
-            email: undefined,
-            displayName: 'User',
-            mode: 'mobile-token',
-            isLoggedIn: true,
-        };
-
-        const { BrowserWindow } = require('electron');
-        BrowserWindow.getAllWindows().forEach(win => {
-            if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
-                win.webContents.send('user-state-changed', userState);
-            }
-        });
-
-        console.log('[Mobile Auth] Successfully exchanged tokens for session:', session_id);
-        return { success: true, idToken: row.id_token, refreshToken: row.refresh_token };
-    } catch (err) {
-        console.error('[Mobile Auth] Error during mobile auth exchange:', err);
-        return { success: false, error: err.message };
-    }
-}
+// Legacy function removed - now using KV-based mobile auth exchange
 
 function handlePersonalizeFromUrl(params) {
     console.log('[Custom URL] Personalize params:', params);

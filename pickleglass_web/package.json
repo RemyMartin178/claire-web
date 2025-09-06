@@ -17,8 +17,10 @@
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@types/sqlite3": "^3.1.11",
+    "@vercel/kv": "^3.0.0",
     "autoprefixer": "^10.4.16",
     "axios": "^1.6.0",
+    "better-sqlite3": "^12.2.0",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.1",
     "firebase": "^11.10.0",
@@ -35,11 +37,9 @@
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
     "react-i18next": "^15.6.0",
-    
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^3.3.0",
-    
     "zustand": "^5.0.7"
   },
   "devDependencies": {

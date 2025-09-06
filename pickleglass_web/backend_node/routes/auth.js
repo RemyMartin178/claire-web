@@ -186,8 +186,22 @@ router.post('/exchange', async (req, res) => {
     }
 
     db.prepare('UPDATE pending_sessions SET used_at = ? WHERE session_id = ?').run(nowMs(), code);
+    
+    // Générer un custom token Firebase pour l'app desktop
+    let custom_token = null;
+    try {
+        if (row.uid) {
+            const admin = initFirebaseAdmin();
+            custom_token = await admin.auth().createCustomToken(row.uid);
+            console.log('[Auth] /exchange generated custom token for uid:', row.uid);
+        }
+    } catch (error) {
+        console.error('[Auth] /exchange failed to generate custom token:', error);
+        // Continue sans custom token - le fallback sera utilisé
+    }
+    
     console.log('[Auth] /exchange successfully completed for session:', code);
-    return res.json({ success: true, id_token: tokens.idToken, refresh_token: tokens.refreshToken });
+    return res.json({ success: true, id_token: tokens.idToken, refresh_token: tokens.refreshToken, custom_token });
   } catch (error) {
     console.error('[Auth] /exchange error:', error);
     res.status(500).json({ success: false, error: 'exchange_failed' });
