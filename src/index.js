@@ -595,41 +595,49 @@ async function handleFirebaseAuthCallback(params) {
 async function handleMobileAuthCallback(params) {
   try {
     const { code, state } = params;
-    console.log('[DIRECT-FIX] Processing deep link - session_id:', code);
+    console.log('[CLOUD-FIX] Processing deep link - session_id:', code);
 
-    // Récupérer le custom token depuis Firestore
-    const admin = require('firebase-admin');
-    const sessionDoc = await admin.firestore().collection('pending_sessions').doc(code).get();
+    // Échanger le session_id contre un custom token via l'API cloud
+    const fetch = require('node-fetch');
+    const exchangeUrl = 'https://app.clairia.app/api/mobile-auth/exchange';
     
-    if (!sessionDoc.exists) {
-      console.error('[DIRECT-FIX] Session not found in Firestore:', code);
-      return;
+    console.log('[CLOUD-FIX] Calling exchange API:', exchangeUrl);
+    
+    const response = await fetch(exchangeUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ 
+        session_id: code
+      })
+    });
+
+    console.log('[CLOUD-FIX] Exchange response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[CLOUD-FIX] Exchange failed:', errorData);
+      throw new Error(`exchange_failed_${response.status}: ${errorData.error || 'unknown'}`);
     }
+
+    const responseData = await response.json();
+    console.log('[CLOUD-FIX] Exchange response:', responseData);
     
-    const sessionData = sessionDoc.data();
-    const custom_token = sessionData.custom_token;
+    const custom_token = responseData?.custom_token;
     
     if (!custom_token) {
-      console.error('[DIRECT-FIX] No custom token found for session:', code);
-      return;
+      throw new Error('no_custom_token_received');
     }
-    
-    console.log('[DIRECT-FIX] Got custom token, signing in...');
-    
+
+    console.log('[CLOUD-FIX] Got custom token, signing in...');
+
     // Sign in with the custom token
     const authService = require('./features/common/services/authService');
     await authService.signInWithCustomToken(custom_token);
     
-    // Marquer la session comme utilisée
-    await admin.firestore().collection('pending_sessions').doc(code).update({
-      used: true,
-      used_at: admin.firestore.FieldValue.serverTimestamp()
-    });
-    
-    console.log('[DIRECT-FIX] signInWithCustomToken successful - user should be connected');
+    console.log('[CLOUD-FIX] signInWithCustomToken successful - user should be connected');
 
   } catch (e) {
-    console.error('[DIRECT-FIX] FAIL:', e?.message);
+    console.error('[CLOUD-FIX] FAIL:', e?.message);
   }
 }
 
@@ -737,37 +745,7 @@ async function startWebStack() {
   frontSrv.use(express.static(staticDir));
   frontSrv.use(express.json());
   
-  // Add API routes directly to Express server
-  frontSrv.post('/api/auth/store-token', async (req, res) => {
-    try {
-      const { session_id, uid } = req.body;
-      
-      if (!session_id || !uid) {
-        return res.status(400).json({ success: false, error: 'session_id and uid required' });
-      }
-
-      console.log('[store-token] Storing custom token for session:', session_id, 'uid:', uid);
-
-      const admin = require('firebase-admin');
-      const customToken = await admin.auth().createCustomToken(uid);
-      
-      await admin.firestore().collection('pending_sessions').doc(session_id).set({
-        uid: uid,
-        custom_token: customToken,
-        created_at: admin.firestore.FieldValue.serverTimestamp(),
-        expires_at: new Date(Date.now() + 120000), // 2 minutes
-        used: false
-      });
-
-      console.log('[store-token] Custom token stored successfully for session:', session_id);
-
-      res.json({ success: true });
-      
-    } catch (error) {
-      console.error('[store-token] Error:', error);
-      res.status(500).json({ success: false, error: 'internal_server_error' });
-    }
-  });
+  // API routes removed - using cloud endpoints instead
   
   const frontendServer = await new Promise((resolve, reject) => {
     const server = frontSrv.listen(frontendPort, '127.0.0.1', () => resolve(server));

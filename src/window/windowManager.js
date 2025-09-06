@@ -98,21 +98,14 @@ const moveHeaderTo = (newX, newY) => {
 
 // Mobile auth helper: create pending-session and store code_verifier for later exchange
 async function createPendingMobileSession(apiBaseUrl) {
-    const fetch = require('node-fetch');
-    const base = (() => {
-        if (apiBaseUrl) return apiBaseUrl;
-        const env = process.env.PICKLEGLASS_API_URL || process.env.pickleglass_API_URL || process.env.APP_API_URL;
-        if (env) return env.replace(/\/$/, '');
-        if (process.env.NODE_ENV === 'production') return 'https://app.clairia.app';
-        return 'http://localhost:3000';
-    })();
-    console.log('[Mobile Auth] Creating pending session with URL:', `${base}/api/auth/pending-session`);
-    const resp = await fetch(`${base}/api/auth/pending-session`, { method: 'POST' });
-    console.log('[Mobile Auth] Pending session response status:', resp.status);
-    const data = await resp.json();
-    if (!resp.ok || !data.success) throw new Error(data.error || 'pending_session_failed');
-    const { session_id, state, code_verifier } = data;
-    internalBridge.emit('mobile:setCodeVerifier', { session_id, code_verifier });
+    const crypto = require('crypto');
+    
+    // Créer session_id et state localement (pas besoin d'API)
+    const session_id = crypto.randomUUID();
+    const state = crypto.randomBytes(16).toString('hex');
+    
+    console.log('[Mobile Auth] Created local session:', session_id, 'state:', state);
+    
     return { session_id, state };
 }
 

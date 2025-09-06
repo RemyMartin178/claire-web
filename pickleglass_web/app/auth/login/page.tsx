@@ -120,19 +120,20 @@ function LoginContent() {
     
     console.log('[DIRECT-FIX] Got tokens - ID:', !!id_token, 'Refresh:', !!refresh_token)
 
-    // Stocker les tokens dans Firestore via API
+    // Stocker les tokens dans Firestore via API cloud
     console.log('[DIRECT-FIX] Storing tokens in Firestore for session:', sessionId)
 
-    // Force local server for store-token API
-    const apiUrl = window.location.origin + '/api/auth/store-token'
-    console.log('[DIRECT-FIX] Calling store-token API:', apiUrl)
+    const apiUrl = '/api/mobile-auth/associate'
+    console.log('[DIRECT-FIX] Calling cloud associate API:', apiUrl)
 
     const res = await fetch(apiUrl, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 
+        'content-type': 'application/json',
+        'authorization': `Bearer ${id_token}`
+      },
       body: JSON.stringify({ 
-        session_id: sessionId,
-        uid: user.uid
+        session_id: sessionId
       }),
     })
 
