@@ -15,11 +15,6 @@ const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } =
 const { createWindows } = require('./window/windowManager.js');
 const listenService = require('./features/listen/listenService');
 
-// Add IPC handler for force mobile auth (DEBUG)
-ipcMain.handle('handle-mobile-auth-callback', async (event, params) => {
-    console.log('[DEBUG] Force mobile auth callback received:', params);
-    await handleMobileAuthCallback(params);
-});
 const { initializeFirebase } = require('./features/common/services/firebaseClient');
 const databaseInitializer = require('./features/common/services/databaseInitializer');
 const authService = require('./features/common/services/authService');
@@ -605,6 +600,14 @@ async function handleMobileAuthCallback(params) {
 
     // Récupérer les infos de session depuis Firestore et créer custom token
     const admin = require('firebase-admin');
+    
+    // Initialiser Firebase Admin si pas déjà fait
+    if (!admin.apps.length) {
+      console.log('[CLOUD-FIX] Initializing Firebase Admin...');
+      admin.initializeApp({
+        projectId: 'dedale-database'
+      });
+    }
     
     console.log('[CLOUD-FIX] Reading session data from Firestore for session:', code);
     

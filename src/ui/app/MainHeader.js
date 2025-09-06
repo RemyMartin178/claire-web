@@ -599,26 +599,6 @@ export class MainHeader extends LitElement {
         }
     }
 
-    async forceFirebaseSync() {
-        try {
-            console.log('[DEBUG] Starting force Firebase sync...');
-            
-            // Simuler le traitement du deep link avec la dernière session
-            const mockParams = {
-                code: 'c3b68978-f4a4-43c1-8306-ab9e267c3a1a', // Dernière session des logs
-                state: 'st-blrygyg8'
-            };
-            
-            console.log('[DEBUG] Simulating deep link processing...');
-            
-            // Simuler directement l'appel de handleMobileAuthCallback
-            const { ipcRenderer } = require('electron');
-            await ipcRenderer.invoke('handle-mobile-auth-callback', mockParams);
-            
-        } catch (error) {
-            console.error('[DEBUG] Force sync failed:', error);
-        }
-    }
 
     disconnectedCallback() {
         super.disconnectedCallback();
@@ -785,21 +765,6 @@ export class MainHeader extends LitElement {
                         </div>
                     </div>
                     
-                    <!-- DEBUG: Force sync button -->
-                    <div class="debug-sync-button" style="margin-left: 10px; padding: 5px 10px; background: #ff4444; color: white; border-radius: 4px; cursor: pointer; font-size: 10px;" @click=${async () => {
-                        console.log('[DEBUG] BYPASS: Testing last session directly');
-                        
-                        // Appeler directement handleMobileAuthCallback
-                        const mockParams = {
-                            code: 'c3b68978-f4a4-43c1-8306-ab9e267c3a1a',
-                            state: 'st-blrygyg8'
-                        };
-                        
-                        // Simuler le deep link directement
-                        window.location.href = `pickleglass://auth/callback?code=${mockParams.code}&state=${mockParams.state}`;
-                    }}>
-                        TEST SESSION
-                    </div>
                 ` : html``}
                 ${isLoggedIn ? html`
                 <button 

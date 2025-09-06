@@ -110,23 +110,10 @@ function LoginContent() {
     const user = auth.currentUser
     if (!user) throw new Error('no_user_post_login')
 
-    console.log('[DIRECT-FIX] Starting association for session:', sessionId)
-    console.log('[DIRECT-FIX] User:', user.email)
-
-    // Get fresh tokens
-    const id_token = await user.getIdToken(true)
-    // @ts-ignore internal but stable enough
-    const refresh_token = user.stsTokenManager?.refreshToken
-    
-    console.log('[DIRECT-FIX] Got tokens - ID:', !!id_token, 'Refresh:', !!refresh_token)
-
-    // Stocker les tokens directement dans Firestore (client-side)
-    console.log('[DIRECT-FIX] Storing tokens directly in Firestore for session:', sessionId)
-
     try {
       const { db } = await import('../../../utils/firebase')
       const { doc, setDoc } = await import('firebase/firestore')
-      
+
       await setDoc(doc(db, 'pending_sessions', sessionId), {
         uid: user.uid,
         email: user.email,
@@ -134,10 +121,8 @@ function LoginContent() {
         expires_at: new Date(Date.now() + 120000), // 2 minutes
         used: false
       })
-      
-      console.log('[DIRECT-FIX] Session stored successfully in Firestore:', sessionId)
     } catch (error) {
-      console.error('[DIRECT-FIX] Error storing session:', error)
+      console.error('Error storing session:', error)
       throw new Error('firestore_storage_failed')
     }
   }
