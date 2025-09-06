@@ -694,21 +694,15 @@ async function startWebStack() {
   const createBackendApp = require('../pickleglass_web/backend_node');
   const nodeApi = createBackendApp(eventBridge);
 
+  // Use Next.js dev server instead of static files
   const staticDir = app.isPackaged
     ? path.join(process.resourcesPath, 'out')
     : path.join(__dirname, '..', 'pickleglass_web', 'out');
 
   const fs = require('fs');
 
-  if (!fs.existsSync(staticDir)) {
-    console.error(`============================================================`);
-    console.error(`[ERROR] Frontend build directory not found!`);
-    console.error(`Path: ${staticDir}`);
-    console.error(`Please run 'npm run build' inside the 'pickleglass_web' directory first.`);
-    console.error(`============================================================`);
-    app.quit();
-    return;
-  }
+  // Skip static directory check - we'll use Next.js dev server
+  console.log(`[INFO] Using Next.js development server for frontend`);
 
   const runtimeConfig = {
     API_URL: `http://localhost:${apiPort}`,
@@ -739,7 +733,41 @@ async function startWebStack() {
     next();
   });
   
+  // Serve static files from Next.js build
   frontSrv.use(express.static(staticDir));
+  frontSrv.use(express.json());
+  
+  // Add API routes directly to Express server
+  frontSrv.post('/api/auth/store-token', async (req, res) => {
+    try {
+      const { session_id, uid } = req.body;
+      
+      if (!session_id || !uid) {
+        return res.status(400).json({ success: false, error: 'session_id and uid required' });
+      }
+
+      console.log('[store-token] Storing custom token for session:', session_id, 'uid:', uid);
+
+      const admin = require('firebase-admin');
+      const customToken = await admin.auth().createCustomToken(uid);
+      
+      await admin.firestore().collection('pending_sessions').doc(session_id).set({
+        uid: uid,
+        custom_token: customToken,
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+        expires_at: new Date(Date.now() + 120000), // 2 minutes
+        used: false
+      });
+
+      console.log('[store-token] Custom token stored successfully for session:', session_id);
+
+      res.json({ success: true });
+      
+    } catch (error) {
+      console.error('[store-token] Error:', error);
+      res.status(500).json({ success: false, error: 'internal_server_error' });
+    }
+  });
   
   const frontendServer = await new Promise((resolve, reject) => {
     const server = frontSrv.listen(frontendPort, '127.0.0.1', () => resolve(server));
