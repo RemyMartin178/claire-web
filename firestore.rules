@@ -25,5 +25,17 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
+
+    // Règles pour les sessions en attente (authentification mobile)
+    match /pending_sessions/{sessionId} {
+      // Permettre la création par tout utilisateur authentifié
+      allow create: if request.auth != null;
+      
+      // Permettre la lecture/mise à jour par tout utilisateur authentifié
+      allow read, update: if request.auth != null;
+      
+      // Auto-nettoyage après expiration (optionnel)
+      allow delete: if request.auth != null;
+    }
   }
 }
