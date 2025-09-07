@@ -30,6 +30,37 @@ const modelStateService = require('./features/common/services/modelStateService'
 const featureBridge = require('./bridge/featureBridge');
 const windowBridge = require('./bridge/windowBridge');
 
+// Auto-load API keys from .env file
+async function autoLoadApiKeys() {
+    console.log('[AutoLoad] Loading API keys from .env...');
+
+    const apiKeys = {
+        openai: process.env.OPENAI_API_KEY,
+        anthropic: process.env.ANTHROPIC_API_KEY,
+        gemini: process.env.GOOGLE_AI_API_KEY,
+        deepgram: process.env.DEEPGRAM_API_KEY
+    };
+
+    let loadedCount = 0;
+    for (const [provider, apiKey] of Object.entries(apiKeys)) {
+        if (apiKey && apiKey.trim()) {
+            try {
+                console.log(`[AutoLoad] Setting API key for ${provider}...`);
+                await modelStateService.setApiKey(provider, apiKey.trim());
+                loadedCount++;
+            } catch (error) {
+                console.error(`[AutoLoad] Failed to load ${provider} API key:`, error.message);
+            }
+        }
+    }
+
+    if (loadedCount > 0) {
+        console.log(`[AutoLoad] Successfully loaded ${loadedCount} API key(s)`);
+    } else {
+        console.log('[AutoLoad] No API keys found in .env file');
+    }
+}
+
 // Global variables
 const eventBridge = new EventEmitter();
 let WEB_PORT = 3000;
@@ -202,6 +233,22 @@ app.whenReady().then(async () => {
 
         //////// after_modelStateService ////////
         await modelStateService.initialize();
+
+        // Auto-load API keys from .env file
+        await autoLoadApiKeys();
+
+        // Auto-configure default STT model if OpenAI is available
+        try {
+            const liveState = await modelStateService.getLiveState();
+            if (liveState.apiKeys.openai && !liveState.selectedModels.stt) {
+                console.log('[AutoConfig] Setting default OpenAI STT model...');
+                await modelStateService.setSelectedModel('stt', 'gpt-4o-mini-transcribe');
+                console.log('[AutoConfig] OpenAI STT model configured successfully');
+            }
+        } catch (error) {
+            console.error('[AutoConfig] Failed to configure default STT model:', error.message);
+        }
+
         //////// after_modelStateService ////////
 
         featureBridge.initialize();  // 추가: featureBridge 초기화

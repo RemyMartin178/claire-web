@@ -1,17 +1,36 @@
 @echo off
 echo ========================================
-echo   Lancement Glass App avec Auth
+echo   Lancement Glass App avec Auth & AI
 echo ========================================
 
 cd /d "%~dp0\dist\win-unpacked"
+
+REM Chargement des variables d'environnement depuis .env
+if exist "%~dp0..\.env" (
+    echo Chargement des variables d'environnement depuis .env...
+    for /f "tokens=*" %%a in (%~dp0..\.env) do (
+        set %%a
+    )
+    echo Variables d'environnement chargées.
+) else (
+    echo ATTENTION: Fichier .env non trouvé
+    echo Les fonctionnalités AI pourraient ne pas fonctionner.
+)
 
 REM Configuration des variables d'environnement
 set PENDING_SESSIONS_DB_PATH=%APPDATA%\Glass\pending_sessions.sqlite
 set GOOGLE_APPLICATION_CREDENTIALS=%~dp0resources\dedale-database-23102cfe0ceb.json
 set ELECTRON_ENABLE_LOGGING=1
 
+echo.
+echo Configuration:
 echo PENDING_SESSIONS_DB_PATH: %PENDING_SESSIONS_DB_PATH%
 echo GOOGLE_APPLICATION_CREDENTIALS: %GOOGLE_APPLICATION_CREDENTIALS%
+if defined OPENAI_API_KEY (
+    echo OPENAI_API_KEY: Configuré
+) else (
+    echo OPENAI_API_KEY: Non configuré
+)
 echo.
 
 REM Copier le fichier de credentials s'il n'existe pas déjà
