@@ -709,6 +709,13 @@ function createWindows() {
             }
         });
     }
+    // Garantir l'affichage dès que possible
+    header.once('ready-to-show', () => {
+        try {
+            header.show();
+            header.moveTop();
+        } catch {}
+    });
     windowPool.set('header', header);
     layoutManager = new WindowLayoutManager(windowPool);
     movementManager = new SmoothMovementManager(windowPool);
