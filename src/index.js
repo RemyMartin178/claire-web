@@ -540,7 +540,7 @@ async function handleFirebaseAuthCallback(params) {
     console.log('[Auth] Received ID token from deep link, exchanging for custom token...');
 
     try {
-        const functionUrl = 'https://us-west1-pickle-3651a.cloudfunctions.net/pickleGlassAuthCallback';
+        const functionUrl = `${config.pickleglass_WEB_URL}/api/mobile-auth/associate`;
         const response = await fetch(functionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -650,7 +650,40 @@ async function handleMobileAuthCallback(params) {
   }
 }
 
-// Legacy function removed - now using KV-based mobile auth exchange
+// Exchange function for mobile auth
+async function handleMobileAuthExchange(payload) {
+    try {
+        const { session_id } = payload;
+
+        if (!session_id) {
+            throw new Error('session_id is required for mobile auth exchange');
+        }
+
+        console.log('[Mobile Auth Exchange] Exchanging session:', session_id);
+
+        const exchangeUrl = `${config.pickleglass_WEB_URL}/api/mobile-auth/exchange`;
+        const response = await fetch(exchangeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to exchange session token');
+        }
+
+        console.log('[Mobile Auth Exchange] Successfully exchanged session for custom token');
+        return data.custom_token;
+
+    } catch (error) {
+        console.error('[Mobile Auth Exchange] Error:', error);
+        throw error;
+    }
+}
+
+// Legacy function removed - now using Next.js API-based mobile auth exchange
 
 function handlePersonalizeFromUrl(params) {
     console.log('[Custom URL] Personalize params:', params);
