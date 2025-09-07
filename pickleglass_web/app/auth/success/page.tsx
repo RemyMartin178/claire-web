@@ -21,17 +21,6 @@ function SuccessContent() {
   }, [sessionId, state]);
 
   useEffect(() => {
-    (async () => {
-      const url = new URL(window.location.href);
-      const session_id = url.searchParams.get('code') || url.searchParams.get('session_id');
-      if (!session_id) return;
-
-      // ping en lecture pour loguer (optionnel)
-      try {
-        const r = await fetch(`${getApiBase()}/api/auth/pending-session?session_id=${encodeURIComponent(session_id)}`);
-        console.log('[success] pending-session check =', r.status);
-      } catch {}
-    })();
     
     if (flow !== 'mobile') {
       debug && console.log('[success] non-mobile flow → redirect /activity');
