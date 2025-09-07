@@ -713,29 +713,6 @@ function createWindows() {
     layoutManager = new WindowLayoutManager(windowPool);
     movementManager = new SmoothMovementManager(windowPool);
 
-    // Fail-safe: ensure the header is visible and on-screen
-    const ensureHeaderVisible = () => {
-        if (!header || header.isDestroyed()) return;
-        const display = screen.getPrimaryDisplay();
-        const workArea = display.workArea;
-        const { width, height } = header.getBounds();
-        let [x, y] = header.getPosition();
-
-        const minX = workArea.x;
-        const maxX = workArea.x + workArea.width - width;
-        const minY = workArea.y;
-        const maxY = workArea.y + Math.max(0, Math.min(120, workArea.height - height));
-
-        if (x < minX || x > maxX || y < minY || y > maxY) {
-            const safeX = Math.max(minX, Math.min(x, maxX));
-            const safeY = Math.max(minY + 21, Math.min(y, maxY));
-            header.setPosition(Math.round(safeX), Math.round(safeY), false);
-        }
-        header.show();
-        header.moveTop();
-        header.focus();
-    };
-
 
     header.on('moved', () => {
         if (movementManager.isAnimating) {
@@ -747,7 +724,6 @@ function createWindows() {
     header.webContents.once('dom-ready', () => {
         shortcutsService.initialize(windowPool);
         shortcutsService.registerShortcuts();
-        ensureHeaderVisible();
     });
 
     // Replay état utilisateur courant à chaque window au chargement
@@ -789,9 +765,6 @@ function createWindows() {
     });
 
     header.on('resize', () => updateChildWindowLayouts(false));
-
-    // Extra guard: ensure visibility shortly after creation
-    setTimeout(ensureHeaderVisible, 400);
 
     return windowPool;
 }
