@@ -1,14 +1,14 @@
 @echo off
 echo ========================================
-echo   Lancement Glass App avec Auth & AI
+echo   Lancement Glass App avec Auth ^& AI
 echo ========================================
 
-cd /d "%~dp0\dist\win-unpacked"
+cd /d "%~dp0dist\win-unpacked"
 
 REM Chargement des variables d'environnement depuis .env
-if exist "%~dp0..\.env" (
+if exist "%~dp0\.env" (
     echo Chargement des variables d'environnement depuis .env...
-    for /f "tokens=*" %%a in (%~dp0..\.env) do (
+    for /f "tokens=*" %%a in (%~dp0\.env) do (
         set %%a
     )
     echo Variables d'environnement chargées.
@@ -19,7 +19,7 @@ if exist "%~dp0..\.env" (
 
 REM Configuration des variables d'environnement
 set PENDING_SESSIONS_DB_PATH=%APPDATA%\Glass\pending_sessions.sqlite
-set GOOGLE_APPLICATION_CREDENTIALS=%~dp0resources\dedale-database-23102cfe0ceb.json
+set GOOGLE_APPLICATION_CREDENTIALS=%CD%\resources\dedale-database-23102cfe0ceb.json
 set ELECTRON_ENABLE_LOGGING=1
 
 echo.
