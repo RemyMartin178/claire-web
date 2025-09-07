@@ -32,29 +32,9 @@ function SuccessContent() {
       return;
     }
 
-    // 1) tentative immédiate
-    const t1 = setTimeout(() => {
-      debug && console.log('[success] attempting window.location to', deep);
-      try { (window.location as any).href = deep; } catch (e) { console.error(e); }
-    }, 200);
-
-    // 2) iframe fallback
-    const t2 = setTimeout(() => {
-      debug && console.log('[success] attempting iframe fallback');
-      const ifr = document.createElement('iframe');
-      ifr.style.display = 'none';
-      ifr.src = deep!;
-      document.body.appendChild(ifr);
-      setTimeout(() => { try { ifr.remove(); } catch {} }, 2500);
-    }, 1000);
-
-    // 3) afficher bouton manuel
-    const t3 = setTimeout(() => {
-      debug && console.log('[success] enabling manual button');
-      setManual(true);
-    }, 1800);
-
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    // Afficher immédiatement le bouton manuel (les redirections automatiques sont bloquées par Chrome)
+    debug && console.log('[success] showing manual button immediately');
+    setManual(true);
   }, [flow, deep, router, debug]);
 
   if (flow !== 'mobile') return null;
