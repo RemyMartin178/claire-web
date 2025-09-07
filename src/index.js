@@ -1,24 +1,51 @@
-// try {
-//     const reloader = require('electron-reloader');
-//     reloader(module, {
-//     });
-// } catch (err) {
-// }
+// Bootstrap error handling - never crash on missing keys
+process.on('uncaughtException', e => console.error('[fatal]', e));
+process.on('unhandledRejection', e => console.error('[fatal-promise]', e));
 
-require('dotenv').config();
+// Load .env from code (not just from .bat)
+try {
+  const path = require('path');
+  const fs = require('fs');
+  const envPath = path.join(process.cwd(), '.env');
+  if (fs.existsSync(envPath)) require('dotenv').config({ path: envPath });
+} catch {}
+
+// Helper for optional env vars
+const requireEnv = k => {
+  if (!process.env[k] || process.env[k].trim()==='') {
+    console.warn(`[env] ${k} manquant (feature dégradée, pas de crash)`);
+    return null;
+  }
+  return process.env[k];
+};
 
 if (require('electron-squirrel-startup')) {
     process.exit(0);
 }
 
+// Persistent logging
+const fs = require('fs'), path = require('path');
+const logFile = path.join((app ? app.getPath('userData') : './'), 'glass.log');
+const log = fs.createWriteStream(logFile, { flags: 'a' });
+['log','warn','error'].forEach(k => {
+  const orig = console[k].bind(console);
+  console[k] = (...args) => { try { log.write(`[${k}] ${args.map(String).join(' ')}\n`); } catch{}; orig(...args); };
+});
+console.log('[boot] starting…');
+
 const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
 const { createWindows } = require('./window/windowManager.js');
 const listenService = require('./features/listen/listenService');
 
+// Unified URLs without guessing
+const isPackaged = app ? app.isPackaged : false;
+const WEB_URL = process.env.pickleglass_WEB_URL || (isPackaged ? 'https://app.clairia.app' : 'http://localhost:3000');
+const API_URL = process.env.pickleglass_API_URL || (isPackaged ? 'https://api.clairia.app' : 'http://localhost:3001');
+
 const { initializeFirebase } = require('./features/common/services/firebaseClient');
 const databaseInitializer = require('./features/common/services/databaseInitializer');
 const authService = require('./features/common/services/authService');
-const path = require('node:path');
+const path = require('path');
 const express = require('express');
 const fetch = require('node-fetch');
 const { autoUpdater } = require('electron-updater');
@@ -30,7 +57,19 @@ const modelStateService = require('./features/common/services/modelStateService'
 const featureBridge = require('./bridge/featureBridge');
 const windowBridge = require('./bridge/windowBridge');
 
-// Auto-load API keys from .env file
+// Lazy AI clients - don't initialize at startup
+let _openaiClient = null;
+function getOpenAIClient() {
+  const key = requireEnv('OPENAI_API_KEY');
+  if (!_openaiClient) {
+    if (!key) throw new Error('OpenAI API key manquante');
+    const OpenAI = require('openai').OpenAI;
+    _openaiClient = new OpenAI({ apiKey: key });
+  }
+  return _openaiClient;
+}
+
+// Load API keys from .env (but don't initialize clients)
 async function autoLoadApiKeys() {
     console.log('[AutoLoad] Loading API keys from .env...');
 
@@ -206,7 +245,70 @@ if (!gotTheLock) {
 // setup protocol after single instance lock
 setupProtocolHandling();
 
+// Safe initialization of providers (called after window is shown)
+async function safeInitProviders() {
+  console.log('[safe-init] Starting deferred initialization...');
+
+  try {
+    // Initialize core services
+    initializeFirebase();
+    await databaseInitializer.initialize();
+    console.log('>>> [safe-init] Database initialized successfully');
+
+    await authService.initialize();
+    await modelStateService.initialize();
+
+    // Auto-load API keys from .env file
+    await autoLoadApiKeys();
+
+    // Auto-configure default STT model if OpenAI is available
+    try {
+        const liveState = await modelStateService.getLiveState();
+        if (liveState.apiKeys.openai && !liveState.selectedModels.stt) {
+            console.log('[AutoConfig] Setting default OpenAI STT model...');
+            await modelStateService.setSelectedModel('stt', 'gpt-4o-mini-transcribe');
+            console.log('[AutoConfig] OpenAI STT model configured successfully');
+        }
+    } catch (error) {
+        console.error('[AutoConfig] Failed to configure default STT model:', error.message);
+    }
+
+    featureBridge.initialize();
+    windowBridge.initialize();
+    setupWebDataHandlers();
+
+    // Initialize Ollama models in database
+    await ollamaModelRepository.initializeDefaultModels();
+
+    // Auto warm-up selected Ollama model in background (non-blocking)
+    setTimeout(async () => {
+        try {
+            console.log('[index.js] Starting background Ollama model warm-up...');
+            await ollamaService.autoWarmUpSelectedModel();
+        } catch (error) {
+            console.log('[index.js] Background warm-up failed (non-critical):', error.message);
+        }
+    }, 2000);
+
+    // Start web server
+    WEB_PORT = await startWebStack();
+    console.log('Web front-end listening on', WEB_PORT);
+
+    // Process any pending deep link
+    if (pendingDeepLinkUrl) {
+        console.log('[Protocol] Processing pending URL:', pendingDeepLinkUrl);
+        handleCustomUrl(pendingDeepLinkUrl);
+        pendingDeepLinkUrl = null;
+    }
+
+  } catch (err) {
+    console.error('>>> [safe-init] Initialization failed - some features may not work', err);
+    // Don't show error dialog, just log it
+  }
+}
+
 app.whenReady().then(async () => {
+    console.log('[app] App ready, creating window immediately...');
 
     // Setup native loopback audio capture for Windows
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
@@ -219,79 +321,20 @@ app.whenReady().then(async () => {
         });
     });
 
-    // Initialize core services
-    initializeFirebase();
-    
-    try {
-        await databaseInitializer.initialize();
-        console.log('>>> [index.js] Database initialized successfully');
-        
-        // Clean up zombie sessions from previous runs first - MOVED TO authService
-        // sessionRepository.endAllActiveSessions();
+    // Create windows immediately (don't wait for heavy initialization)
+    createWindows();
 
-        await authService.initialize();
+    // Defer heavy initialization to after window is shown
+    setTimeout(() => {
+        safeInitProviders().catch(err => {
+            console.error('[app] Safe init failed:', err);
+        });
+    }, 100);
 
-        //////// after_modelStateService ////////
-        await modelStateService.initialize();
-
-        // Auto-load API keys from .env file
-        await autoLoadApiKeys();
-
-        // Auto-configure default STT model if OpenAI is available
-        try {
-            const liveState = await modelStateService.getLiveState();
-            if (liveState.apiKeys.openai && !liveState.selectedModels.stt) {
-                console.log('[AutoConfig] Setting default OpenAI STT model...');
-                await modelStateService.setSelectedModel('stt', 'gpt-4o-mini-transcribe');
-                console.log('[AutoConfig] OpenAI STT model configured successfully');
-            }
-        } catch (error) {
-            console.error('[AutoConfig] Failed to configure default STT model:', error.message);
-        }
-
-        //////// after_modelStateService ////////
-
-        featureBridge.initialize();  // 추가: featureBridge 초기화
-        windowBridge.initialize();
-        setupWebDataHandlers();
-
-        // Initialize Ollama models in database
-        await ollamaModelRepository.initializeDefaultModels();
-
-        // Auto warm-up selected Ollama model in background (non-blocking)
-        setTimeout(async () => {
-            try {
-                console.log('[index.js] Starting background Ollama model warm-up...');
-                await ollamaService.autoWarmUpSelectedModel();
-            } catch (error) {
-                console.log('[index.js] Background warm-up failed (non-critical):', error.message);
-            }
-        }, 2000); // Wait 2 seconds after app start
-
-        // Start web server and create windows ONLY after all initializations are successful
-        WEB_PORT = await startWebStack();
-        console.log('Web front-end listening on', WEB_PORT);
-        
-        createWindows();
-
-    } catch (err) {
-        console.error('>>> [index.js] Database initialization failed - some features may not work', err);
-        // Optionally, show an error dialog to the user
-        dialog.showErrorBox(
-            'Application Error',
-            'A critical error occurred during startup. Some features might be disabled. Please restart the application.'
-        );
-    }
-
-    // initAutoUpdater should be called after auth is initialized
-    initAutoUpdater();
-
-    // Process any pending deep link after everything is initialized
-    if (pendingDeepLinkUrl) {
-        console.log('[Protocol] Processing pending URL:', pendingDeepLinkUrl);
-        handleCustomUrl(pendingDeepLinkUrl);
-        pendingDeepLinkUrl = null;
-    }
+    // initAutoUpdater should be called after auth is initialized (will be done in safeInitProviders)
+    setTimeout(() => {
+        initAutoUpdater();
+    }, 2000);
 });
 
 app.on('before-quit', async (event) => {
@@ -587,7 +630,7 @@ async function handleFirebaseAuthCallback(params) {
     console.log('[Auth] Received ID token from deep link, exchanging for custom token...');
 
     try {
-        const functionUrl = `${config.pickleglass_WEB_URL}/api/mobile-auth/associate`;
+        const functionUrl = `${WEB_URL}/api/mobile-auth/associate`;
         const response = await fetch(functionUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -647,13 +690,35 @@ async function handleMobileAuthCallback(params) {
 
     // Récupérer les infos de session depuis Firestore et créer custom token
     const admin = require('firebase-admin');
-    
-    // Initialiser Firebase Admin si pas déjà fait
+
+    // Initialize Firebase Admin with proper credentials
     if (!admin.apps.length) {
       console.log('[CLOUD-FIX] Initializing Firebase Admin...');
-      admin.initializeApp({
-        projectId: 'dedale-database'
-      });
+
+      // Try to load credentials from bundled file first
+      const RES_DIR = (app && app.isPackaged) ? process.resourcesPath : path.join(__dirname, '..');
+      const saPath = path.join(RES_DIR, 'dedale-database-23102cfe0ceb.json');
+
+      let cred = null;
+      if (fs.existsSync(saPath)) {
+        try {
+          cred = admin.credential.cert(JSON.parse(fs.readFileSync(saPath,'utf8')));
+          console.log('[firebase] loaded credentials from bundled file');
+        } catch (e) {
+          console.error('[firebase] failed to load bundled credentials:', e.message);
+        }
+      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+        try {
+          cred = admin.credential.cert(require(process.env.GOOGLE_APPLICATION_CREDENTIALS));
+          console.log('[firebase] loaded credentials from env var');
+        } catch (e) {
+          console.error('[firebase] failed to load env credentials:', e.message);
+        }
+      } else {
+        console.warn('[firebase] no credentials found (some features may not work)');
+      }
+
+      admin.initializeApp(cred ? { credential: cred, projectId: 'dedale-database' } : { projectId: 'dedale-database' });
     }
     
     console.log('[CLOUD-FIX] Reading session data from Firestore for session:', code);
@@ -708,7 +773,7 @@ async function handleMobileAuthExchange(payload) {
 
         console.log('[Mobile Auth Exchange] Exchanging session:', session_id);
 
-        const exchangeUrl = `${config.pickleglass_WEB_URL}/api/mobile-auth/exchange`;
+        const exchangeUrl = `${WEB_URL}/api/mobile-auth/exchange`;
         const response = await fetch(exchangeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

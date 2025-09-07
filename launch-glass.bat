@@ -1,31 +1,28 @@
 @echo off
+setlocal enableextensions enabledelayedexpansion
+set "SCRIPT_DIR=%~dp0"
+
 echo ========================================
 echo   Lancement Glass App avec Auth ^& AI
 echo ========================================
 
-cd /d "%~dp0dist\win-unpacked"
-
-REM Chargement des variables d'environnement depuis .env
-if exist "%~dp0\.env" (
+REM Load .env from script directory
+if exist "%SCRIPT_DIR%.env" (
     echo Chargement des variables d'environnement depuis .env...
-    for /f "tokens=*" %%a in (%~dp0\.env) do (
-        set %%a
-    )
+    for /f "usebackq tokens=1,* delims== eol=#" %%A in ("%SCRIPT_DIR%.env") do set "%%A=%%B"
     echo Variables d'environnement chargées.
 ) else (
-    echo ATTENTION: Fichier .env non trouvé
+    echo ATTENTION: Fichier .env non trouvé dans %SCRIPT_DIR%
     echo Les fonctionnalités AI pourraient ne pas fonctionner.
 )
 
-REM Configuration des variables d'environnement
-set PENDING_SESSIONS_DB_PATH=%APPDATA%\Glass\pending_sessions.sqlite
-set GOOGLE_APPLICATION_CREDENTIALS=%CD%\resources\dedale-database-23102cfe0ceb.json
+REM Configuration
 set ELECTRON_ENABLE_LOGGING=1
+set ELECTRON_ENABLE_STACK_DUMPING=1
 
 echo.
 echo Configuration:
-echo PENDING_SESSIONS_DB_PATH: %PENDING_SESSIONS_DB_PATH%
-echo GOOGLE_APPLICATION_CREDENTIALS: %GOOGLE_APPLICATION_CREDENTIALS%
+echo SCRIPT_DIR: %SCRIPT_DIR%
 if defined OPENAI_API_KEY (
     echo OPENAI_API_KEY: Configuré
 ) else (
@@ -33,18 +30,14 @@ if defined OPENAI_API_KEY (
 )
 echo.
 
-REM Copier le fichier de credentials s'il n'existe pas déjà
-if not exist "resources\dedale-database-23102cfe0ceb.json" (
-    echo Copie du fichier de credentials Firebase...
-    copy "%~dp0dedale-database-23102cfe0ceb.json" "resources\" >nul 2>&1
-    if errorlevel 1 (
-        echo ATTENTION: Impossible de copier le fichier de credentials
-        echo L'authentification pourrait ne pas fonctionner
-    )
+REM Launch the app
+if exist "%SCRIPT_DIR%dist\win-unpacked\electron.exe" (
+    echo Lancement via electron.exe packagé...
+    "%SCRIPT_DIR%dist\win-unpacked\electron.exe" --enable-logging --v=1
+) else (
+    echo Lancement via npx electron...
+    npx electron "%SCRIPT_DIR%" --enable-logging --v=1
 )
 
-echo.
-echo Lancement de l'application...
-Glass.exe --enable-logging --v=1
-
+echo Exit code: %errorlevel%
 pause
