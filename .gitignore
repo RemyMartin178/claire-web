@@ -112,4 +112,7 @@ data/*.db-wal
 # Build output
 out/
 dist/
-build/ 
+build/
+
+# Firebase credentials
+dedale-database-*.json 

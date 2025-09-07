@@ -534,10 +534,11 @@ export class MainHeader extends LitElement {
 
             this._userStateListener = (event, userState) => {
                 console.log('[MainHeader] User state changed:', userState);
+                const wasLoggedIn = !!this.firebaseUser;
                 this.firebaseUser = userState && userState.isLoggedIn ? userState : null;
 
                 // Si l'utilisateur se connecte, réinitialiser l'état de connexion
-                if (userState && userState.isLoggedIn) {
+                if (userState && userState.isLoggedIn && !wasLoggedIn) {
                     console.log('[MainHeader] User logged in, resetting connecting state');
                     this.isConnecting = false;
                 }
@@ -545,10 +546,11 @@ export class MainHeader extends LitElement {
                 this.requestUpdate();
             };
 
-            // Écouter les deep links pour réinitialiser l'état de connexion
+            // Écouter les deep links pour maintenir l'état de connexion
             this._deepLinkListener = (event, data) => {
                 console.log('[MainHeader] Deep link received:', data, 'at', Date.now());
-                this.isConnecting = false;
+                // Garder l'état "Connexion en cours..." visible jusqu'à ce que l'utilisateur soit connecté
+                this.isConnecting = true;
 
                 // Démarrer une courte attente active pour laisser le temps à l'état utilisateur d'être propagé
                 if (this._authPollTimer) {
