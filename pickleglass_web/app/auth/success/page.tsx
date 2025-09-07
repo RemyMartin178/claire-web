@@ -73,7 +73,7 @@ function SuccessContent() {
               color: 'white'
             }}
           >
-            Ouvrir l'application Glass
+            Ouvrir l&apos;application Glass
           </a>
         )}
 
