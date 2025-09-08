@@ -4,10 +4,10 @@ process.on('unhandledRejection', e => console.error('[fatal-promise]', e));
 
 // Load .env from code (not just from .bat)
 try {
-  const path = require('path');
-  const fs = require('fs');
-  const envPath = path.join(process.cwd(), '.env');
-  if (fs.existsSync(envPath)) require('dotenv').config({ path: envPath });
+  const nodePath = require('path');
+  const nodeFs = require('fs');
+  const envPath = nodePath.join(process.cwd(), '.env');
+  if (nodeFs.existsSync(envPath)) require('dotenv').config({ path: envPath });
 } catch {}
 
 // Helper for optional env vars
@@ -23,17 +23,17 @@ if (require('electron-squirrel-startup')) {
     process.exit(0);
 }
 
-// Persistent logging
-const fs = require('fs'), path = require('path');
-const logFile = path.join((app ? app.getPath('userData') : './'), 'glass.log');
-const log = fs.createWriteStream(logFile, { flags: 'a' });
+const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
+
+// Persistent logging (avoid name clash with later 'path')
+const fs2 = require('fs'), path2 = require('path');
+const logFile = path2.join((app ? app.getPath('userData') : './'), 'glass.log');
+const log = fs2.createWriteStream(logFile, { flags: 'a' });
 ['log','warn','error'].forEach(k => {
   const orig = console[k].bind(console);
   console[k] = (...args) => { try { log.write(`[${k}] ${args.map(String).join(' ')}\n`); } catch{}; orig(...args); };
 });
 console.log('[boot] starting…');
-
-const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
 const { createWindows } = require('./window/windowManager.js');
 const listenService = require('./features/listen/listenService');
 
@@ -273,10 +273,6 @@ async function safeInitProviders() {
         console.error('[AutoConfig] Failed to configure default STT model:', error.message);
     }
 
-    featureBridge.initialize();
-    windowBridge.initialize();
-    setupWebDataHandlers();
-
     // Initialize Ollama models in database
     await ollamaModelRepository.initializeDefaultModels();
 
@@ -320,6 +316,12 @@ app.whenReady().then(async () => {
             callback({});
         });
     });
+
+    // Initialize IPC handlers before creating windows
+    console.log('[app] Initializing IPC handlers...');
+    featureBridge.initialize();
+    windowBridge.initialize();
+    setupWebDataHandlers();
 
     // Create windows immediately (don't wait for heavy initialization)
     createWindows();

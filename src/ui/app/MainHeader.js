@@ -48,12 +48,38 @@ export class MainHeader extends LitElement {
             background: transparent;
             overflow: hidden;
             border-radius: 9000px;
-            /* backdrop-filter: blur(1px); */
             justify-content: space-between;
             align-items: center;
             display: inline-flex;
             box-sizing: border-box;
             position: relative;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .header:hover {
+            transform: translateY(-1px);
+        }
+
+        /* Animations constantes subtiles */
+        .header::before {
+            animation: subtleGlow 3s ease-in-out infinite;
+        }
+
+        .header-actions {
+            animation: gentleFloat 4s ease-in-out infinite;
+        }
+
+        .header-actions:hover {
+            animation: none;
+            transform: scale(1.02);
+        }
+
+        .listen-button {
+            animation: subtlePulse 6s ease-in-out infinite;
+        }
+
+        .listen-button:hover {
+            animation: none;
         }
 
         .header::before {
@@ -62,25 +88,33 @@ export class MainHeader extends LitElement {
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%);
             border-radius: 9000px;
             z-index: -1;
+            box-shadow:
+                0 4px 20px rgba(0, 0, 0, 0.3),
+                0 2px 10px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
 
-                 .header::after {
-             content: '';
-             position: absolute;
-             top: 0; left: 0; right: 0; bottom: 0;
-             border-radius: 9000px;
-             padding: 1px;
-             background: rgba(156, 163, 175, 0.3);
-             -webkit-mask:
-                 linear-gradient(#fff 0 0) content-box,
-                 linear-gradient(#fff 0 0);
-             -webkit-mask-composite: destination-out;
-             mask-composite: exclude;
-             pointer-events: none;
-         }
+        .header::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.03) 50%, transparent 70%);
+            border-radius: 9000px;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .header:hover::after {
+            opacity: 1;
+        }
 
         .listen-button {
             -webkit-app-region: no-drag;
@@ -242,6 +276,93 @@ export class MainHeader extends LitElement {
             50% {
                 transform: scale(1.2);
                 opacity: 1;
+            }
+        }
+
+        /* Animation d'apparition de la barre flottante */
+        @keyframes appearFromBottom {
+            0% {
+                opacity: 0;
+                transform: translateY(30px) scale(0.8);
+            }
+            60% {
+                opacity: 0.8;
+                transform: translateY(-2px) scale(1.02);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Animation de disparition de la barre flottante */
+        @keyframes fadeOutScale {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.9) translateY(10px);
+            }
+        }
+
+        /* Animation de connexion */
+        @keyframes connectionGlow {
+            0%, 100% {
+                box-shadow:
+                    0 4px 20px rgba(0, 0, 0, 0.3),
+                    0 2px 10px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                    0 0 0 0 rgba(34, 197, 94, 0.5);
+            }
+            50% {
+                box-shadow:
+                    0 4px 20px rgba(0, 0, 0, 0.3),
+                    0 2px 10px rgba(0, 0, 0, 0.2),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                    0 0 20px 5px rgba(34, 197, 94, 0.3);
+            }
+        }
+
+        /* États d'animation */
+        :host(.appearing) .header {
+            animation: appearFromBottom 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        :host(.disconnecting) .header {
+            animation: fadeOutScale 0.4s ease-out forwards;
+        }
+
+        :host(.connecting) .header::before {
+            animation: connectionGlow 2s infinite;
+        }
+
+        /* Animations constantes subtiles */
+        @keyframes subtleGlow {
+            0%, 100% {
+                filter: brightness(1);
+            }
+            50% {
+                filter: brightness(1.05);
+            }
+        }
+
+        @keyframes gentleFloat {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-0.5px);
+            }
+        }
+
+        @keyframes subtlePulse {
+            0%, 100% {
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            }
+            50% {
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
             }
         }
 
@@ -816,6 +937,27 @@ export class MainHeader extends LitElement {
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.6;">
                             <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             <line x1="1" y1="1" x2="23" y2="23" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>` : html``}
+
+                ${isLoggedIn ? html`<div class="header-actions logout-action" @click=${async () => {
+                    try {
+                        console.log('[MainHeader] Logout clicked');
+                        await window.api.common.firebaseLogout();
+                        console.log('[MainHeader] Logout successful');
+                    } catch (error) {
+                        console.error('[MainHeader] Logout failed:', error);
+                    }
+                }}>
+                    <div class="action-text">
+                        <div class="action-text-content">Logout</div>
+                    </div>
+                    <div class="icon-container">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.7;">
+                            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M16 17L21 12L16 7" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M21 12H9" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                     </div>
                 </div>` : html``}

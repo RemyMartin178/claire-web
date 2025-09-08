@@ -30,13 +30,19 @@ if defined OPENAI_API_KEY (
 )
 echo.
 
-REM Launch the app
-if exist "%SCRIPT_DIR%dist\win-unpacked\electron.exe" (
-    echo Lancement via electron.exe packagé...
-    "%SCRIPT_DIR%dist\win-unpacked\electron.exe" --enable-logging --v=1
+REM Launch the app (prefer packaged Glass.exe)
+cd /d "%SCRIPT_DIR%"
+if exist "%SCRIPT_DIR%dist\win-unpacked\Glass.exe" (
+    echo Lancement via Glass.exe packagé...
+    "%SCRIPT_DIR%dist\win-unpacked\Glass.exe" --enable-logging --v=1
 ) else (
-    echo Lancement via npx electron...
-    npx electron "%SCRIPT_DIR%" --enable-logging --v=1
+    if exist "%SCRIPT_DIR%dist\win-unpacked\electron.exe" (
+        echo Lancement via electron.exe packagé...
+        "%SCRIPT_DIR%dist\win-unpacked\electron.exe" --enable-logging --v=1 "%SCRIPT_DIR%"
+    ) else (
+        echo Lancement via npx electron...
+        npx electron --enable-logging --v=1 "%SCRIPT_DIR%"
+    )
 )
 
 echo Exit code: %errorlevel%

@@ -58,6 +58,7 @@ class AuthService {
                     console.log('[authService] onAuthStateChanged user=', !!user, 'uid=', user ? user.uid : undefined);
                 } catch {}
                 const previousUser = this.currentUser;
+                const previousState = this.getCurrentUser();
 
                 if (user) {
                     // User signed IN
@@ -115,7 +116,7 @@ class AuthService {
 
                     encryptionService.resetSessionKey();
                 }
-                this.broadcastUserState();
+                this.broadcastUserState(previousState);
                 
                 if (!this.isInitialized) {
                     this.isInitialized = true;
@@ -171,14 +172,89 @@ class AuthService {
         }
     }
     
-    broadcastUserState() {
+    broadcastUserState(previousState = null) {
         const userState = this.getCurrentUser();
         console.log('[AuthService] Broadcasting user state change:', userState);
+
+        // Déclencher les animations appropriées
+        if (userState.isLoggedIn && (!previousState || !previousState.isLoggedIn)) {
+            // Animation d'apparition lors de la connexion
+            console.log('[AuthService] Triggering header appearance animation');
+            this.triggerHeaderAppearanceAnimation();
+        } else if (!userState.isLoggedIn && previousState && previousState.isLoggedIn) {
+            // Animation de disparition lors de la déconnexion
+            console.log('[AuthService] Triggering header disappearance animation');
+            this.triggerHeaderDisappearanceAnimation();
+        }
+
         BrowserWindow.getAllWindows().forEach(win => {
             if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
                 win.webContents.send('user-state-changed', userState);
             }
         });
+    }
+
+    // Méthodes pour déclencher les animations
+    triggerHeaderAppearanceAnimation() {
+        const { BrowserWindow } = require('electron');
+        const headerWindow = BrowserWindow.getAllWindows().find(win =>
+            win.getTitle().includes('header') || win.getTitle().includes('Header')
+        );
+
+        if (headerWindow) {
+            // Ajouter la classe CSS pour l'animation
+            headerWindow.webContents.executeJavaScript(`
+                document.documentElement.classList.add('appearing');
+                setTimeout(() => {
+                    document.documentElement.classList.remove('appearing');
+                }, 600);
+            `).catch(err => console.log('[Animation] Header appearance animation triggered'));
+
+            // Utiliser le SmoothMovementManager pour l'animation
+            try {
+                const smoothMovementManager = require('../../../window/smoothMovementManager');
+                if (smoothMovementManager.default) {
+                    const manager = new smoothMovementManager.default([headerWindow]);
+                    manager.animateHeaderAppearance(headerWindow, {
+                        duration: 600,
+                        onComplete: () => console.log('[Animation] Header appearance completed')
+                    });
+                }
+            } catch (error) {
+                console.log('[Animation] Could not use SmoothMovementManager for appearance animation');
+            }
+        }
+    }
+
+    triggerHeaderDisappearanceAnimation() {
+        const { BrowserWindow } = require('electron');
+        const headerWindow = BrowserWindow.getAllWindows().find(win =>
+            win.getTitle().includes('header') || win.getTitle().includes('Header')
+        );
+
+        if (headerWindow) {
+            // Ajouter la classe CSS pour l'animation
+            headerWindow.webContents.executeJavaScript(`
+                document.documentElement.classList.add('disconnecting');
+                setTimeout(() => {
+                    document.documentElement.classList.remove('disconnecting');
+                }, 400);
+            `).catch(err => console.log('[Animation] Header disappearance animation triggered'));
+
+            // Utiliser le SmoothMovementManager pour l'animation
+            try {
+                const smoothMovementManager = require('../../../window/smoothMovementManager');
+                if (smoothMovementManager.default) {
+                    const manager = new smoothMovementManager.default([headerWindow]);
+                    manager.animateHeaderDisappearance(headerWindow, {
+                        duration: 400,
+                        onComplete: () => console.log('[Animation] Header disappearance completed')
+                    });
+                }
+            } catch (error) {
+                console.log('[Animation] Could not use SmoothMovementManager for disappearance animation');
+            }
+        }
     }
 
     getCurrentUserId() {

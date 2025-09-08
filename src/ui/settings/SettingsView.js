@@ -513,6 +513,7 @@ export class SettingsView extends LitElement {
         //////// after_modelStateService ////////
         this.shortcuts = {};
         this.firebaseUser = null;
+        this.isLoggedIn = false;
         this.apiKeys = { openai: '', gemini: '', anthropic: '', whisper: '' };
         this.providerConfig = {};
         this.isLoading = true;
@@ -609,6 +610,7 @@ export class SettingsView extends LitElement {
 
     //////// after_modelStateService ////////
     async loadInitialData() {
+        console.log('[SettingsView] Initial state - isLoggedIn:', this.isLoggedIn, 'firebaseUser:', !!this.firebaseUser);
         if (!window.api) return;
         this.isLoading = true;
         try {
@@ -621,7 +623,15 @@ export class SettingsView extends LitElement {
                 window.api.settingsView.getCurrentShortcuts()
             ]);
             
-            if (userState && userState.isLoggedIn) this.firebaseUser = userState;
+            if (userState && userState.isLoggedIn) {
+                this.firebaseUser = userState;
+                this.isLoggedIn = true;
+                console.log('[SettingsView] User is logged in:', userState.email || 'Unknown');
+            } else {
+                this.firebaseUser = null;
+                this.isLoggedIn = false;
+                console.log('[SettingsView] User is NOT logged in');
+            }
             
             if (modelSettings.success) {
                 const { config, storedKeys, availableLlm, availableStt, selectedModels } = modelSettings.data;
@@ -965,12 +975,18 @@ export class SettingsView extends LitElement {
             console.log('[SettingsView] Received user-state-changed:', userState);
             if (userState && userState.isLoggedIn) {
                 this.firebaseUser = userState;
+                this.isLoggedIn = true;
+                console.log('[SettingsView] User logged in:', userState.email || 'Unknown');
             } else {
                 this.firebaseUser = null;
+                this.isLoggedIn = false;
+                console.log('[SettingsView] User logged out or not logged in');
             }
             this.loadAutoUpdateSetting();
             // Reload model settings when user state changes (Firebase login/logout)
             this.loadInitialData();
+            // Force UI update
+            this.requestUpdate();
         };
         
         this._settingsUpdatedListener = (event, settings) => {
@@ -1158,9 +1174,31 @@ export class SettingsView extends LitElement {
         window.api.settingsView.quitApplication();
     }
 
-    handleFirebaseLogout() {
+    async handleFirebaseLogout() {
         console.log('Firebase Logout clicked');
-        window.api.settingsView.firebaseLogout();
+        try {
+            await window.api.common.firebaseLogout();
+            console.log('Firebase Logout successful');
+        } catch (error) {
+            console.error('Firebase Logout failed:', error);
+        }
+
+        // Always clear local user state regardless of Firebase result
+        this.clearUserData();
+        this.requestUpdate();
+    }
+
+    clearUserData() {
+        console.log('[SettingsView] Clearing all user data');
+        this.firebaseUser = null;
+
+        // Clear any cached user data
+        if (window.api?.settingsView?.clearUserCache) {
+            window.api.settingsView.clearUserCache();
+        }
+
+        // Reset any user-specific settings to defaults
+        this.loadInitialData();
     }
 
     async handleOllamaShutdown() {
@@ -1368,7 +1406,7 @@ export class SettingsView extends LitElement {
                     <div>
                         <h1 class="app-title">Pickle Glass</h1>
                         <div class="account-info">
-                            ${this.firebaseUser
+                            ${this.isLoggedIn && this.firebaseUser
                                 ? html`Account: ${this.firebaseUser.email || 'Logged In'}`
                                 : `Account: Not Logged In`
                             }
@@ -1453,7 +1491,7 @@ export class SettingsView extends LitElement {
                     </button>
                     
                     <div class="bottom-buttons">
-                        ${this.firebaseUser
+                        ${this.isLoggedIn
                             ? html`
                                 <button class="settings-button half-width danger" @click=${this.handleFirebaseLogout}>
                                     <span>Logout</span>

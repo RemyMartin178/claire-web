@@ -1,0 +1,5 @@
+[33m25cec68[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix mobile auth - replace Firebase Functions with Next.js API routes
+[33m6debfa9[m Fix deep link - afficher bouton manuel immédiatement
+[33mdad9c2f[m Corriger page de succès - supprimer appel API obsolète
+[33m6a76032[m Nettoyer le code de débogage - supprimer boutons FORCE LOGIN et logs DEBUG
+[33maa5d510[m Add DEBUG bypass button for mobile auth testing

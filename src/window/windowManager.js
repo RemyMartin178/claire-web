@@ -373,9 +373,9 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
         const otherName = name === 'listen' ? 'ask' : 'listen';
         const otherWin = windowPool.get(otherName);
         const isOtherWinVisible = otherWin && !otherWin.isDestroyed() && otherWin.isVisible();
-        
-        const ANIM_OFFSET_X = 50;
-        const ANIM_OFFSET_Y = 20;
+
+        const ANIM_OFFSET_X = 80; // Increased for more dramatic effect
+        const ANIM_OFFSET_Y = 60;
 
         const finalVisibility = {
             listen: (name === 'listen' && shouldBeVisible) || (otherName === 'listen' && isOtherWinVisible),
@@ -392,32 +392,82 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
             const targetBounds = targetLayout[name];
             if (!targetBounds) return;
 
-            const startPos = { ...targetBounds };
-            if (name === 'listen') startPos.x -= ANIM_OFFSET_X;
-            else if (name === 'ask') startPos.y -= ANIM_OFFSET_Y;
+            // Position de départ avec un effet de rebond plus prononcé
+            const startBounds = { ...targetBounds };
+            if (name === 'listen') {
+                startBounds.x -= ANIM_OFFSET_X;
+                startBounds.y += 10; // Slight vertical offset for more natural movement
+            } else if (name === 'ask') {
+                startBounds.y -= ANIM_OFFSET_Y;
+                startBounds.x += 15; // Slight horizontal offset
+            }
 
+            // Masquer et positionner la fenêtre
             win.setOpacity(0);
-            win.setBounds(startPos);
+            win.setBounds(startBounds);
             win.show();
 
-            movementManager.fade(win, { to: 1 });
-            movementManager.animateLayout(targetLayout);
+            // Animation d'apparition avec rebond
+            setTimeout(() => {
+                movementManager.fade(win, {
+                    from: 0,
+                    to: 1,
+                    duration: 400,
+                    onComplete: () => {
+                        // Petit effet de rebond à la fin
+                        movementManager.animateWindowBounds(win, targetBounds, {
+                            duration: 200,
+                            onComplete: () => {
+                                // Ajuster automatiquement la mise en page après l'animation
+                                setTimeout(() => updateChildWindowLayouts(true), 50);
+                            }
+                        });
+                    }
+                });
+
+                // Animer vers la position finale avec un léger rebond
+                movementManager.animateWindowBounds(win, targetBounds, {
+                    duration: 500,
+                    onComplete: () => updateChildWindowLayouts(true)
+                });
+            }, 50);
 
         } else {
             if (!win || !win.isVisible()) return;
 
             const currentBounds = win.getBounds();
-            const targetPos = { ...currentBounds };
-            if (name === 'listen') targetPos.x -= ANIM_OFFSET_X;
-            else if (name === 'ask') targetPos.y -= ANIM_OFFSET_Y;
 
-            movementManager.fade(win, { to: 0, onComplete: () => win.hide() });
-            movementManager.animateWindowPosition(win, targetPos);
-            
-            // 다른 창들도 새 레이아웃으로 애니메이션
-            const otherWindowsLayout = { ...targetLayout };
-            delete otherWindowsLayout[name];
-            movementManager.animateLayout(otherWindowsLayout);
+            // Position de sortie avec un mouvement plus fluide
+            const exitBounds = { ...currentBounds };
+            if (name === 'listen') {
+                exitBounds.x -= ANIM_OFFSET_X * 0.8;
+                exitBounds.y -= 20; // Descendre légèrement
+            } else if (name === 'ask') {
+                exitBounds.y -= ANIM_OFFSET_Y * 0.8;
+                exitBounds.x += 25; // Se déplacer légèrement vers la droite
+            }
+
+            // Animation de disparition plus sophistiquée
+            movementManager.fade(win, {
+                from: 1,
+                to: 0,
+                duration: 300,
+                onComplete: () => {
+                    win.hide();
+                    updateChildWindowLayouts(true);
+                }
+            });
+
+            // Animer vers la position de sortie
+            movementManager.animateWindowBounds(win, exitBounds, {
+                duration: 350,
+                onComplete: () => {
+                    // Animer les autres fenêtres pour s'adapter
+                    const otherWindowsLayout = { ...targetLayout };
+                    delete otherWindowsLayout[name];
+                    movementManager.animateLayout(otherWindowsLayout, false);
+                }
+            });
         }
     }
 }
