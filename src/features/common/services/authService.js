@@ -147,6 +147,9 @@ class AuthService {
             uid: user?.uid || null,
             displayName: user?.displayName || null,
             photoURL: user?.photoURL || null,
+            // Ajouter des informations supplémentaires pour une meilleure synchronisation
+            firstName: user?.displayName?.split(' ')[0] || null,
+            lastName: user?.displayName?.split(' ').slice(1).join(' ') || null,
         };
     }
 

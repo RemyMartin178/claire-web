@@ -692,6 +692,8 @@ async function handleMobileAuthCallback(params) {
 
     // Récupérer les infos de session depuis Firestore et créer custom token
     const admin = require('firebase-admin');
+    const fs = require('fs');
+    const path = require('path');
 
     // Initialize Firebase Admin with proper credentials
     if (!admin.apps.length) {

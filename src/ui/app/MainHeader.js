@@ -664,6 +664,12 @@ export class MainHeader extends LitElement {
                     this.isConnecting = false;
                 }
 
+                // Si l'utilisateur se déconnecte, s'assurer que l'état de connexion est réinitialisé
+                if (!userState || !userState.isLoggedIn) {
+                    console.log('[MainHeader] User logged out, resetting connecting state');
+                    this.isConnecting = false;
+                }
+
                 this.requestUpdate();
             };
 
@@ -688,11 +694,13 @@ export class MainHeader extends LitElement {
                         console.log('[MainHeader] Auth poll tick after deep link (', elapsed, 'ms ):', userState);
                         if (loggedIn) {
                             this.firebaseUser = userState;
+                            this.isConnecting = false; // Réinitialiser l'état de connexion
                             this.requestUpdate();
                             clearInterval(this._authPollTimer);
                             this._authPollTimer = null;
                         } else if (elapsed >= MAX_WAIT_MS) {
                             console.log('[MainHeader] Auth poll timeout reached; keeping existing firebaseUser');
+                            this.isConnecting = false; // Réinitialiser l'état de connexion même en cas de timeout
                             clearInterval(this._authPollTimer);
                             this._authPollTimer = null;
                         }
@@ -705,6 +713,7 @@ export class MainHeader extends LitElement {
                         console.log('[MainHeader] Current user state after deep link (immediate):', userState);
                         if (userState && userState.isLoggedIn) {
                             this.firebaseUser = userState;
+                            this.isConnecting = false; // Réinitialiser l'état de connexion
                             console.log('[MainHeader] Updated firebaseUser after deep link:', this.firebaseUser);
                             this.requestUpdate();
                         } else {
@@ -941,26 +950,6 @@ export class MainHeader extends LitElement {
                     </div>
                 </div>` : html``}
 
-                ${isLoggedIn ? html`<div class="header-actions logout-action" @click=${async () => {
-                    try {
-                        console.log('[MainHeader] Logout clicked');
-                        await window.api.common.firebaseLogout();
-                        console.log('[MainHeader] Logout successful');
-                    } catch (error) {
-                        console.error('[MainHeader] Logout failed:', error);
-                    }
-                }}>
-                    <div class="action-text">
-                        <div class="action-text-content">Logout</div>
-                    </div>
-                    <div class="icon-container">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity: 0.7;">
-                            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M16 17L21 12L16 7" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M21 12H9" stroke="#FF6B6B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </div>
-                </div>` : html``}
 
                 <button 
                     class="settings-button"

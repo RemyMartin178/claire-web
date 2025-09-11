@@ -973,18 +973,25 @@ export class SettingsView extends LitElement {
         
         this._userStateListener = (event, userState) => {
             console.log('[SettingsView] Received user-state-changed:', userState);
+            const wasLoggedIn = this.isLoggedIn;
+            
             if (userState && userState.isLoggedIn) {
                 this.firebaseUser = userState;
                 this.isLoggedIn = true;
-                console.log('[SettingsView] User logged in:', userState.email || 'Unknown');
+                console.log('[SettingsView] User logged in:', userState.displayName || userState.email || 'Unknown');
             } else {
                 this.firebaseUser = null;
                 this.isLoggedIn = false;
                 console.log('[SettingsView] User logged out or not logged in');
             }
-            this.loadAutoUpdateSetting();
-            // Reload model settings when user state changes (Firebase login/logout)
-            this.loadInitialData();
+            
+            // Seulement recharger les données si l'état de connexion a changé
+            if (wasLoggedIn !== this.isLoggedIn) {
+                this.loadAutoUpdateSetting();
+                // Reload model settings when user state changes (Firebase login/logout)
+                this.loadInitialData();
+            }
+            
             // Force UI update
             this.requestUpdate();
         };
@@ -1407,8 +1414,8 @@ export class SettingsView extends LitElement {
                         <h1 class="app-title">Pickle Glass</h1>
                         <div class="account-info">
                             ${this.isLoggedIn && this.firebaseUser
-                                ? html`Account: ${this.firebaseUser.email || 'Logged In'}`
-                                : `Account: Not Logged In`
+                                ? html`Account: ${this.firebaseUser.displayName || this.firebaseUser.email || 'Connecté'}`
+                                : `Account: Non connecté`
                             }
                         </div>
                     </div>
@@ -1494,17 +1501,17 @@ export class SettingsView extends LitElement {
                         ${this.isLoggedIn
                             ? html`
                                 <button class="settings-button half-width danger" @click=${this.handleFirebaseLogout}>
-                                    <span>Logout</span>
+                                    <span>Se déconnecter</span>
                                 </button>
                                 `
                             : html`
                                 <button class="settings-button half-width" @click=${this.handleUsePicklesKey}>
-                                    <span>Login</span>
+                                    <span>Se connecter</span>
                                 </button>
                                 `
                         }
                         <button class="settings-button half-width danger" @click=${this.handleQuit}>
-                            <span>Quit</span>
+                            <span>Quitter</span>
                         </button>
                     </div>
                 </div>
