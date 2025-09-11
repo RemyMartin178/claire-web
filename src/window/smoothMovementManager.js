@@ -15,12 +15,24 @@ class SmoothMovementManager {
         this.animationTimers = new Map();
         this.activeAnimations = new Set();
 
-        // Utiliser setTimeout au lieu de requestAnimationFrame (pas disponible dans Node.js)
-        this.useRequestAnimationFrame = false;
+        // Utiliser requestAnimationFrame pour de meilleures performances si disponible
+        this.useRequestAnimationFrame = typeof requestAnimationFrame !== 'undefined';
+        
+        // Si requestAnimationFrame n'est pas disponible, utiliser une simulation avec setTimeout
+        if (!this.useRequestAnimationFrame) {
+            this.requestAnimationFrame = (callback) => {
+                return setTimeout(() => {
+                    callback(performance.now());
+                }, this.frameInterval);
+            };
+            this.cancelAnimationFrame = (id) => {
+                clearTimeout(id);
+            };
+        }
 
         // Optimisations pour 60 FPS fluides
         this.targetFPS = 60;
-        this.frameInterval = 1000 / this.targetFPS;
+        this.frameInterval = 1000 / this.targetFPS; // ~16.67ms pour 60 FPS
         this.lastFrameTime = 0;
         this.frameCount = 0;
     }
@@ -227,11 +239,7 @@ class SmoothMovementManager {
             win.setBounds(newBounds);
 
             if (progress < 1) {
-                if (this.useRequestAnimationFrame) {
-                    setTimeout(() => step(), this.frameInterval);
-                } else {
-                    setTimeout(() => setTimeout(() => step(), this.frameInterval), 1000 / 60);
-                }
+                setTimeout(() => step(), this.frameInterval);
             } else {
                 this.activeAnimations.delete(animationId);
                 win.setBounds(targetBounds);
@@ -245,11 +253,7 @@ class SmoothMovementManager {
             }
         };
 
-        if (this.useRequestAnimationFrame) {
-            setTimeout(() => step(), this.frameInterval);
-        } else {
-            step(startTime);
-        }
+        setTimeout(() => step(), this.frameInterval);
     }
     
     animateWindowPosition(win, targetPosition, options = {}) {
