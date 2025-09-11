@@ -1,4 +1,4 @@
-const { onAuthStateChanged, signInWithCustomToken, signOut } = require('firebase/auth');
+﻿const { onAuthStateChanged, signInWithCustomToken, signOut, setPersistence, browserLocalPersistence } = require('firebase/auth');
 const { BrowserWindow, shell } = require('electron');
 const { getFirebaseAuth } = require('./firebaseClient');
 const fetch = require('node-fetch');
@@ -6,142 +6,41 @@ const encryptionService = require('./encryptionService');
 const migrationService = require('./migrationService');
 const sessionRepository = require('../repositories/session');
 const providerSettingsRepository = require('../repositories/providerSettings');
-const permissionService = require('./permissionService');
-
-async function getVirtualKeyByEmail(email, idToken) {
-    if (!idToken) {
-        throw new Error('Firebase ID token is required for virtual key request');
-    }
-
-    const resp = await fetch('https://serverless-api-sf3o.vercel.app/api/virtual_key', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${idToken}`,
-        },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
-        redirect: 'follow',
-    });
-
-    const json = await resp.json().catch(() => ({}));
-    if (!resp.ok) {
-        console.error('[VK] API request failed:', json.message || 'Unknown error');
-        throw new Error(json.message || `HTTP ${resp.status}: Virtual key request failed`);
-    }
-
-    const vKey = json?.data?.virtualKey || json?.data?.virtual_key || json?.data?.newVKey?.slug;
-
-    if (!vKey) throw new Error('virtual key missing in response');
-    return vKey;
-}
 
 class AuthService {
     constructor() {
-        this.currentUserId = 'default_user';
-        this.currentUserMode = 'local'; // 'local' or 'firebase'
+        this.initialized = false;
         this.currentUser = null;
-        this.isInitialized = false;
-
-        // This ensures the key is ready before any login/logout state change.
-        this.initializationPromise = null;
-
-        sessionRepository.setAuthService(this);
     }
 
-    initialize() {
-        if (this.isInitialized) return this.initializationPromise;
+    async initialize() {
+        if (this.initialized) return;
 
-        this.initializationPromise = new Promise((resolve) => {
+        try {
+            console.log('[AuthService] Initializing Firebase persistence...');
             const auth = getFirebaseAuth();
-            onAuthStateChanged(auth, async (user) => {
-                try {
-                    console.log('[authService] onAuthStateChanged user=', !!user, 'uid=', user ? user.uid : undefined);
-                } catch {}
-                const previousUser = this.currentUser;
-                const previousState = this.getCurrentUser();
+
+            // Configurer la persistance pour 4-5 jours (browserLocalPersistence garde la session)
+            await setPersistence(auth, browserLocalPersistence);
+            console.log('[AuthService] Firebase persistence configured for 4-5 days');
+
+            // Écouter les changements d'état d'authentification
+            onAuthStateChanged(auth, (user) => {
+                console.log('[AuthService] Auth state changed:', user ? 'LOGGED_IN' : 'LOGGED_OUT');
+                this.currentUser = user;
 
                 if (user) {
-                    // User signed IN
-                    console.log(`[AuthService] Firebase user signed in:`, user.uid);
-                    this.currentUser = user;
-                    this.currentUserId = user.uid;
-                    this.currentUserMode = 'firebase';
-
-                    // Clean up any zombie sessions from a previous run for this user.
-                    await sessionRepository.endAllActiveSessions();
-
-                    // ** Initialize encryption key for the logged-in user if permissions are already granted **
-                    if (process.platform === 'darwin' && !(await permissionService.checkKeychainCompleted(this.currentUserId))) {
-                        console.warn('[AuthService] Keychain permission not yet completed for this user. Deferring key initialization.');
-                    } else {
-                        await encryptionService.initializeKey(user.uid);
-                    }
-
-                    // ** Check for and run data migration for the user **
-                    // No 'await' here, so it runs in the background without blocking startup.
-                    migrationService.checkAndRunMigration(user);
-
-                    // ***** CRITICAL: Wait for the virtual key and model state update to complete *****
-                    try {
-                        const idToken = await user.getIdToken(true);
-                        const virtualKey = await getVirtualKeyByEmail(user.email, idToken);
-
-                        if (global.modelStateService) {
-                            // The model state service now writes directly to the DB, no in-memory state.
-                            await global.modelStateService.setFirebaseVirtualKey(virtualKey);
-                        }
-                        console.log(`[AuthService] Virtual key for ${user.email} has been processed and state updated.`);
-
-                    } catch (error) {
-                        console.error('[AuthService] Failed to fetch or save virtual key:', error);
-                        // This is not critical enough to halt the login, but we should log it.
-                    }
-
-                } else {
-                    // User signed OUT
-                    console.log(`[AuthService] No Firebase user.`);
-                    if (previousUser) {
-                        console.log(`[AuthService] Clearing API key for logged-out user: ${previousUser.uid}`);
-                        if (global.modelStateService) {
-                            // The model state service now writes directly to the DB.
-                            await global.modelStateService.setFirebaseVirtualKey(null);
-                        }
-                    }
-                    this.currentUser = null;
-                    this.currentUserId = 'default_user';
-                    this.currentUserMode = 'local';
-
-                    // End active sessions for the local/default user as well.
-                    await sessionRepository.endAllActiveSessions();
-
-                    encryptionService.resetSessionKey();
+                    console.log('[AuthService] User authenticated:', user.email);
                 }
-                this.broadcastUserState(previousState);
-                
-                if (!this.isInitialized) {
-                    this.isInitialized = true;
-                    console.log('[AuthService] Initialized and resolved initialization promise.');
-                    resolve();
-                }
+
+                // Diffuser le changement d'état
+                this.broadcastUserState();
             });
-        });
 
-        return this.initializationPromise;
-    }
-
-    async startFirebaseAuthFlow() {
-        try {
-            // Utiliser la même logique que openLoginPage pour éviter les conflits
-            const webUrl = process.env.NODE_ENV === 'development'
-                ? 'http://localhost:3000'
-                : 'https://app.clairia.app';
-            const authUrl = `${webUrl}/login?mode=electron`;
-            console.log(`[AuthService] Opening Firebase auth URL in browser: ${authUrl}`);
-            await shell.openExternal(authUrl);
-            return { success: true };
+            this.initialized = true;
+            console.log('[AuthService] AuthService initialized successfully');
         } catch (error) {
-            console.error('[AuthService] Failed to open Firebase auth URL:', error);
-            return { success: false, error: error.message };
+            console.error('[AuthService] Error initializing AuthService:', error);
         }
     }
 
@@ -149,40 +48,86 @@ class AuthService {
         const auth = getFirebaseAuth();
         try {
             const userCredential = await signInWithCustomToken(auth, token);
-            console.log(`[AuthService] Successfully signed in with custom token for user:`, userCredential.user.uid);
-            // onAuthStateChanged will handle the state update and broadcast
+            console.log('[AuthService] User signed in with custom token:', userCredential.user.email);
+            return userCredential;
         } catch (error) {
             console.error('[AuthService] Error signing in with custom token:', error);
-            throw error; // Re-throw to be handled by the caller
+            throw error;
         }
     }
 
     async signOut() {
         const auth = getFirebaseAuth();
         try {
-            // End all active sessions for the current user BEFORE signing out.
-            await sessionRepository.endAllActiveSessions();
+            // Nettoyer complètement les données utilisateur
+            console.log('[AuthService] Starting complete user data cleanup...');
 
+            // Nettoyer le cache local
+            await this.clearLocalCache();
+
+            // Déconnexion Firebase
             await signOut(auth);
-            console.log('[AuthService] User sign-out initiated successfully.');
-            // onAuthStateChanged will handle the state update and broadcast,
-            // which will also re-evaluate the API key status.
+            console.log('[AuthService] User sign-out and complete cleanup successful.');
         } catch (error) {
-            console.error('[AuthService] Error signing out:', error);
+            console.error('[AuthService] Error during sign out:', error);
+        }
+
+        // Forcer la mise à jour de l'état même si Firebase échoue
+        setTimeout(() => {
+            this.broadcastUserState({ isLoggedIn: false });
+        }, 100);
+    }
+
+    async clearLocalCache() {
+        try {
+            console.log('[AuthService] Clearing local cache...');
+
+            // Nettoyer les données locales si nécessaire
+            if (typeof window !== 'undefined' && window.localStorage) {
+                // Nettoyer les clés liées à l'utilisateur
+                const keysToRemove = [];
+                for (let i = 0; i < window.localStorage.length; i++) {
+                    const key = window.localStorage.key(i);
+                    if (key && (key.includes('firebase') || key.includes('auth') || key.includes('user'))) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => {
+                    console.log(`[AuthService] Removing localStorage key: ${key}`);
+                    window.localStorage.removeItem(key);
+                });
+            }
+
+            // Nettoyer sessionStorage aussi
+            if (typeof window !== 'undefined' && window.sessionStorage) {
+                const sessionKeysToRemove = [];
+                for (let i = 0; i < window.sessionStorage.length; i++) {
+                    const key = window.sessionStorage.key(i);
+                    if (key && (key.includes('firebase') || key.includes('auth') || key.includes('user'))) {
+                        sessionKeysToRemove.push(key);
+                    }
+                }
+                sessionKeysToRemove.forEach(key => {
+                    console.log(`[AuthService] Removing sessionStorage key: ${key}`);
+                    window.sessionStorage.removeItem(key);
+                });
+            }
+
+            console.log('[AuthService] Local cache cleared successfully');
+        } catch (error) {
+            console.error('[AuthService] Error clearing local cache:', error);
         }
     }
-    
+
     broadcastUserState(previousState = null) {
         const userState = this.getCurrentUser();
         console.log('[AuthService] Broadcasting user state change:', userState);
 
         // Déclencher les animations appropriées
         if (userState.isLoggedIn && (!previousState || !previousState.isLoggedIn)) {
-            // Animation d'apparition lors de la connexion
             console.log('[AuthService] Triggering header appearance animation');
             this.triggerHeaderAppearanceAnimation();
         } else if (!userState.isLoggedIn && previousState && previousState.isLoggedIn) {
-            // Animation de disparition lors de la déconnexion
             console.log('[AuthService] Triggering header disappearance animation');
             this.triggerHeaderDisappearanceAnimation();
         }
@@ -194,100 +139,54 @@ class AuthService {
         });
     }
 
-    // Méthodes pour déclencher les animations
+    getCurrentUser() {
+        const user = this.currentUser;
+        return {
+            isLoggedIn: !!user,
+            email: user?.email || null,
+            uid: user?.uid || null,
+            displayName: user?.displayName || null,
+            photoURL: user?.photoURL || null,
+        };
+    }
+
     triggerHeaderAppearanceAnimation() {
-        const { BrowserWindow } = require('electron');
         const headerWindow = BrowserWindow.getAllWindows().find(win =>
             win.getTitle().includes('header') || win.getTitle().includes('Header')
         );
 
         if (headerWindow) {
-            // Ajouter la classe CSS pour l'animation
             headerWindow.webContents.executeJavaScript(`
                 document.documentElement.classList.add('appearing');
                 setTimeout(() => {
                     document.documentElement.classList.remove('appearing');
                 }, 600);
             `).catch(err => console.log('[Animation] Header appearance animation triggered'));
-
-            // Utiliser le SmoothMovementManager pour l'animation
-            try {
-                const smoothMovementManager = require('../../../window/smoothMovementManager');
-                if (smoothMovementManager.default) {
-                    const manager = new smoothMovementManager.default([headerWindow]);
-                    manager.animateHeaderAppearance(headerWindow, {
-                        duration: 600,
-                        onComplete: () => console.log('[Animation] Header appearance completed')
-                    });
-                }
-            } catch (error) {
-                console.log('[Animation] Could not use SmoothMovementManager for appearance animation');
-            }
         }
     }
 
     triggerHeaderDisappearanceAnimation() {
-        const { BrowserWindow } = require('electron');
         const headerWindow = BrowserWindow.getAllWindows().find(win =>
             win.getTitle().includes('header') || win.getTitle().includes('Header')
         );
 
         if (headerWindow) {
-            // Ajouter la classe CSS pour l'animation
             headerWindow.webContents.executeJavaScript(`
                 document.documentElement.classList.add('disconnecting');
                 setTimeout(() => {
                     document.documentElement.classList.remove('disconnecting');
                 }, 400);
             `).catch(err => console.log('[Animation] Header disappearance animation triggered'));
-
-            // Utiliser le SmoothMovementManager pour l'animation
-            try {
-                const smoothMovementManager = require('../../../window/smoothMovementManager');
-                if (smoothMovementManager.default) {
-                    const manager = new smoothMovementManager.default([headerWindow]);
-                    manager.animateHeaderDisappearance(headerWindow, {
-                        duration: 400,
-                        onComplete: () => console.log('[Animation] Header disappearance completed')
-                    });
-                }
-            } catch (error) {
-                console.log('[Animation] Could not use SmoothMovementManager for disappearance animation');
-            }
         }
-    }
-
-    getCurrentUserId() {
-        return this.currentUserId;
-    }
-
-    getCurrentUser() {
-        const isLoggedIn = !!(this.currentUserMode === 'firebase' && this.currentUser);
-
-        if (isLoggedIn) {
-            return {
-                uid: this.currentUser.uid,
-                email: this.currentUser.email,
-                displayName: this.currentUser.displayName,
-                mode: 'firebase',
-                isLoggedIn: true,
-                //////// before_modelStateService ////////
-                // hasApiKey: this.hasApiKey // Always true for firebase users, but good practice
-                //////// before_modelStateService ////////
-            };
-        }
-        return {
-            uid: this.currentUserId, // returns 'default_user'
-            email: 'contact@pickle.com',
-            displayName: 'Default User',
-            mode: 'local',
-            isLoggedIn: false,
-            //////// before_modelStateService ////////
-            // hasApiKey: this.hasApiKey
-            //////// before_modelStateService ////////
-        };
     }
 }
 
-const authService = new AuthService();
-module.exports = authService; 
+// Créer et exporter une instance unique
+const authServiceInstance = new AuthService();
+
+// Initialiser automatiquement lors de l'import
+authServiceInstance.initialize().catch(error => {
+    console.error('[AuthService] Failed to initialize:', error);
+});
+
+module.exports = authServiceInstance;
