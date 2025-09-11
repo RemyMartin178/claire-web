@@ -153,6 +153,10 @@ class AuthService {
         };
     }
 
+    getCurrentUserId() {
+        return this.currentUser?.uid || null;
+    }
+
     triggerHeaderAppearanceAnimation() {
         const headerWindow = BrowserWindow.getAllWindows().find(win =>
             win.getTitle().includes('header') || win.getTitle().includes('Header')

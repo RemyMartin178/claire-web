@@ -15,8 +15,8 @@ class SmoothMovementManager {
         this.animationTimers = new Map();
         this.activeAnimations = new Set();
 
-        // Utiliser requestAnimationFrame pour de meilleures performances
-        this.useRequestAnimationFrame = true;
+        // Utiliser setTimeout au lieu de requestAnimationFrame (pas disponible dans Node.js)
+        this.useRequestAnimationFrame = false;
 
         // Optimisations pour 60 FPS fluides
         this.targetFPS = 60;
@@ -83,7 +83,7 @@ class SmoothMovementManager {
             // Frame rate limiting pour garantir 60 FPS
             const timeSinceLastUpdate = currentTime - lastUpdateTime;
             if (timeSinceLastUpdate < this.frameInterval) {
-                requestAnimationFrame(step);
+                setTimeout(() => step(), this.frameInterval);
                 return;
             }
 
@@ -115,7 +115,7 @@ class SmoothMovementManager {
             lastUpdateTime = currentTime;
 
             if (p < 1) {
-                requestAnimationFrame(step);
+                setTimeout(() => step(), this.frameInterval);
             } else {
                 this.activeAnimations.delete(animationId);
                 this.layoutManager?.updateLayout();
@@ -125,7 +125,7 @@ class SmoothMovementManager {
             }
         };
 
-        requestAnimationFrame(step);
+        setTimeout(() => step(), this.frameInterval);
     }
 
     fade(win, { from, to, duration = 250, onComplete }) {
@@ -156,7 +156,7 @@ class SmoothMovementManager {
             // Frame rate limiting pour fluidité maximale
             const timeSinceLastUpdate = currentTime - lastUpdateTime;
             if (timeSinceLastUpdate < this.frameInterval) {
-                requestAnimationFrame(step);
+                setTimeout(() => step(), this.frameInterval);
                 return;
             }
 
@@ -171,7 +171,7 @@ class SmoothMovementManager {
             lastUpdateTime = currentTime;
 
             if (progress < 1) {
-                requestAnimationFrame(step);
+                setTimeout(() => step(), this.frameInterval);
             } else {
                 this.activeAnimations.delete(animationId);
                 win.setOpacity(to);
@@ -179,7 +179,7 @@ class SmoothMovementManager {
             }
         };
 
-        requestAnimationFrame(step);
+        setTimeout(() => step(), this.frameInterval);
     }
     
     animateWindowBounds(win, targetBounds, options = {}) {
@@ -228,9 +228,9 @@ class SmoothMovementManager {
 
             if (progress < 1) {
                 if (this.useRequestAnimationFrame) {
-                    requestAnimationFrame(step);
+                    setTimeout(() => step(), this.frameInterval);
                 } else {
-                    setTimeout(() => requestAnimationFrame(step), 1000 / 60);
+                    setTimeout(() => setTimeout(() => step(), this.frameInterval), 1000 / 60);
                 }
             } else {
                 this.activeAnimations.delete(animationId);
@@ -246,7 +246,7 @@ class SmoothMovementManager {
         };
 
         if (this.useRequestAnimationFrame) {
-            requestAnimationFrame(step);
+            setTimeout(() => step(), this.frameInterval);
         } else {
             step(startTime);
         }
@@ -320,7 +320,7 @@ class SmoothMovementManager {
             // Frame rate limiting pour fluidité maximale
             const timeSinceLastUpdate = currentTime - lastUpdateTime;
             if (timeSinceLastUpdate < this.frameInterval) {
-                requestAnimationFrame(step);
+                setTimeout(() => step(), this.frameInterval);
                 return;
             }
 
@@ -364,7 +364,7 @@ class SmoothMovementManager {
             lastUpdateTime = currentTime;
 
             if (progress < 1) {
-                requestAnimationFrame(step);
+                setTimeout(() => step(), this.frameInterval);
             } else {
                 this.activeAnimations.delete(animationId);
                 win.setBounds(finalBounds);
@@ -373,7 +373,7 @@ class SmoothMovementManager {
             }
         };
 
-        requestAnimationFrame(step);
+        setTimeout(() => step(), this.frameInterval);
     }
 
     // Animation de disparition de la barre flottante lors de la déconnexion
@@ -419,14 +419,14 @@ class SmoothMovementManager {
             win.setBounds(currentBounds);
 
             if (progress < 1) {
-                requestAnimationFrame(step);
+                setTimeout(() => step(), this.frameInterval);
             } else {
                 this.activeAnimations.delete(animationId);
                 if (onComplete) onComplete();
             }
         };
 
-        requestAnimationFrame(step);
+        setTimeout(() => step(), this.frameInterval);
     }
 
     destroy() {
