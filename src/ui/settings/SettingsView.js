@@ -912,18 +912,12 @@ export class SettingsView extends LitElement {
         e.preventDefault()
         if (this.wasJustDragged) return
         try {
-            // Create pending session via IPC (stores verifier in main)
-            const { session_id, state } = await window.api.settingsView.mobileCreatePendingSession?.() || {};
-            if (!session_id) {
-                console.error('[SettingsView] Failed to create pending session');
-                return;
-            }
-            const webUrl = (await window.api.common?.getWebUrl?.()) || 'https://app.clairia.app';
-            const target = `${webUrl.replace(/\/$/, '')}/auth/login?flow=mobile&session_id=${encodeURIComponent(session_id)}`;
-            console.log('[SettingsView] Opening external login URL:', target);
-            await window.api.common.openExternal(target);
+            console.log('[SettingsView] Starting Firebase login flow...');
+            // Utiliser le même système d'authentification que la barre flottante
+            await window.api.common.firebaseLogin();
+            console.log('[SettingsView] Firebase login flow initiated');
         } catch (err) {
-            console.error('[SettingsView] Mobile login flow failed:', err);
+            console.error('[SettingsView] Firebase login flow failed:', err);
         }
     }
     //////// after_modelStateService ////////
