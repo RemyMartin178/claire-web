@@ -38,7 +38,7 @@ export default function PrivacySettingsPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-6">
-          <div className="rounded-lg p-6 flex flex-col" style={{ background: '#262626', color: '#E0E0E0', border: '1px solid #3a3a4a' }}>
+          <div className="rounded-lg p-6 flex flex-col" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
             <div className="flex-grow">
               <h3 className="text-lg font-semibold text-white mb-3">Politique de confidentialité</h3>
               <p className="text-[#E0E0E0] text-sm leading-relaxed">
@@ -56,7 +56,7 @@ export default function PrivacySettingsPage() {
             </div>
           </div>
 
-          <div className="rounded-lg p-6 flex flex-col" style={{ background: '#262626', color: '#E0E0E0', border: '1px solid #3a3a4a' }}>
+          <div className="rounded-lg p-6 flex flex-col" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
             <div className="flex-grow">
               <h3 className="text-lg font-semibold text-white mb-3">Conditions d&apos;utilisation</h3>
               <p className="text-[#E0E0E0] text-sm leading-relaxed">

@@ -177,7 +177,7 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in" style={{ background: '#202123' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in" style={{ background: 'var(--main-surface-primary)' }}>
       <div className="w-full max-w-md mx-auto">
         {/* Logo en haut à gauche avec animation */}
         <div className="absolute top-8 left-8 flex items-center gap-3 animate-slide-in">

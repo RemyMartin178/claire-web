@@ -170,7 +170,7 @@ export default function SettingsPage() {
   const renderSecurityContent = () => (
     <div className="space-y-6">
       {/* Mot de passe */}
-      <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
+      <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
         <h3 className="text-lg font-semibold text-white mb-1">Mot de passe</h3>
         <p className="text-sm text-[#E0E0E0] mb-4">
           {isGoogleUser 
@@ -188,7 +188,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Appareils connectés */}
-      <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
+      <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
         <h3 className="text-lg font-semibold text-white mb-1">Appareils connectés</h3>
         <p className="text-sm text-[#E0E0E0] mb-4">Gérez les appareils connectés à votre compte et surveillez l&apos;activité de connexion.</p>
         
@@ -244,7 +244,7 @@ export default function SettingsPage() {
       case 'profile':
         return (
           <div className="space-y-6">
-            <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
+            <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
               <h3 className="text-lg font-semibold text-white mb-1">Nom affiché</h3>
               <p className="text-sm text-[#E0E0E0] mb-4">Saisissez votre nom complet ou un nom d&apos;affichage de votre choix.</p>
               <div className="max-w-sm">
@@ -268,7 +268,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="rounded-lg p-6" style={{ background: '#262626', color: '#E0E0E0', border: '1px solid #3a3a4a' }}>
+            <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
               <h3 className="text-lg font-semibold text-white mb-1">Supprimer le compte</h3>
               <p className="text-sm text-[#E0E0E0] mb-4">Supprimez définitivement votre compte personnel et tout le contenu de la plateforme Pickle Glass. Cette action est irréversible, veuillez procéder avec précaution.</p>
               <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">

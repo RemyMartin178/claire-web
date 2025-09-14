@@ -151,7 +151,7 @@ function RegisterContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#202123' }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--main-surface-primary)' }}>
       <div className="w-full max-w-md mx-auto">
         <div className="absolute top-8 left-8 flex items-center gap-3">
           <img src="/word.png" alt="Claire Logo" className="w-16 h-16" />

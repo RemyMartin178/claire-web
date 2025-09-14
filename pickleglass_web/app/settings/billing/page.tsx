@@ -48,7 +48,7 @@ export default function BillingPage() {
             </div>
             
             <p className="text-gray-600 mb-6">
-              Experience how Pickle Glass works with unlimited responses.
+              Experience how Claire works with unlimited responses.
             </p>
             
             <ul className="space-y-3 mb-8">
@@ -86,7 +86,7 @@ export default function BillingPage() {
           {/* Plan Pro */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 opacity-60">
             <div className="mb-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Pro</h3>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Plus</h3>
               <div className="text-3xl font-bold text-gray-900">
                 $25<span className="text-lg font-normal text-gray-600">/month</span>
               </div>
@@ -94,7 +94,7 @@ export default function BillingPage() {
             
             <p className="text-gray-600 mb-6">
               Use latest models, get full response output, and work with custom prompts.
-            </p>
+            </p>  
             
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-3">

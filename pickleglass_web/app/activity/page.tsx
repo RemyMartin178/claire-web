@@ -69,53 +69,106 @@ export default function ActivityPage() {
     <div className="min-h-screen animate-fade-in" style={{ background: 'var(--main-surface-primary)', color: 'var(--text-primary)' }}>
       <div className="max-w-4xl mx-auto px-8 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-2xl text-white">
+          <h1 
+            className="text-3xl font-semibold tracking-tight mb-2" 
+            style={{ 
+              color: 'var(--text-primary)',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+            }}
+          >
             {getGreeting()}, {userInfo.display_name}
           </h1>
         </div>
         <div>
-          <h2 className="text-2xl font-semibold text-white mb-8 text-center">
+          <h2 
+            className="text-2xl font-medium mb-8 text-center tracking-tight" 
+            style={{ 
+              color: 'var(--text-primary)',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+            }}
+          >
             Votre activité passée
           </h2>
           {isLoading ? (
             <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
-                             <p className="mt-4 text-white">Chargement des conversations...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: 'var(--text-secondary)' }}></div>
+              <p className="mt-4" style={{ color: 'var(--text-primary)' }}>Chargement des conversations...</p>
             </div>
           ) : sessions.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {sessions.map((session) => (
-                <div key={session.id} className="block bg-card-bg rounded-lg p-6 shadow-sm border border-sidebar-border hover:shadow-md transition-shadow cursor-pointer text-white">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <Link href={`/activity/details?sessionId=${session.id}`} className="text-lg font-medium text-white hover:underline">
+                <div 
+                  key={session.id} 
+                  className="block rounded-lg p-6 shadow-sm border hover:shadow-md transition-shadow cursor-pointer" 
+                  style={{ 
+                    backgroundColor: 'var(--card-bg)', 
+                    borderColor: 'var(--card-border)', 
+                    color: 'var(--text-primary)' 
+                  }}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <Link 
+                        href={`/activity/details?sessionId=${session.id}`} 
+                        className="text-lg font-medium hover:underline transition-colors duration-200" 
+                        style={{ 
+                          color: 'var(--text-primary)',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        }}
+                      >
                         {session.title || `Conversation - ${new Date(session.started_at * 1000).toLocaleDateString()}`}
                       </Link>
-                      <div className="text-sm text-[#9ca3af]">
+                      <div 
+                        className="text-sm mt-1" 
+                        style={{ 
+                          color: 'var(--text-secondary)',
+                          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                        }}
+                      >
                         {new Date(session.started_at * 1000).toLocaleString()}
                       </div>
                     </div>
                     <button
                       onClick={() => handleDelete(session.id)}
                       disabled={deletingId === session.id}
-                      className={`ml-4 px-3 py-1 rounded text-xs font-medium border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 transition-colors ${deletingId === session.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`ml-4 px-4 py-2 rounded-full text-xs font-medium transition-all duration-200 hover:scale-105 ${deletingId === session.id ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg'}`}
+                      style={{ 
+                        borderColor: 'rgba(239, 68, 68, 0.2)', 
+                        color: '#f87171', 
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)'
+                      }}
                     >
-                      {deletingId === session.id ? 'Deleting...' : 'Delete'}
+                      {deletingId === session.id ? 'Suppression...' : 'Supprimer'}
                     </button>
                   </div>
-                                     <span className={`capitalize inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${session.session_type === 'listen' ? 'bg-[#9ca3af] text-white' : 'bg-[#9ca3af] text-white'}`}>
+                  <span 
+                    className="capitalize inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium" 
+                    style={{ 
+                      backgroundColor: session.session_type === 'ask' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(34, 197, 94, 0.2)', 
+                      color: session.session_type === 'ask' ? '#93c5fd' : '#86efac',
+                      border: `1px solid ${session.session_type === 'ask' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`,
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+                    }}
+                  >
                     {session.session_type === 'ask' ? 'Demander' : session.session_type || 'Demander'}
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center bg-card-bg rounded-lg p-12 text-white">
-              <p className="text-white mb-4">
-                Aucune conversation pour l’instant. Démarrez une conversation dans l’application de bureau pour voir votre activité ici.
+            <div 
+              className="text-center rounded-lg p-12" 
+              style={{ 
+                backgroundColor: 'var(--card-bg)', 
+                color: 'var(--text-primary)' 
+              }}
+            >
+              <p className="mb-4" style={{ color: 'var(--text-primary)' }}>
+                Aucune conversation pour l'instant. Démarrez une conversation dans l'application de bureau pour voir votre activité ici.
               </p>
-              <div className="text-sm text-white">
-                💡 Astuce : Utilisez l’application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement.
+              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                💡 Astuce : Utilisez l'application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement.
               </div>
             </div>
           )}

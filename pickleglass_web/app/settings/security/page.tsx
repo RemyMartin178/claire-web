@@ -230,7 +230,7 @@ export default function SecurityPage() {
 
         <div className="space-y-6">
           {/* Mot de passe */}
-          <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
+          <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
             <h3 className="text-lg font-semibold text-white mb-1">Mot de passe</h3>
             <p className="text-sm text-[#E0E0E0] mb-4">
               {passwordDescription}
@@ -247,7 +247,7 @@ export default function SecurityPage() {
           </div>
 
           {/* Appareils connectés */}
-          <div className="rounded-lg p-6 text-white" style={{ background: '#262626', border: '1px solid #3a3a4a' }}>
+          <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
             <h3 className="text-lg font-semibold text-white mb-1">Appareils connectés</h3>
             <p className="text-sm text-[#E0E0E0] mb-4">Gérez les appareils connectés à votre compte et surveillez l&apos;activité de connexion.</p>
             
