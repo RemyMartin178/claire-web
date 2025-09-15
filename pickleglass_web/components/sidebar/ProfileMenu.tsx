@@ -100,7 +100,6 @@ export default function ProfileMenu({
             }}
             onClick={(e) => e.stopPropagation()}
             role="menu"
-            aria-modal="true"
             aria-label="Menu utilisateur"
           >
             {/* Email */}

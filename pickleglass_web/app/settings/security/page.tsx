@@ -155,7 +155,7 @@ export default function SecurityPage() {
       
       detectCurrentDevice();
     }
-  }, [userInfo]);
+  }, [userInfo, detectAuthType]);
 
   const handleDisconnectDevice = async (deviceId: string) => {
     try {

@@ -207,28 +207,27 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const navigation = useMemo<NavigationItem[]>(
         () => {
                          const baseNavigation = [
-                 {
-                     name: 'Mon activité',
-                     href: '/activity',
-                     icon: Activity,
-                     isLucide: true,
-                     ariaLabel: 'Voir mon activité',
-                 },
-                 {
-                     name: 'Personnaliser',
-                     href: '/personalize',
-                     icon: Book,
-                     isLucide: true,
-                     ariaLabel: 'Paramètres de personnalisation',
-                 },
-                 // Bouton Paramètres retiré du menu principal, déplacé dans le menu profil bas de sidebar
-             ];
+                {
+                    name: 'Mon activité',
+                    href: '/activity',
+                    icon: Activity,
+                    isLucide: true,
+                    ariaLabel: 'Voir mon activité',
+                },
+                {
+                    name: 'Personnaliser',
+                    href: '/personalize',
+                    icon: Book,
+                    isLucide: true,
+                    ariaLabel: 'Paramètres de personnalisation',
+                },
+                // Bouton Paramètres retiré du menu principal, déplacé dans le menu profil bas de sidebar
+            ];
 
-            // Admin section removed - no longer needed
-
+           
             return baseNavigation;
         },
-        [onSearchClick, userInfo?.email, authLoading]
+        []
     );
 
     const settingsSubmenu = useMemo<SubmenuItem[]>(
@@ -364,55 +363,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                             role="region"
                             aria-labelledby="settings-button"
                         >
-                                                                                                                   <ul className="mt-[4px] space-y-0 pl-[22px]" role="menu">
-                                  {settingsSubmenu.map((subItem, subIndex) => (
-                                      <li key={subItem.name} role="none">
-                                          <Link
-                                              href={subItem.href}
-                                              className={`
-                                    group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px] w-full text-left
-                        focus:outline-none
-                                    ${
-                                        pathname === subItem.href
-                                            ? 'bg-white/10 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]'
-                                            : 'text-white/80 hover:text-white hover:bg-white/5'
-                                    }
-                        transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
-                                  `}
-                                              style={{
-                                                  willChange: 'background-color, color',
-                                              }}
-                                              role="menuitem"
-                                              aria-label={subItem.ariaLabel || subItem.name}
-                                          >
-                                              <IconComponent
-                                                  icon={subItem.icon}
-                                                  isLucide={subItem.isLucide}
-                                                  alt={`${subItem.name} icon`}
-                                                  className="h-4 w-4 shrink-0"
-                                              />
-                                              <span className="whitespace-nowrap">{subItem.name}</span>
-                                          </Link>
-                                      </li>
-                                  ))}
-                                <li role="none">
-                                        <button
-                                        onClick={handleLogout}
-                                            className={`
-                                    group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px]
-                                    text-red-400 hover:text-red-300 hover:bg-red-500/10 w-full 
-                                    transition-colors duration-${ANIMATION_DURATION.COLOR_TRANSITION} ease-out
-                                    focus:outline-none
-                                  `}
-                                            style={{ willChange: 'background-color, color' }}
-                                            role="menuitem"
-                                            aria-label="Déconnexion"
-                                        >
-                                            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-                                            <span className="whitespace-nowrap">Déconnexion</span>
-                                        </button>
-                                </li>
-                            </ul>
+                            {/* submenu here */}
                         </div>
                     </li>
                 );
@@ -457,19 +408,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                 </li>
             );
         },
-        [
-            pathname,
-            isCollapsed,
-            isSettingsExpanded,
-            toggleSettings,
-            handleLogout,
-            handleKeyDown,
-            getUniformTextStyle,
-            getTextContainerStyle,
-            getSubmenuAnimationStyle,
-            settingsSubmenu,
-            userInfo,
-        ]
+        [pathname, isCollapsed, isSettingsExpanded, toggleSettings, handleKeyDown, getUniformTextStyle, getTextContainerStyle, getSubmenuAnimationStyle]
     );
 
     const getUserDisplayName = useCallback(() => {
@@ -527,7 +466,6 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
             }}
             role="navigation"
             aria-label="main navigation"
-            aria-expanded={!isCollapsed}
         >
             <header className={`group relative h-6 flex shrink-0 items-center justify-between`}>
                 {isCollapsed ? (

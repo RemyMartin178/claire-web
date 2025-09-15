@@ -288,7 +288,7 @@ export default function PasswordModal() {
       document.body.style.overflow = 'unset';
       document.body.style.pointerEvents = 'auto';
     };
-  }, [isOpen]);
+  }, [isOpen, handleCloseModal]);
 
   if (!isOpen) return null;
 
