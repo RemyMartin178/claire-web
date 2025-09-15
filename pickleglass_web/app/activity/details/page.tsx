@@ -136,7 +136,7 @@ function SessionDetailsContent() {
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                   }}
                 >
-                  La session demandée n'a pas pu être trouvée.
+                  La session demandée n&#39;a pas pu être trouvée.
                 </p>
                 <Link 
                   href="/activity" 
@@ -150,7 +150,7 @@ function SessionDetailsContent() {
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  Retour à l'activité
+                  Retour à l&#39;activité
                 </Link>
             </div>
         </div>

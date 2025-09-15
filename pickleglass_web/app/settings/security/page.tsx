@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getAuthType } from '@/utils/api'
 import { usePasswordModal } from '@/contexts/PasswordModalContext'
 
@@ -34,7 +34,7 @@ export default function SecurityPage() {
 
 
   // Fonction pour détecter le type d'authentification depuis la base de données
-  const detectAuthType = async () => {
+  const detectAuthType = useCallback(async () => {
     if (!userInfo) return;
     
     try {
@@ -51,7 +51,7 @@ export default function SecurityPage() {
         setAuthType('email');
       }
     }
-  };
+  }, [userInfo]);
 
   // Détection plus précise de l'utilisateur Google vs Email/MDP
   // Basé sur l'API et la base de données

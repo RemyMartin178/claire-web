@@ -165,10 +165,10 @@ export default function ActivityPage() {
               }}
             >
               <p className="mb-4" style={{ color: 'var(--text-primary)' }}>
-                Aucune conversation pour l'instant. Démarrez une conversation dans l'application de bureau pour voir votre activité ici.
+                Aucune conversation pour l&#39;instant. Démarrez une conversation dans l&#39;application de bureau pour voir votre activité ici.
               </p>
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                💡 Astuce : Utilisez l'application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement.
+                💡 Astuce : Utilisez l&#39;application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement.
               </div>
             </div>
           )}

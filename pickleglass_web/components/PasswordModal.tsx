@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePasswordModal } from '@/contexts/PasswordModalContext'
 import { getAuthType } from '@/utils/api'
@@ -126,7 +126,7 @@ export default function PasswordModal() {
   const isGoogleUser = authType === 'google';
 
   // Gérer la fermeture du modal avec animation
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setIsClosing(true);
     setTimeout(() => {
       closeModal();
@@ -134,7 +134,7 @@ export default function PasswordModal() {
       setShowPasswords({ current: false, new: false, confirm: false });
       setIsClosing(false);
     }, 200); // Durée de l'animation de sortie
-  };
+  }, [closeModal]);
 
   // Gérer l'affichage/masquage des mots de passe
   const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
