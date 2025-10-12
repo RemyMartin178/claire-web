@@ -56,22 +56,21 @@ export default function BillingPage() {
       if (plan === 'plus') {
         // Utiliser le Price ID selon le cycle de facturation
         priceId = billingCycle === 'monthly' 
-          ? process.env.NEXT_PUBLIC_STRIPE_PLUS_MONTHLY_PRICE_ID
-          : process.env.NEXT_PUBLIC_STRIPE_PLUS_YEARLY_PRICE_ID || 'price_1SHPkyAjfdK87nxfg27fDQvI'
+          ? 'price_1SHN9sAjfdK87nxfDtC0syHP'  // Plan mensuel 20€
+          : 'price_1SHPkyAjfdK87nxfg27fDQvI'  // Plan annuel 100€
       } else {
-        priceId = process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID
+        // Plan Enterprise - redirection vers email (pas de Stripe)
+        window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'
+        return
       }
 
       if (!priceId) {
         console.error('Stripe Price ID manquant:', {
           plan,
           billingCycle,
-          monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PLUS_MONTHLY_PRICE_ID,
-          yearlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PLUS_YEARLY_PRICE_ID,
-          enterprisePriceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID,
           publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'Présent' : 'Manquant'
         })
-        throw new Error('Configuration Stripe incomplète. Les variables d\'environnement Stripe doivent être ajoutées sur Vercel.')
+        throw new Error('Configuration Stripe incomplète. La clé publique Stripe doit être configurée.')
       }
 
       const userId = 'uid' in user ? user.uid : user.id
