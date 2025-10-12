@@ -154,7 +154,7 @@ export default function BillingPage() {
               Goûtez à Claire avec quelques réponses gratuites pour commencer.
             </p>
             
-            <ul className="space-y-3 mb-8">
+            <ul className="space-y-3 mb-6">
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
                 <span className="text-sm text-gray-700">5 réponses pro par jour</span>
@@ -181,9 +181,11 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <Button className="w-full" variant="outline" disabled>
-              Plan actuel
-            </Button>
+            <div className="pt-4 border-t border-gray-200">
+              <Button className="w-full" variant="outline" disabled>
+                Plan actuel
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -206,7 +208,7 @@ export default function BillingPage() {
               Utilisez les derniers modèles, obtenez une sortie complète et jouez avec vos propres prompts personnalisés.
             </p>  
             
-            <ul className="space-y-3 mb-8">
+            <ul className="space-y-3 mb-6">
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
                 <span className="text-sm text-gray-700">Réponses pro illimitées</span>
@@ -233,13 +235,15 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <Button 
-              className="w-full bg-primary text-white hover:bg-primary/90" 
-              onClick={() => handleSubscribe('plus')}
-              disabled={isLoading !== null}
-            >
-              {isLoading === 'plus' ? 'Chargement...' : 'Souscrire à Plus'}
-            </Button>
+            <div className="pt-4 border-t border-gray-200">
+              <Button 
+                className="w-full bg-primary text-white hover:bg-primary/90" 
+                onClick={() => handleSubscribe('plus')}
+                disabled={isLoading !== null}
+              >
+                {isLoading === 'plus' ? 'Chargement...' : 'Souscrire à Plus'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -255,7 +259,7 @@ export default function BillingPage() {
               Spécialement conçu pour les équipes qui ont besoin d'une personnalisation complète.
             </p>
             
-            <ul className="space-y-3 mb-8">
+            <ul className="space-y-3 mb-6">
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
                 <span className="text-sm text-gray-700">Intégrations personnalisées</span>
@@ -286,13 +290,15 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <Button 
-              className="w-full text-[#374151] border-gray-300 hover:bg-gray-50" 
-              variant="outline"
-              onClick={() => window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'}
-            >
-              Nous contacter
-            </Button>
+            <div className="pt-4 border-t border-gray-200">
+              <Button 
+                className="w-full text-[#374151] border-gray-300 hover:bg-gray-50" 
+                variant="outline"
+                onClick={() => window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'}
+              >
+                Nous contacter
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
