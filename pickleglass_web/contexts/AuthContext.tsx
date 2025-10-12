@@ -39,17 +39,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const wasManuallyLoggedOut = sessionStorage.getItem('manuallyLoggedOut')
     
-    // Vérifier immédiatement l'état actuel de Firebase
-    const currentUser = auth.currentUser
-    if (currentUser && wasManuallyLoggedOut !== 'true') {
-      // Si on a déjà un utilisateur connecté, l'utiliser immédiatement
-      handleUserAuthentication(currentUser)
-    } else {
-      // Si pas d'utilisateur, marquer comme non authentifié immédiatement
-      setUser(null)
-      setIsAuthenticated(false)
-      setLoading(false)
-    }
+    // Attendre un peu avant de vérifier l'état pour laisser Firebase Auth se réinitialiser
+    // Important après retour de Stripe ou rechargement de page
+    const initTimer = setTimeout(() => {
+      const currentUser = auth.currentUser
+      if (currentUser && wasManuallyLoggedOut !== 'true') {
+        // Si on a déjà un utilisateur connecté, l'utiliser immédiatement
+        handleUserAuthentication(currentUser)
+      } else if (wasManuallyLoggedOut === 'true') {
+        // Si déconnexion manuelle, ne pas essayer de reconnecter
+        setUser(null)
+        setIsAuthenticated(false)
+        setLoading(false)
+      }
+      // Sinon, on laisse onAuthStateChanged gérer
+    }, 100) // Petit délai pour laisser Firebase Auth se charger
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('AuthContext: Auth state changed', { 
@@ -78,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       console.log('AuthContext: Cleaning up auth listener')
+      clearTimeout(initTimer)
       unsubscribe()
     }
   }, [])

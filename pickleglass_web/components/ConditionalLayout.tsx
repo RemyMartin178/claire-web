@@ -22,12 +22,20 @@ export default function ConditionalLayout({
   useEffect(() => {
     if (isDebugPage) return
     if (!loading && !isAuthenticated && !isAuthPage) {
-      // Sauvegarder l'URL actuelle avant de rediriger vers login
-      const currentPath = window.location.pathname + window.location.search
-      if (currentPath !== '/auth/login' && !currentPath.startsWith('/auth/')) {
-        sessionStorage.setItem('redirect_after_login', currentPath)
-      }
-      router.replace('/auth/login')
+      // Donner un délai supplémentaire pour Firebase Auth après retour de Stripe
+      const timer = setTimeout(() => {
+        // Vérifier à nouveau l'authentification après le délai
+        if (!isAuthenticated && !isAuthPage) {
+          // Sauvegarder l'URL actuelle avant de rediriger vers login
+          const currentPath = window.location.pathname + window.location.search
+          if (currentPath !== '/auth/login' && !currentPath.startsWith('/auth/')) {
+            sessionStorage.setItem('redirect_after_login', currentPath)
+          }
+          router.replace('/auth/login')
+        }
+      }, 500) // Délai de 500ms pour laisser Firebase Auth se réinitialiser
+      
+      return () => clearTimeout(timer)
     }
   }, [loading, isAuthenticated, isAuthPage, isDebugPage, router])
   
