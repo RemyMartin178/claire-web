@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { createUserWithEmail, signInWithGoogle, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { getApiBase } from '@/utils/http'
 
 function RegisterContent() {
@@ -33,7 +33,6 @@ function RegisterContent() {
     }
   }, [user, isMobileFlow, router])
 
-  // Traitement du retour Google (redirect result)
   useEffect(() => {
     let mounted = true
     ;(async () => {
@@ -110,7 +109,7 @@ function RegisterContent() {
     try {
       setIsLoading(true)
       setError('')
-      const user = await signInWithGoogle(true) // Toujours se souvenir lors de l'inscription
+      const user = await signInWithGoogle(true)
       sessionStorage.removeItem('manuallyLoggedOut')
       if (isMobileFlow && user) {
         const idToken = await user.getIdToken(true)
@@ -151,20 +150,19 @@ function RegisterContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--main-surface-primary)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-subtle-bg">
       <div className="w-full max-w-md mx-auto">
-        <div className="absolute top-8 left-8 flex items-center gap-3">
-          <img src="/word.png" alt="Claire Logo" className="w-16 h-16" />
-          <h1 className="text-2xl font-bold text-white">Claire</h1>
+        <div className="absolute top-8 left-8">
+          <h1 className="text-2xl font-bold text-[#282828]">Claire</h1>
         </div>
         
         <div className="w-full max-w-lg">
-                     <div className="text-center mb-6">
-             <h2 className="text-2xl font-bold text-white mb-2">Créer votre compte</h2>
-           </div>
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-[#282828] mb-2">Créer votre compte</h2>
+          </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
             </div>
           )}
@@ -172,92 +170,92 @@ function RegisterContent() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-white mb-1">Prénom</label>
-                                 <div className="relative">
-                   <input
-                     type="text"
-                     name="firstName"
-                     value={formData.firstName}
-                     onChange={handleInputChange}
-                     className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
-                     placeholder=""
-                   />
-                 </div>
+                <label className="block text-sm font-medium text-[#282828] mb-1">Prénom</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange}
+                    className="w-full h-10 text-sm px-3 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                    placeholder=""
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-white mb-1">Nom</label>
-                                 <div className="relative">
-                   <input
-                     type="text"
-                     name="lastName"
-                     value={formData.lastName}
-                     onChange={handleInputChange}
-                     className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
-                     placeholder=""
-                   />
-                 </div>
+                <label className="block text-sm font-medium text-[#282828] mb-1">Nom</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange}
+                    className="w-full h-10 text-sm px-3 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                    placeholder=""
+                  />
+                </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-1">Email</label>
-                             <div className="relative">
-                 <input
-                   type="email"
-                   name="email"
-                   value={formData.email}
-                   onChange={handleInputChange}
-                   required
-                   className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
-                   placeholder="exemple@email.com"
-                 />
-               </div>
+              <label className="block text-sm font-medium text-[#282828] mb-1">Email</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full h-10 text-sm px-3 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="exemple@email.com"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-1">Mot de passe</label>
-                             <div className="relative">
-                 <input
-                   type={showPassword ? "text" : "password"}
-                   name="password"
-                   value={formData.password}
-                   onChange={handleInputChange}
-                   required
-                   className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
-                   placeholder=""
-                 />
-                                   <button
+              <label className="block text-sm font-medium text-[#282828] mb-1">Mot de passe</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder=""
+                />
+                <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 flex items-center justify-center hover:text-[#282828] transition-colors hover:transform-none"
                     style={{ transform: 'translate(-50%, -50%)' }}
                   >
                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                  </button>
-               </div>
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-1">Confirmer le mot de passe</label>
-                             <div className="relative">
-                 <input
-                   type={showConfirmPassword ? "text" : "password"}
-                   name="confirmPassword"
-                   value={formData.confirmPassword}
-                   onChange={handleInputChange}
-                   required
-                   className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
-                   placeholder=""
-                 />
-                                   <button
+              <label className="block text-sm font-medium text-[#282828] mb-1">Confirmer le mot de passe</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder=""
+                />
+                <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 flex items-center justify-center hover:text-[#282828] transition-colors hover:transform-none"
                     style={{ transform: 'translate(-50%, -50%)' }}
                   >
                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                  </button>
-               </div>
+              </div>
             </div>
 
             <div className="flex items-center">
@@ -266,20 +264,20 @@ function RegisterContent() {
                 name="agreeToTerms"
                 checked={formData.agreeToTerms}
                 onChange={handleInputChange}
-                className="w-4 h-4 text-[#9ca3af] bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-[#9ca3af] focus:ring-2"
+                className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-primary focus:ring-2"
               />
-              <label className="ml-2 text-sm text-white">
-                J&apos;accepte les{' '}
-                <a href="/terms" className="text-[#9ca3af] hover:text-[#e5e5e5] font-medium transition-colors duration-200 hover:underline">
-                  conditions d&apos;utilisation
+              <label className="ml-2 text-sm text-[#282828]">
+                J'accepte les{' '}
+                <a href="/terms" className="text-primary hover:text-primary-hover font-medium transition-colors duration-200 hover:underline">
+                  conditions d'utilisation
                 </a>
               </label>
             </div>
 
-                         <button
+            <button
                type="submit"
                disabled={isLoading}
-                                                                                                                               className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
+               className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border-0 bg-primary text-white hover:bg-primary-hover active:bg-primary-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition-all duration-200"
              >
               {isLoading ? 'Création du compte...' : 'Créer mon compte'}
               {!isLoading && (
@@ -293,18 +291,18 @@ function RegisterContent() {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#3a3a4a]" />
+                <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-[#232329] px-3 text-[#bbb]">OU</span>
+                <span className="bg-subtle-bg px-3 text-gray-500">OU</span>
               </div>
             </div>
 
             <div className="mt-4">
-                             <button
+              <button
                  onClick={handleGoogleSignIn}
                  disabled={isLoading}
-                                                                                                                                               className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-[#3a3a4a] bg-[#232329] text-[#e5e5e5] hover:bg-[#2a2a32] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
+                 className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-gray-300 bg-white text-[#282828] hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
                >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
@@ -324,15 +322,15 @@ function RegisterContent() {
                     fill="#EA4335"
                   />
                 </svg>
-                S&apos;inscrire avec Google
+                S'inscrire avec Google
               </button>
             </div>
           </div>
 
           <div className="mt-6 text-center">
-            <p className="text-[#bbb] text-sm">
+            <p className="text-gray-600 text-sm">
               Déjà un compte ?{' '}
-              <a href="/auth/login" className="text-[#9ca3af] hover:text-[#e5e5e5] font-medium transition-colors duration-200 hover:underline">
+              <a href="/auth/login" className="text-primary hover:text-primary-hover font-medium transition-colors duration-200 hover:underline">
                 Se connecter
               </a>
             </p>

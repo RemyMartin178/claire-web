@@ -194,13 +194,24 @@ export const onUserInfoChange = (listener: (userInfo: UserProfile | null) => voi
   return () => window.removeEventListener('userInfoChanged', handler as EventListener);
 };
 
-export const getApiHeaders = (): HeadersInit => {
-  const headers: HeadersInit = {
+export const getApiHeaders = async (): Promise<HeadersInit> => {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
   
   if (typeof window !== 'undefined' && window.__API_URL__) {
     headers['X-API-URL'] = window.__API_URL__;
+  }
+  
+  // Add Firebase auth token if available
+  const user = auth.currentUser
+  if (user) {
+    try {
+      const token = await user.getIdToken()
+      headers['Authorization'] = `Bearer ${token}`
+    } catch (error) {
+      console.error('Failed to get auth token:', error)
+    }
   }
   
   return headers;
@@ -213,7 +224,7 @@ export const apiCall = async (path: string, options: RequestInit = {}) => {
   const config: RequestInit = {
     ...options,
     headers: {
-      ...getApiHeaders(),
+      ...(await getApiHeaders()),
       ...options.headers,
     },
   };
@@ -674,4 +685,89 @@ export const getAuthType = async (): Promise<{ authType: 'google' | 'email', ema
     if (!response.ok) throw new Error('Failed to get auth type');
     return response.json();
   }
-}; 
+};
+
+// --- ASSISTANTS (AI AGENTS) API ---
+export interface Assistant {
+  id: string
+  name: string
+  description: string
+  model: string
+  status: 'active' | 'inactive'
+  tools?: string[]
+  knowledgeBase?: string[]
+  created_at: string
+  updated_at: string
+}
+
+export const getAssistants = async (): Promise<Assistant[]> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants`, {
+    headers: await getApiHeaders(),
+  })
+  if (!response.ok) {
+    // Return empty array if endpoint not available
+    console.warn('Assistants endpoint not available')
+    return []
+  }
+  return response.json()
+}
+
+export const createAssistant = async (data: Partial<Assistant>): Promise<Assistant> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants`, {
+    method: 'POST',
+    headers: await getApiHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) throw new Error('Failed to create assistant')
+  return response.json()
+}
+
+export const updateAssistant = async (id: string, data: Partial<Assistant>): Promise<Assistant> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants/${id}`, {
+    method: 'PUT',
+    headers: await getApiHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) throw new Error('Failed to update assistant')
+  return response.json()
+}
+
+export const deleteAssistant = async (id: string): Promise<void> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants/${id}`, {
+    method: 'DELETE',
+    headers: await getApiHeaders(),
+  })
+  if (!response.ok) throw new Error('Failed to delete assistant')
+}
+
+// --- KNOWLEDGE BASE API ---
+export interface Folder {
+  id: string
+  name: string
+  parent_id?: string | null
+  color: string
+  icon_emoji: string
+  description?: string
+  document_count: number
+  total_words: number
+  created_at: string
+  updated_at: string
+}
+
+export const createKnowledgeFolder = async (data: { name: string; parent_id?: string }): Promise<Folder> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/knowledge/folders`, {
+    method: 'POST',
+    headers: await getApiHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to create folder' }))
+    throw new Error(error.message || 'Failed to create folder')
+  }
+  return response.json()
+} 

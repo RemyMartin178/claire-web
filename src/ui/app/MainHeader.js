@@ -13,6 +13,8 @@ export class MainHeader extends LitElement {
         :host {
             display: flex;
             transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease-out;
+            will-change: transform, opacity;
+            transform: translateZ(0);
         }
 
         :host(.hiding) {
@@ -29,7 +31,7 @@ export class MainHeader extends LitElement {
 
         :host(.hidden) {
             opacity: 0;
-            transform: translateY(-150%) scale(0.85);
+            transform: translateY(-150%) scale(0.85) translateZ(0);
             pointer-events: none;
         }
 
@@ -38,6 +40,8 @@ export class MainHeader extends LitElement {
             font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             cursor: default;
             user-select: none;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         .header {
@@ -53,29 +57,31 @@ export class MainHeader extends LitElement {
             display: inline-flex;
             box-sizing: border-box;
             position: relative;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+            transform: translateZ(0);
         }
 
         .header:hover {
-            transform: translateY(-1px);
+            transform: translateY(-1px) translateZ(0);
         }
 
         /* Animations constantes subtiles */
-        .header::before {
-            animation: subtleGlow 3s ease-in-out infinite;
-        }
-
         .header-actions {
             animation: gentleFloat 4s ease-in-out infinite;
+            will-change: transform;
+            transform: translateZ(0);
         }
 
         .header-actions:hover {
             animation: none;
-            transform: scale(1.02);
+            transform: scale(1.02) translateZ(0);
         }
 
         .listen-button {
             animation: subtlePulse 6s ease-in-out infinite;
+            will-change: opacity;
+            transform: translateZ(0);
         }
 
         .listen-button:hover {
@@ -88,15 +94,20 @@ export class MainHeader extends LitElement {
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 100%);
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.65) 100%);
             border-radius: 9000px;
             z-index: -1;
             box-shadow:
-                0 4px 20px rgba(0, 0, 0, 0.3),
-                0 2px 10px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                0 4px 16px rgba(0, 0, 0, 0.3),
+                0 2px 8px rgba(0, 0, 0, 0.25),
+                inset 0 1px 1px rgba(255, 255, 255, 0.15),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+            animation: subtleGlow 3s ease-in-out infinite;
+            will-change: opacity;
         }
 
         .header::after {
@@ -338,31 +349,31 @@ export class MainHeader extends LitElement {
             animation: connectionGlow 2s infinite;
         }
 
-        /* Animations constantes subtiles */
+        /* Animations constantes subtiles avec hardware acceleration */
         @keyframes subtleGlow {
             0%, 100% {
-                filter: brightness(1);
+                opacity: 1;
             }
             50% {
-                filter: brightness(1.05);
+                opacity: 0.95;
             }
         }
 
         @keyframes gentleFloat {
             0%, 100% {
-                transform: translateY(0px);
+                transform: translateY(0px) translateZ(0);
             }
             50% {
-                transform: translateY(-0.5px);
+                transform: translateY(-0.5px) translateZ(0);
             }
         }
 
         @keyframes subtlePulse {
             0%, 100% {
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                opacity: 0.98;
             }
             50% {
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+                opacity: 1;
             }
         }
 
@@ -528,6 +539,10 @@ export class MainHeader extends LitElement {
             initialWindowX: initialPosition.x,
             initialWindowY: initialPosition.y,
             moved: false,
+            rafId: null,
+            pendingUpdate: false,
+            lastX: null,
+            lastY: null
         };
 
         window.addEventListener('mousemove', this.handleMouseMove, { capture: true });
@@ -547,13 +562,31 @@ export class MainHeader extends LitElement {
         const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
         const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
 
-        window.api.mainHeader.moveHeaderTo(newWindowX, newWindowY);
+        // Stocker la position à mettre à jour
+        this.dragState.lastX = newWindowX;
+        this.dragState.lastY = newWindowY;
+
+        // Utiliser requestAnimationFrame pour limiter les appels à 60fps
+        if (!this.dragState.pendingUpdate) {
+            this.dragState.pendingUpdate = true;
+            this.dragState.rafId = requestAnimationFrame(() => {
+                if (this.dragState) {
+                    window.api.mainHeader.moveHeaderTo(this.dragState.lastX, this.dragState.lastY);
+                    this.dragState.pendingUpdate = false;
+                }
+            });
+        }
     }
 
     handleMouseUp(e) {
         if (!this.dragState) return;
 
         const wasDragged = this.dragState.moved;
+
+        // Annuler le requestAnimationFrame s'il y en a un en attente
+        if (this.dragState.rafId) {
+            cancelAnimationFrame(this.dragState.rafId);
+        }
 
         window.removeEventListener('mousemove', this.handleMouseMove, { capture: true });
         this.dragState = null;

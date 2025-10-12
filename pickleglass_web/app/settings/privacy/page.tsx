@@ -2,6 +2,9 @@
 
 import { ExternalLink } from 'lucide-react'
 import Link from 'next/link'
+import { Page } from '@/components/Page'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export default function PrivacySettingsPage() {
   const tabs = [
@@ -12,69 +15,73 @@ export default function PrivacySettingsPage() {
   ]
 
   return (
-    <div className="bg-transparent min-h-screen text-white animate-fade-in">
-      <div className="px-8 py-8">
-        <div className="mb-6">
-          <p className="text-xs text-white mb-1">Paramètres</p>
-          <h1 className="text-3xl font-bold text-white">Paramètres personnels</h1>
-        </div>
-        
-        <div className="mb-8">
-          <nav className="flex space-x-10">
-            {tabs.map((tab) => (
-              <Link
-                key={tab.id}
-                href={tab.href}
-                className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                  tab.id === 'privacy'
-                    ? 'border-[#9ca3af] text-white'
-                    : 'border-transparent text-white hover:text-[#9ca3af] hover:border-[#9ca3af]'
-                }`}
-              >
-                {tab.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
+    <Page>
+      <div className="mb-6">
+        <p className="text-xs text-gray-600 mb-1">Paramètres</p>
+        <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
+      </div>
+      
+      <div className="mb-8">
+        <nav className="flex space-x-10 border-b border-gray-200">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                tab.id === 'privacy'
+                  ? 'border-primary text-[#282828]'
+                  : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
+              }`}
+            >
+              {tab.name}
+            </Link>
+          ))}
+        </nav>
+      </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="rounded-lg p-6 flex flex-col" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="bg-white">
+          <CardContent className="p-6 flex flex-col h-full">
             <div className="flex-grow">
-              <h3 className="text-lg font-semibold text-white mb-3">Politique de confidentialité</h3>
-              <p className="text-[#E0E0E0] text-sm leading-relaxed">
+              <h3 className="text-lg font-heading font-semibold text-[#282828] mb-3">Politique de confidentialité</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
                 Comprenez comment nous collectons, utilisons et protégeons vos informations personnelles.
               </p>
             </div>
             <div className="flex justify-end mt-6">
-              <button
+              <Button
                 onClick={() => window.open('https://www.pickle.com/ko/privacy-policy', '_blank')}
-                className="flex items-center gap-2 px-4 py-2 bg-[#303030] hover:bg-[#444] text-white rounded-md text-sm font-medium transition-colors"
+                variant="outline"
+                className="gap-2"
               >
                 Confidentialité
                 <ExternalLink className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="rounded-lg p-6 flex flex-col" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
+        <Card className="bg-white">
+          <CardContent className="p-6 flex flex-col h-full">
             <div className="flex-grow">
-              <h3 className="text-lg font-semibold text-white mb-3">Conditions d&apos;utilisation</h3>
-              <p className="text-[#E0E0E0] text-sm leading-relaxed">
-                Comprenez vos droits et responsabilités lors de l&apos;utilisation de notre plateforme.
+              <h3 className="text-lg font-heading font-semibold text-[#282828] mb-3">Conditions d'utilisation</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                Comprenez vos droits et responsabilités lors de l'utilisation de notre plateforme.
               </p>
             </div>
             <div className="flex justify-end mt-6">
-              <button
+              <Button
                 onClick={() => window.open('https://www.pickle.com/ko/terms-of-service', '_blank')}
-                className="flex items-center gap-2 px-4 py-2 bg-[#303030] hover:bg-[#444] text-white rounded-md text-sm font-medium transition-colors"
+                variant="outline"
+                className="gap-2"
               >
                 Conditions
                 <ExternalLink className="h-4 w-4" />
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
-    </div>
+    </Page>
   )
-} 
+}

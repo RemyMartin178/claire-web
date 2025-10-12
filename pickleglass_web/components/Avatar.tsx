@@ -31,8 +31,8 @@ export default function Avatar({
   const baseClasses = `flex shrink-0 select-none items-center justify-center rounded-full font-medium leading-none ${sizeClasses[size]}`
   const colorClasses = avatarUrl
     ? ''
-    : 'text-[color:var(--text-primary)]'
-  const bgStyle = avatarUrl ? {} : { backgroundColor: 'var(--avatar-bg)' }
+    : 'text-white bg-primary'
+  const bgStyle = avatarUrl ? {} : {}
 
   return (
     <div className={`${baseClasses} ${colorClasses} ${className}`} style={bgStyle}>

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
 import { getApiBase } from '@/utils/apiBase'
 import { auth } from '@/utils/firebase'
  
@@ -26,14 +26,12 @@ function LoginContent() {
   const sessionId = useMemo(() => params?.get('session_id') || '', [params])
   
 
-  // Redirection si déjà connecté (hors flow mobile) sans casser l'ordre des hooks
   useEffect(() => {
     if (user && !isMobileFlow) {
       router.push('/activity')
     }
   }, [user, isMobileFlow, router])
 
-  // Traitement du retour Google (redirect result)
   useEffect(() => {
     let mounted = true
     ;(async () => {
@@ -42,13 +40,10 @@ function LoginContent() {
         if (!mounted) return
         if (redirectUser) {
           if (isMobileFlow && sessionId) {
-            console.log('[login] signed in, associating…', sessionId)
             await associateAfterLogin(sessionId)
-            console.log('[login] associate success, redirecting to success page')
           }
           sessionStorage.removeItem('manuallyLoggedOut')
           if (isMobileFlow) {
-            // Page neutre + deep link
             router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
           } else {
             router.push('/activity')
@@ -67,33 +62,22 @@ function LoginContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('[Login] Début de la connexion email/mot de passe')
     setIsLoading(true)
     setError('')
 
     try {
-      console.log('[Login] Appel de signInWithEmail...')
       const user = await signInWithEmail(formData.email, formData.password, formData.rememberMe)
       
-      console.log('[Login] signInWithEmail terminé avec succès')
-      console.log('[Login] isMobileFlow:', isMobileFlow, 'user:', !!user)
-      
       if (isMobileFlow && sessionId && user) {
-        console.log('[login] signed in, associating…', sessionId)
         await associateAfterLogin(sessionId)
-        console.log('[login] associate success, redirecting to success page')
       }
-      console.log('[Login] Suppression de manuallyLoggedOut')
       sessionStorage.removeItem('manuallyLoggedOut')
       if (isMobileFlow) {
-        console.log('[Login] Redirection vers page de succès mobile')
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
-              console.log('[Login] Redirection vers activity')
-      router.push('/activity')
+        router.push('/activity')
       }
     } catch (error: any) {
-      console.log('[Login] Erreur lors de la connexion email/mot de passe:', error)
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
       
@@ -101,7 +85,6 @@ function LoginContent() {
         console.error('Login error:', error)
       }
     } finally {
-      console.log('[Login] Fin de handleSubmit, setIsLoading(false)')
       setIsLoading(false)
     }
   }
@@ -118,7 +101,7 @@ function LoginContent() {
         uid: user.uid,
         email: user.email,
         created_at: new Date(),
-        expires_at: new Date(Date.now() + 120000), // 2 minutes
+        expires_at: new Date(Date.now() + 120000),
         used: false
       })
     } catch (error) {
@@ -129,17 +112,12 @@ function LoginContent() {
 
   const handleGoogleSignIn = async () => {
     try {
-      console.log('[Login] Début de la connexion Google')
       setIsLoading(true)
       setError('')
-      console.log('[Login] Appel de signInWithGoogle...')
       const result = await signInWithGoogle(formData.rememberMe)
-      console.log('[Login] signInWithGoogle terminé avec succès')
       
       if (isMobileFlow && sessionId) {
-        console.log('[login] signed in, associating…', sessionId)
         await associateAfterLogin(sessionId)
-        console.log('[login] associate success, redirecting to success page')
       }
       
       sessionStorage.removeItem('manuallyLoggedOut')
@@ -149,8 +127,6 @@ function LoginContent() {
         router.push('/activity')
       }
     } catch (error: any) {
-        console.log('[Login] Erreur lors de la connexion Google:', error)
-        // Si l'utilisateur ferme/annule le popup, on arrête juste le spinner sans message intrusif
         const code = error?.code
         if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
           setError('')
@@ -163,7 +139,6 @@ function LoginContent() {
           console.error('Google sign in error:', error)
         }
       } finally {
-        console.log('[Login] Fin de handleGoogleSignIn, setIsLoading(false)')
         setIsLoading(false)
       }
   }
@@ -177,29 +152,27 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in" style={{ background: 'var(--main-surface-primary)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in bg-subtle-bg">
       <div className="w-full max-w-md mx-auto">
-        {/* Logo en haut à gauche avec animation */}
-        <div className="absolute top-8 left-8 flex items-center gap-3 animate-slide-in">
-          <img src="/word.png" alt="Claire Logo" className="w-16 h-16 animate-bounce-gentle" />
-          <h1 className="text-2xl font-bold text-white">Claire</h1>
+        <div className="absolute top-8 left-8">
+          <h1 className="text-2xl font-bold text-[#282828]">Claire</h1>
         </div>
         
-        {/* Formulaire avec finitions Cluely */}
+        {/* Formulaire */}
         <div className="animate-scale-in w-full max-w-lg">
           <div className="text-center mb-6 animate-fade-in">
-            <h2 className="text-2xl font-bold text-white mb-2">Bienvenue sur Claire</h2>
+            <h2 className="text-2xl font-bold text-[#282828] mb-2">Bienvenue sur Claire</h2>
           </div>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm animate-slide-up backdrop-blur-sm">
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm animate-slide-up">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
             <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
-              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-[#282828] mb-2">
                 Adresse email
               </label>
               <div className="relative group">
@@ -209,7 +182,7 @@ function LoginContent() {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                  className="w-full h-10 text-sm px-3 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                   placeholder="exemple@email.com"
                   required
                 />
@@ -217,7 +190,7 @@ function LoginContent() {
             </div>
 
             <div className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-[#282828] mb-2">
                 Mot de passe
               </label>
               <div className="relative group">
@@ -227,14 +200,14 @@ function LoginContent() {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
+                  className="w-full h-10 text-sm px-3 pr-10 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                   placeholder=""
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 flex items-center justify-center hover:text-[#282828] transition-colors hover:transform-none"
                   style={{ transform: 'translate(-50%, -50%)' }}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -249,11 +222,11 @@ function LoginContent() {
                   name="rememberMe"
                   checked={formData.rememberMe}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-[#9ca3af] bg-[#2a2a32] border-[#3a3a4a] rounded focus:ring-2 focus:ring-[#9ca3af]/20 transition-all duration-200 group-hover:border-[#4a4a5a]"
+                  className="w-4 h-4 text-primary bg-white border-gray-300 rounded focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 />
-                <span className="ml-2 text-white text-sm group-hover:text-white/90 transition-colors duration-200">Se souvenir de moi</span>
+                <span className="ml-2 text-[#282828] text-sm group-hover:text-gray-600 transition-colors duration-200">Se souvenir de moi</span>
               </label>
-              <a href="/auth/forgot-password" className="text-[#9ca3af] hover:text-[#e5e5e5] text-sm font-medium transition-colors duration-200 hover:underline">
+              <a href="/auth/forgot-password" className="text-primary hover:text-primary-hover text-sm font-medium transition-colors duration-200 hover:underline">
                 Mot de passe oublié ?
               </a>
             </div>
@@ -261,7 +234,7 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center group animate-slide-up border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
+              className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center group animate-slide-up border-0 bg-primary text-white hover:bg-primary-hover active:bg-primary-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition-all duration-200"
               style={{ animationDelay: '0.4s' }}
             >
               {isLoading ? (
@@ -283,20 +256,20 @@ function LoginContent() {
           <div className="mt-8 animate-fade-in" style={{ animationDelay: '0.5s' }}>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#3a3a4a]" />
+                <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-[#232329] px-4 text-[#bbb] backdrop-blur-sm">OU</span>
+                <span className="bg-subtle-bg px-4 text-gray-500">OU</span>
               </div>
             </div>
 
             <div className="mt-6">
-                              <button
+              <button
                   onClick={handleGoogleSignIn}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-[#3a3a4a] bg-[#232329] text-[#e5e5e5] hover:bg-[#2a2a32] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none group"
+                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-gray-300 bg-white text-[#282828] hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow group"
                 >
-                                  <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -320,9 +293,9 @@ function LoginContent() {
           </div>
 
           <div className="mt-8 text-center animate-fade-in" style={{ animationDelay: '0.6s' }}>
-            <p className="text-[#bbb] text-sm">
+            <p className="text-gray-600 text-sm">
               Pas encore de compte ?{' '}
-                           <a href="/auth/register" className="text-[#9ca3af] hover:text-[#e5e5e5] font-medium transition-colors duration-200 hover:underline">
+              <a href="/auth/register" className="text-primary hover:text-primary-hover font-medium transition-colors duration-200 hover:underline">
                Créer un compte
              </a>
             </p>

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import {
   signInWithPopup,
   signInWithRedirect,
@@ -196,4 +197,44 @@ export const signOut = async () => {
 
 export const onAuthStateChanged = (callback: (user: User | null) => void) => {
   return firebaseOnAuthStateChanged(auth, callback)
+}
+
+// Guest user type
+export interface GuestUser {
+  id: string;
+  displayName: string;
+  email: null;
+  isGuest: true;
+  guestSession: string;
+}
+
+// Combined user type
+export type AppUser = User | GuestUser;
+
+// Check if user is guest
+export const isGuestUser = (user: AppUser | null): user is GuestUser => {
+  return user !== null && 'isGuest' in user && user.isGuest === true;
+};
+
+// Hook for authentication with guest support
+export const useAuth = () => {
+  const [user, setUser] = useState<AppUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isAuthReady, setIsAuthReady] = useState(false)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser)
+      } else {
+        setUser(null)
+      }
+      setIsLoading(false)
+      setIsAuthReady(true)
+    })
+
+    return () => unsubscribe()
+  }, [])
+
+  return { user, isLoading, isAuthReady }
 } 

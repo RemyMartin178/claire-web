@@ -492,6 +492,10 @@ export class ApiKeyHeader extends LitElement {
             initialWindowX: initialPosition.x,
             initialWindowY: initialPosition.y,
             moved: false,
+            rafId: null,
+            pendingUpdate: false,
+            lastX: null,
+            lastY: null
         };
 
         window.addEventListener('mousemove', this.handleMouseMove);
@@ -511,8 +515,19 @@ export class ApiKeyHeader extends LitElement {
         const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
         const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
 
-        if (window.api?.apiKeyHeader) {
-            window.api.apiKeyHeader.moveHeaderTo(newWindowX, newWindowY);
+        // Stocker la position à mettre à jour
+        this.dragState.lastX = newWindowX;
+        this.dragState.lastY = newWindowY;
+
+        // Utiliser requestAnimationFrame pour limiter les appels à 60fps
+        if (!this.dragState.pendingUpdate && window.api?.apiKeyHeader) {
+            this.dragState.pendingUpdate = true;
+            this.dragState.rafId = requestAnimationFrame(() => {
+                if (this.dragState && window.api?.apiKeyHeader) {
+                    window.api.apiKeyHeader.moveHeaderTo(this.dragState.lastX, this.dragState.lastY);
+                    this.dragState.pendingUpdate = false;
+                }
+            });
         }
     }
 
@@ -520,6 +535,11 @@ export class ApiKeyHeader extends LitElement {
         if (!this.dragState) return;
 
         const wasDragged = this.dragState.moved;
+
+        // Annuler le requestAnimationFrame s'il y en a un en attente
+        if (this.dragState.rafId) {
+            cancelAnimationFrame(this.dragState.rafId);
+        }
 
         window.removeEventListener('mousemove', this.handleMouseMove);
         this.dragState = null;

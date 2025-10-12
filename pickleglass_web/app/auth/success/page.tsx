@@ -1,6 +1,7 @@
 'use client'
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Card, CardContent } from '@/components/ui/card'
 
 function SuccessContent() {
   const sp = useSearchParams()
@@ -8,7 +9,7 @@ function SuccessContent() {
   const flow = sp.get('flow')
   const sessionId = sp.get('session_id') || sp.get('sessionId')
   const debug = sp.get('debug') === '1'
-  const [manual, setManual] = useState(true) // afficher le bouton immédiatement
+  const [manual, setManual] = useState(true)
 
   const state = useMemo(() => 'st-' + Math.random().toString(36).slice(2, 10), [])
   const deep = useMemo(() => {
@@ -23,7 +24,6 @@ function SuccessContent() {
     }
     if (!deep) return
 
-    // On tente une redirection douce, tout en gardant le bouton manuel visible
     const t = setTimeout(() => {
       try {
         window.location.href = deep
@@ -35,50 +35,43 @@ function SuccessContent() {
   if (flow !== 'mobile') return null
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-12"
-      style={{
-        backgroundColor: 'var(--bg-primary)',
-        color: 'var(--text-primary)'
-      }}
-    >
-      <div className="w-full max-w-md text-center space-y-6">
-        <div className="space-y-4">
-          <h1 className="text-2xl font-medium" style={{ color: 'var(--text-primary)' }}>
-            Authentification réussie
-          </h1>
+    <main className="min-h-screen bg-subtle-bg flex items-center justify-center px-6 py-12">
+      <Card className="bg-white w-full max-w-md">
+        <CardContent className="p-8 text-center space-y-6">
+          <div className="space-y-4">
+            <h1 className="text-2xl font-heading font-semibold text-[#282828]">
+              Authentification réussie
+            </h1>
 
-          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            Vous allez être redirigé vers Glass automatiquement.
-          </p>
-        </div>
-
-        {manual && deep && (
-          <div className="space-y-3">
-            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              Si la redirection ne démarre pas automatiquement,{' '}
-              <a
-                href={deep}
-                className="inline underline hover:no-underline transition-all duration-200"
-                style={{
-                  color: 'var(--text-accent)',
-                  textDecorationColor: 'var(--text-accent)'
-                }}
-              >
-                cliquez ici
-              </a>
+            <p className="text-sm leading-relaxed text-gray-600">
+              Vous allez être redirigé vers Claire automatiquement.
             </p>
           </div>
-        )}
 
-        {debug && (
-          <pre className="mt-6 text-xs whitespace-pre-wrap opacity-50" style={{ color: 'var(--text-secondary)' }}>
+          {manual && deep && (
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500">
+                Si la redirection ne démarre pas automatiquement,{' '}
+                <a
+                  href={deep}
+                  className="inline underline hover:no-underline transition-all duration-200 text-primary hover:text-primary-hover"
+                >
+                  cliquez ici
+                </a>
+              </p>
+            </div>
+          )}
+
+          {debug && (
+            <pre className="mt-6 text-xs whitespace-pre-wrap opacity-50 text-gray-500">
 {`flow=${flow}
 sessionId=${sessionId}
 deep=${deep}
 state=${state}`}
-          </pre>
-        )}
-      </div>
+            </pre>
+          )}
+        </CardContent>
+      </Card>
     </main>
   )
 }
@@ -90,4 +83,3 @@ export default function SuccessPage() {
     </Suspense>
   )
 }
-

@@ -6,6 +6,10 @@ import { useState, useEffect, useRef } from 'react'
 import { deleteAccount, updateUserProfile, getUserProfile } from '@/utils/api'
 import { signOut } from '@/utils/auth'
 import { Check } from 'lucide-react'
+import { Page } from '@/components/Page'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type Tab = 'profile' | 'billing' | 'security' | 'privacy'
 
@@ -170,68 +174,69 @@ export default function SettingsPage() {
   const renderSecurityContent = () => (
     <div className="space-y-6">
       {/* Mot de passe */}
-      <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
-        <h3 className="text-lg font-semibold text-white mb-1">Mot de passe</h3>
-        <p className="text-sm text-[#E0E0E0] mb-4">
-          {isGoogleUser 
-            ? 'Ajoutez un mot de passe à votre compte Google pour une sécurité renforcée.'
-            : 'Modifiez votre mot de passe pour sécuriser votre compte.'
-          }
-        </p>
-        <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">
-          <button
-            className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none"
-          >
-            {isGoogleUser ? 'Ajouter un mot de passe' : 'Modifier le mot de passe'}
-          </button>
-        </div>
-      </div>
-
-      {/* Appareils connectés */}
-      <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
-        <h3 className="text-lg font-semibold text-white mb-1">Appareils connectés</h3>
-        <p className="text-sm text-[#E0E0E0] mb-4">Gérez les appareils connectés à votre compte et surveillez l&apos;activité de connexion.</p>
-        
-        <div className="space-y-4">
-          {/* Appareil actuel */}
-          <div className="flex items-center justify-between p-3 bg-[#1f1f1f] rounded-md">
-            <div className="flex items-center gap-3">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <div>
-                <p className="text-sm font-medium text-white">Cet appareil</p>
-                <p className="text-xs text-[#9ca3af]">Windows 10 • Chrome • Paris, France</p>
-                <p className="text-xs text-[#9ca3af]">IP: 192.168.1.100 • Connecté maintenant</p>
-              </div>
-            </div>
-            <span className="text-xs text-green-500 font-medium">Actuel</span>
+      <Card className="bg-white">
+        <CardContent className="p-6">
+          <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Mot de passe</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            {isGoogleUser 
+              ? 'Ajoutez un mot de passe à votre compte Google pour une sécurité renforcée.'
+              : 'Modifiez votre mot de passe pour sécuriser votre compte.'
+            }
+          </p>
+          <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+            <Button variant="outline">
+              {isGoogleUser ? 'Ajouter un mot de passe' : 'Modifier le mot de passe'}
+            </Button>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">
-          <button 
-            disabled={true}
-            className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-[#303030]"
-          >
-            Déconnecter tous les appareils
-          </button>
-        </div>
-      </div>
+       {/* Appareils connectés */}
+       <Card className="bg-white">
+         <CardContent className="p-6">
+          <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Appareils connectés</h3>
+          <p className="text-sm text-gray-600 mb-4">Gérez les appareils connectés à votre compte et surveillez l'activité de connexion.</p>
+          
+          <div className="space-y-4">
+            {/* Appareil actuel */}
+            <div className="flex items-center justify-between p-3 bg-subtle-bg rounded-md">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <div>
+                  <p className="text-sm font-medium text-[#282828]">Cet appareil</p>
+                  <p className="text-xs text-gray-500">Windows 10 • Chrome • Paris, France</p>
+                  <p className="text-xs text-gray-500">IP: 192.168.1.100 • Connecté maintenant</p>
+                </div>
+              </div>
+              <span className="text-xs text-green-600 font-medium">Actuel</span>
+            </div>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+            <Button variant="outline" disabled>
+              Déconnecter tous les appareils
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 
   const renderBillingContent = () => (
     <div className="space-y-6">
-      <div className="bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <Check className="h-6 w-6 text-[#9ca3af]" />
-          <div>
-            <h4 className="font-semibold text-white">Toutes les fonctionnalités sont actuellement gratuites !</h4>
-            <p className="text-[#9ca3af] text-sm">
-              Profitez de toutes les fonctionnalités de Pickle Glass gratuitement. Les plans Pro et Enterprise seront bientôt disponibles avec des fonctionnalités premium supplémentaires.
-            </p>
+      <Card className="bg-primary/5 border-primary/20">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3">
+            <Check className="h-6 w-6 text-primary" />
+            <div>
+              <h4 className="font-heading font-semibold text-[#282828]">Toutes les fonctionnalités sont actuellement gratuites !</h4>
+              <p className="text-gray-600 text-sm">
+                Profitez de toutes les fonctionnalités de Claire gratuitement. Les plans Plus et Enterprise seront bientôt disponibles avec des fonctionnalités premium supplémentaires.
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 
@@ -243,43 +248,45 @@ export default function SettingsPage() {
         return renderSecurityContent()
       case 'profile':
         return (
-          <div className="space-y-6">
-            <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', color: 'var(--text-primary)' }}>
-              <h3 className="text-lg font-semibold text-white mb-1">Nom affiché</h3>
-              <p className="text-sm text-[#E0E0E0] mb-4">Saisissez votre nom complet ou un nom d&apos;affichage de votre choix.</p>
-              <div className="max-w-sm">
-                 <input
+           <div className="space-y-6">
+             <Card className="bg-white">
+               <CardContent className="p-6">
+                <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Nom affiché</h3>
+                <p className="text-sm text-gray-600 mb-4">Saisissez votre nom complet ou un nom d'affichage de votre choix.</p>
+                <div className="max-w-sm">
+                  <Input
                     type="text"
                     id="display-name"
                     value={displayNameInput}
                     onChange={(e) => setDisplayNameInput(e.target.value)}
-                    className="block w-full rounded-md border border-[#3a3a4a] bg-[#232329] text-white placeholder-white focus:outline-none focus:border-[#3f3f46] sm:text-sm"
-                    placeholder="Saisir votre nom d&apos;affichage"
+                    placeholder="Saisir votre nom d'affichage"
                   />
-              </div>
-              <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">
-                  <button
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+                  <Button
                     onClick={handleSaveDisplayName}
                     disabled={isSaving || !displayNameInput || displayNameInput === userInfo?.display_name}
-                    className="px-4 py-2 border-none text-sm font-medium rounded-md shadow-sm text-white bg-[#303030] hover:bg-[#444] focus:outline-none disabled:opacity-50"
                   >
                     Mettre à jour
-                  </button>
-              </div>
-            </div>
-
-            <div className="rounded-lg p-6" style={{ background: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)' }}>
-              <h3 className="text-lg font-semibold text-white mb-1">Supprimer le compte</h3>
-              <p className="text-sm text-[#E0E0E0] mb-4">Supprimez définitivement votre compte personnel et tout le contenu de la plateforme Pickle Glass. Cette action est irréversible, veuillez procéder avec précaution.</p>
-              <div className="mt-4 pt-4 border-t border-[#3a3a4a] flex justify-end">
-                 <button
-                     onClick={() => setShowDeleteModal(true)}
-                     className="px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                 >
-                     Supprimer
-                 </button>
-              </div>
-            </div>
+                  </Button>
+                </div>
+              </CardContent>
+             </Card>
+ 
+             <Card className="bg-white">
+               <CardContent className="p-6">
+                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Supprimer le compte</h3>
+                <p className="text-sm text-gray-600 mb-4">Supprimez définitivement votre compte personnel et tout le contenu de la plateforme Claire. Cette action est irréversible, veuillez procéder avec précaution.</p>
+                <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
+                  <Button
+                    onClick={() => setShowDeleteModal(true)}
+                    variant="destructive"
+                  >
+                    Supprimer
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )
       case 'privacy':
@@ -297,68 +304,68 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="bg-transparent min-h-screen text-white animate-fade-in">
-      <div className="px-8 py-8">
-        <div className="mb-6">
-          <p className="text-xs text-white mb-1">Paramètres</p>
-          <h1 className="text-3xl font-bold text-white">Paramètres personnels</h1>
-        </div>
-        
-        <div className="mb-8">
-          <nav className="flex space-x-10">
-            {tabs.map((tab) => (
-              <Link
-                key={tab.id}
-                href={tab.href}
-                className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-[#9ca3af] text-white'
-                    : 'border-transparent text-white hover:text-[#9ca3af] hover:border-[#9ca3af]'
-                }`}
-              >
-                {tab.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        {renderTabContent()}
+    <Page>
+      <div className="mb-6">
+        <p className="text-xs text-gray-600 mb-1">Paramètres</p>
+        <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
+      </div>
+      
+      <div className="mb-8">
+        <nav className="flex space-x-10 border-b border-gray-200">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === tab.id
+                  ? 'border-primary text-[#282828]'
+                  : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
+              }`}
+            >
+              {tab.name}
+            </Link>
+          ))}
+        </nav>
       </div>
 
+      {renderTabContent()}
+
       {/* Modal de suppression de compte */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
-          <div ref={modalRef} className="bg-[#1f1f1f] p-6 rounded-lg shadow-2xl max-w-md w-full border border-[#3a3a4a]">
-            <h2 className="text-xl font-bold mb-4 text-white">
-              Supprimer le compte définitivement
-            </h2>
-            <p className="text-sm text-[#E0E0E0] mb-6">
-              Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données (sessions, presets, profil).
-            </p>
-            
-            {deleteError && (
-              <p className="text-red-400 text-xs bg-red-900/20 p-2 rounded-md border border-red-500/30 mb-4">
-                {deleteError}
+       {showDeleteModal && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+           <Card ref={modalRef} className="bg-white max-w-md w-full mx-4">
+             <CardContent className="p-6">
+              <h2 className="text-xl font-heading font-semibold mb-4 text-[#282828]">
+                Supprimer le compte définitivement
+              </h2>
+              <p className="text-sm text-gray-600 mb-6">
+                Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données (sessions, presets, profil).
               </p>
-            )}
-            
-            <div className="flex justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-[#3a3a4a] rounded-md text-white hover:bg-[#3a3a4a] focus:outline-none transition-all duration-200 text-sm"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 rounded-md text-white font-medium focus:outline-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                {isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
-              </button>
-            </div>
-          </div>
+              
+              {deleteError && (
+                <p className="text-red-600 text-xs bg-red-50 p-2 rounded-md border border-red-200 mb-4">
+                  {deleteError}
+                </p>
+              )}
+              
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  variant="outline"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  variant="destructive"
+                >
+                  {isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -372,7 +379,7 @@ export default function SettingsPage() {
                 ? 'bg-green-600'
                 : notification.type === 'error'
                 ? 'bg-red-600'
-                : 'bg-blue-600'
+                : 'bg-primary'
             }`}
           >
             {/* Barre de progression */}
@@ -394,6 +401,6 @@ export default function SettingsPage() {
           </div>
         ))}
       </div>
-    </div>
+    </Page>
   )
-} 
+}

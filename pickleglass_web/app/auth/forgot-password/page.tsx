@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { sendPasswordResetEmail } from '@/utils/auth'
-import { Mail, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -14,7 +14,6 @@ export default function ForgotPasswordPage() {
   const router = useRouter()
   const { user } = useAuth()
 
-  // Redirection si déjà connecté
   if (user) {
     router.push('/activity')
     return null
@@ -44,35 +43,28 @@ export default function ForgotPasswordPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--main-surface-primary)' }}>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-subtle-bg">
         <div className="w-full max-w-md mx-auto">
-          {/* Logo en haut à gauche */}
-          <div className="absolute top-8 left-8 flex items-center gap-3">
-            <img src="/word.png" alt="Claire Logo" className="w-16 h-16" />
-            <h1 className="text-2xl font-bold text-white">Claire</h1>
-          </div>
-          
-          {/* Succès */}
           <div className="w-full max-w-lg">
             <div className="text-center mb-6">
-                      <div className="w-16 h-16 bg-[#9ca3af]/20 border border-[#9ca3af]/30 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-[#9ca3af]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-green-100 border border-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Email envoyé !</h2>
-              <p className="text-[#bbb] text-sm">
-                Nous avons envoyé un lien de réinitialisation à <strong className="text-white">{email}</strong>
+              <h2 className="text-2xl font-bold text-[#282828] mb-2">Email envoyé !</h2>
+              <p className="text-gray-600 text-sm">
+                Nous avons envoyé un lien de réinitialisation à <strong className="text-[#282828]">{email}</strong>
               </p>
             </div>
 
             <div className="text-center">
-              <p className="text-[#bbb] text-sm mb-4">
+              <p className="text-gray-600 text-sm mb-4">
                 Vérifiez votre boîte de réception et cliquez sur le lien pour réinitialiser votre mot de passe.
               </p>
               <button
                 onClick={() => router.push('/auth/login')}
-                className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
+                className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border border-gray-300 bg-white text-[#282828] hover:bg-gray-50 focus:outline-none shadow-sm hover:shadow transition-all duration-200"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Retour à la connexion
@@ -85,49 +77,42 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--main-surface-primary)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-subtle-bg">
       <div className="w-full max-w-md mx-auto">
-        {/* Logo en haut à gauche */}
-        <div className="absolute top-8 left-8 flex items-center gap-3">
-          <img src="/word.png" alt="Claire Logo" className="w-16 h-16" />
-          <h1 className="text-2xl font-bold text-white">Claire</h1>
-        </div>
-        
-        {/* Formulaire */}
         <div className="w-full max-w-lg">
-                     <div className="text-center mb-6">
-             <h2 className="text-2xl font-bold text-white mb-2">Mot de passe oublié ?</h2>
-           </div>
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-[#282828] mb-2">Mot de passe oublié ?</h2>
+          </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-[#282828] mb-1">
                 Adresse email
               </label>
-                             <div className="relative">
-                 <input
-                   id="email"
-                   name="email"
-                   type="email"
-                   value={email}
-                   onChange={(e) => setEmail(e.target.value)}
-                   className="w-full h-10 text-sm px-3 rounded-lg border border-[#3f3f46] bg-[#27272a] text-white placeholder-[#bbb] focus:outline-none focus:border-[#3f3f46] transition-all duration-200"
-                   placeholder="exemple@email.com"
-                   required
-                 />
-               </div>
+              <div className="relative">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full h-10 text-sm px-3 rounded-lg border border-gray-300 bg-white text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="exemple@email.com"
+                  required
+                />
+              </div>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border border-[#3a3a4a] bg-[#2a2a32] text-[#e5e5e5] hover:bg-[#3a3a4a] active:bg-[#404050] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed hover:transform-none active:transform-none"
+              className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border-0 bg-primary text-white hover:bg-primary-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition-all duration-200"
             >
               {isLoading ? 'Envoi...' : 'Envoyer le lien de réinitialisation'}
               {!isLoading && (
@@ -141,7 +126,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-6 text-center">
             <button
               onClick={() => router.push('/auth/login')}
-              className="text-[#9ca3af] hover:text-[#e5e5e5] text-sm font-medium flex items-center justify-center mx-auto transition-colors duration-200 hover:underline"
+              className="text-primary hover:text-primary-hover text-sm font-medium flex items-center justify-center mx-auto transition-colors duration-200 hover:underline"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Retour à la connexion
@@ -151,4 +136,4 @@ export default function ForgotPasswordPage() {
       </div>
     </div>
   )
-} 
+}
