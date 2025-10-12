@@ -51,14 +51,24 @@ export default function BillingPage() {
     setIsLoading(plan)
 
     try {
-      const priceId = plan === 'plus' 
-        ? process.env.NEXT_PUBLIC_STRIPE_PLUS_PRICE_ID 
-        : process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID
+      let priceId: string | undefined
+      
+      if (plan === 'plus') {
+        // Utiliser le Price ID selon le cycle de facturation
+        priceId = billingCycle === 'monthly' 
+          ? process.env.NEXT_PUBLIC_STRIPE_PLUS_MONTHLY_PRICE_ID
+          : process.env.NEXT_PUBLIC_STRIPE_PLUS_YEARLY_PRICE_ID || 'price_1SHPkyAjfdK87nxfg27fDQvI'
+      } else {
+        priceId = process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID
+      }
 
       if (!priceId) {
         console.error('Stripe Price ID manquant:', {
           plan,
-          plusPriceId: process.env.NEXT_PUBLIC_STRIPE_PLUS_PRICE_ID,
+          billingCycle,
+          monthlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PLUS_MONTHLY_PRICE_ID,
+          yearlyPriceId: process.env.NEXT_PUBLIC_STRIPE_PLUS_YEARLY_PRICE_ID,
+          enterprisePriceId: process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID,
           publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'Présent' : 'Manquant'
         })
         throw new Error('Configuration Stripe incomplète. Les variables d\'environnement Stripe doivent être ajoutées sur Vercel.')
@@ -143,12 +153,21 @@ export default function BillingPage() {
       {/* Toggle Mensuel/Annuel */}
       <div className="mb-8">
         <div className="flex justify-center">
-          <div className="bg-gray-100 rounded-xl p-1 flex">
+          <div className="bg-gray-100 rounded-3xl p-1 flex relative">
+            {/* Indicateur glissant */}
+            <div 
+              className={`absolute top-1 bottom-1 rounded-2xl bg-white shadow-sm transition-all duration-300 ease-out ${
+                billingCycle === 'monthly' 
+                  ? 'left-1 w-[calc(50%-4px)]' 
+                  : 'left-[calc(50%+2px)] w-[calc(50%-4px)]'
+              }`}
+            />
+            
             <button
               onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`px-6 py-2 rounded-2xl text-sm font-medium transition-colors duration-300 relative z-10 ${
                 billingCycle === 'monthly'
-                  ? 'bg-white text-[#282828] shadow-sm'
+                  ? 'text-[#282828]'
                   : 'text-gray-600 hover:text-[#282828]'
               }`}
             >
@@ -156,9 +175,9 @@ export default function BillingPage() {
             </button>
             <button
               onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              className={`px-6 py-2 rounded-2xl text-sm font-medium transition-colors duration-300 relative z-10 ${
                 billingCycle === 'yearly'
-                  ? 'bg-white text-[#282828] shadow-sm'
+                  ? 'text-[#282828]'
                   : 'text-gray-600 hover:text-[#282828]'
               }`}
             >
@@ -175,7 +194,7 @@ export default function BillingPage() {
             <div className="mb-6">
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Gratuit</h3>
               <div className="text-3xl font-bold text-[#282828]">
-                $0<span className="text-lg font-normal text-gray-600">/mois</span>
+                $0<span className="text-lg font-normal text-gray-600">/{billingCycle === 'monthly' ? 'mois' : 'an'}</span>
               </div>
             </div>
             
@@ -230,14 +249,6 @@ export default function BillingPage() {
                     /{billingCycle === 'monthly' ? 'mois' : 'an'}
                   </span>
                 </div>
-                {billingCycle === 'yearly' && (
-                  <p className="text-sm text-green-600 font-medium mt-1">
-                    Économisez 140€ par an
-                  </p>
-                )}
-              </div>
-              <div className="bg-primary text-white text-xs font-semibold px-3 py-1 rounded-full">
-                POPULAIRE
               </div>
             </div>
             
@@ -278,7 +289,7 @@ export default function BillingPage() {
                 onClick={() => handleSubscribe('plus')}
                 disabled={isLoading !== null}
               >
-                {isLoading === 'plus' ? 'Chargement...' : `Souscrire à Plus (${billingCycle === 'monthly' ? '20€/mois' : '100€/an'})`}
+                {isLoading === 'plus' ? 'Chargement...' : 'Souscrire à Plus'}
               </Button>
             </div>
           </CardContent>
