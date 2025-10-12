@@ -141,8 +141,8 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Plan Gratuit */}
-        <Card className="bg-white">
-          <CardContent className="p-6">
+        <Card className="bg-white flex flex-col">
+          <CardContent className="p-6 flex flex-col flex-1">
             <div className="mb-6">
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Gratuit</h3>
               <div className="text-3xl font-bold text-[#282828]">
@@ -181,7 +181,7 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-gray-200 mt-auto">
               <Button className="w-full" variant="outline" disabled>
                 Plan actuel
               </Button>
@@ -190,8 +190,8 @@ export default function BillingPage() {
         </Card>
 
         {/* Plan Pro */}
-        <Card className="bg-white border-primary border-2">
-          <CardContent className="p-6">
+        <Card className="bg-white border-primary border-2 flex flex-col">
+          <CardContent className="p-6 flex flex-col flex-1">
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Plus</h3>
@@ -235,7 +235,7 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-gray-200 mt-auto">
               <Button 
                 className="w-full bg-primary text-white hover:bg-primary/90" 
                 onClick={() => handleSubscribe('plus')}
@@ -248,8 +248,8 @@ export default function BillingPage() {
         </Card>
 
         {/* Plan Enterprise */}
-        <Card className="bg-white border-gray-300">
-          <CardContent className="p-6">
+        <Card className="bg-white border-gray-300 flex flex-col">
+          <CardContent className="p-6 flex flex-col flex-1">
             <div className="mb-6">
               <h3 className="text-xl font-heading font-semibold mb-2 text-[#282828]">Enterprise</h3>
               <div className="text-xl font-semibold text-[#282828]">Personnalisé</div>
@@ -290,7 +290,7 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <div className="pt-4 border-t border-gray-200">
+            <div className="pt-4 border-t border-gray-200 mt-auto">
               <Button 
                 className="w-full text-[#374151] border-gray-300 hover:bg-gray-50" 
                 variant="outline"
