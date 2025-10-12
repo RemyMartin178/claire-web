@@ -151,13 +151,13 @@ export default function BillingPage() {
             </div>
             
             <p className="text-gray-600 mb-6">
-              Découvrez comment Claire fonctionne avec des réponses illimitées.
+              Goûtez à Claire avec quelques réponses gratuites pour commencer.
             </p>
             
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
-                <span className="text-sm text-gray-700">Réponses illimitées quotidiennes</span>
+                <span className="text-sm text-gray-700">5 réponses pro par jour</span>
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
@@ -165,15 +165,15 @@ export default function BillingPage() {
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
-                <span className="text-sm text-gray-700">Sortie de texte illimitée</span>
+                <span className="text-sm text-gray-700">Limite de 100 caractères en sortie</span>
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
-                <span className="text-sm text-gray-700">Visualisation écran, écoute audio</span>
+                <span className="text-sm text-gray-700">Voit votre écran, entend votre audio</span>
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
-                <span className="text-sm text-gray-700">Prompts système personnalisés</span>
+                <span className="text-sm text-gray-700">Prompt système personnalisé</span>
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
@@ -203,7 +203,7 @@ export default function BillingPage() {
             </div>
             
             <p className="text-gray-600 mb-6">
-              Utilisez les derniers modèles et obtenez toutes les fonctionnalités avancées.
+              Utilisez les derniers modèles, obtenez une sortie complète et jouez avec vos propres prompts personnalisés.
             </p>  
             
             <ul className="space-y-3 mb-8">
@@ -217,7 +217,11 @@ export default function BillingPage() {
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
-                <span className="text-sm text-gray-700">Accès complet au tableau de bord</span>
+                <span className="text-sm text-gray-700">Accès complet au tableau de bord des conversations</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Résumés avancés post-appel</span>
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
@@ -225,7 +229,7 @@ export default function BillingPage() {
               </li>
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
-                <span className="text-sm text-gray-700">Toutes les fonctionnalités du plan gratuit</span>
+                <span className="text-sm text-gray-700">Plus tout ce qui est inclus dans le plan gratuit</span>
               </li>
             </ul>
             
@@ -248,37 +252,37 @@ export default function BillingPage() {
             </div>
             
             <p className="text-gray-600 mb-6">
-              Spécialement conçu pour les équipes nécessitant une personnalisation complète.
+              Spécialement conçu pour les équipes qui ont besoin d'une personnalisation complète.
             </p>
             
             <ul className="space-y-3 mb-8">
               <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Intégrations personnalisées</span>
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Intégrations personnalisées</span>
               </li>
               <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Provisionnement utilisateurs & accès basé sur les rôles</span>
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Provisionnement d'utilisateurs & accès basé sur les rôles</span>
               </li>
               <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Analyses avancées</span>
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Analyses avancées post-appel</span>
               </li>
               <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Authentification unique (SSO)</span>
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Authentification unique (SSO)</span>
               </li>
               <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Fonctionnalités de sécurité avancées</span>
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Fonctionnalités de sécurité avancées</span>
               </li>
               <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Facturation centralisée</span>
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Facturation centralisée</span>
               </li>
               <li className="flex items-center gap-3">
-                <Check className="h-5 w-5 text-gray-400" />
-                <span className="text-sm text-gray-600">Analyses d'utilisation & tableaux de bord</span>
+                <Check className="h-5 w-5 text-primary" />
+                <span className="text-sm text-gray-700">Tableaux de bord d'analyse d'utilisation & rapports</span>
               </li>
             </ul>
             
@@ -291,6 +295,23 @@ export default function BillingPage() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Section d'aide */}
+      <div className="mt-12 text-center">
+        <p className="text-gray-600 mb-2">
+          Besoin d'aide pour choisir ?
+        </p>
+        <p className="text-sm text-gray-600">
+          Contactez notre{' '}
+          <a 
+            href="mailto:contact@clairia.app?subject=Claire - Aide au choix de plan"
+            className="text-primary hover:text-primary/80 underline"
+          >
+            équipe commerciale
+          </a>
+          {' '}pour une recommandation personnalisée basée sur vos besoins.
+        </p>
       </div>
     </Page>
   )
