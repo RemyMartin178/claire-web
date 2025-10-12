@@ -29,9 +29,9 @@ export const signInWithGoogle = async (rememberMe: boolean = true) => {
     // Nettoyer le flag de déconnexion manuelle
     sessionStorage.removeItem('manuallyLoggedOut')
     
-    // Définir la persistance selon le choix de l'utilisateur
-    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
-    await setPersistence(auth, persistence)
+    // TOUJOURS utiliser la persistance locale (session longue durée)
+    // Cela permet de rester connecté même après fermeture navigateur ou retour de Stripe
+    await setPersistence(auth, browserLocalPersistence)
 
     const result = await signInWithPopup(auth, googleProvider)
     const user = result.user
@@ -99,9 +99,9 @@ export const signInWithEmail = async (email: string, password: string, rememberM
     // Nettoyer le flag de déconnexion manuelle
     sessionStorage.removeItem('manuallyLoggedOut')
     
-    // Définir la persistance selon le choix de l'utilisateur
-    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence
-    await setPersistence(auth, persistence)
+    // TOUJOURS utiliser la persistance locale (session longue durée)
+    // Cela permet de rester connecté même après fermeture navigateur ou retour de Stripe
+    await setPersistence(auth, browserLocalPersistence)
     
     const result = await signInWithEmailAndPassword(auth, email, password)
     return result.user

@@ -22,6 +22,11 @@ export default function ConditionalLayout({
   useEffect(() => {
     if (isDebugPage) return
     if (!loading && !isAuthenticated && !isAuthPage) {
+      // Sauvegarder l'URL actuelle avant de rediriger vers login
+      const currentPath = window.location.pathname + window.location.search
+      if (currentPath !== '/auth/login' && !currentPath.startsWith('/auth/')) {
+        sessionStorage.setItem('redirect_after_login', currentPath)
+      }
       router.replace('/auth/login')
     }
   }, [loading, isAuthenticated, isAuthPage, isDebugPage, router])

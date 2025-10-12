@@ -73,16 +73,30 @@ function LoginContent() {
       }
       sessionStorage.removeItem('manuallyLoggedOut')
       
-      // Check if there's a Stripe return URL saved
+      // Priority 1: Stripe return URL
       const stripeReturnUrl = sessionStorage.getItem('stripe_return_url')
       if (stripeReturnUrl) {
         sessionStorage.removeItem('stripe_return_url')
         router.push(stripeReturnUrl)
-      } else if (isMobileFlow) {
-        router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
-      } else {
-        router.push('/activity')
+        return
       }
+      
+      // Priority 2: Saved redirect URL (from ConditionalLayout)
+      const redirectUrl = sessionStorage.getItem('redirect_after_login')
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirect_after_login')
+        router.push(redirectUrl)
+        return
+      }
+      
+      // Priority 3: Mobile flow
+      if (isMobileFlow) {
+        router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
+        return
+      }
+      
+      // Default: Activity page
+      router.push('/activity')
     } catch (error: any) {
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
@@ -128,16 +142,30 @@ function LoginContent() {
       
       sessionStorage.removeItem('manuallyLoggedOut')
       
-      // Check if there's a Stripe return URL saved
+      // Priority 1: Stripe return URL
       const stripeReturnUrl = sessionStorage.getItem('stripe_return_url')
       if (stripeReturnUrl) {
         sessionStorage.removeItem('stripe_return_url')
         router.push(stripeReturnUrl)
-      } else if (isMobileFlow) {
-        router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
-      } else {
-        router.push('/activity')
+        return
       }
+      
+      // Priority 2: Saved redirect URL (from ConditionalLayout)
+      const redirectUrl = sessionStorage.getItem('redirect_after_login')
+      if (redirectUrl) {
+        sessionStorage.removeItem('redirect_after_login')
+        router.push(redirectUrl)
+        return
+      }
+      
+      // Priority 3: Mobile flow
+      if (isMobileFlow) {
+        router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
+        return
+      }
+      
+      // Default: Activity page
+      router.push('/activity')
     } catch (error: any) {
         const code = error?.code
         if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {

@@ -55,7 +55,12 @@ export default function BillingPage() {
         : process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID
 
       if (!priceId) {
-        throw new Error('Plan Stripe non configuré. Contactez le support.')
+        console.error('Stripe Price ID manquant:', {
+          plan,
+          plusPriceId: process.env.NEXT_PUBLIC_STRIPE_PLUS_PRICE_ID,
+          publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ? 'Présent' : 'Manquant'
+        })
+        throw new Error('Configuration Stripe incomplète. Les variables d\'environnement Stripe doivent être ajoutées sur Vercel.')
       }
 
       const userId = 'uid' in user ? user.uid : user.id
