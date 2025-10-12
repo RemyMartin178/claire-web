@@ -72,7 +72,13 @@ function LoginContent() {
         await associateAfterLogin(sessionId)
       }
       sessionStorage.removeItem('manuallyLoggedOut')
-      if (isMobileFlow) {
+      
+      // Check if there's a Stripe return URL saved
+      const stripeReturnUrl = sessionStorage.getItem('stripe_return_url')
+      if (stripeReturnUrl) {
+        sessionStorage.removeItem('stripe_return_url')
+        router.push(stripeReturnUrl)
+      } else if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
         router.push('/activity')
@@ -121,7 +127,13 @@ function LoginContent() {
       }
       
       sessionStorage.removeItem('manuallyLoggedOut')
-      if (isMobileFlow) {
+      
+      // Check if there's a Stripe return URL saved
+      const stripeReturnUrl = sessionStorage.getItem('stripe_return_url')
+      if (stripeReturnUrl) {
+        sessionStorage.removeItem('stripe_return_url')
+        router.push(stripeReturnUrl)
+      } else if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
         router.push('/activity')

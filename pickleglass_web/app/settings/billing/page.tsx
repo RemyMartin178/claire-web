@@ -25,9 +25,19 @@ export default function BillingPage() {
 
   // Check for success/cancel from Stripe redirect
   useEffect(() => {
+    // Clear any saved return URL when landing on billing page
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('stripe_return_url')
+    }
+
     if (searchParams.get('success') === 'true') {
       setShowSuccess(true)
       setTimeout(() => setShowSuccess(false), 5000)
+    }
+    
+    if (searchParams.get('canceled') === 'true') {
+      // Optionally show a cancel message
+      console.log('Paiement annulé par l\'utilisateur')
     }
   }, [searchParams])
 
@@ -50,6 +60,11 @@ export default function BillingPage() {
 
       const userId = 'uid' in user ? user.uid : user.id
       const userEmail = 'email' in user ? user.email : null
+
+      // Sauvegarder la page actuelle pour y revenir après login si nécessaire
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('stripe_return_url', '/settings/billing')
+      }
 
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
