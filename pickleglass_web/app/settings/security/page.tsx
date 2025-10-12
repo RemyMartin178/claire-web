@@ -217,6 +217,7 @@ export default function SecurityPage() {
               <Button
                 onClick={handlePasswordAction}
                 disabled={isLoading}
+                className="bg-[#3b82f6] text-white hover:bg-[#2563eb]"
               >
                 {isLoading ? 'Chargement...' : passwordActionText}
               </Button>

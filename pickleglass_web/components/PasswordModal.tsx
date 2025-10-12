@@ -295,26 +295,32 @@ export default function PasswordModal() {
   return (
     <>
       {/* Modal de gestion du mot de passe */}
-      <div className={`modal-overlay fixed top-0 left-0 w-full h-full flex items-center justify-center z-[9999] transition-all duration-200 ${
+      <div className={`modal-overlay fixed top-0 left-0 w-full h-full flex items-center justify-center z-[9999] transition-all duration-300 ${
         isClosing 
           ? 'bg-black bg-opacity-0' 
-          : 'bg-black bg-opacity-90 animate-modal-fade-in'
+          : 'bg-black bg-opacity-50 animate-fade-in'
       }`}>
         <div 
           ref={modalRef} 
-          className={`bg-[#1f1f1f] p-6 rounded-lg shadow-2xl max-w-sm w-full border border-[#3a3a4a] transition-all duration-200 ${
+          className={`bg-white p-8 rounded-xl shadow-2xl max-w-md w-full border border-gray-200 transition-all duration-300 ${
             isClosing 
-              ? 'animate-modal-slide-out' 
-              : 'animate-modal-slide-in'
+              ? 'opacity-0 scale-95' 
+              : 'opacity-100 scale-100 animate-scale-in'
           }`}
         >
-          <h2 className="text-xl font-bold mb-4 text-white">
-            {isGoogleUser ? 'Ajouter un mot de passe Google' : 'Modifier votre mot de passe'}
+          <h2 className="text-2xl font-heading font-semibold mb-2 text-[#282828]">
+            {isGoogleUser ? 'Ajouter un mot de passe' : 'Modifier votre mot de passe'}
           </h2>
+          <p className="text-sm text-gray-600 mb-6">
+            {isGoogleUser 
+              ? 'Ajoutez un mot de passe à votre compte pour une sécurité renforcée.'
+              : 'Mettez à jour votre mot de passe pour sécuriser votre compte.'
+            }
+          </p>
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             {!isGoogleUser && (
-              <div>
-                <label htmlFor="currentPassword" className="block text-sm font-medium text-white mb-1">
+              <div className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+                <label htmlFor="currentPassword" className="block text-sm font-medium text-[#282828] mb-2">
                   Mot de passe actuel
                 </label>
                 <div className="relative">
@@ -323,23 +329,22 @@ export default function PasswordModal() {
                     id="currentPassword"
                     value={passwordData.currentPassword}
                     onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                    className="w-full px-3 py-2 bg-[#262626] border border-[#3a3a4a] rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-[#9ca3af] transition-all duration-200 text-sm pr-10"
+                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-sm pr-10"
                     placeholder="••••••••"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => togglePasswordVisibility('current')}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
-                    style={{ transform: 'translate(-50%, -50%)' }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     {showPasswords.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
             )}
-            <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-white mb-1">
+            <div className="animate-slide-up" style={{ animationDelay: isGoogleUser ? '0.1s' : '0.2s' }}>
+              <label htmlFor="newPassword" className="block text-sm font-medium text-[#282828] mb-2">
                 Nouveau mot de passe
               </label>
               <div className="relative">
@@ -348,23 +353,22 @@ export default function PasswordModal() {
                   id="newPassword"
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#262626] border border-[#3a3a4a] rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-[#9ca3af] transition-all duration-200 text-sm pr-10"
-                  placeholder="••••••••"
+                  className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-sm pr-10"
+                  placeholder="Minimum 8 caractères"
                   required
                   ref={firstInputRef}
                 />
                 <button
                   type="button"
                   onClick={() => togglePasswordVisibility('new')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
-                  style={{ transform: 'translate(-50%, -50%)' }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                 >
                   {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white mb-1">
+            <div className="animate-slide-up" style={{ animationDelay: isGoogleUser ? '0.2s' : '0.3s' }}>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#282828] mb-2">
                 Confirmer le nouveau mot de passe
               </label>
               <div className="relative">
@@ -373,25 +377,24 @@ export default function PasswordModal() {
                   id="confirmPassword"
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="w-full px-3 py-2 bg-[#262626] border border-[#3a3a4a] rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-[#9ca3af] transition-all duration-200 text-sm pr-10"
+                  className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-[#282828] placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 text-sm pr-10"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => togglePasswordVisibility('confirm')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#bbb] w-4 h-4 flex items-center justify-center hover:text-white transition-colors hover:transform-none"
-                  style={{ transform: 'translate(-50%, -50%)' }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
                 >
                   {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-            <div className="flex justify-end space-x-2 pt-3">
+            <div className="flex justify-end space-x-3 pt-6 animate-fade-in" style={{ animationDelay: isGoogleUser ? '0.3s' : '0.4s' }}>
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="px-4 py-2 border border-[#3a3a4a] rounded-md text-white hover:bg-[#3a3a4a] focus:outline-none transition-all duration-200 text-sm"
+                className="px-5 py-2.5 border border-gray-300 rounded-lg text-[#374151] hover:bg-gray-50 focus:outline-none transition-all duration-200 text-sm font-medium"
               >
                 Annuler
               </button>
@@ -403,9 +406,14 @@ export default function PasswordModal() {
                     (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword || passwordData.newPassword !== passwordData.confirmPassword)
                   )
                 }
-                className="px-4 py-2 bg-[#303030] hover:bg-[#444] disabled:bg-[#1a1a1a] rounded-md text-white font-medium focus:outline-none transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-[#1a1a1a] text-sm"
+                className="px-5 py-2.5 bg-[#3b82f6] hover:bg-[#2563eb] disabled:bg-gray-300 rounded-lg text-white font-medium focus:outline-none transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-sm hover:shadow"
               >
-                {isSubmitting ? 'Modification...' : (isGoogleUser ? 'Ajouter' : 'Modifier')}
+                {isSubmitting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Modification...
+                  </span>
+                ) : (isGoogleUser ? 'Ajouter' : 'Modifier')}
               </button>
             </div>
           </form>
@@ -413,25 +421,49 @@ export default function PasswordModal() {
       </div>
 
       {/* Notifications */}
-      <div className="fixed bottom-4 right-4 z-[9999] space-y-2">
+      <div className="fixed bottom-4 right-4 z-[9999] space-y-3">
         {notifications.map((notification) => (
           <div
             key={notification.id}
             data-notification-id={notification.id}
-            className={`relative overflow-hidden shadow-lg animate-slide-in-right ${
+            className={`relative overflow-hidden rounded-xl shadow-lg animate-slide-up ${
               notification.type === 'success'
-                ? 'bg-[#262626] border border-[#22c55e]'
+                ? 'bg-green-50 border-2 border-green-200'
                 : notification.type === 'error'
-                ? 'bg-[#262626] border border-[#ef4444]'
-                : 'bg-[#262626] border border-[#3a3a4a]'
+                ? 'bg-red-50 border-2 border-red-200'
+                : 'bg-blue-50 border-2 border-blue-200'
             }`}
           >
             {/* Contenu de la notification */}
-            <div className="flex items-center justify-between p-3 text-white">
-              <span className="text-sm font-medium">{notification.message}</span>
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                {notification.type === 'success' && (
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                )}
+                {notification.type === 'error' && (
+                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </div>
+                )}
+                <span className={`text-sm font-medium ${
+                  notification.type === 'success' ? 'text-green-800' :
+                  notification.type === 'error' ? 'text-red-800' : 'text-blue-800'
+                }`}>
+                  {notification.message}
+                </span>
+              </div>
               <button 
                 onClick={() => removeNotification(notification.id)} 
-                className="ml-3 text-white hover:text-gray-200 transition-colors text-lg font-bold"
+                className={`ml-3 transition-colors text-lg font-bold ${
+                  notification.type === 'success' ? 'text-green-600 hover:text-green-800' :
+                  notification.type === 'error' ? 'text-red-600 hover:text-red-800' : 'text-blue-600 hover:text-blue-800'
+                }`}
               >
                 ×
               </button>
@@ -439,7 +471,10 @@ export default function PasswordModal() {
             
             {/* Barre de progression en bas */}
             <div 
-              className="absolute bottom-0 left-0 h-1 bg-white transition-all duration-100 ease-linear"
+              className={`absolute bottom-0 left-0 h-1 transition-all duration-100 ease-linear ${
+                notification.type === 'success' ? 'bg-green-500' :
+                notification.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+              }`}
               style={{ width: `${notification.progress}%` }}
             />
           </div>
