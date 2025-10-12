@@ -15,6 +15,7 @@ export default function BillingPage() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   
   const tabs = [
     { id: 'profile', name: 'Profil personnel', href: '/settings' },
@@ -139,6 +140,34 @@ export default function BillingPage() {
         </nav>
       </div>
 
+      {/* Toggle Mensuel/Annuel */}
+      <div className="mb-8">
+        <div className="flex justify-center">
+          <div className="bg-gray-100 rounded-xl p-1 flex">
+            <button
+              onClick={() => setBillingCycle('monthly')}
+              className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                billingCycle === 'monthly'
+                  ? 'bg-white text-[#282828] shadow-sm'
+                  : 'text-gray-600 hover:text-[#282828]'
+              }`}
+            >
+              Mensuel
+            </button>
+            <button
+              onClick={() => setBillingCycle('yearly')}
+              className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                billingCycle === 'yearly'
+                  ? 'bg-white text-[#282828] shadow-sm'
+                  : 'text-gray-600 hover:text-[#282828]'
+              }`}
+            >
+              Annuel
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Plan Gratuit */}
         <Card className="bg-white flex flex-col">
@@ -196,8 +225,16 @@ export default function BillingPage() {
               <div>
                 <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Plus</h3>
                 <div className="text-3xl font-bold text-[#282828]">
-                  20€<span className="text-lg font-normal text-gray-600">/mois</span>
+                  {billingCycle === 'monthly' ? '20€' : '100€'}
+                  <span className="text-lg font-normal text-gray-600">
+                    /{billingCycle === 'monthly' ? 'mois' : 'an'}
+                  </span>
                 </div>
+                {billingCycle === 'yearly' && (
+                  <p className="text-sm text-green-600 font-medium mt-1">
+                    Économisez 140€ par an
+                  </p>
+                )}
               </div>
               <div className="bg-primary text-white text-xs font-semibold px-3 py-1 rounded-full">
                 POPULAIRE
@@ -241,7 +278,7 @@ export default function BillingPage() {
                 onClick={() => handleSubscribe('plus')}
                 disabled={isLoading !== null}
               >
-                {isLoading === 'plus' ? 'Chargement...' : 'Souscrire à Plus'}
+                {isLoading === 'plus' ? 'Chargement...' : `Souscrire à Plus (${billingCycle === 'monthly' ? '20€/mois' : '100€/an'})`}
               </Button>
             </div>
           </CardContent>
