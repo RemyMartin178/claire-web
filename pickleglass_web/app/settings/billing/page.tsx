@@ -2,12 +2,20 @@
 
 import { Check } from 'lucide-react'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useAuth } from '@/utils/auth'
 import { Page } from '@/components/Page'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 export default function BillingPage() {
+  const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const [isLoading, setIsLoading] = useState<string | null>(null)
+  const [showSuccess, setShowSuccess] = useState(false)
+  
   const tabs = [
     { id: 'profile', name: 'Profil personnel', href: '/settings' },
     { id: 'security', name: 'Sécurité', href: '/settings/security' },
@@ -15,8 +23,79 @@ export default function BillingPage() {
     { id: 'billing', name: 'Facturation', href: '/settings/billing' },
   ]
 
+  // Check for success/cancel from Stripe redirect
+  useEffect(() => {
+    if (searchParams.get('success') === 'true') {
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 5000)
+    }
+  }, [searchParams])
+
+  const handleSubscribe = async (plan: 'plus' | 'enterprise') => {
+    if (!user) {
+      alert('Vous devez être connecté pour souscrire')
+      return
+    }
+
+    setIsLoading(plan)
+
+    try {
+      const priceId = plan === 'plus' 
+        ? process.env.NEXT_PUBLIC_STRIPE_PLUS_PRICE_ID 
+        : process.env.NEXT_PUBLIC_STRIPE_ENTERPRISE_PRICE_ID
+
+      if (!priceId) {
+        throw new Error('Plan Stripe non configuré. Contactez le support.')
+      }
+
+      const userId = 'uid' in user ? user.uid : user.id
+      const userEmail = 'email' in user ? user.email : null
+
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId,
+          userId,
+          userEmail,
+        }),
+      })
+
+      const { url, error } = await response.json()
+
+      if (error) {
+        throw new Error(error)
+      }
+
+      if (url) {
+        // Redirect to Stripe Checkout
+        window.location.href = url
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error)
+      alert(`Erreur lors de l'ouverture du paiement: ${error.message}`)
+    } finally {
+      setIsLoading(null)
+    }
+  }
+
   return (
     <Page>
+      {/* Success notification */}
+      {showSuccess && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl animate-slide-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center success-pulse">
+              <Check className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-green-800">Abonnement activé !</h3>
+              <p className="text-sm text-green-700">Votre abonnement Claire est maintenant actif.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
         <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
@@ -89,12 +168,17 @@ export default function BillingPage() {
         </Card>
 
         {/* Plan Pro */}
-        <Card className="bg-white opacity-60">
+        <Card className="bg-white border-primary border-2">
           <CardContent className="p-6">
-            <div className="mb-6">
-              <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Plus</h3>
-              <div className="text-3xl font-bold text-[#282828]">
-                $25<span className="text-lg font-normal text-gray-600">/mois</span>
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Plus</h3>
+                <div className="text-3xl font-bold text-[#282828]">
+                  20€<span className="text-lg font-normal text-gray-600">/mois</span>
+                </div>
+              </div>
+              <div className="bg-primary text-white text-xs font-semibold px-3 py-1 rounded-full">
+                POPULAIRE
               </div>
             </div>
             
@@ -125,14 +209,18 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <Button className="w-full" variant="secondary" disabled>
-              Bientôt disponible
+            <Button 
+              className="w-full bg-primary text-white hover:bg-primary/90" 
+              onClick={() => handleSubscribe('plus')}
+              disabled={isLoading !== null}
+            >
+              {isLoading === 'plus' ? 'Chargement...' : 'Souscrire à Plus'}
             </Button>
           </CardContent>
         </Card>
 
         {/* Plan Enterprise */}
-        <Card className="bg-white opacity-60 border-gray-300">
+        <Card className="bg-white border-gray-300">
           <CardContent className="p-6">
             <div className="mb-6">
               <h3 className="text-xl font-heading font-semibold mb-2 text-[#282828]">Enterprise</h3>
@@ -174,27 +262,16 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <Button className="w-full" variant="outline" disabled>
-              Bientôt disponible
+            <Button 
+              className="w-full text-[#374151] border-gray-300 hover:bg-gray-50" 
+              variant="outline"
+              onClick={() => window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'}
+            >
+              Nous contacter
             </Button>
           </CardContent>
         </Card>
       </div>
-
-      {/* Message d'information */}
-      <Card className="bg-primary/5 border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3">
-            <Check className="h-6 w-6 text-primary" />
-            <div>
-              <h4 className="font-heading font-semibold text-[#282828]">Toutes les fonctionnalités sont actuellement gratuites !</h4>
-              <p className="text-gray-600 text-sm">
-                Profitez de toutes les fonctionnalités de Claire gratuitement. Les plans Plus et Enterprise seront bientôt disponibles avec des fonctionnalités premium supplémentaires.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </Page>
   )
 }
