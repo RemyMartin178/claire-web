@@ -9,7 +9,9 @@
   },
   "rules": {
     "react-hooks/rules-of-hooks": "error",
-    "react-hooks/exhaustive-deps": "warn"
+    "react-hooks/exhaustive-deps": "warn",
+    "react/no-unescaped-entities": "off",
+    "jsx-a11y/role-supports-aria-props": "warn"
   },
   "ignorePatterns": [
     "out/",
