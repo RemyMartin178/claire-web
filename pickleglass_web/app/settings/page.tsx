@@ -365,11 +365,11 @@ export default function SettingsPage() {
                    {subscription.isLoading ? 'Chargement...' : getSubscriptionDisplayName(subscription.plan)}
                  </p>
                  
-                 <div className="pt-4 border-t border-gray-200 mt-auto">
+                 <div className="pt-4 border-t border-gray-200 flex justify-end">
                    <div className="relative" data-subscription-menu>
                      <Button
                        variant="outline"
-                       className="flex items-center gap-2 w-full"
+                       className="flex items-center gap-2"
                        onClick={() => setShowSubscriptionMenu(!showSubscriptionMenu)}
                        disabled={subscription.isLoading}
                      >
@@ -383,7 +383,7 @@ export default function SettingsPage() {
                        )}
                      </Button>
                      
-                     <div className={`absolute right-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10 transition-all duration-200 ${
+                     <div className={`absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 transition-all duration-200 ${
                        showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
                      }`}>
                        <div className="py-1">
