@@ -365,6 +365,17 @@ export default function SettingsPage() {
                    {subscription.isLoading ? 'Chargement...' : getSubscriptionDisplayName(subscription.plan)}
                  </p>
                  
+                 <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                   {subscription.plan === 'plus' ? (
+                     <>
+                       <Crown className="h-4 w-4 text-primary" />
+                       <span>Votre abonnement sera automatiquement renouvelé</span>
+                     </>
+                   ) : (
+                     <span>Profitez de toutes les fonctionnalités Premium</span>
+                   )}
+                 </div>
+                 
                  <div className="pt-4 border-t border-gray-200 flex justify-end">
                    <div className="relative" data-subscription-menu>
                      <Button
