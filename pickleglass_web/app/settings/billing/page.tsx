@@ -132,27 +132,6 @@ export default function BillingPage() {
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
         <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
         
-        {/* Statut d'abonnement actuel */}
-        {!subscription.isLoading && (
-          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <div>
-                <p className="text-sm font-medium text-blue-900">
-                  Plan actuel : {subscription.plan === 'free' ? 'Claire Gratuit' : 
-                               subscription.plan === 'plus' ? 'Claire Plus' : 
-                               'Claire Enterprise'}
-                </p>
-                <p className="text-xs text-blue-700">
-                  Statut : {subscription.status === 'active' ? 'Actif' : 
-                           subscription.status === 'canceled' ? 'Annulé' : 
-                           subscription.status === 'past_due' ? 'En retard' : 
-                           subscription.status}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
       
       <div className="mb-8">
