@@ -236,7 +236,6 @@ export default function ToolsPage() {
               ))}
             </div>
           )}
-        </div>
       </PremiumGate>
     </Page>
   )

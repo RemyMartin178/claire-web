@@ -193,7 +193,6 @@ export default function AIAgentsPage() {
               ))}
             </div>
           )}
-        </div>
       </PremiumGate>
     </Page>
   )

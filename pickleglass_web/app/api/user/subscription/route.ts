@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '../../../../utils/firebaseAdmin'
-import { StripeAdminService } from '../../../../utils/stripeAdmin'
+import { auth } from '@/utils/firebaseAdmin'
+import { StripeAdminService } from '@/utils/stripeAdmin'
 
 export async function GET(request: NextRequest) {
   try {
