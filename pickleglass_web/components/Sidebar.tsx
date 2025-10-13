@@ -260,7 +260,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
 
     const settingsSubmenu = useMemo<SubmenuItem[]>(
         () => [
-            { name: 'Profil personnel', href: '/settings', icon: '/user.svg', isLucide: false, ariaLabel: 'Paramètres du profil personnel' },
+            { name: 'Compte', href: '/settings', icon: '/user.svg', isLucide: false, ariaLabel: 'Paramètres du compte' },
             { name: 'Modèles IA', href: '/settings/models', icon: '/setting.svg', isLucide: false, ariaLabel: 'Configuration des modèles IA' },
             { name: 'Confidentialité', href: '/settings/privacy', icon: '/privacy.svg', isLucide: false, ariaLabel: 'Paramètres des données et de la confidentialité' },
             { name: 'Facturation', href: '/settings/billing', icon: '/credit-card.svg', isLucide: false, ariaLabel: 'Paramètres de facturation' },

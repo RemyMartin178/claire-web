@@ -85,8 +85,10 @@ export default function SettingsPage() {
 
   // Fonction pour aller à la page de facturation (avec facturation annuelle par défaut)
   const handleUpgradeSubscription = () => {
+    // Fermer le menu d'abonnement
+    setShowSubscriptionMenu(false)
     // Rediriger vers la page de facturation avec facturation annuelle par défaut
-    window.location.href = '/settings/billing?billingCycle=yearly'
+    window.location.replace('/settings/billing?billingCycle=yearly')
   }
 
   // Fonction pour ajouter une notification
@@ -358,17 +360,16 @@ export default function SettingsPage() {
              {/* Section Abonnement */}
              <Card className="bg-white">
                <CardContent className="p-6">
-                 <div className="flex items-center justify-between mb-4">
-                   <div>
-                     <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Abonnement</h3>
-                     <p className="text-sm text-gray-600">
-                       {subscription.isLoading ? 'Chargement...' : getSubscriptionDisplayName(subscription.plan)}
-                     </p>
-                   </div>
+                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Abonnement</h3>
+                 <p className="text-sm text-gray-600 mb-4">
+                   {subscription.isLoading ? 'Chargement...' : getSubscriptionDisplayName(subscription.plan)}
+                 </p>
+                 
+                 <div className="pt-4 border-t border-gray-200 mt-auto">
                    <div className="relative" data-subscription-menu>
                      <Button
                        variant="outline"
-                       className="flex items-center gap-2"
+                       className="flex items-center gap-2 w-full"
                        onClick={() => setShowSubscriptionMenu(!showSubscriptionMenu)}
                        disabled={subscription.isLoading}
                      >
@@ -377,43 +378,30 @@ export default function SettingsPage() {
                        ) : (
                          <>
                            Gérer
-                           <ChevronDown className="h-4 w-4" />
+                           <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showSubscriptionMenu ? 'rotate-180' : ''}`} />
                          </>
                        )}
                      </Button>
                      
-                     {showSubscriptionMenu && (
-                       <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
-                         <div className="py-1">
-                           <button
-                             onClick={handleManageSubscription}
-                             disabled={isManagingSubscription}
-                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                           >
-                             {isManagingSubscription ? 'Ouverture...' : 'Annuler l\'abonnement'}
-                           </button>
-                           <button
-                             onClick={handleUpgradeSubscription}
-                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                           >
-                             Passer à un plan supérieur
-                           </button>
-                         </div>
+                     <div className={`absolute right-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10 transition-all duration-200 ${
+                       showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
+                     }`}>
+                       <div className="py-1">
+                         <button
+                           onClick={handleManageSubscription}
+                           disabled={isManagingSubscription}
+                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                         >
+                           {isManagingSubscription ? 'Ouverture...' : 'Annuler l\'abonnement'}
+                         </button>
+                         <button
+                           onClick={handleUpgradeSubscription}
+                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                         >
+                           Passer à un plan supérieur
+                         </button>
                        </div>
-                     )}
-                   </div>
-                 </div>
-                 
-                 <div className="pt-4 border-t border-gray-200">
-                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                     {subscription.plan === 'plus' ? (
-                       <>
-                         <Crown className="h-4 w-4 text-primary" />
-                         <span>Votre abonnement sera automatiquement renouvelé</span>
-                       </>
-                     ) : (
-                       <span>Profitez de toutes les fonctionnalités Premium</span>
-                     )}
+                     </div>
                    </div>
                  </div>
                </CardContent>

@@ -112,12 +112,6 @@ export default function BillingPage() {
       let priceId: string | undefined
       
       if (plan === 'plus') {
-        // Si l'utilisateur est déjà Plus, on change le cycle de facturation
-        if (subscription.plan === 'plus') {
-          await handleManageSubscription()
-          return
-        }
-        
         // Utiliser le Price ID selon le cycle de facturation
         priceId = billingCycle === 'monthly' 
           ? 'price_1SHN9sAjfdK87nxfDtC0syHP'  // Plan mensuel 20€
@@ -366,39 +360,21 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <div className="pt-4 border-t border-gray-200 mt-auto space-y-2">
-              {subscription.plan === 'plus' ? (
-                <>
-                  <Button 
-                    className="w-full bg-primary text-white hover:bg-primary/90" 
-                    onClick={() => handleManageSubscription()}
-                    disabled={isLoading !== null || subscription.isLoading}
-                  >
-                    {subscription.isLoading ? 'Vérification...' : '✓ Plan actuel - Gérer'}
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    className="w-full text-gray-600 hover:text-primary hover:border-primary" 
-                    onClick={() => handleSubscribe('plus')}
-                    disabled={isLoading !== null || subscription.isLoading}
-                  >
-                    {billingCycle === 'monthly' ? 'Passer en facturation annuelle' : 'Passer en facturation mensuelle'}
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  className="w-full bg-primary text-white hover:bg-primary/90" 
-                  onClick={() => handleSubscribe('plus')}
-                  disabled={isLoading !== null || subscription.isLoading}
-                >
-                  {subscription.isLoading
-                    ? 'Vérification...'
+            <div className="pt-4 border-t border-gray-200 mt-auto">
+              <Button 
+                className="w-full bg-primary text-white hover:bg-primary/90" 
+                onClick={() => handleSubscribe('plus')}
+                disabled={isLoading !== null || subscription.plan === 'plus' || subscription.isLoading}
+              >
+                {subscription.isLoading
+                  ? 'Vérification...'
+                  : subscription.plan === 'plus' 
+                    ? '✓ Plan actuel' 
                     : isLoading === 'plus' 
                       ? 'Chargement...' 
                       : 'Souscrire à Plus'
-                  }
-                </Button>
-              )}
+                }
+              </Button>
             </div>
           </CardContent>
         </Card>
