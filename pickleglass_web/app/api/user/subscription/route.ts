@@ -38,20 +38,32 @@ export async function GET(request: NextRequest) {
     console.log('Getting subscription for user:', userId)
 
     // Get subscription from Firestore
-    const subscription = await StripeAdminService.getUserSubscription(userId)
-    const hasActiveSubscription = await StripeAdminService.hasActiveSubscription(userId)
-    const plan = await StripeAdminService.getSubscriptionPlan(userId)
+    try {
+      const subscription = await StripeAdminService.getUserSubscription(userId)
+      const hasActiveSubscription = await StripeAdminService.hasActiveSubscription(userId)
+      const plan = await StripeAdminService.getSubscriptionPlan(userId)
 
-    const response = {
-      plan: plan,
-      status: subscription?.status || 'active',
-      isActive: hasActiveSubscription,
-      subscription: subscription
+      const response = {
+        plan: plan,
+        status: subscription?.status || 'active',
+        isActive: hasActiveSubscription,
+        subscription: subscription
+      }
+
+      console.log('Subscription data:', response)
+      return NextResponse.json(response)
+    } catch (error: any) {
+      // If Firebase Admin not initialized, return free plan
+      if (error.message === 'Firebase Admin not initialized') {
+        return NextResponse.json({
+          plan: 'free',
+          status: 'active',
+          isActive: false,
+          subscription: null
+        })
+      }
+      throw error
     }
-
-    console.log('Subscription data:', response)
-    return NextResponse.json(response)
-
   } catch (error: any) {
     console.error('Error getting subscription:', error)
     return NextResponse.json(

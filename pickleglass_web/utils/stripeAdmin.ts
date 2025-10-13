@@ -1,5 +1,6 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { auth } from './firebaseAdmin';
+import { getApps } from 'firebase-admin/app';
 
 export interface StripeSubscriptionData {
   status: 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid';
@@ -13,7 +14,12 @@ export interface StripeSubscriptionData {
 }
 
 export class StripeAdminService {
-  private static db = getFirestore();
+  private static get db() {
+    if (getApps().length === 0) {
+      throw new Error('Firebase Admin not initialized');
+    }
+    return getFirestore();
+  }
 
   /**
    * Update user subscription in Firestore (called by webhooks)
