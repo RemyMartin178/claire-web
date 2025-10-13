@@ -16,15 +16,16 @@ export default function BillingPage() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
 
-  // Vérifier si on doit afficher la facturation annuelle par défaut
+  // Vérifier si on doit afficher la facturation mensuelle (par défaut = annuel)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const cycleParam = urlParams.get('billingCycle')
-    if (cycleParam === 'yearly') {
-      setBillingCycle('yearly')
+    if (cycleParam === 'monthly') {
+      setBillingCycle('monthly')
     }
+    // Par défaut, on reste sur 'yearly' (défini dans useState)
   }, [])
   const subscription = useSubscription()
   
@@ -267,7 +268,7 @@ export default function BillingPage() {
             <div className="mb-6">
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Gratuit</h3>
               <div className="text-3xl font-bold text-[#282828]">
-                $0<span className="text-lg font-normal text-gray-600">/{billingCycle === 'monthly' ? 'mois' : 'an'}</span>
+                0€<span className="text-lg font-normal text-gray-600">/{billingCycle === 'monthly' ? 'mois' : 'an'}</span>
               </div>
             </div>
             
