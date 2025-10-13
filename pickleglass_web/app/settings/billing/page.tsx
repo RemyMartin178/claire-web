@@ -9,6 +9,7 @@ import { Page } from '@/components/Page'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useSubscription } from '@/hooks/useSubscription'
 
 export default function BillingPage() {
   const { user } = useAuth()
@@ -16,6 +17,7 @@ export default function BillingPage() {
   const [isLoading, setIsLoading] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const subscription = useSubscription()
   
   const tabs = [
     { id: 'profile', name: 'Profil personnel', href: '/settings' },
@@ -129,6 +131,28 @@ export default function BillingPage() {
       <div className="mb-6">
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
         <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
+        
+        {/* Statut d'abonnement actuel */}
+        {!subscription.isLoading && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              <div>
+                <p className="text-sm font-medium text-blue-900">
+                  Plan actuel : {subscription.plan === 'free' ? 'Claire Gratuit' : 
+                               subscription.plan === 'plus' ? 'Claire Plus' : 
+                               'Claire Enterprise'}
+                </p>
+                <p className="text-xs text-blue-700">
+                  Statut : {subscription.status === 'active' ? 'Actif' : 
+                           subscription.status === 'canceled' ? 'Annulé' : 
+                           subscription.status === 'past_due' ? 'En retard' : 
+                           subscription.status}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="mb-8">
@@ -286,9 +310,14 @@ export default function BillingPage() {
               <Button 
                 className="w-full bg-primary text-white hover:bg-primary/90" 
                 onClick={() => handleSubscribe('plus')}
-                disabled={isLoading !== null}
+                disabled={isLoading !== null || subscription.plan === 'plus'}
               >
-                {isLoading === 'plus' ? 'Chargement...' : 'Souscrire à Plus'}
+                {subscription.plan === 'plus' 
+                  ? '✓ Plan actuel' 
+                  : isLoading === 'plus' 
+                    ? 'Chargement...' 
+                    : 'Souscrire à Plus'
+                }
               </Button>
             </div>
           </CardContent>

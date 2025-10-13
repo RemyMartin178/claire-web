@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { getApiHeaders } from '@/utils/api'
 import { Page, PageHeader } from '@/components/Page'
+import { PremiumGate } from '@/components/PremiumGate'
 
 interface Tool {
   id: string
@@ -89,6 +90,12 @@ export default function ToolsPage() {
   return (
     <Page>
       <PageHeader title="Outils & Intégrations" description="Gérez et configurez les outils Claire" />
+
+      <PremiumGate 
+        feature="Intégrations avec des outils externes"
+        plan="plus"
+        className="mb-6"
+      >
 
         {/* Search Bar */}
         <div className="mb-8">
@@ -229,7 +236,8 @@ export default function ToolsPage() {
               ))}
             </div>
           )}
-        </main>
+        </div>
+      </PremiumGate>
     </Page>
   )
 }

@@ -22,6 +22,18 @@ export interface FirestoreUserProfile {
   createdAt: Timestamp;
   // Admin flag stored on the user document; should only be set by existing admins
   isAdmin?: boolean;
+  // Stripe subscription fields
+  subscription?: {
+    status: 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid';
+    plan: 'free' | 'plus' | 'enterprise';
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    currentPeriodStart?: Timestamp;
+    currentPeriodEnd?: Timestamp;
+    cancelAtPeriodEnd?: boolean;
+    trialEnd?: Timestamp;
+    updatedAt: Timestamp;
+  };
 }
 
 export interface FirestoreSession {

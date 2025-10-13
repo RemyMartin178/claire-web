@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { getApiHeaders, createKnowledgeFolder, type Folder } from '@/utils/api'
 import { Page, PageHeader } from '@/components/Page'
+import { PremiumGate } from '@/components/PremiumGate'
 import GuestGate from '@/components/GuestGate'
 
 interface KnowledgeDocument {
@@ -271,6 +272,12 @@ export default function KnowledgeBasePage() {
     <Page>
       <PageHeader title="Base de connaissances" description="Gérez vos documents et dossiers" />
 
+      <PremiumGate 
+        feature="Gestion de base de connaissances personnalisée"
+        plan="plus"
+        className="mb-6"
+      >
+
         {/* Search Bar and Upload Button */}
         <div className="mb-6 sm:mb-8">
           <div className="flex items-center gap-3">
@@ -511,6 +518,7 @@ export default function KnowledgeBasePage() {
             </Card>
           </div>
         )}
+      </PremiumGate>
     </Page>
     </GuestGate>
   )

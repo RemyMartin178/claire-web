@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { getAssistants, type Assistant } from "@/utils/api"
 import { useAuth, isGuestUser } from "@/utils/auth"
 import { Page, PageHeader } from '@/components/Page'
+import { PremiumGate } from '@/components/PremiumGate'
 import { 
   Search, 
   Plus, 
@@ -82,6 +83,12 @@ export default function AIAgentsPage() {
           </Button>
         }
       />
+
+      <PremiumGate 
+        feature="Création et gestion d'agents IA personnalisés"
+        plan="plus"
+        className="mb-6"
+      >
 
         {/* Search Bar */}
         <div className="mb-8">
@@ -186,7 +193,8 @@ export default function AIAgentsPage() {
               ))}
             </div>
           )}
-        </main>
+        </div>
+      </PremiumGate>
     </Page>
   )
 }

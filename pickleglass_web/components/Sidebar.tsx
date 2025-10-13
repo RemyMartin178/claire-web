@@ -8,6 +8,7 @@ import { Search, Activity, Book, Settings, User, Shield, CreditCard, LogOut, Che
 import Avatar from '@/components/Avatar';
 import { logout, checkApiKeyStatus } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription, getSubscriptionDisplayName } from '@/hooks/useSubscription';
 
 const ANIMATION_DURATION = {
     SIDEBAR: 500,
@@ -154,6 +155,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const { user: userInfo, loading: authLoading } = useAuth();
     const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
+    const subscription = useSubscription();
 
     const { isAnimating, getTextAnimationStyle, getSubmenuAnimationStyle, sidebarContainerStyle, getTextContainerStyle, getUniformTextStyle } =
         useAnimationStyles(isCollapsed);
@@ -626,7 +628,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                                     {getUserDisplayName()}
                                 </div>
                                 <div className="text-xs text-gray-500 truncate">
-                                    {hasApiKey ? 'Claire Pro' : 'Claire Gratuit'}
+                                    {subscription.isLoading ? '...' : getSubscriptionDisplayName(subscription.plan)}
                                 </div>
                             </div>
                         </div>
