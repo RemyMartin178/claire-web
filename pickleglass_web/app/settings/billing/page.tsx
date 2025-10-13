@@ -57,6 +57,40 @@ export default function BillingPage() {
     }
   }, [searchParams])
 
+  const handleManageSubscription = async () => {
+    if (!user) {
+      alert('Vous devez être connecté')
+      return
+    }
+
+    setIsLoading('plus')
+
+    try {
+      // Rediriger vers le portail client Stripe
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          returnUrl: `${window.location.origin}/settings/billing`
+        })
+      })
+
+      if (response.ok) {
+        const { url } = await response.json()
+        window.location.href = url
+      } else {
+        throw new Error('Erreur lors de l\'ouverture du portail')
+      }
+    } catch (error) {
+      console.error('Erreur portail Stripe:', error)
+      alert('Erreur lors de l\'ouverture du portail de gestion. Réessayez plus tard.')
+    } finally {
+      setIsLoading(null)
+    }
+  }
+
   const handleSubscribe = async (plan: 'plus' | 'enterprise') => {
     if (!user) {
       alert('Vous devez être connecté pour souscrire')
@@ -69,6 +103,12 @@ export default function BillingPage() {
       let priceId: string | undefined
       
       if (plan === 'plus') {
+        // Si l'utilisateur est déjà Plus, on change le cycle de facturation
+        if (subscription.plan === 'plus') {
+          await handleManageSubscription()
+          return
+        }
+        
         // Utiliser le Price ID selon le cycle de facturation
         priceId = billingCycle === 'monthly' 
           ? 'price_1SHN9sAjfdK87nxfDtC0syHP'  // Plan mensuel 20€
@@ -260,8 +300,12 @@ export default function BillingPage() {
             </ul>
             
             <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button className="w-full" variant="outline" disabled>
-                Plan actuel
+              <Button 
+                className="w-full" 
+                variant="outline" 
+                disabled
+              >
+                {subscription.plan === 'free' ? '✓ Plan actuel' : 'Plan gratuit'}
               </Button>
             </div>
           </CardContent>
@@ -313,21 +357,39 @@ export default function BillingPage() {
               </li>
             </ul>
             
-            <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button 
-                className="w-full bg-primary text-white hover:bg-primary/90" 
-                onClick={() => handleSubscribe('plus')}
-                disabled={isLoading !== null || subscription.plan === 'plus' || subscription.isLoading}
-              >
-                {subscription.isLoading
-                  ? 'Vérification...'
-                  : subscription.plan === 'plus' 
-                    ? '✓ Plan actuel' 
+            <div className="pt-4 border-t border-gray-200 mt-auto space-y-2">
+              {subscription.plan === 'plus' ? (
+                <>
+                  <Button 
+                    className="w-full bg-primary text-white hover:bg-primary/90" 
+                    onClick={() => handleManageSubscription()}
+                    disabled={isLoading !== null || subscription.isLoading}
+                  >
+                    {subscription.isLoading ? 'Vérification...' : '✓ Plan actuel - Gérer'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    className="w-full text-gray-600 hover:text-primary hover:border-primary" 
+                    onClick={() => handleSubscribe('plus')}
+                    disabled={isLoading !== null || subscription.isLoading}
+                  >
+                    {billingCycle === 'monthly' ? 'Passer en facturation annuelle' : 'Passer en facturation mensuelle'}
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  className="w-full bg-primary text-white hover:bg-primary/90" 
+                  onClick={() => handleSubscribe('plus')}
+                  disabled={isLoading !== null || subscription.isLoading}
+                >
+                  {subscription.isLoading
+                    ? 'Vérification...'
                     : isLoading === 'plus' 
                       ? 'Chargement...' 
                       : 'Souscrire à Plus'
-                }
-              </Button>
+                  }
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
