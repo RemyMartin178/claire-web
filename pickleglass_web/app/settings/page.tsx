@@ -369,7 +369,18 @@ export default function SettingsPage() {
                    {subscription.plan === 'plus' ? (
                      <>
                        <Crown className="h-4 w-4 text-primary" />
-                       <span>Votre abonnement sera automatiquement renouvelé</span>
+                       <span>
+                         Votre abonnement sera automatiquement renouvelé
+                         {subscription.renewalDate && (
+                           <span className="font-medium">
+                             {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
+                               day: 'numeric',
+                               month: 'long',
+                               year: 'numeric'
+                             })}
+                           </span>
+                         )}
+                       </span>
                      </>
                    ) : (
                      <span>Profitez de toutes les fonctionnalités Premium</span>

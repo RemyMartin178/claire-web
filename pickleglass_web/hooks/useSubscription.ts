@@ -7,6 +7,7 @@ export interface SubscriptionStatus {
   status: 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid'
   isActive: boolean
   isLoading: boolean
+  renewalDate?: Date
 }
 
 export const useSubscription = (): SubscriptionStatus => {
@@ -24,7 +25,8 @@ export const useSubscription = (): SubscriptionStatus => {
               plan: parsed.plan || 'free',
               status: parsed.status || 'active',
               isActive: parsed.isActive || false,
-              isLoading: false
+              isLoading: false,
+              renewalDate: parsed.renewalDate ? new Date(parsed.renewalDate) : undefined
             }
           }
         } catch (e) {
@@ -36,7 +38,8 @@ export const useSubscription = (): SubscriptionStatus => {
       plan: 'free',
       status: 'active',
       isActive: false,
-      isLoading: true
+      isLoading: true,
+      renewalDate: undefined
     }
   })
 
@@ -47,7 +50,8 @@ export const useSubscription = (): SubscriptionStatus => {
           plan: 'free',
           status: 'active',
           isActive: false,
-          isLoading: false
+          isLoading: false,
+          renewalDate: undefined
         })
         return
       }
@@ -60,7 +64,8 @@ export const useSubscription = (): SubscriptionStatus => {
             plan: 'free',
             status: 'active',
             isActive: false,
-            isLoading: false
+            isLoading: false,
+            renewalDate: undefined
           })
           return
         }
@@ -79,11 +84,23 @@ export const useSubscription = (): SubscriptionStatus => {
         if (response.ok) {
           const data = await response.json()
           console.log('Subscription data received:', data)
+          
+          // Parse renewal date from subscription data
+          let renewalDate: Date | undefined
+          if (data.subscription?.currentPeriodEnd) {
+            if (typeof data.subscription.currentPeriodEnd === 'string') {
+              renewalDate = new Date(data.subscription.currentPeriodEnd)
+            } else if (data.subscription.currentPeriodEnd.seconds) {
+              renewalDate = new Date(data.subscription.currentPeriodEnd.seconds * 1000)
+            }
+          }
+          
           const newSubscription = {
             plan: data.plan || 'free',
             status: data.status || 'active',
             isActive: data.isActive || false,
-            isLoading: false
+            isLoading: false,
+            renewalDate: renewalDate
           }
           setSubscription(newSubscription)
           
@@ -91,6 +108,7 @@ export const useSubscription = (): SubscriptionStatus => {
           if (typeof window !== 'undefined') {
             localStorage.setItem('subscription_cache', JSON.stringify({
               ...newSubscription,
+              renewalDate: renewalDate?.toISOString(),
               timestamp: Date.now()
             }))
           }
@@ -101,7 +119,8 @@ export const useSubscription = (): SubscriptionStatus => {
             plan: 'free',
             status: 'active',
             isActive: false,
-            isLoading: false
+            isLoading: false,
+            renewalDate: undefined
           })
         }
       } catch (error) {
