@@ -5,7 +5,6 @@ import { getAuth } from 'firebase-admin/auth';
 let adminAuth: ReturnType<typeof getAuth> | null = null;
 
 if (!getApps().length) {
-  // Use environment variables for Firebase Admin
   const serviceAccount = {
     type: "service_account",
     project_id: process.env.FIREBASE_PROJECT_ID || "dedale-database",
@@ -16,11 +15,24 @@ if (!getApps().length) {
     auth_uri: "https://accounts.google.com/o/oauth2/auth",
     token_uri: "https://oauth2.googleapis.com/token",
     auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-    client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`
+    client_x509_cert_url: process.env.FIREBASE_CLIENT_EMAIL
+      ? `https://www.googleapis.com/robot/v1/metadata/x509/${process.env.FIREBASE_CLIENT_EMAIL}`
+      : undefined
   };
 
-  // Only initialize if we have the required credentials
-  if (serviceAccount.private_key && serviceAccount.client_email) {
+  const hasKey = !!serviceAccount.private_key && serviceAccount.private_key.includes('BEGIN PRIVATE KEY');
+  const hasEmail = !!serviceAccount.client_email;
+  const hasProject = !!serviceAccount.project_id;
+
+  console.log('Admin creds check:', {
+    hasKey,
+    hasEmail,
+    hasProject,
+    keyLen: serviceAccount.private_key?.length || 0,
+    emailDomainOk: hasEmail ? serviceAccount.client_email!.endsWith('@dedale-database.iam.gserviceaccount.com') : false
+  });
+
+  if (hasKey && hasEmail && hasProject) {
     initializeApp({
       credential: cert(serviceAccount as any),
       projectId: serviceAccount.project_id,
@@ -28,7 +40,7 @@ if (!getApps().length) {
     adminAuth = getAuth();
     console.log('Firebase Admin initialized successfully');
   } else {
-    console.warn('Firebase Admin credentials not found - admin features will be disabled');
+    console.error('Firebase Admin credentials missing/invalid');
   }
 } else {
   adminAuth = getAuth();
