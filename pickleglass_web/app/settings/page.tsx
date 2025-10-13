@@ -371,13 +371,17 @@ export default function SettingsPage() {
                        <Crown className="h-4 w-4 text-primary" />
                        <span>
                          Votre abonnement sera automatiquement renouvelé
-                         {subscription.renewalDate && (
+                         {subscription.renewalDate ? (
                            <span className="font-medium">
                              {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
                                day: 'numeric',
                                month: 'long',
                                year: 'numeric'
                              })}
+                           </span>
+                         ) : (
+                           <span className="text-xs text-gray-500 ml-1">
+                             (Date non disponible)
                            </span>
                          )}
                        </span>

@@ -87,12 +87,32 @@ export const useSubscription = (): SubscriptionStatus => {
           
           // Parse renewal date from subscription data
           let renewalDate: Date | undefined
+          console.log('Parsing renewal date from:', data.subscription?.currentPeriodEnd)
           if (data.subscription?.currentPeriodEnd) {
             if (typeof data.subscription.currentPeriodEnd === 'string') {
               renewalDate = new Date(data.subscription.currentPeriodEnd)
+              console.log('Parsed date from string:', renewalDate)
             } else if (data.subscription.currentPeriodEnd.seconds) {
               renewalDate = new Date(data.subscription.currentPeriodEnd.seconds * 1000)
+              console.log('Parsed date from timestamp:', renewalDate)
             }
+          } else if (data.subscription?.updatedAt) {
+            // Fallback: calculate renewal date from last update + 1 month
+            let updateDate: Date
+            if (typeof data.subscription.updatedAt === 'string') {
+              updateDate = new Date(data.subscription.updatedAt)
+            } else if (data.subscription.updatedAt.seconds) {
+              updateDate = new Date(data.subscription.updatedAt.seconds * 1000)
+            } else {
+              updateDate = new Date()
+            }
+            
+            // Add 1 month to the update date
+            renewalDate = new Date(updateDate)
+            renewalDate.setMonth(renewalDate.getMonth() + 1)
+            console.log('Calculated renewal date from update date:', renewalDate)
+          } else {
+            console.log('No currentPeriodEnd or updatedAt found in subscription data')
           }
           
           const newSubscription = {
