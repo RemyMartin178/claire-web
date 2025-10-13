@@ -11,11 +11,33 @@ export interface SubscriptionStatus {
 
 export const useSubscription = (): SubscriptionStatus => {
   const { user } = useAuth()
-  const [subscription, setSubscription] = useState<SubscriptionStatus>({
-    plan: 'free',
-    status: 'active',
-    isActive: false,
-    isLoading: true
+  const [subscription, setSubscription] = useState<SubscriptionStatus>(() => {
+    // Try to get cached subscription from localStorage on initialization
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('subscription_cache')
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          // Check if cache is less than 5 minutes old
+          if (parsed.timestamp && Date.now() - parsed.timestamp < 5 * 60 * 1000) {
+            return {
+              plan: parsed.plan || 'free',
+              status: parsed.status || 'active',
+              isActive: parsed.isActive || false,
+              isLoading: false
+            }
+          }
+        } catch (e) {
+          // Invalid cache, ignore
+        }
+      }
+    }
+    return {
+      plan: 'free',
+      status: 'active',
+      isActive: false,
+      isLoading: true
+    }
   })
 
   useEffect(() => {
@@ -57,12 +79,21 @@ export const useSubscription = (): SubscriptionStatus => {
         if (response.ok) {
           const data = await response.json()
           console.log('Subscription data received:', data)
-          setSubscription({
+          const newSubscription = {
             plan: data.plan || 'free',
             status: data.status || 'active',
             isActive: data.isActive || false,
             isLoading: false
-          })
+          }
+          setSubscription(newSubscription)
+          
+          // Cache the subscription data
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('subscription_cache', JSON.stringify({
+              ...newSubscription,
+              timestamp: Date.now()
+            }))
+          }
         } else {
           const errorData = await response.json()
           console.error('Failed to fetch subscription status:', response.status, errorData)

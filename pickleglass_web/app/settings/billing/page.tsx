@@ -317,13 +317,15 @@ export default function BillingPage() {
               <Button 
                 className="w-full bg-primary text-white hover:bg-primary/90" 
                 onClick={() => handleSubscribe('plus')}
-                disabled={isLoading !== null || subscription.plan === 'plus'}
+                disabled={isLoading !== null || subscription.plan === 'plus' || subscription.isLoading}
               >
-                {subscription.plan === 'plus' 
-                  ? '✓ Plan actuel' 
-                  : isLoading === 'plus' 
-                    ? 'Chargement...' 
-                    : 'Souscrire à Plus'
+                {subscription.isLoading
+                  ? 'Vérification...'
+                  : subscription.plan === 'plus' 
+                    ? '✓ Plan actuel' 
+                    : isLoading === 'plus' 
+                      ? 'Chargement...' 
+                      : 'Souscrire à Plus'
                 }
               </Button>
             </div>
