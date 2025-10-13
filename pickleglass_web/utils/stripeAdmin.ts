@@ -41,8 +41,8 @@ export class StripeAdminService {
 
       // Remove undefined values
       Object.keys(firestoreData).forEach(key => {
-        if (firestoreData[key] === undefined) {
-          delete firestoreData[key];
+        if ((firestoreData as any)[key] === undefined) {
+          delete (firestoreData as any)[key];
         }
       });
 
