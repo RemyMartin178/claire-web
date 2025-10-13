@@ -4,6 +4,14 @@ import { StripeAdminService } from '@/utils/stripeAdmin'
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if Firebase Admin is available
+    if (!auth) {
+      return NextResponse.json(
+        { error: 'Firebase Admin not configured' },
+        { status: 500 }
+      )
+    }
+
     // Get authorization header
     const authorization = request.headers.get('authorization')
     if (!authorization || !authorization.startsWith('Bearer ')) {

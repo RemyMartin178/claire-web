@@ -1,7 +1,9 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
-// Initialize Firebase Admin SDK
+// Initialize Firebase Admin SDK only if credentials are available
+let adminAuth: ReturnType<typeof getAuth> | null = null;
+
 if (!getApps().length) {
   // Use environment variables for Firebase Admin
   const serviceAccount = {
@@ -23,12 +25,13 @@ if (!getApps().length) {
       credential: cert(serviceAccount as any),
       projectId: serviceAccount.project_id,
     });
+    adminAuth = getAuth();
+    console.log('Firebase Admin initialized successfully');
   } else {
-    console.warn('Firebase Admin credentials not found, using default project');
-    initializeApp({
-      projectId: serviceAccount.project_id,
-    });
+    console.warn('Firebase Admin credentials not found - admin features will be disabled');
   }
+} else {
+  adminAuth = getAuth();
 }
 
-export const auth = getAuth();
+export const auth = adminAuth as ReturnType<typeof getAuth>;
