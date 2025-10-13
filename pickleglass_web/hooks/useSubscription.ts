@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { auth } from '../utils/firebase'
 
 export interface SubscriptionStatus {
   plan: 'free' | 'plus' | 'enterprise'
@@ -9,7 +10,7 @@ export interface SubscriptionStatus {
 }
 
 export const useSubscription = (): SubscriptionStatus => {
-  const { userInfo } = useAuth()
+  const { user } = useAuth()
   const [subscription, setSubscription] = useState<SubscriptionStatus>({
     plan: 'free',
     status: 'active',
@@ -19,7 +20,7 @@ export const useSubscription = (): SubscriptionStatus => {
 
   useEffect(() => {
     const fetchSubscription = async () => {
-      if (!userInfo?.uid) {
+      if (!user?.uid) {
         setSubscription({
           plan: 'free',
           status: 'active',
@@ -30,9 +31,22 @@ export const useSubscription = (): SubscriptionStatus => {
       }
 
       try {
+        // Get Firebase auth token from current user
+        const currentUser = auth.currentUser
+        if (!currentUser) {
+          setSubscription({
+            plan: 'free',
+            status: 'active',
+            isActive: false,
+            isLoading: false
+          })
+          return
+        }
+
+        const token = await currentUser.getIdToken()
         const response = await fetch('/api/user/subscription', {
           headers: {
-            'Authorization': `Bearer ${await userInfo.getIdToken()}`
+            'Authorization': `Bearer ${token}`
           }
         })
 
@@ -65,7 +79,7 @@ export const useSubscription = (): SubscriptionStatus => {
     }
 
     fetchSubscription()
-  }, [userInfo?.uid])
+  }, [user?.uid])
 
   return subscription
 }
