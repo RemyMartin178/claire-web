@@ -19,6 +19,11 @@ export default function BillingPage() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
   const subscription = useSubscription()
   
+  // Log pour debug
+  useEffect(() => {
+    console.log('Subscription status:', subscription)
+  }, [subscription])
+  
   const tabs = [
     { id: 'profile', name: 'Profil personnel', href: '/settings' },
     { id: 'security', name: 'Sécurité', href: '/settings/security' },
@@ -35,11 +40,19 @@ export default function BillingPage() {
 
     if (searchParams.get('success') === 'true') {
       setShowSuccess(true)
-      setTimeout(() => setShowSuccess(false), 5000)
+      
+      // Nettoyer l'URL
+      const url = new URL(window.location.href)
+      url.searchParams.delete('success')
+      window.history.replaceState({}, '', url.toString())
+      
+      // Recharger la page après 3 secondes pour récupérer le nouveau statut
+      setTimeout(() => {
+        window.location.reload()
+      }, 3000)
     }
     
     if (searchParams.get('canceled') === 'true') {
-      // Optionally show a cancel message
       console.log('Paiement annulé par l\'utilisateur')
     }
   }, [searchParams])
@@ -113,16 +126,31 @@ export default function BillingPage() {
 
   return (
     <Page>
-      {/* Success notification */}
+      {/* Success Modal */}
       {showSuccess && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl animate-slide-in">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center success-pulse">
-              <Check className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-green-800">Abonnement activé !</h3>
-              <p className="text-sm text-green-700">Votre abonnement Claire est maintenant actif.</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-scale-in">
+            <div className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 success-pulse">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+              
+              <h2 className="text-2xl font-heading font-bold text-[#282828] mb-2">
+                🎉 Paiement réussi !
+              </h2>
+              
+              <p className="text-gray-600 mb-6">
+                Votre abonnement <strong>Claire Plus</strong> est maintenant actif.
+                Profitez de toutes les fonctionnalités Premium !
+              </p>
+              
+              <div className="text-sm text-gray-500">
+                Rechargement automatique dans 3 secondes...
+              </div>
             </div>
           </div>
         </div>

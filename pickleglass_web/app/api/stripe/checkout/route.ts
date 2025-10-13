@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}&plan=Plus`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?canceled=true`,
       customer_email: userEmail,
       metadata: {
