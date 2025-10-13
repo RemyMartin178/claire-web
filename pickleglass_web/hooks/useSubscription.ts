@@ -44,14 +44,19 @@ export const useSubscription = (): SubscriptionStatus => {
         }
 
         const token = await currentUser.getIdToken()
+        console.log('Token obtained, length:', token.length)
+        
         const response = await fetch('/api/user/subscription', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         })
 
+        console.log('API response status:', response.status)
+        
         if (response.ok) {
           const data = await response.json()
+          console.log('Subscription data received:', data)
           setSubscription({
             plan: data.plan || 'free',
             status: data.status || 'active',
@@ -59,7 +64,8 @@ export const useSubscription = (): SubscriptionStatus => {
             isLoading: false
           })
         } else {
-          console.error('Failed to fetch subscription status')
+          const errorData = await response.json()
+          console.error('Failed to fetch subscription status:', response.status, errorData)
           setSubscription({
             plan: 'free',
             status: 'active',
