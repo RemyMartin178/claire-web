@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { deleteAccount, updateUserProfile, getUserProfile } from '@/utils/api'
 import { signOut } from '@/utils/auth'
-import { Check } from 'lucide-react'
+import { Check, ChevronDown, Crown } from 'lucide-react'
 import { Page } from '@/components/Page'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useSubscription, getSubscriptionDisplayName } from '@/hooks/useSubscription'
 
 type Tab = 'profile' | 'billing' | 'security' | 'privacy'
 
@@ -22,6 +23,7 @@ interface Notification {
 
 export default function SettingsPage() {
   const { user: userInfo, loading } = useAuth()
+  const subscription = useSubscription()
   const [activeTab, setActiveTab] = useState<Tab>('profile')
   const [displayNameInput, setDisplayNameInput] = useState('')
   const [apiKeyInput, setApiKeyInput] = useState('')
@@ -37,10 +39,55 @@ export default function SettingsPage() {
   // États pour les notifications
   const [notifications, setNotifications] = useState<Notification[]>([])
   
+  // États pour la gestion d'abonnement
+  const [showSubscriptionMenu, setShowSubscriptionMenu] = useState(false)
+  const [isManagingSubscription, setIsManagingSubscription] = useState(false)
+  
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Détection de l'utilisateur Google vs Email/MDP
   const isGoogleUser = userInfo?.email?.includes('@gmail.com') || userInfo?.email?.includes('@google.com')
+
+  // Fonction pour gérer l'abonnement
+  const handleManageSubscription = async () => {
+    if (!userInfo) {
+      alert('Vous devez être connecté')
+      return
+    }
+
+    setIsManagingSubscription(true)
+
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          returnUrl: `${window.location.origin}/settings`
+        })
+      })
+
+      if (response.ok) {
+        const { url } = await response.json()
+        window.location.href = url
+      } else {
+        throw new Error('Erreur lors de l\'ouverture du portail')
+      }
+    } catch (error) {
+      console.error('Erreur portail Stripe:', error)
+      addNotification('Erreur lors de l\'ouverture du portail de gestion. Réessayez plus tard.', 'error')
+    } finally {
+      setIsManagingSubscription(false)
+      setShowSubscriptionMenu(false)
+    }
+  }
+
+  // Fonction pour aller à la page de facturation (avec facturation annuelle par défaut)
+  const handleUpgradeSubscription = () => {
+    // Rediriger vers la page de facturation avec facturation annuelle par défaut
+    window.location.href = '/settings/billing?billingCycle=yearly'
+  }
 
   // Fonction pour ajouter une notification
   const addNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -306,6 +353,70 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </CardContent>
+             </Card>
+
+             {/* Section Abonnement */}
+             <Card className="bg-white">
+               <CardContent className="p-6">
+                 <div className="flex items-center justify-between mb-4">
+                   <div>
+                     <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Abonnement</h3>
+                     <p className="text-sm text-gray-600">
+                       {subscription.isLoading ? 'Chargement...' : getSubscriptionDisplayName(subscription.plan)}
+                     </p>
+                   </div>
+                   <div className="relative" data-subscription-menu>
+                     <Button
+                       variant="outline"
+                       className="flex items-center gap-2"
+                       onClick={() => setShowSubscriptionMenu(!showSubscriptionMenu)}
+                       disabled={subscription.isLoading}
+                     >
+                       {subscription.isLoading ? (
+                         'Chargement...'
+                       ) : (
+                         <>
+                           Gérer
+                           <ChevronDown className="h-4 w-4" />
+                         </>
+                       )}
+                     </Button>
+                     
+                     {showSubscriptionMenu && (
+                       <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+                         <div className="py-1">
+                           <button
+                             onClick={handleManageSubscription}
+                             disabled={isManagingSubscription}
+                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                           >
+                             {isManagingSubscription ? 'Ouverture...' : 'Annuler l\'abonnement'}
+                           </button>
+                           <button
+                             onClick={handleUpgradeSubscription}
+                             className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                           >
+                             Passer à un plan supérieur
+                           </button>
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+                 
+                 <div className="pt-4 border-t border-gray-200">
+                   <div className="flex items-center gap-2 text-sm text-gray-600">
+                     {subscription.plan === 'plus' ? (
+                       <>
+                         <Crown className="h-4 w-4 text-primary" />
+                         <span>Votre abonnement sera automatiquement renouvelé</span>
+                       </>
+                     ) : (
+                       <span>Profitez de toutes les fonctionnalités Premium</span>
+                     )}
+                   </div>
+                 </div>
+               </CardContent>
              </Card>
  
              <Card className="bg-white">

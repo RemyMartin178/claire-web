@@ -17,6 +17,15 @@ export default function BillingPage() {
   const [isLoading, setIsLoading] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+
+  // Vérifier si on doit afficher la facturation annuelle par défaut
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const cycleParam = urlParams.get('billingCycle')
+    if (cycleParam === 'yearly') {
+      setBillingCycle('yearly')
+    }
+  }, [])
   const subscription = useSubscription()
   
   // Log pour debug
@@ -198,7 +207,7 @@ export default function BillingPage() {
 
       <div className="mb-6">
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
-        <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
+        <h1 className="text-3xl font-heading font-semibold text-[#282828]">Compte</h1>
         
       </div>
       
