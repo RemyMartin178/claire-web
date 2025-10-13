@@ -103,7 +103,9 @@ export async function POST(request: NextRequest) {
         console.log('💰 Payment succeeded for invoice:', invoice.id)
         
         // Handle successful recurring payments
-        const subscriptionId = invoice.subscription as string
+        const subscriptionId = typeof invoice.subscription === 'string' 
+          ? invoice.subscription 
+          : invoice.subscription?.id
         console.log('✅ Recurring payment successful for subscription:', subscriptionId)
         break
       }
@@ -113,7 +115,9 @@ export async function POST(request: NextRequest) {
         console.log('❌ Payment failed for invoice:', invoice.id)
         
         // Handle failed payments
-        const subscriptionId = invoice.subscription as string
+        const subscriptionId = typeof invoice.subscription === 'string'
+          ? invoice.subscription
+          : invoice.subscription?.id
         console.log('⚠️ Payment failed for subscription:', subscriptionId)
         break
       }
