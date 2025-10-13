@@ -48,6 +48,18 @@ export default function PasswordModal() {
     const newNotification: Notification = { id, message, type, progress: 100 }
     setNotifications(prev => [...prev, newNotification])
     
+    // Attendre que l'élément soit rendu, puis ajouter l'animation d'entrée
+    setTimeout(() => {
+      const notificationElement = document.querySelector(`[data-notification-id="${id}"]`) as HTMLElement;
+      if (notificationElement) {
+        // Nettoyer les classes d'animation précédentes
+        notificationElement.classList.remove('animate-slide-out-right');
+        // Forcer un reflow pour garantir le démarrage de l'animation
+        void notificationElement.getBoundingClientRect();
+        notificationElement.classList.add('animate-slide-in-right');
+      }
+    }, 50)
+    
     // Animation du compte à rebours
     const startTime = Date.now()
     const duration = 4000 // 4 secondes
@@ -65,18 +77,23 @@ export default function PasswordModal() {
       if (remaining > 0) {
         requestAnimationFrame(updateProgress)
       } else {
-        // Supprimer la notification quand le compte à rebours est terminé
+        // Déclencher l'animation de sortie
         const notificationElement = document.querySelector(`[data-notification-id="${id}"]`) as HTMLElement;
         if (notificationElement) {
+          // Nettoyer les classes d'animation précédentes
           notificationElement.classList.remove('animate-slide-in-right');
+          // Ajouter l'animation de sortie
           notificationElement.classList.add('animate-slide-out-right');
-          
-          // Supprimer après l'animation
+
+          // Supprimer l'élément après l'animation complète
           setTimeout(() => {
             setNotifications(prev => prev.filter(n => n.id !== id));
           }, 300);
         } else {
-          setNotifications(prev => prev.filter(n => n.id !== id));
+          // Fallback si l'élément n'existe plus
+          setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+          }, 100);
         }
       }
     }
@@ -89,6 +106,7 @@ export default function PasswordModal() {
     // Ajouter l'animation de sortie
     const notificationElement = document.querySelector(`[data-notification-id="${id}"]`) as HTMLElement;
     if (notificationElement) {
+      // Nettoyer les classes d'animation précédentes
       notificationElement.classList.remove('animate-slide-in-right');
       notificationElement.classList.add('animate-slide-out-right');
       
@@ -426,13 +444,14 @@ export default function PasswordModal() {
           <div
             key={notification.id}
             data-notification-id={notification.id}
-            className={`relative overflow-hidden rounded-xl shadow-lg animate-slide-up ${
+            className={`relative overflow-hidden rounded-xl shadow-lg ${
               notification.type === 'success'
                 ? 'bg-green-50 border-2 border-green-200'
                 : notification.type === 'error'
                 ? 'bg-red-50 border-2 border-red-200'
                 : 'bg-blue-50 border-2 border-blue-200'
             }`}
+            style={{ transform: 'translateX(100%)', opacity: 0 }}
           >
             {/* Contenu de la notification */}
             <div className="flex items-center justify-between p-4">

@@ -48,6 +48,18 @@ export default function SettingsPage() {
     const newNotification: Notification = { id, message, type, progress: 100 }
     setNotifications(prev => [...prev, newNotification])
     
+    // Attendre que l'élément soit rendu, puis ajouter l'animation d'entrée
+    setTimeout(() => {
+      const notificationElement = document.querySelector(`[data-notification-id="${id}"]`) as HTMLElement;
+      if (notificationElement) {
+        // S'assurer qu'il n'y a pas de conflit d'animations
+        notificationElement.classList.remove('animate-slide-out-right');
+        // Forcer un reflow pour garantir le démarrage de l'animation
+        void notificationElement.getBoundingClientRect();
+        notificationElement.classList.add('animate-slide-in-right');
+      }
+    }, 50)
+    
     // Animation du compte à rebours
     const startTime = Date.now()
     const duration = 4000 // 4 secondes
@@ -66,7 +78,18 @@ export default function SettingsPage() {
         requestAnimationFrame(updateProgress)
       } else {
         // Supprimer la notification quand le compte à rebours est terminé
-        setNotifications(prev => prev.filter(n => n.id !== id))
+        const notificationElement = document.querySelector(`[data-notification-id="${id}"]`) as HTMLElement;
+        if (notificationElement) {
+          notificationElement.classList.remove('animate-slide-in-right');
+          notificationElement.classList.add('animate-slide-out-right');
+          
+          // Supprimer après l'animation
+          setTimeout(() => {
+            setNotifications(prev => prev.filter(n => n.id !== id));
+          }, 300);
+        } else {
+          setNotifications(prev => prev.filter(n => n.id !== id));
+        }
       }
     }
     
@@ -75,7 +98,19 @@ export default function SettingsPage() {
 
   // Fonction pour supprimer une notification
   const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
+    // Ajouter l'animation de sortie
+    const notificationElement = document.querySelector(`[data-notification-id="${id}"]`) as HTMLElement;
+    if (notificationElement) {
+      notificationElement.classList.remove('animate-slide-in-right');
+      notificationElement.classList.add('animate-slide-out-right');
+      
+      // Supprimer après l'animation
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+      }, 300);
+    } else {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }
   }
 
   useEffect(() => {
@@ -374,6 +409,7 @@ export default function SettingsPage() {
         {notifications.map((notification) => (
           <div
             key={notification.id}
+            data-notification-id={notification.id}
             className={`relative overflow-hidden rounded-lg shadow-lg ${
               notification.type === 'success'
                 ? 'bg-green-600'
@@ -381,6 +417,7 @@ export default function SettingsPage() {
                 ? 'bg-red-600'
                 : 'bg-primary'
             }`}
+            style={{ transform: 'translateX(100%)', opacity: 0 }}
           >
             {/* Barre de progression */}
             <div 

@@ -278,8 +278,8 @@ export default function KnowledgeBasePage() {
               <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <Input 
                 placeholder="Rechercher des fichiers et dossiers" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-12 w-full bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
               />
               {searchQuery && (
@@ -359,7 +359,7 @@ export default function KnowledgeBasePage() {
                             className="group-hover:fill-gray-600 transition-colors duration-300"
                           />
                         </svg>
-                      </div>
+          </div>
                       
                       <div className="text-center">
                         <h3 className="font-medium text-gray-900 text-xs sm:text-sm mb-1 truncate max-w-full">
@@ -368,9 +368,9 @@ export default function KnowledgeBasePage() {
                         <p className="text-xs text-gray-500">
                           {folder.document_count} {folder.document_count === 1 ? 'Fichier' : 'Fichiers'}
                         </p>
-                      </div>
-                    </div>
-                  </div>
+        </div>
+      </div>
+    </div>
                 ))}
               </div>
             )}

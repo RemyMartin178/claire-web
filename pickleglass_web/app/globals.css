@@ -522,6 +522,7 @@ a:hover {
   animation: successPulse 0.6s ease-out;
 }
 
+
 /* Responsive Typography */
 @media (max-width: 768px) {
   h1 {
