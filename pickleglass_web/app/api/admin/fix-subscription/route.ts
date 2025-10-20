@@ -28,12 +28,18 @@ export async function POST(request: NextRequest) {
     console.log(`Fixing subscription ${subscriptionId} for user ${userId}...`)
 
     // Récupérer les données depuis Stripe
-    const stripeSubscription = (await stripe.subscriptions.retrieve(subscriptionId)) as unknown as Stripe.Subscription
+    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId)
+
+    // Compat champs Stripe: snake_case vs camelCase selon SDK/versions
+    const currentPeriodStartSec: number | undefined = (stripeSubscription as any).current_period_start ?? (stripeSubscription as any).currentPeriodStart
+    const currentPeriodEndSec: number | undefined = (stripeSubscription as any).current_period_end ?? (stripeSubscription as any).currentPeriodEnd
+    const status: string | undefined = (stripeSubscription as any).status
+    const cancelAtPeriodEnd: boolean | undefined = (stripeSubscription as any).cancel_at_period_end ?? (stripeSubscription as any).cancelAtPeriodEnd
 
     console.log('Stripe data:', {
-      current_period_start: new Date(stripeSubscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(stripeSubscription.current_period_end * 1000).toISOString(),
-      status: stripeSubscription.status,
+      current_period_start: currentPeriodStartSec ? new Date(currentPeriodStartSec * 1000).toISOString() : undefined,
+      current_period_end: currentPeriodEndSec ? new Date(currentPeriodEndSec * 1000).toISOString() : undefined,
+      status,
     })
 
     // Mettre à jour Firestore
@@ -48,14 +54,14 @@ export async function POST(request: NextRequest) {
     const userRef = db.collection('users').doc(userId)
 
     await userRef.update({
-      'subscription.currentPeriodStart': new Date(stripeSubscription.current_period_start * 1000),
-      'subscription.currentPeriodEnd': new Date(stripeSubscription.current_period_end * 1000),
-      'subscription.status': stripeSubscription.status,
-      'subscription.cancelAtPeriodEnd': stripeSubscription.cancel_at_period_end,
+      'subscription.currentPeriodStart': currentPeriodStartSec ? new Date(currentPeriodStartSec * 1000) : undefined,
+      'subscription.currentPeriodEnd': currentPeriodEndSec ? new Date(currentPeriodEndSec * 1000) : undefined,
+      'subscription.status': status,
+      'subscription.cancelAtPeriodEnd': cancelAtPeriodEnd,
       'subscription.updatedAt': FieldValue.serverTimestamp(),
     })
 
-    const fixedDate = new Date(stripeSubscription.current_period_end * 1000)
+    const fixedDate = currentPeriodEndSec ? new Date(currentPeriodEndSec * 1000) : new Date()
 
     return NextResponse.json({
       success: true,
