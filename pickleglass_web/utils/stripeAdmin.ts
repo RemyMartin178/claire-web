@@ -1,4 +1,4 @@
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { auth } from './firebaseAdmin';
 import { getApps } from 'firebase-admin/app';
 
@@ -37,11 +37,11 @@ export class StripeAdminService {
       const firestoreData = {
         ...subscriptionData,
         currentPeriodStart: subscriptionData.currentPeriodStart ? 
-          FieldValue.serverTimestamp() : undefined,
+          Timestamp.fromDate(subscriptionData.currentPeriodStart) : undefined,
         currentPeriodEnd: subscriptionData.currentPeriodEnd ? 
-          FieldValue.serverTimestamp() : undefined,
+          Timestamp.fromDate(subscriptionData.currentPeriodEnd) : undefined,
         trialEnd: subscriptionData.trialEnd ? 
-          FieldValue.serverTimestamp() : undefined,
+          Timestamp.fromDate(subscriptionData.trialEnd) : undefined,
         updatedAt: FieldValue.serverTimestamp()
       };
 
