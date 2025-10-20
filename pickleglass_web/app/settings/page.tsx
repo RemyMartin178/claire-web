@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
 import { deleteAccount, updateUserProfile, getUserProfile } from '@/utils/api'
 import { signOut } from '@/utils/auth'
+import { auth } from '@/utils/firebase'
 import { Check, ChevronDown, Crown } from 'lucide-react'
 import { Page } from '@/components/Page'
 import { Card, CardContent } from '@/components/ui/card'
@@ -58,12 +59,63 @@ export default function SettingsPage() {
     setIsManagingSubscription(true)
 
     try {
+      // D'abord, récupérer le stripeCustomerId
+      const token = await auth.currentUser?.getIdToken()
+      if (!token) {
+        throw new Error('Impossible de récupérer le token')
+      }
+
+      const subResponse = await fetch('/api/user/subscription', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      let subData
+      if (subResponse.ok) {
+        subData = await subResponse.json()
+        console.log('Subscription data:', subData)
+      } else {
+        // Si l'API échoue, utiliser les données du hook useSubscription
+        console.warn('API failed, using hook data:', subscription)
+        if (subscription.plan === 'free' || !subscription.stripeSubscriptionId) {
+          addNotification('Souscrivez d\'abord à un plan pour gérer vos paiements.', 'info')
+          setIsManagingSubscription(false)
+          setShowSubscriptionMenu(false)
+          return
+        }
+        // Essayer d'ouvrir le portail avec les données locales
+        // Note: On aura besoin du stripeCustomerId qui n'est pas dans le hook
+        addNotification('Impossible d\'accéder au portail de paiement pour le moment.', 'error')
+        setIsManagingSubscription(false)
+        setShowSubscriptionMenu(false)
+        return
+      }
+
+      // Vérifier si l'utilisateur a un plan gratuit
+      if (subData.plan === 'free') {
+        addNotification('Souscrivez d\'abord à un plan pour gérer vos paiements.', 'info')
+        setIsManagingSubscription(false)
+        setShowSubscriptionMenu(false)
+        return
+      }
+
+      // Vérifier si l'utilisateur a un stripeCustomerId
+      if (!subData.subscription?.stripeCustomerId) {
+        addNotification('Votre abonnement a été ajouté manuellement. Aucun portail de paiement disponible.', 'info')
+        setIsManagingSubscription(false)
+        setShowSubscriptionMenu(false)
+        return
+      }
+
+      // Ouvrir le portail Stripe avec le customerId
       const response = await fetch('/api/stripe/portal', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          customerId: subData.subscription.stripeCustomerId,
           returnUrl: `${window.location.origin}/settings`
         })
       })
@@ -72,7 +124,8 @@ export default function SettingsPage() {
         const { url } = await response.json()
         window.location.href = url
       } else {
-        throw new Error('Erreur lors de l\'ouverture du portail')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erreur lors de l\'ouverture du portail')
       }
     } catch (error) {
       console.error('Erreur portail Stripe:', error)
@@ -432,10 +485,30 @@ export default function SettingsPage() {
                  </div>
                </CardContent>
              </Card>
+
+            {/* Section Paiement */}
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Paiement</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Gérez vos moyens de paiement et votre historique de facturation
+                </p>
+                
+                <div className="pt-4 border-t border-gray-200 flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={handleManageSubscription}
+                    disabled={isManagingSubscription}
+                  >
+                    {isManagingSubscription ? 'Ouverture...' : 'Gérer'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
  
-             <Card className="bg-white">
-               <CardContent className="p-6">
-                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Supprimer le compte</h3>
+            <Card className="bg-white">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Supprimer le compte</h3>
                 <p className="text-sm text-gray-600 mb-4">Supprimez définitivement votre compte personnel et tout le contenu de la plateforme Claire. Cette action est irréversible, veuillez procéder avec précaution.</p>
                 <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
                   <Button

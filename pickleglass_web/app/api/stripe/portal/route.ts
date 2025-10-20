@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       apiVersion: '2025-09-30.clover',
     })
 
-    const { customerId } = await request.json()
+    const { customerId, returnUrl } = await request.json()
 
     if (!customerId) {
       return NextResponse.json(
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Create Stripe Customer Portal Session
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
+      return_url: returnUrl || `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
     })
 
     return NextResponse.json({ url: session.url })
