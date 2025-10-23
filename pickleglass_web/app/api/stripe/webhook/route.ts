@@ -57,15 +57,26 @@ export async function POST(request: NextRequest) {
 
         console.log('User subscribed:', { userId, customerId, subscriptionId })
         
-        // Update user subscription in Firestore
+        // Récupérer les vraies dates depuis l'abonnement Stripe
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+        const currentPeriodStart = new Date(subscription.current_period_start * 1000)
+        const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+        
+        console.log('Stripe subscription dates:', {
+          currentPeriodStart: currentPeriodStart.toISOString(),
+          currentPeriodEnd: currentPeriodEnd.toISOString(),
+          status: subscription.status
+        })
+        
+        // Update user subscription in Firestore avec les vraies dates
         await StripeAdminService.updateUserSubscription(userId, {
           status: 'active',
           plan: 'plus', // Claire Plus subscription
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 days
-          cancelAtPeriodEnd: false
+          currentPeriodStart: currentPeriodStart,
+          currentPeriodEnd: currentPeriodEnd,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end || false
         })
         
         console.log('✅ Subscription updated in Firestore for user:', userId)
@@ -76,10 +87,19 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription
         console.log('📝 Subscription updated:', subscription.id)
         
-        // Find user by customer ID
-        const customerId = subscription.customer as string
-        // Note: In a real app, you'd need to store customer->userId mapping
-        // For now, we'll handle this in the subscription.deleted event
+        // Récupérer les vraies dates depuis l'abonnement Stripe
+        const currentPeriodStart = new Date(subscription.current_period_start * 1000)
+        const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+        
+        console.log('Updated subscription dates:', {
+          currentPeriodStart: currentPeriodStart.toISOString(),
+          currentPeriodEnd: currentPeriodEnd.toISOString(),
+          status: subscription.status
+        })
+        
+        // Note: Pour mettre à jour l'utilisateur, il faudrait un mapping customer->userId
+        // Pour l'instant, l'utilisateur sera mis à jour lors de sa prochaine connexion
+        console.log('⚠️ Subscription updated - user will be updated on next login')
         break
       }
 
