@@ -73,9 +73,27 @@ export default function BillingPage() {
       return
     }
 
-    setIsLoading('plus')
+    setIsLoading('manage')
 
     try {
+      // Récupérer le customer ID depuis l'abonnement
+      const subscriptionResponse = await fetch('/api/user/subscription', {
+        headers: {
+          'Authorization': `Bearer ${await (user as any).getIdToken()}`
+        }
+      })
+
+      if (!subscriptionResponse.ok) {
+        throw new Error('Impossible de récupérer les informations d\'abonnement')
+      }
+
+      const subscriptionData = await subscriptionResponse.json()
+      const customerId = subscriptionData.subscription?.stripeCustomerId
+
+      if (!customerId) {
+        throw new Error('Aucun abonnement trouvé. Veuillez d\'abord souscrire à un plan.')
+      }
+
       // Rediriger vers le portail client Stripe
       const response = await fetch('/api/stripe/portal', {
         method: 'POST',
@@ -83,6 +101,7 @@ export default function BillingPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          customerId: customerId,
           returnUrl: `${window.location.origin}/settings/billing`
         })
       })
@@ -91,11 +110,12 @@ export default function BillingPage() {
         const { url } = await response.json()
         window.location.href = url
       } else {
-        throw new Error('Erreur lors de l\'ouverture du portail')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erreur lors de l\'ouverture du portail')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur portail Stripe:', error)
-      alert('Erreur lors de l\'ouverture du portail de gestion. Réessayez plus tard.')
+      alert(`Erreur lors de l'ouverture du portail de gestion: ${error.message}`)
     } finally {
       setIsLoading(null)
     }
@@ -435,6 +455,49 @@ export default function BillingPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Section de gestion de l'abonnement existant */}
+      {subscription.plan !== 'free' && subscription.isActive && (
+        <div className="mt-8">
+          <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-[#282828] mb-2">
+                    🎉 Abonnement {subscription.plan === 'plus' ? 'Plus' : 'Enterprise'} actif
+                  </h3>
+                  <p className="text-gray-600 mb-2">
+                    Votre abonnement sera automatiquement renouvelé
+                    {subscription.renewalDate ? (
+                      <span className="font-medium">
+                        {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        })}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-500 ml-1">
+                        (Date non disponible)
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Gérez vos paiements, téléchargez vos factures et modifiez votre abonnement
+                  </p>
+                </div>
+                <Button
+                  onClick={handleManageSubscription}
+                  disabled={isLoading === 'manage'}
+                  className="bg-primary text-white hover:bg-primary/90"
+                >
+                  {isLoading === 'manage' ? 'Ouverture...' : 'Gérer l\'abonnement'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Section d'aide */}
       <div className="mt-12 text-center">

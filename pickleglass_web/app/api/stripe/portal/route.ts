@@ -22,12 +22,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('Creating portal session for customer:', customerId)
+
     // Create Stripe Customer Portal Session
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl || `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
     })
 
+    console.log('Portal session created:', session.id)
     return NextResponse.json({ url: session.url })
   } catch (error: any) {
     console.error('Stripe portal error:', error)
