@@ -1,0 +1,370 @@
+﻿{
+    "envs":  [
+                 {
+                     "type":  "encrypted",
+                     "value":  "/FqrRGQsWXNhZaEt44JnMiRpeQlhr6ZkhFqmoVHsdDs=",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "DCx3xZTvSXfrWRyF",
+                     "key":  "FIREBASE_PROJECT_ID",
+                     "createdAt":  1760357251429,
+                     "updatedAt":  1760357251429,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "+cBtgmFvwYG/4LQby8ZDKlXwZaThdA5G0mMJEJ7bhCzLkioSomtVysIuT0d7UAUD",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "1DxNSv5TxsgATCHh",
+                     "key":  "FIREBASE_CLIENT_ID",
+                     "createdAt":  1760356948107,
+                     "updatedAt":  1760356948107,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "5DQnHvmZIbPxX4LWCsvKGXmWIce3RF9EMLNHruDClCMV+y6bfwF0NGHL9a0E/bc3+8VVFDENzTVDo46aux8rXQ==",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "JOWdnpAhUdrsdIaA",
+                     "key":  "FIREBASE_PRIVATE_KEY_ID",
+                     "createdAt":  1760356948107,
+                     "updatedAt":  1760356948107,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "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",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "4WkcwfqmGwYOW2Iw",
+                     "key":  "FIREBASE_PRIVATE_KEY",
+                     "createdAt":  1760356948107,
+                     "updatedAt":  1760358154539,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "B8L3mqWrNW8Hkvi/Gmn213mpgNDiilBq2b5sOd3ihVXVwHu6Lgge0ptjAsIs6CcrHGO/Gt+24xtDyXaW5n/1DiFR4JXMGUxHamRh5VD/ACQ=",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "0EPxyaK9aiMRkxXn",
+                     "key":  "FIREBASE_CLIENT_EMAIL",
+                     "createdAt":  1760355159111,
+                     "updatedAt":  1760358028192,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "w/0PyeBR92n7Rk72u30b3lG1zefSBNDUPdmDIjh9PDGhCrhcm44BSi5lR9cBhckiPGZHIE13Q46wKcfVM3tO8Q==",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "l2aGy2jLiZzOWrkz",
+                     "key":  "STRIPE_WEBHOOK_SECRET",
+                     "createdAt":  1760355119059,
+                     "updatedAt":  1760355119059,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "+UiPIU0oDbUHXHUb2YcXMa+9QfMDh9Bp76lQCb3PhMpke+yTN6bHF8db8+A0re56",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "AzFiIhXiF60urjw7",
+                     "key":  "NEXT_PUBLIC_STRIPE_PLUS_PRICE_ID",
+                     "createdAt":  1760269274512,
+                     "updatedAt":  1760269274512,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "XDX6AYFpC1/D4moKfzgKf/uhT8fstWn4jEMqWsZJ6byLJ8td93H5Sgmj+qAxHT4C",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "iJDlaujAkqayEa4Y",
+                     "key":  "NEXT_PUBLIC_APP_URL",
+                     "createdAt":  1760268625337,
+                     "updatedAt":  1760268625337,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "ngUoeTmzmkqOThLaKlcm+TdX5TIYpILptvdrJPY/+ZCKbMvMA6o53NF7ZS/43sAU7CTW5EntaPCW04p/fdADiWS2fy5mHUpX6yyGAxdzKRAGlOEhrubUsybeiS98ZLDSdmfmKA/vQdNSMaEjvVHp7oS0UXtV5agIozUkQe8EVyY=",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "msMhH0TSMuGIyG8L",
+                     "key":  "STRIPE_SECRET_KEY",
+                     "createdAt":  1760267839923,
+                     "updatedAt":  1760267839923,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "HjZBow7itsQVGCQMBHgsljPKe9Xt4r6INkrjjlStO3G4s4fB8mIhfH2WFkVWHM/6sO7c3fG0xb+c7DLa7KfQYu+rc1044Z/zkAyypTQw+et7AaYSIbyD2R8awOxrHo2zkpen+SsvZwzBm7tB2OSaMh8eN2mHKKB0dnCv3dxJd0o=",
+                     "target":  [
+                                    "development",
+                                    "preview",
+                                    "production"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "qo8yYFLIlvVx1Erq",
+                     "key":  "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+                     "createdAt":  1760267821342,
+                     "updatedAt":  1760267821342,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  null,
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "m2fWJYBRI1vmTcHNeb20QWEOOgqKfCx7YwNxQvVDiIX9BxElTtUJlWupNxZiM2/I",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "fKSzLfOjvmhS35xT",
+                     "key":  "NEXT_PUBLIC_API_URL",
+                     "createdAt":  1755603825027,
+                     "updatedAt":  1756289552779,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "eSaTYCIrBLnVd1/fld6g2OH//M1rUOhZCCFwofmmvQ03tkI0svc16PQskK3VPjrrkUHvA8ZColbmjjL4jile2g==",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "comment":  "",
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "OIORBLWy8BN2Sw8T",
+                     "key":  "NEXT_PUBLIC_FIREBASE_API_KEY",
+                     "createdAt":  1753818538745,
+                     "updatedAt":  1754596484439,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "cz4PlQEfF7hY7OWTpz1Awery/r3hf2UOZLMDeGx93ttxuzxa/O04ELsy+phbJfmG",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "Echd120cpeYfcjB8",
+                     "key":  "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
+                     "createdAt":  1753818538745,
+                     "updatedAt":  1755392224100,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "WaMFPoSxtWPUH0A+7X1+SDYyHsuLL5Mf2rUflseQT8o=",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "Q5ntJYuoIZzBK8fF",
+                     "key":  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+                     "createdAt":  1753818538745,
+                     "updatedAt":  1754332015022,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "IpIdOLCSEVOAjzjhWEkPttEvpjvWrv8HUevxUwWgSgfonfuUOQEE7yIXPycaRAIC",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "6MFUEM1E0DXexQGe",
+                     "key":  "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET",
+                     "createdAt":  1753818538745,
+                     "updatedAt":  1754354508601,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "56vtElxCLL0eKHoQDsXSaAm7JhrHVJfIfEu9U9NsevY=",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "KkcLMrsS2SFnwXEI",
+                     "key":  "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
+                     "createdAt":  1753818538745,
+                     "updatedAt":  1754332157448,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 },
+                 {
+                     "type":  "encrypted",
+                     "value":  "6fUzghXAFBGzgpGZHAtbORnrVg0JebjvZW1AEyC5AKGhuutOchQ2sgtL71789VLNtKYuqxqKPF5vp4wUj+/ceQ==",
+                     "target":  [
+                                    "production",
+                                    "preview",
+                                    "development"
+                                ],
+                     "configurationId":  null,
+                     "customEnvironmentIds":  [
+
+                                              ],
+                     "id":  "uRnSIzT15tnGISnl",
+                     "key":  "NEXT_PUBLIC_FIREBASE_APP_ID",
+                     "createdAt":  1753818538745,
+                     "updatedAt":  1754596590177,
+                     "createdBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "updatedBy":  "B4tX7XCQ24okV9TsIEu1AymP",
+                     "decrypted":  false,
+                     "lastEditedByDisplayName":  "Rémy Martin"
+                 }
+             ]
+}

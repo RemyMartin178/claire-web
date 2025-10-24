@@ -43,6 +43,7 @@ export default function SettingsPage() {
   // États pour la gestion d'abonnement
   const [showSubscriptionMenu, setShowSubscriptionMenu] = useState(false)
   const [isManagingSubscription, setIsManagingSubscription] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
   
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -50,6 +51,38 @@ export default function SettingsPage() {
   const isGoogleUser = userInfo?.email?.includes('@gmail.com') || userInfo?.email?.includes('@google.com')
 
   // Fonction pour gérer l'abonnement
+  const handleCancelSubscription = async () => {
+    setShowCancelModal(true)
+  }
+
+  const confirmCancelSubscription = async () => {
+    try {
+      // Appeler l'API pour annuler l'abonnement
+      const response = await fetch('/api/stripe/cancel-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: userInfo?.uid
+        })
+      })
+      
+      if (response.ok) {
+        setShowCancelModal(false)
+        // Notification de succès
+        alert('Votre abonnement a été annulé. Vous continuerez à bénéficier des avantages jusqu\'à la fin de la période de facturation.')
+        // Recharger la page pour mettre à jour l'état
+        setTimeout(() => window.location.reload(), 2000)
+      } else {
+        throw new Error('Erreur lors de l\'annulation')
+      }
+    } catch (error) {
+      console.error('Erreur annulation:', error)
+      alert('Erreur lors de l\'annulation de l\'abonnement. Veuillez réessayer.')
+    }
+  }
+
   const handleManageSubscription = async () => {
     if (!userInfo) {
       alert('Vous devez être connecté')
@@ -466,13 +499,12 @@ export default function SettingsPage() {
                        showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
                      }`}>
                        <div className="py-1">
-                         <button
-                           onClick={handleManageSubscription}
-                           disabled={isManagingSubscription}
-                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                         >
-                           {isManagingSubscription ? 'Ouverture...' : 'Annuler l\'abonnement'}
-                         </button>
+                        <button
+                          onClick={handleCancelSubscription}
+                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                        >
+                          Annuler l'abonnement
+                        </button>
                          <button
                            onClick={handleUpgradeSubscription}
                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
@@ -636,6 +668,39 @@ export default function SettingsPage() {
           </div>
         ))}
       </div>
+      {/* Modal d'annulation d'abonnement */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Annuler l'abonnement
+            </h3>
+            
+            <p className="text-sm text-gray-600 mb-6">
+              Votre abonnement à Plus a été annulé mais restera actif jusqu'à la fin de votre période de facturation le {subscription.renewalDate ? subscription.renewalDate.toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              }) : 'fin de période'}.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-150"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmCancelSubscription}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors duration-150"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Page>
   )
 }

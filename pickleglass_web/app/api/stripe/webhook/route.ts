@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { headers } from 'next/headers'
 import { StripeAdminService } from '@/utils/stripeAdmin'
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,8 +60,8 @@ export async function POST(request: NextRequest) {
         
         // Récupérer les vraies dates depuis l'abonnement Stripe
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-        const currentPeriodStart = new Date(subscription.current_period_start * 1000)
-        const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+        const currentPeriodStart = new Date((subscription as any).current_period_start * 1000)
+        const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
         
         console.log('Stripe subscription dates:', {
           currentPeriodStart: currentPeriodStart.toISOString(),
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
           stripeSubscriptionId: subscriptionId,
           currentPeriodStart: currentPeriodStart,
           currentPeriodEnd: currentPeriodEnd,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end || false
+          cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false
         })
         
         console.log('✅ Subscription updated in Firestore for user:', userId)
@@ -88,8 +89,8 @@ export async function POST(request: NextRequest) {
         console.log('📝 Subscription updated:', subscription.id)
         
         // Récupérer les vraies dates depuis l'abonnement Stripe
-        const currentPeriodStart = new Date(subscription.current_period_start * 1000)
-        const currentPeriodEnd = new Date(subscription.current_period_end * 1000)
+        const currentPeriodStart = new Date((subscription as any).current_period_start * 1000)
+        const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
         
         console.log('Updated subscription dates:', {
           currentPeriodStart: currentPeriodStart.toISOString(),
@@ -97,9 +98,36 @@ export async function POST(request: NextRequest) {
           status: subscription.status
         })
         
-        // Note: Pour mettre à jour l'utilisateur, il faudrait un mapping customer->userId
-        // Pour l'instant, l'utilisateur sera mis à jour lors de sa prochaine connexion
-        console.log('⚠️ Subscription updated - user will be updated on next login')
+        // Trouver l'utilisateur par customer ID
+        const customerId = subscription.customer as string
+        try {
+          const db = getFirestore()
+          const usersSnapshot = await db.collection('users')
+            .where('subscription.stripeCustomerId', '==', customerId)
+            .get()
+          
+          if (!usersSnapshot.empty) {
+            const userDoc = usersSnapshot.docs[0]
+            const userId = userDoc.id
+            
+            console.log(`🔄 Mise à jour automatique de l'utilisateur ${userId}`)
+            
+            // Mettre à jour avec les vraies dates Stripe
+            await userDoc.ref.update({
+              'subscription.currentPeriodStart': currentPeriodStart,
+              'subscription.currentPeriodEnd': currentPeriodEnd,
+              'subscription.status': subscription.status,
+              'subscription.cancelAtPeriodEnd': subscription.cancel_at_period_end || false,
+              'subscription.updatedAt': FieldValue.serverTimestamp()
+            })
+            
+            console.log('✅ Utilisateur mis à jour automatiquement')
+          } else {
+            console.log('⚠️ Aucun utilisateur trouvé pour ce customer ID')
+          }
+        } catch (error) {
+          console.error('❌ Erreur lors de la mise à jour:', error)
+        }
         break
       }
 

@@ -10,11 +10,19 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useSubscription } from '@/hooks/useSubscription'
+import { loadStripe } from '@stripe/stripe-js'
 
 export default function BillingPage() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState<string | null>(null)
+  
+  // Upgrade modal state
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
+  const [upgradePreview, setUpgradePreview] = useState<any>(null)
+  const [upgradeLoading, setUpgradeLoading] = useState(false)
+  const [upgradeError, setUpgradeError] = useState<string | null>(null)
+  const [upgradeSuccess, setUpgradeSuccess] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
 
@@ -67,6 +75,96 @@ export default function BillingPage() {
     }
   }, [searchParams])
 
+  // Fonction pour formater les montants
+  const formatCents = (n?: number) => {
+    const v = (n ?? 0) / 100
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v)
+  }
+
+  // Fonction pour gérer l'upgrade vers annuel
+  const handleUpgradeToAnnual = async () => {
+    // Vérifier que l'utilisateur est sur le plan mensuel et actif
+    if (subscription.plan !== 'plus' || !subscription.isActive || subscription.cancelAtPeriodEnd || !subscription.subscription?.stripeSubscriptionId) {
+      return
+    }
+
+    // Vérifier que l'utilisateur est sur le plan mensuel (pas annuel)
+    if (subscription.billingCycle === 'yearly') {
+      alert('Vous êtes déjà sur le plan annuel')
+      return
+    }
+
+    setUpgradeModalOpen(true)
+    setUpgradeLoading(true)
+    setUpgradeError(null)
+    
+    try {
+      const customerId = subscription.subscription.stripeCustomerId?.id || subscription.subscription.stripeCustomerId
+      const subscriptionId = subscription.subscription.stripeSubscriptionId
+      const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
+
+      const res = await fetch('/api/billing/preview-upgrade', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          subscriptionId,
+          annualPriceId,
+        }),
+      })
+      
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'preview_failed')
+      setUpgradePreview(json)
+    } catch (e: any) {
+      setUpgradeError(e.message)
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
+  // Fonction pour confirmer l'upgrade
+  const confirmUpgrade = async () => {
+    setUpgradeLoading(true)
+    setUpgradeError(null)
+    
+    try {
+      const customerId = subscription.subscription.stripeCustomerId?.id || subscription.subscription.stripeCustomerId
+      const subscriptionId = subscription.subscription.stripeSubscriptionId
+      const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
+
+      const res = await fetch('/api/billing/confirm-upgrade', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          subscriptionId,
+          annualPriceId,
+        }),
+      })
+      
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'upgrade_failed')
+
+      // Si un payment intent nécessite une confirmation
+      if (json.paymentIntentClientSecret) {
+        const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+        if (!stripe) throw new Error('stripe_js_failed')
+        const { error: confirmErr } = await stripe.confirmCardPayment(json.paymentIntentClientSecret)
+        if (confirmErr) throw confirmErr
+      }
+
+      setUpgradeSuccess(true)
+      setTimeout(() => {
+        window.location.reload()
+      }, 1500)
+    } catch (e: any) {
+      setUpgradeError(e.message)
+    } finally {
+      setUpgradeLoading(false)
+    }
+  }
+
   const handleManageSubscription = async () => {
     if (!user) {
       alert('Vous devez être connecté')
@@ -101,23 +199,24 @@ export default function BillingPage() {
           customerId = customerId.id
           console.log('Extracted ID from object:', customerId)
         } else {
-          console.error('No id property found in customer object')
-          throw new Error('Format de customer ID invalide')
+          console.error('No id property found in customer object:', customerId)
+          throw new Error('Format de customer ID invalide - pas de propriété id')
         }
       }
 
-      // Forcer la conversion en string si nécessaire
-      if (customerId) {
-        customerId = String(customerId)
-        console.log('Converted to string:', customerId)
+      // Vérifier que c'est bien une string valide
+      if (!customerId || typeof customerId !== 'string' || !customerId.startsWith('cus_')) {
+        console.error('Invalid customerId after extraction:', customerId)
+        throw new Error('Customer ID invalide après extraction')
       }
 
-      if (!customerId || typeof customerId !== 'string') {
-        console.error('Invalid customerId:', customerId)
-        throw new Error('Aucun abonnement trouvé. Veuillez d\'abord souscrire à un plan.')
+      console.log('Final customer ID to use:', customerId, 'Type:', typeof customerId)
+      
+      // Vérification finale avant envoi
+      if (typeof customerId !== 'string') {
+        console.error('Customer ID is not a string before sending:', customerId)
+        throw new Error('Customer ID doit être une string avant envoi')
       }
-
-      console.log('Final customer ID to use:', customerId)
 
       // Rediriger vers le portail client Stripe
       const response = await fetch('/api/stripe/portal', {
@@ -160,8 +259,8 @@ export default function BillingPage() {
       if (plan === 'plus') {
         // Utiliser le Price ID selon le cycle de facturation
         priceId = billingCycle === 'monthly' 
-          ? 'price_1SHN9sAjfdK87nxfDtC0syHP'  // Plan mensuel 20€
-          : 'price_1SHPkyAjfdK87nxfg27fDQvI'  // Plan annuel 100€
+          ? process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID  // Plan mensuel 20€
+          : process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID  // Plan annuel 100€
       } else {
         // Plan Enterprise - redirection vers email (pas de Stripe)
         window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'
@@ -409,16 +508,22 @@ export default function BillingPage() {
             <div className="pt-4 border-t border-gray-200 mt-auto">
               <Button 
                 className="w-full bg-primary text-white hover:bg-primary/90" 
-                onClick={() => handleSubscribe('plus')}
-                disabled={isLoading !== null || subscription.plan === 'plus' || subscription.isLoading}
+                onClick={subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd && subscription.billingCycle === 'monthly' ? handleUpgradeToAnnual : () => handleSubscribe('plus')}
+                disabled={isLoading !== null || subscription.isLoading || upgradeLoading || (subscription.plan === 'plus' && subscription.cancelAtPeriodEnd) || (subscription.plan === 'plus' && subscription.billingCycle === 'yearly')}
               >
                 {subscription.isLoading
                   ? 'Vérification...'
                   : subscription.plan === 'plus' 
-                    ? '✓ Plan actuel' 
+                    ? subscription.cancelAtPeriodEnd 
+                      ? '✓ Plan actuel (annulé)'
+                      : subscription.billingCycle === 'yearly'
+                        ? '✓ Plan actuel (annuel)'
+                        : '✓ Plan actuel (mensuel)'
                     : isLoading === 'plus' 
                       ? 'Chargement...' 
-                      : 'Souscrire à Plus'
+                      : upgradeLoading
+                        ? 'Calcul...'
+                        : 'Souscrire à Plus'
                 }
               </Button>
             </div>
@@ -481,48 +586,6 @@ export default function BillingPage() {
         </Card>
       </div>
 
-      {/* Section de gestion de l'abonnement existant */}
-      {subscription.plan !== 'free' && subscription.isActive && (
-        <div className="mt-8">
-          <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold text-[#282828] mb-2">
-                    🎉 Abonnement {subscription.plan === 'plus' ? 'Plus' : 'Enterprise'} actif
-                  </h3>
-                  <p className="text-gray-600 mb-2">
-                    Votre abonnement sera automatiquement renouvelé
-                    {subscription.renewalDate ? (
-                      <span className="font-medium">
-                        {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-500 ml-1">
-                        (Date non disponible)
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Gérez vos paiements, téléchargez vos factures et modifiez votre abonnement
-                  </p>
-                </div>
-                <Button
-                  onClick={handleManageSubscription}
-                  disabled={isLoading === 'manage'}
-                  className="bg-primary text-white hover:bg-primary/90"
-                >
-                  {isLoading === 'manage' ? 'Ouverture...' : 'Gérer l\'abonnement'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Section d'aide */}
       <div className="mt-12 text-center">
@@ -540,6 +603,57 @@ export default function BillingPage() {
           {' '}pour une recommandation personnalisée basée sur vos besoins.
         </p>
       </div>
+
+      {/* Modal d'upgrade vers annuel */}
+      {upgradeModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Confirmer l'upgrade vers l'annuel
+            </h3>
+            
+            {upgradeLoading && <p className="mt-3 text-sm opacity-70">Calcul de la proration…</p>}
+            {upgradeError && <p className="mt-3 text-sm text-red-600">{upgradeError}</p>}
+            
+            {upgradePreview && (
+              <div className="mt-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>Crédit proration</span>
+                  <span className="text-green-600">-{formatCents(upgradePreview.prorationCredit)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Ajustement</span>
+                  <span>{formatCents(upgradePreview.newCharge)}</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t pt-2">
+                  <span>À payer maintenant</span>
+                  <span>{formatCents(upgradePreview.amountDue)}</span>
+                </div>
+                <p className="mt-2 text-xs opacity-70">
+                  L'annuel remplace le mensuel immédiatement. La différence est calculée au prorata.
+                </p>
+              </div>
+            )}
+            
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setUpgradeModalOpen(false)}
+                className="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                disabled={upgradeLoading}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmUpgrade}
+                className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors duration-150 disabled:opacity-50"
+                disabled={upgradeLoading || !!upgradeError}
+              >
+                {upgradeSuccess ? 'Fait ✅' : upgradeLoading ? 'Traitement…' : 'Confirmer l\'upgrade'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Page>
   )
 }

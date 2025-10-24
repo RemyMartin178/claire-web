@@ -53,13 +53,21 @@ export async function POST(request: NextRequest) {
     const db = getFirestore()
     const userRef = db.collection('users').doc(userId)
 
-    await userRef.update({
-      'subscription.currentPeriodStart': currentPeriodStartSec ? new Date(currentPeriodStartSec * 1000) : undefined,
-      'subscription.currentPeriodEnd': currentPeriodEndSec ? new Date(currentPeriodEndSec * 1000) : undefined,
+    const updateData: any = {
       'subscription.status': status,
       'subscription.cancelAtPeriodEnd': cancelAtPeriodEnd,
       'subscription.updatedAt': FieldValue.serverTimestamp(),
-    })
+    }
+
+    // Ajouter les dates seulement si elles existent
+    if (currentPeriodStartSec) {
+      updateData['subscription.currentPeriodStart'] = new Date(currentPeriodStartSec * 1000)
+    }
+    if (currentPeriodEndSec) {
+      updateData['subscription.currentPeriodEnd'] = new Date(currentPeriodEndSec * 1000)
+    }
+
+    await userRef.update(updateData)
 
     const fixedDate = currentPeriodEndSec ? new Date(currentPeriodEndSec * 1000) : new Date()
 

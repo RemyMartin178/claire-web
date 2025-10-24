@@ -169,8 +169,8 @@ FIREBASE_CLIENT_EMAIL=...
 ```
 
 ### Price IDs Stripe
-- Mensuel : `price_1SHN9sAjfdK87nxfDtC0syHP`
-- Annuel : `price_1SHPkyAjfdK87nxfg27fDQvI`
+- Mensuel : `NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID` → `price_1SHN9sAjfdK87nxfDtC0syHP`
+- Annuel : `NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID` → `price_1SLhBVAjfdK87nxfnDj2UcLJ`
 
 ## 🧪 Test
 
