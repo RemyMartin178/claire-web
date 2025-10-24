@@ -88,11 +88,21 @@ export default function BillingPage() {
       }
 
       const subscriptionData = await subscriptionResponse.json()
-      const customerId = subscriptionData.subscription?.stripeCustomerId
+      console.log('Subscription data:', subscriptionData)
+      
+      // Extraire le customer ID (peut être un objet ou une string)
+      let customerId = subscriptionData.subscription?.stripeCustomerId
+      
+      // Si c'est un objet, extraire l'ID
+      if (customerId && typeof customerId === 'object' && customerId.id) {
+        customerId = customerId.id
+      }
 
       if (!customerId) {
         throw new Error('Aucun abonnement trouvé. Veuillez d\'abord souscrire à un plan.')
       }
+
+      console.log('Customer ID to use:', customerId)
 
       // Rediriger vers le portail client Stripe
       const response = await fetch('/api/stripe/portal', {

@@ -24,6 +24,14 @@ export async function POST(request: NextRequest) {
 
     console.log('Creating portal session for customer:', customerId)
 
+    // Vérifier que le customer ID est valide
+    if (typeof customerId !== 'string' || !customerId.startsWith('cus_')) {
+      return NextResponse.json(
+        { error: 'Invalid customer ID format' },
+        { status: 400 }
+      )
+    }
+
     // Create Stripe Customer Portal Session
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
