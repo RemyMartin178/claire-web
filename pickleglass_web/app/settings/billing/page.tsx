@@ -106,6 +106,12 @@ export default function BillingPage() {
         }
       }
 
+      // Forcer la conversion en string si nécessaire
+      if (customerId) {
+        customerId = String(customerId)
+        console.log('Converted to string:', customerId)
+      }
+
       if (!customerId || typeof customerId !== 'string') {
         console.error('Invalid customerId:', customerId)
         throw new Error('Aucun abonnement trouvé. Veuillez d\'abord souscrire à un plan.')

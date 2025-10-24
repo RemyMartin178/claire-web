@@ -24,11 +24,17 @@ export async function POST(request: NextRequest) {
 
     console.log('Creating portal session for customer:', customerId, 'Type:', typeof customerId)
 
+    // Forcer la conversion en string si nécessaire
+    if (customerId) {
+      customerId = String(customerId)
+      console.log('Converted customerId to string:', customerId)
+    }
+
     // Vérifier que le customer ID est valide
-    if (typeof customerId !== 'string') {
-      console.error('Customer ID is not a string:', customerId)
+    if (typeof customerId !== 'string' || !customerId) {
+      console.error('Customer ID is not a valid string:', customerId)
       return NextResponse.json(
-        { error: 'Customer ID must be a string' },
+        { error: 'Customer ID must be a valid string' },
         { status: 400 }
       )
     }
