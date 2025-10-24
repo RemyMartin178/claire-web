@@ -92,17 +92,26 @@ export default function BillingPage() {
       
       // Extraire le customer ID (peut être un objet ou une string)
       let customerId = subscriptionData.subscription?.stripeCustomerId
+      console.log('Raw customerId:', customerId, 'Type:', typeof customerId)
       
       // Si c'est un objet, extraire l'ID
-      if (customerId && typeof customerId === 'object' && customerId.id) {
-        customerId = customerId.id
+      if (customerId && typeof customerId === 'object') {
+        console.log('CustomerId is object, keys:', Object.keys(customerId))
+        if (customerId.id) {
+          customerId = customerId.id
+          console.log('Extracted ID from object:', customerId)
+        } else {
+          console.error('No id property found in customer object')
+          throw new Error('Format de customer ID invalide')
+        }
       }
 
-      if (!customerId) {
+      if (!customerId || typeof customerId !== 'string') {
+        console.error('Invalid customerId:', customerId)
         throw new Error('Aucun abonnement trouvé. Veuillez d\'abord souscrire à un plan.')
       }
 
-      console.log('Customer ID to use:', customerId)
+      console.log('Final customer ID to use:', customerId)
 
       // Rediriger vers le portail client Stripe
       const response = await fetch('/api/stripe/portal', {

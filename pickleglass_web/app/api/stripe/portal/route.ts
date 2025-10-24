@@ -22,12 +22,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('Creating portal session for customer:', customerId)
+    console.log('Creating portal session for customer:', customerId, 'Type:', typeof customerId)
 
     // Vérifier que le customer ID est valide
-    if (typeof customerId !== 'string' || !customerId.startsWith('cus_')) {
+    if (typeof customerId !== 'string') {
+      console.error('Customer ID is not a string:', customerId)
       return NextResponse.json(
-        { error: 'Invalid customer ID format' },
+        { error: 'Customer ID must be a string' },
+        { status: 400 }
+      )
+    }
+
+    if (!customerId.startsWith('cus_')) {
+      console.error('Customer ID does not start with cus_:', customerId)
+      return NextResponse.json(
+        { error: 'Invalid customer ID format - must start with cus_' },
         { status: 400 }
       )
     }
