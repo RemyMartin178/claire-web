@@ -84,7 +84,7 @@ export default function BillingPage() {
   // Fonction pour gérer l'upgrade vers annuel
   const handleUpgradeToAnnual = async () => {
     // Vérifier que l'utilisateur est sur le plan mensuel et actif
-    if (subscription.plan !== 'plus' || !subscription.isActive || subscription.cancelAtPeriodEnd || !subscription.subscription?.stripeSubscriptionId) {
+    if (subscription.plan !== 'plus' || !subscription.isActive || subscription.cancelAtPeriodEnd || !subscription.stripeSubscriptionId) {
       return
     }
 
@@ -99,8 +99,8 @@ export default function BillingPage() {
     setUpgradeError(null)
     
     try {
-      const customerId = subscription.subscription.stripeCustomerId?.id || subscription.subscription.stripeCustomerId
-      const subscriptionId = subscription.subscription.stripeSubscriptionId
+      const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
+      const subscriptionId = subscription.stripeSubscriptionId
       const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
 
       const res = await fetch('/api/billing/preview-upgrade', {
@@ -129,8 +129,8 @@ export default function BillingPage() {
     setUpgradeError(null)
     
     try {
-      const customerId = subscription.subscription.stripeCustomerId?.id || subscription.subscription.stripeCustomerId
-      const subscriptionId = subscription.subscription.stripeSubscriptionId
+      const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
+      const subscriptionId = subscription.stripeSubscriptionId
       const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
 
       const res = await fetch('/api/billing/confirm-upgrade', {

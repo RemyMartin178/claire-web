@@ -11,6 +11,7 @@ export interface SubscriptionStatus {
   billingCycle?: 'monthly' | 'yearly'
   cancelAtPeriodEnd?: boolean
   stripeSubscriptionId?: string
+  stripeCustomerId?: string | { id: string }
 }
 
 export const useSubscription = (): SubscriptionStatus => {
@@ -32,7 +33,8 @@ export const useSubscription = (): SubscriptionStatus => {
                renewalDate: parsed.renewalDate ? new Date(parsed.renewalDate) : undefined,
                billingCycle: parsed.billingCycle || undefined,
                cancelAtPeriodEnd: parsed.cancelAtPeriodEnd || false,
-               stripeSubscriptionId: parsed.stripeSubscriptionId || undefined
+               stripeSubscriptionId: parsed.stripeSubscriptionId || undefined,
+               stripeCustomerId: parsed.stripeCustomerId || undefined
              }
           }
         } catch (e) {
@@ -48,7 +50,8 @@ export const useSubscription = (): SubscriptionStatus => {
        renewalDate: undefined,
        billingCycle: undefined,
        cancelAtPeriodEnd: false,
-       stripeSubscriptionId: undefined
+       stripeSubscriptionId: undefined,
+       stripeCustomerId: undefined
      }
   })
 
@@ -63,7 +66,8 @@ export const useSubscription = (): SubscriptionStatus => {
            renewalDate: undefined,
            billingCycle: undefined,
            cancelAtPeriodEnd: false,
-           stripeSubscriptionId: undefined
+           stripeSubscriptionId: undefined,
+           stripeCustomerId: undefined
          })
          return
        }
@@ -172,7 +176,8 @@ export const useSubscription = (): SubscriptionStatus => {
             renewalDate: renewalDate,
             billingCycle: billingCycle,
             cancelAtPeriodEnd: cancelAtPeriodEnd,
-            stripeSubscriptionId: data.subscription?.stripeSubscriptionId
+            stripeSubscriptionId: data.subscription?.stripeSubscriptionId,
+            stripeCustomerId: data.subscription?.stripeCustomerId
           }
           setSubscription(newSubscription)
           
@@ -208,7 +213,8 @@ export const useSubscription = (): SubscriptionStatus => {
            renewalDate: undefined,
            billingCycle: undefined,
            cancelAtPeriodEnd: false,
-           stripeSubscriptionId: undefined
+           stripeSubscriptionId: undefined,
+           stripeCustomerId: undefined
          })
        }
     }
