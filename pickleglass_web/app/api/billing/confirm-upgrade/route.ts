@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-
 export async function POST(req: Request) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json({ error: "Stripe not configured" }, { status: 500 });
+    }
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
     const { customerId, subscriptionId, annualPriceId } = await req.json();
     if (!customerId || !subscriptionId || !annualPriceId) {
       return NextResponse.json({ error: "missing params" }, { status: 400 });
