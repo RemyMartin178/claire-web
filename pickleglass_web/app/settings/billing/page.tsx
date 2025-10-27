@@ -26,6 +26,16 @@ export default function BillingPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly')
 
+  // Payment modal state
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [paymentLoading, setPaymentLoading] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<any>(null)
+
+  // États séparés pour les sections mensuelle et annuelle
+  const [monthlyLoading, setMonthlyLoading] = useState(false)
+  const [yearlyLoading, setYearlyLoading] = useState(false)
+
   // Vérifier si on doit afficher la facturation mensuelle (par défaut = annuel)
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -81,6 +91,76 @@ export default function BillingPage() {
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(v)
   }
 
+  // Fonction pour gérer les clics dans la section mensuelle
+  const handleMonthlyClick = () => {
+    if (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd) {
+      if (subscription.billingCycle === 'monthly') {
+        // Utilisateur sur plan mensuel actif - bouton non cliquable
+        return
+      } else if (subscription.billingCycle === 'yearly') {
+        // Utilisateur sur plan annuel - peut souscrire au mensuel
+        setMonthlyLoading(true)
+        handleSubscribe('plus').finally(() => setMonthlyLoading(false))
+      }
+    } else {
+      // Utilisateur sans abonnement ou abonnement inactif
+      setMonthlyLoading(true)
+      handleSubscribe('plus').finally(() => setMonthlyLoading(false))
+    }
+  }
+
+  // Fonction pour gérer les clics dans la section annuelle
+  const handleYearlyClick = () => {
+    if (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd) {
+      if (subscription.billingCycle === 'yearly') {
+        // Utilisateur sur plan annuel actif - bouton non cliquable
+        return
+      } else if (subscription.billingCycle === 'monthly') {
+        // Utilisateur sur plan mensuel - upgrade vers annuel
+        setYearlyLoading(true)
+        handleUpgradeToAnnual().finally(() => setYearlyLoading(false))
+      }
+    } else {
+      // Utilisateur sans abonnement ou abonnement inactif
+      setYearlyLoading(true)
+      handleSubscribe('plus').finally(() => setYearlyLoading(false))
+    }
+  }
+
+  // Fonction pour déterminer le texte du bouton mensuel
+  const getMonthlyButtonText = () => {
+    if (subscription.isLoading) return 'Vérification...'
+    if (subscription.plan === 'plus') {
+      if (subscription.cancelAtPeriodEnd) return '✓ Plan actuel (annulé)'
+      if (subscription.billingCycle === 'monthly') return '✓ Plan actuel'
+      if (subscription.billingCycle === 'yearly') return 'Souscrire à Plus'
+    }
+    return monthlyLoading ? 'Chargement...' : 'Souscrire à Plus'
+  }
+
+  // Fonction pour déterminer le texte du bouton annuel
+  const getYearlyButtonText = () => {
+    if (subscription.isLoading) return 'Vérification...'
+    if (subscription.plan === 'plus') {
+      if (subscription.cancelAtPeriodEnd) return '✓ Plan actuel (annulé)'
+      if (subscription.billingCycle === 'yearly') return '✓ Plan actuel'
+      if (subscription.billingCycle === 'monthly') return 'Passer au plan supérieur'
+    }
+    return yearlyLoading ? 'Chargement...' : 'Souscrire à Plus'
+  }
+
+  // Fonction pour déterminer si le bouton mensuel est désactivé
+  const isMonthlyButtonDisabled = () => {
+    return monthlyLoading || subscription.isLoading || upgradeLoading || 
+           (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd && subscription.billingCycle === 'monthly')
+  }
+
+  // Fonction pour déterminer si le bouton annuel est désactivé
+  const isYearlyButtonDisabled = () => {
+    return yearlyLoading || subscription.isLoading || upgradeLoading || 
+           (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd && subscription.billingCycle === 'yearly')
+  }
+
   // Fonction pour gérer l'upgrade vers annuel
   const handleUpgradeToAnnual = async () => {
     // Vérifier que l'utilisateur est sur le plan mensuel et actif
@@ -94,16 +174,63 @@ export default function BillingPage() {
       return
     }
 
-    setUpgradeModalOpen(true)
-    setUpgradeLoading(true)
-    setUpgradeError(null)
+    setPaymentModalOpen(true)
+    setPaymentLoading(true)
+    setPaymentError(null)
     
     try {
       const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
       const subscriptionId = subscription.stripeSubscriptionId
       const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
 
-      const res = await fetch('/api/billing/preview-upgrade', {
+      // Récupérer le preview de proration
+      const previewRes = await fetch('/api/billing/preview-upgrade', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          customerId,
+          subscriptionId,
+          annualPriceId,
+        }),
+      })
+      
+      const previewJson = await previewRes.json()
+      if (!previewRes.ok) throw new Error(previewJson.error || 'preview_failed')
+      setUpgradePreview(previewJson)
+
+      // Récupérer la méthode de paiement par défaut
+      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+      if (!stripe) throw new Error('Stripe not loaded')
+
+      // Récupérer les méthodes de paiement du client
+      const paymentMethodsRes = await fetch('/api/stripe/payment-methods', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ customerId }),
+      })
+      
+      const paymentMethodsData = await paymentMethodsRes.json()
+      if (!paymentMethodsRes.ok) throw new Error(paymentMethodsData.error || 'Failed to get payment methods')
+      
+      setPaymentMethod(paymentMethodsData.paymentMethod)
+    } catch (e: any) {
+      setPaymentError(e.message)
+    } finally {
+      setPaymentLoading(false)
+    }
+  }
+
+  // Fonction pour confirmer le paiement direct
+  const confirmDirectPayment = async () => {
+    setPaymentLoading(true)
+    setPaymentError(null)
+    
+    try {
+      const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
+      const subscriptionId = subscription.stripeSubscriptionId
+      const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
+
+      const res = await fetch('/api/billing/confirm-upgrade', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -114,12 +241,28 @@ export default function BillingPage() {
       })
       
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'preview_failed')
-      setUpgradePreview(json)
+      if (!res.ok) throw new Error(json.error || 'upgrade_failed')
+
+      // Si un paiement est requis, confirmer avec Stripe
+      if (json.paymentIntentClientSecret) {
+        const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+        if (!stripe) throw new Error('Stripe not loaded')
+
+        const { error } = await stripe.confirmCardPayment(json.paymentIntentClientSecret)
+        if (error) throw new Error(error.message)
+      }
+
+      setUpgradeSuccess(true)
+      setPaymentModalOpen(false)
+      
+      // Recharger la page pour mettre à jour l'état
+      setTimeout(() => {
+        window.location.reload()
+      }, 2000)
     } catch (e: any) {
-      setUpgradeError(e.message)
+      setPaymentError(e.message)
     } finally {
-      setUpgradeLoading(false)
+      setPaymentLoading(false)
     }
   }
 
@@ -508,23 +651,10 @@ export default function BillingPage() {
             <div className="pt-4 border-t border-gray-200 mt-auto">
               <Button 
                 className="w-full bg-primary text-white hover:bg-primary/90" 
-                onClick={subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd && subscription.billingCycle === 'monthly' ? handleUpgradeToAnnual : () => handleSubscribe('plus')}
-                disabled={isLoading !== null || subscription.isLoading || upgradeLoading || (subscription.plan === 'plus' && subscription.cancelAtPeriodEnd) || (subscription.plan === 'plus' && subscription.billingCycle === 'yearly')}
+                onClick={billingCycle === 'monthly' ? handleMonthlyClick : handleYearlyClick}
+                disabled={billingCycle === 'monthly' ? isMonthlyButtonDisabled() : isYearlyButtonDisabled()}
               >
-                {subscription.isLoading
-                  ? 'Vérification...'
-                  : subscription.plan === 'plus' 
-                    ? subscription.cancelAtPeriodEnd 
-                      ? '✓ Plan actuel (annulé)'
-                      : subscription.billingCycle === 'yearly'
-                        ? '✓ Plan actuel (annuel)'
-                        : '✓ Plan actuel (mensuel)'
-                    : isLoading === 'plus' 
-                      ? 'Chargement...' 
-                      : upgradeLoading
-                        ? 'Calcul...'
-                        : 'Souscrire à Plus'
-                }
+                {billingCycle === 'monthly' ? getMonthlyButtonText() : getYearlyButtonText()}
               </Button>
             </div>
           </CardContent>
@@ -649,6 +779,76 @@ export default function BillingPage() {
                 disabled={upgradeLoading || !!upgradeError}
               >
                 {upgradeSuccess ? 'Fait ✅' : upgradeLoading ? 'Traitement…' : 'Confirmer l\'upgrade'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de paiement direct */}
+      {paymentModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Confirmer l'upgrade vers l'annuel
+            </h3>
+            
+            {paymentLoading && <p className="mt-3 text-sm opacity-70">Calcul de la proration…</p>}
+            {paymentError && <p className="mt-3 text-sm text-red-600">{paymentError}</p>}
+            
+            {upgradePreview && (
+              <div className="mt-4 space-y-3 text-sm">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="flex justify-between mb-2">
+                    <span>Prix de base (annuel)</span>
+                    <span className="font-medium">{formatCents(upgradePreview.newCharge)}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span>Crédit proration</span>
+                    <span className="text-green-600">-{formatCents(upgradePreview.prorationCredit)}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span>Taxe (20%)</span>
+                    <span>{formatCents(Math.round(upgradePreview.amountDue * 0.2))}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold border-t pt-2">
+                    <span>Montant total</span>
+                    <span className="text-lg">{formatCents(Math.round(upgradePreview.amountDue * 1.2))}</span>
+                  </div>
+                </div>
+                
+                {paymentMethod && (
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-600 mb-1">Carte bancaire utilisée :</p>
+                    <p className="font-medium">
+                      •••• •••• •••• {paymentMethod.card?.last4} ({paymentMethod.card?.brand?.toUpperCase()})
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Expire {paymentMethod.card?.exp_month}/{paymentMethod.card?.exp_year}
+                    </p>
+                  </div>
+                )}
+                
+                <p className="mt-2 text-xs opacity-70">
+                  L'annuel remplace le mensuel immédiatement. La différence est calculée au prorata.
+                </p>
+              </div>
+            )}
+            
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setPaymentModalOpen(false)}
+                className="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                disabled={paymentLoading}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={confirmDirectPayment}
+                className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors duration-150 disabled:opacity-50"
+                disabled={paymentLoading || !!paymentError}
+              >
+                {paymentLoading ? 'Traitement…' : 'Payer'}
               </button>
             </div>
           </div>
