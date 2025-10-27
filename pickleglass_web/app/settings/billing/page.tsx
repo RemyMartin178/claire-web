@@ -175,6 +175,12 @@ export default function BillingPage() {
     }
 
     setPaymentModalOpen(true)
+    
+    // Si on a déjà calculé la proration dans cette session, ne pas recalculer
+    if (upgradePreview && paymentMethod) {
+      return
+    }
+
     setPaymentLoading(true)
     setPaymentError(null)
     
@@ -788,7 +794,7 @@ export default function BillingPage() {
       {/* Modal de paiement direct */}
       {paymentModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-gray-900">
                 Confirmer les changements de forfait
@@ -804,65 +810,60 @@ export default function BillingPage() {
             </div>
             
             {paymentLoading ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="relative w-16 h-16 mb-4">
-                  <div className="absolute top-0 left-0 w-full h-full border-4 border-gray-200 rounded-full"></div>
-                  <div className="absolute top-0 left-0 w-full h-full border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="relative w-8 h-8 mb-3">
+                  <div className="absolute top-0 left-0 w-full h-full border-2 border-gray-200 rounded-full"></div>
+                  <div className="absolute top-0 left-0 w-full h-full border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                 </div>
-                <p className="text-gray-600 font-medium">Veuillez patienter...</p>
-                <p className="text-sm text-gray-500 mt-2">Calcul de la proration en cours</p>
+                <p className="text-sm text-gray-600">Veuillez patienter...</p>
               </div>
             ) : paymentError ? (
               <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
                 ❌ {paymentError}
               </div>
             ) : upgradePreview ? (
-              <div className="space-y-4">
-                {/* Abonnement */}
-                <div>
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <p className="font-semibold text-gray-900">Abonnement Claire Plus</p>
-                      <p className="text-sm text-gray-500">Facturé annuellement, à partir d'aujourd'hui</p>
-                    </div>
-                    <p className="font-semibold text-gray-900">{formatCents(upgradePreview.newCharge)}</p>
+              <div className="space-y-3">
+                {/* Abonnement Claire Plus */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Abonnement Claire Plus</p>
+                    <p className="text-xs text-gray-500">Facturé annuellement, à partir d'aujourd'hui</p>
                   </div>
+                  <p className="text-sm font-semibold text-gray-900">{formatCents(upgradePreview.newCharge)}</p>
                 </div>
 
                 {/* Ajustement */}
-                <div>
-                  <div className="flex justify-between items-start mb-1">
-                    <div>
-                      <p className="font-semibold text-gray-900">Ajustement</p>
-                      <p className="text-sm text-gray-500">Crédit au prorata pour le reste de votre abonnement plus</p>
-                    </div>
-                    <p className="font-semibold text-green-600">-{formatCents(upgradePreview.prorationCredit)}</p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Ajustement</p>
+                    <p className="text-xs text-gray-500">Crédit au prorata pour le reste de votre abonnement plus</p>
                   </div>
+                  <p className="text-sm font-semibold text-green-600">-{formatCents(upgradePreview.prorationCredit)}</p>
                 </div>
 
                 {/* Sous-total */}
                 <div className="flex justify-between pt-3 border-t border-gray-200">
-                  <p className="font-medium text-gray-900">Sous-total</p>
-                  <p className="font-medium text-gray-900">{formatCents(upgradePreview.amountDue)}</p>
+                  <p className="text-sm text-gray-900">Sous-total</p>
+                  <p className="text-sm font-medium text-gray-900">{formatCents(upgradePreview.amountDue)}</p>
                 </div>
 
                 {/* Taxes */}
                 <div className="flex justify-between">
-                  <p className="text-gray-900">Taxes<span className="text-gray-500">20 %</span></p>
-                  <p className="text-gray-900">{formatCents(Math.round(upgradePreview.amountDue * 0.2))}</p>
+                  <p className="text-sm text-gray-900">Taxes<span className="text-xs text-gray-500">20 %</span></p>
+                  <p className="text-sm font-medium text-gray-900">{formatCents(Math.round(upgradePreview.amountDue * 0.2))}</p>
                 </div>
 
-                {/* Total */}
+                {/* Total dû aujourd'hui */}
                 <div className="flex justify-between pt-3 border-t border-gray-200">
-                  <p className="font-semibold text-gray-900">Total dû aujourd'hui</p>
-                  <p className="font-semibold text-gray-900 text-lg">{formatCents(Math.round(upgradePreview.amountDue * 1.2))}</p>
+                  <p className="text-sm font-semibold text-gray-900">Total dû aujourd'hui</p>
+                  <p className="text-lg font-semibold text-gray-900">{formatCents(Math.round(upgradePreview.amountDue * 1.2))}</p>
                 </div>
 
                 {/* Mode de paiement */}
                 {paymentMethod && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <p className="font-medium text-gray-900 mb-2">Mode de paiement</p>
-                    <p className="text-gray-900">
+                  <div className="flex justify-between pt-3 border-t border-gray-200">
+                    <p className="text-sm font-semibold text-gray-900">Mode de paiement</p>
+                    <p className="text-sm text-gray-900">
                       {paymentMethod.card?.brand?.toUpperCase()} *{paymentMethod.card?.last4}
                     </p>
                   </div>
@@ -871,17 +872,17 @@ export default function BillingPage() {
             ) : null}
             
             {!paymentLoading && (
-              <div className="mt-6 flex gap-3">
+              <div className="mt-5 flex justify-end gap-2">
                 <button
                   onClick={() => setPaymentModalOpen(false)}
-                  className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                   disabled={paymentLoading}
                 >
                   Annuler
                 </button>
                 <button
                   onClick={confirmDirectPayment}
-                  className="flex-1 px-4 py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={paymentLoading || !!paymentError || !upgradePreview}
                 >
                   Payer maintenant
@@ -894,3 +895,4 @@ export default function BillingPage() {
     </Page>
   )
 }
+

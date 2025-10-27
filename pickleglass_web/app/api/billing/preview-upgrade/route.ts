@@ -34,13 +34,16 @@ export async function POST(req: Request) {
     const timeRemaining = periodEnd - now;
 
     // Calculate proration credits and charges
-    const dailyCurrentPrice = (currentPrice.unit_amount ?? 0) / (periodDuration / 86400);
-    const dailyAnnualPrice = (annualPrice.unit_amount ?? 0) / 365;
+    const annualCharge = annualPrice.unit_amount ?? 0;
+    const monthlyCharge = currentPrice.unit_amount ?? 0;
     
+    // Calculate daily rate for current monthly subscription
+    const dailyCurrentPrice = monthlyCharge / (periodDuration / 86400);
+    
+    // Calculate credit for remaining days
     const creditRemainingDays = timeRemaining / 86400;
     const prorationCredit = Math.round(dailyCurrentPrice * creditRemainingDays);
     
-    const annualCharge = Math.round(dailyAnnualPrice * 365);
     const amountDue = annualCharge - prorationCredit;
 
     return NextResponse.json({
