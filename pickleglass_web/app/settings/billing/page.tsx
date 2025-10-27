@@ -793,43 +793,51 @@ export default function BillingPage() {
               Confirmer l'upgrade vers l'annuel
             </h3>
             
-            {paymentLoading && <p className="mt-3 text-sm opacity-70">Calcul de la proration…</p>}
-            {paymentError && <p className="mt-3 text-sm text-red-600">{paymentError}</p>}
+            {paymentLoading && (
+              <div className="mt-3 text-sm text-gray-900 bg-blue-50 p-3 rounded-lg border border-blue-200">
+                <p className="font-medium">⏳ Calcul de la proration en cours…</p>
+              </div>
+            )}
+            {paymentError && (
+              <div className="mt-3 text-sm text-red-900 bg-red-50 p-3 rounded-lg border border-red-200">
+                <p className="font-medium">❌ {paymentError}</p>
+              </div>
+            )}
             
             {upgradePreview && (
-              <div className="mt-4 space-y-3 text-sm">
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <div className="flex justify-between mb-2">
-                    <span>Prix de base (annuel)</span>
-                    <span className="font-medium">{formatCents(upgradePreview.newCharge)}</span>
+              <div className="mt-4 space-y-3 text-sm text-gray-900">
+                <div className="bg-gray-100 p-4 rounded-lg border border-gray-200">
+                  <div className="flex justify-between mb-3 text-gray-900">
+                    <span className="font-medium">Prix de base (annuel)</span>
+                    <span className="font-semibold">{formatCents(upgradePreview.newCharge)}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span>Crédit proration</span>
-                    <span className="text-green-600">-{formatCents(upgradePreview.prorationCredit)}</span>
+                  <div className="flex justify-between mb-3 text-gray-900">
+                    <span className="font-medium">Crédit proration</span>
+                    <span className="text-green-600 font-semibold">-{formatCents(upgradePreview.prorationCredit)}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span>Taxe (20%)</span>
-                    <span>{formatCents(Math.round(upgradePreview.amountDue * 0.2))}</span>
+                  <div className="flex justify-between mb-3 text-gray-900">
+                    <span className="font-medium">Taxe (20%)</span>
+                    <span className="font-semibold">{formatCents(Math.round(upgradePreview.amountDue * 0.2))}</span>
                   </div>
-                  <div className="flex justify-between font-semibold border-t pt-2">
-                    <span>Montant total</span>
-                    <span className="text-lg">{formatCents(Math.round(upgradePreview.amountDue * 1.2))}</span>
+                  <div className="flex justify-between font-bold border-t-2 border-gray-300 pt-3 text-gray-900">
+                    <span className="text-base">Montant total</span>
+                    <span className="text-lg text-primary">{formatCents(Math.round(upgradePreview.amountDue * 1.2))}</span>
                   </div>
                 </div>
                 
                 {paymentMethod && (
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <p className="text-xs text-gray-600 mb-1">Carte bancaire utilisée :</p>
-                    <p className="font-medium">
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <p className="text-xs text-gray-700 mb-2 font-medium">Carte bancaire utilisée :</p>
+                    <p className="font-semibold text-gray-900 text-base">
                       •••• •••• •••• {paymentMethod.card?.last4} ({paymentMethod.card?.brand?.toUpperCase()})
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-600 mt-1">
                       Expire {paymentMethod.card?.exp_month}/{paymentMethod.card?.exp_year}
                     </p>
                   </div>
                 )}
                 
-                <p className="mt-2 text-xs opacity-70">
+                <p className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
                   L'annuel remplace le mensuel immédiatement. La différence est calculée au prorata.
                 </p>
               </div>
