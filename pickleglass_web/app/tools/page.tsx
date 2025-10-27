@@ -49,13 +49,20 @@ export default function ToolsPage() {
       
       // Get backend URL from runtime config
       const backendUrl = await getBackendUrl()
+      const apiUrl = `${backendUrl}/api/v1/tools`
+      console.log('🔧 Fetching tools from:', apiUrl)
+      
+      const headers = await getApiHeaders()
+      console.log('🔧 Request headers:', headers)
       
       // Try to fetch tools from API
-      const response = await fetch(`${backendUrl}/api/v1/tools`, {
-        headers: await getApiHeaders()
-      })
+      const response = await fetch(apiUrl, { headers })
+      
+      console.log('🔧 Response status:', response.status, response.statusText)
       
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error('❌ Backend error response:', errorText)
         throw new Error('Backend non disponible')
       }
       

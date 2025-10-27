@@ -7,12 +7,16 @@ export async function getBackendUrl(): Promise<string> {
     const response = await fetch('/runtime-config.json')
     if (response.ok) {
       const config = await response.json()
-      return config.API_URL || 'http://localhost:64952'
+      const backendUrl = config.API_URL || 'http://localhost:64952'
+      console.log('📡 Backend URL from runtime config:', backendUrl)
+      return backendUrl
     }
   } catch (error) {
     console.warn('Failed to read runtime config:', error)
   }
   
   // Default fallback
-  return 'http://localhost:64952'
+  const fallbackUrl = 'http://localhost:64952'
+  console.log('📡 Using fallback backend URL:', fallbackUrl)
+  return fallbackUrl
 }
