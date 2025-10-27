@@ -803,18 +803,20 @@ export default function BillingPage() {
               </button>
             </div>
             
-            {paymentLoading && (
-              <div className="mb-4 text-sm text-gray-600 text-center">
-                ⏳ Calcul de la proration en cours…
+            {paymentLoading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="relative w-16 h-16 mb-4">
+                  <div className="absolute top-0 left-0 w-full h-full border-4 border-gray-200 rounded-full"></div>
+                  <div className="absolute top-0 left-0 w-full h-full border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p className="text-gray-600 font-medium">Veuillez patienter...</p>
+                <p className="text-sm text-gray-500 mt-2">Calcul de la proration en cours</p>
               </div>
-            )}
-            {paymentError && (
+            ) : paymentError ? (
               <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
                 ❌ {paymentError}
               </div>
-            )}
-            
-            {upgradePreview && (
+            ) : upgradePreview ? (
               <div className="space-y-4">
                 {/* Abonnement */}
                 <div>
@@ -866,24 +868,26 @@ export default function BillingPage() {
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
             
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setPaymentModalOpen(false)}
-                className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                disabled={paymentLoading}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={confirmDirectPayment}
-                className="flex-1 px-4 py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={paymentLoading || !!paymentError}
-              >
-                {paymentLoading ? 'Traitement…' : 'Payer maintenant'}
-              </button>
-            </div>
+            {!paymentLoading && (
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setPaymentModalOpen(false)}
+                  className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={paymentLoading}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={confirmDirectPayment}
+                  className="flex-1 px-4 py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={paymentLoading || !!paymentError || !upgradePreview}
+                >
+                  Payer maintenant
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
