@@ -45,6 +45,14 @@ function createApp(eventBridge) {
     app.use('/api/presets', require('./routes/presets'));
 
     // New routes for tools and knowledge base
+    // Debug middleware for API calls
+    app.use((req, res, next) => {
+        console.log(`🔍 [${req.method}] ${req.path}`);
+        console.log(`🔍 Headers:`, req.headers);
+        console.log(`🔍 Origin:`, req.get('origin'));
+        next();
+    });
+
     app.use('/api/v1/tools', require('./routes/tools'));
     app.use('/api/v1/knowledge', require('./routes/knowledge'));
 
