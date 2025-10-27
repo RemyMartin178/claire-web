@@ -44,6 +44,10 @@ function createApp(eventBridge) {
     app.use('/api/conversations', require('./routes/conversations'));
     app.use('/api/presets', require('./routes/presets'));
 
+    // New routes for tools and knowledge base
+    app.use('/api/v1/tools', require('./routes/tools'));
+    app.use('/api/v1/knowledge', require('./routes/knowledge'));
+
     app.get('/api/sync/status', (req, res) => {
         res.json({
             status: 'online',
