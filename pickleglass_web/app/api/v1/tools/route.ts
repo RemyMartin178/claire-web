@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
-const BACKEND_URL = process.env.pickleglass_API_URL || 'http://localhost:64952'
+// Get backend URL dynamically from runtime config
+function getBackendUrl(): string {
+  try {
+    // In Electron, config is in temp directory
+    const tempDir = process.env.APPDATA || process.env.TEMP || '/tmp'
+    const configPath = join(tempDir, 'runtime-config.json')
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    return config.API_URL || 'http://localhost:64952'
+  } catch (error) {
+    console.warn('Failed to read runtime config, using default:', error)
+    return 'http://localhost:64952'
+  }
+}
+
+const BACKEND_URL = process.env.pickleglass_API_URL || getBackendUrl()
 
 export async function GET(request: NextRequest) {
   try {
