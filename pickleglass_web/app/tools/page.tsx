@@ -49,6 +49,15 @@ export default function ToolsPage() {
       
       // Get backend URL from runtime config
       const backendUrl = await getBackendUrl()
+      
+      // If in production (app.clairia.app), skip local backend calls
+      if (backendUrl.includes('app.clairia.app')) {
+        console.log('⚠️ Production mode: backend API not yet deployed')
+        setTools([])
+        setError(null) // Don't show error, just show empty state
+        return
+      }
+      
       const apiUrl = `${backendUrl}/api/v1/tools`
       console.log('🔧 Fetching tools from:', apiUrl)
       

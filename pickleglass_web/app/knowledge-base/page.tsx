@@ -64,6 +64,15 @@ export default function KnowledgeBasePage() {
       setError(null)
       
       const backendUrl = await getBackendUrl()
+      
+      // If in production (app.clairia.app), skip local backend calls
+      if (backendUrl.includes('app.clairia.app')) {
+        console.log('⚠️ Production mode: backend API not yet deployed')
+        setDocuments([])
+        setError(null) // Don't show error, just show empty state
+        return
+      }
+      
       const folderParam = selectedFolder ? `?folder_id=${selectedFolder}` : ''
       const response = await fetch(`${backendUrl}/api/v1/knowledge${folderParam}`, {
         headers: await getApiHeaders()
@@ -87,6 +96,14 @@ export default function KnowledgeBasePage() {
   const fetchFolders = async () => {
     try {
       const backendUrl = await getBackendUrl()
+      
+      // If in production (app.clairia.app), skip local backend calls
+      if (backendUrl.includes('app.clairia.app')) {
+        console.log('⚠️ Production mode: backend API not yet deployed')
+        setFolders([])
+        return
+      }
+      
       const response = await fetch(`${backendUrl}/api/v1/knowledge/folders?parent_id=null`, {
         headers: await getApiHeaders()
       })
