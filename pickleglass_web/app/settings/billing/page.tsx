@@ -788,75 +788,100 @@ export default function BillingPage() {
       {/* Modal de paiement direct */}
       {paymentModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Confirmer l'upgrade vers l'annuel
-            </h3>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 animate-in zoom-in-95 slide-in-from-bottom-2 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">
+                Confirmer les changements de forfait
+              </h3>
+              <button
+                onClick={() => setPaymentModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
             
             {paymentLoading && (
-              <div className="mt-3 text-sm text-gray-900 bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <p className="font-medium">⏳ Calcul de la proration en cours…</p>
+              <div className="mb-4 text-sm text-gray-600 text-center">
+                ⏳ Calcul de la proration en cours…
               </div>
             )}
             {paymentError && (
-              <div className="mt-3 text-sm text-red-900 bg-red-50 p-3 rounded-lg border border-red-200">
-                <p className="font-medium">❌ {paymentError}</p>
+              <div className="mb-4 text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                ❌ {paymentError}
               </div>
             )}
             
             {upgradePreview && (
-              <div className="mt-4 space-y-3 text-sm text-gray-900">
-                <div className="bg-gray-100 p-4 rounded-lg border border-gray-200">
-                  <div className="flex justify-between mb-3 text-gray-900">
-                    <span className="font-medium">Prix de base (annuel)</span>
-                    <span className="font-semibold">{formatCents(upgradePreview.newCharge)}</span>
-                  </div>
-                  <div className="flex justify-between mb-3 text-gray-900">
-                    <span className="font-medium">Crédit proration</span>
-                    <span className="text-green-600 font-semibold">-{formatCents(upgradePreview.prorationCredit)}</span>
-                  </div>
-                  <div className="flex justify-between mb-3 text-gray-900">
-                    <span className="font-medium">Taxe (20%)</span>
-                    <span className="font-semibold">{formatCents(Math.round(upgradePreview.amountDue * 0.2))}</span>
-                  </div>
-                  <div className="flex justify-between font-bold border-t-2 border-gray-300 pt-3 text-gray-900">
-                    <span className="text-base">Montant total</span>
-                    <span className="text-lg text-primary">{formatCents(Math.round(upgradePreview.amountDue * 1.2))}</span>
+              <div className="space-y-4">
+                {/* Abonnement */}
+                <div>
+                  <div className="flex justify-between items-start mb-1">
+                    <div>
+                      <p className="font-semibold text-gray-900">Abonnement Claire Plus</p>
+                      <p className="text-sm text-gray-500">Facturé annuellement, à partir d'aujourd'hui</p>
+                    </div>
+                    <p className="font-semibold text-gray-900">{formatCents(upgradePreview.newCharge)}</p>
                   </div>
                 </div>
-                
+
+                {/* Ajustement */}
+                <div>
+                  <div className="flex justify-between items-start mb-1">
+                    <div>
+                      <p className="font-semibold text-gray-900">Ajustement</p>
+                      <p className="text-sm text-gray-500">Crédit au prorata pour le reste de votre abonnement plus</p>
+                    </div>
+                    <p className="font-semibold text-green-600">-{formatCents(upgradePreview.prorationCredit)}</p>
+                  </div>
+                </div>
+
+                {/* Sous-total */}
+                <div className="flex justify-between pt-3 border-t border-gray-200">
+                  <p className="font-medium text-gray-900">Sous-total</p>
+                  <p className="font-medium text-gray-900">{formatCents(upgradePreview.amountDue)}</p>
+                </div>
+
+                {/* Taxes */}
+                <div className="flex justify-between">
+                  <p className="text-gray-900">Taxes<span className="text-gray-500">20 %</span></p>
+                  <p className="text-gray-900">{formatCents(Math.round(upgradePreview.amountDue * 0.2))}</p>
+                </div>
+
+                {/* Total */}
+                <div className="flex justify-between pt-3 border-t border-gray-200">
+                  <p className="font-semibold text-gray-900">Total dû aujourd'hui</p>
+                  <p className="font-semibold text-gray-900 text-lg">{formatCents(Math.round(upgradePreview.amountDue * 1.2))}</p>
+                </div>
+
+                {/* Mode de paiement */}
                 {paymentMethod && (
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <p className="text-xs text-gray-700 mb-2 font-medium">Carte bancaire utilisée :</p>
-                    <p className="font-semibold text-gray-900 text-base">
-                      •••• •••• •••• {paymentMethod.card?.last4} ({paymentMethod.card?.brand?.toUpperCase()})
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Expire {paymentMethod.card?.exp_month}/{paymentMethod.card?.exp_year}
+                  <div className="pt-3 border-t border-gray-200">
+                    <p className="font-medium text-gray-900 mb-2">Mode de paiement</p>
+                    <p className="text-gray-900">
+                      {paymentMethod.card?.brand?.toUpperCase()} *{paymentMethod.card?.last4}
                     </p>
                   </div>
                 )}
-                
-                <p className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                  L'annuel remplace le mensuel immédiatement. La différence est calculée au prorata.
-                </p>
               </div>
             )}
             
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setPaymentModalOpen(false)}
-                className="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                className="flex-1 px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 disabled={paymentLoading}
               >
                 Annuler
               </button>
               <button
                 onClick={confirmDirectPayment}
-                className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors duration-150 disabled:opacity-50"
+                className="flex-1 px-4 py-3 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={paymentLoading || !!paymentError}
               >
-                {paymentLoading ? 'Traitement…' : 'Payer'}
+                {paymentLoading ? 'Traitement…' : 'Payer maintenant'}
               </button>
             </div>
           </div>
