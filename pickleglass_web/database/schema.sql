@@ -68,17 +68,32 @@ END;
 $$ language 'plpgsql';
 
 -- Triggers to automatically update updated_at
-DROP TRIGGER IF EXISTS update_knowledge_documents_updated_at ON knowledge_documents;
-CREATE TRIGGER update_knowledge_documents_updated_at BEFORE UPDATE ON knowledge_documents
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_knowledge_documents_updated_at'
+    ) THEN
+        CREATE TRIGGER update_knowledge_documents_updated_at 
+            BEFORE UPDATE ON knowledge_documents
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-DROP TRIGGER IF EXISTS update_knowledge_folders_updated_at ON knowledge_folders;
-CREATE TRIGGER update_knowledge_folders_updated_at BEFORE UPDATE ON knowledge_folders
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_knowledge_folders_updated_at'
+    ) THEN
+        CREATE TRIGGER update_knowledge_folders_updated_at 
+            BEFORE UPDATE ON knowledge_folders
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
 
-DROP TRIGGER IF EXISTS update_tools_updated_at ON tools;
-CREATE TRIGGER update_tools_updated_at BEFORE UPDATE ON tools
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger WHERE tgname = 'update_tools_updated_at'
+    ) THEN
+        CREATE TRIGGER update_tools_updated_at 
+            BEFORE UPDATE ON tools
+            FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$;
 
 -- Insert default tools
 INSERT INTO tools (tool_name, display_name, description, icon, category, is_enabled) VALUES
