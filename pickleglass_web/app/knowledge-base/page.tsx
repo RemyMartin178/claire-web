@@ -16,6 +16,7 @@ import {
   BookOpen
 } from 'lucide-react'
 import { getApiHeaders, createKnowledgeFolder, type Folder } from '@/utils/api'
+import { getBackendUrl } from '@/utils/backend-url'
 import { Page, PageHeader } from '@/components/Page'
 import { PremiumGate } from '@/components/PremiumGate'
 import GuestGate from '@/components/GuestGate'
@@ -62,8 +63,9 @@ export default function KnowledgeBasePage() {
       setLoading(true)
       setError(null)
       
+      const backendUrl = await getBackendUrl()
       const folderParam = selectedFolder ? `?folder_id=${selectedFolder}` : ''
-      const response = await fetch(`/api/v1/knowledge${folderParam}`, {
+      const response = await fetch(`${backendUrl}/api/v1/knowledge${folderParam}`, {
         headers: await getApiHeaders()
       })
       
@@ -84,7 +86,8 @@ export default function KnowledgeBasePage() {
 
   const fetchFolders = async () => {
     try {
-      const response = await fetch('/api/v1/knowledge/folders?parent_id=null', {
+      const backendUrl = await getBackendUrl()
+      const response = await fetch(`${backendUrl}/api/v1/knowledge/folders?parent_id=null`, {
         headers: await getApiHeaders()
       })
       

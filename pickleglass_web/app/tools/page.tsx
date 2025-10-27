@@ -14,6 +14,7 @@ import {
   Wrench
 } from 'lucide-react'
 import { getApiHeaders } from '@/utils/api'
+import { getBackendUrl } from '@/utils/backend-url'
 import { Page, PageHeader } from '@/components/Page'
 import { PremiumGate } from '@/components/PremiumGate'
 
@@ -46,8 +47,11 @@ export default function ToolsPage() {
       setLoading(true)
       setError(null)
       
+      // Get backend URL from runtime config
+      const backendUrl = await getBackendUrl()
+      
       // Try to fetch tools from API
-      const response = await fetch('/api/v1/tools', {
+      const response = await fetch(`${backendUrl}/api/v1/tools`, {
         headers: await getApiHeaders()
       })
       
