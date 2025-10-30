@@ -52,15 +52,27 @@ export default function ToolsPage() {
       const headers = await getApiHeaders()
       console.log('🔧 Request headers:', headers)
       
-      // Try to fetch tools from API
-      const response = await fetch(apiUrl, { headers })
+      // Try proxy first
+      let response = await fetch(apiUrl, { headers })
       
       console.log('🔧 Response status:', response.status, response.statusText)
       
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('❌ Backend error response:', errorText)
-        throw new Error('Backend non disponible')
+        // Fallback: call backend directly (for static hosting)
+        try {
+          const { getBackendUrl } = await import('@/utils/backend-url')
+          const directUrlBase = await getBackendUrl()
+          const directUrl = `${directUrlBase}/api/v1/tools`
+          console.log('↩️ Fallback direct tools URL:', directUrl)
+          response = await fetch(directUrl, { headers })
+          if (!response.ok) {
+            const errorText = await response.text()
+            console.error('❌ Backend error response (direct):', errorText)
+            throw new Error('Backend non disponible')
+          }
+        } catch (fallbackErr) {
+          throw fallbackErr
+        }
       }
       
       const toolsData = await response.json()

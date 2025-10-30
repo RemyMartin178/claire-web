@@ -63,12 +63,22 @@ export default function KnowledgeBasePage() {
       setError(null)
       
       const folderParam = selectedFolder ? `?folder_id=${selectedFolder}` : ''
-      const response = await fetch(`/api/v1/knowledge${folderParam}`, {
+      let response = await fetch(`/api/v1/knowledge${folderParam}`, {
         headers: await getApiHeaders()
       })
       
       if (!response.ok) {
-        throw new Error('Backend non disponible')
+        // Fallback direct call
+        try {
+          const { getBackendUrl } = await import('@/utils/backend-url')
+          const base = await getBackendUrl()
+          const directUrl = `${base}/api/v1/knowledge${folderParam}`
+          console.log('↩️ Fallback direct knowledge URL:', directUrl)
+          response = await fetch(directUrl, { headers: await getApiHeaders() })
+          if (!response.ok) throw new Error('Backend non disponible')
+        } catch (fallbackErr) {
+          throw fallbackErr
+        }
       }
       
       const documentsData = await response.json()
@@ -84,12 +94,22 @@ export default function KnowledgeBasePage() {
 
   const fetchFolders = async () => {
     try {
-      const response = await fetch(`/api/v1/knowledge/folders?parent_id=null`, {
+      let response = await fetch(`/api/v1/knowledge/folders?parent_id=null`, {
         headers: await getApiHeaders()
       })
       
       if (!response.ok) {
-        throw new Error('Failed to fetch folders')
+        // Fallback direct call
+        try {
+          const { getBackendUrl } = await import('@/utils/backend-url')
+          const base = await getBackendUrl()
+          const directUrl = `${base}/api/v1/knowledge/folders?parent_id=null`
+          console.log('↩️ Fallback direct folders URL:', directUrl)
+          response = await fetch(directUrl, { headers: await getApiHeaders() })
+          if (!response.ok) throw new Error('Failed to fetch folders')
+        } catch (fallbackErr) {
+          throw fallbackErr
+        }
       }
       
       const foldersData = await response.json()
