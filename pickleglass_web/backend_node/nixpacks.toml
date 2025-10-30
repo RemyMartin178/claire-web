@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs"]
 
 [phases.install]
-cmds = ["npm ci"]
+cmds = ["npm install --no-audit --no-fund"]
 
 [phases.build]
 cmds = ["echo 'Backend build complete - no build step needed'"]
