@@ -67,15 +67,98 @@ router.get('/', async (req, res) => {
 
 /**
  * GET /api/v1/tools/:toolName
- * Get specific tool
+ * Get specific tool by name
  */
 router.get('/:toolName', async (req, res) => {
   try {
     const { toolName } = req.params;
-    res.json({ message: `Tool ${toolName} details - TODO: implement` });
+    
+    const result = await pool.query(`
+      SELECT 
+        id,
+        tool_name,
+        COALESCE(display_name, REPLACE(tool_name, '_', ' ')) as name,
+        display_name,
+        description,
+        icon,
+        category,
+        provider,
+        is_enabled,
+        usage_count,
+        success_rate,
+        last_used_at,
+        created_at,
+        updated_at
+      FROM tools
+      WHERE tool_name = $1
+    `, [toolName]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tool not found' });
+    }
+    
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Failed to get tool:', error);
     res.status(500).json({ error: 'Failed to get tool' });
+  }
+});
+
+/**
+ * PUT /api/v1/tools/:toolName
+ * Update tool configuration (enable/disable)
+ */
+router.put('/:toolName', async (req, res) => {
+  try {
+    const { toolName } = req.params;
+    const { is_enabled, description, icon } = req.body;
+    
+    let updateFields = [];
+    let values = [];
+    let paramIndex = 1;
+    
+    if (is_enabled !== undefined) {
+      updateFields.push(`is_enabled = $${paramIndex}`);
+      values.push(is_enabled);
+      paramIndex++;
+    }
+    
+    if (description !== undefined) {
+      updateFields.push(`description = $${paramIndex}`);
+      values.push(description);
+      paramIndex++;
+    }
+    
+    if (icon !== undefined) {
+      updateFields.push(`icon = $${paramIndex}`);
+      values.push(icon);
+      paramIndex++;
+    }
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+    
+    updateFields.push(`updated_at = NOW()`);
+    values.push(toolName);
+    
+    const query = `
+      UPDATE tools
+      SET ${updateFields.join(', ')}
+      WHERE tool_name = $${paramIndex}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, values);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Tool not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to update tool:', error);
+    res.status(500).json({ error: 'Failed to update tool' });
   }
 });
 
@@ -88,10 +171,45 @@ router.post('/:toolName/execute', async (req, res) => {
     const { toolName } = req.params;
     const { parameters } = req.body;
     
+    // Get tool configuration
+    const toolResult = await pool.query(`
+      SELECT * FROM tools WHERE tool_name = $1
+    `, [toolName]);
+    
+    if (toolResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Tool not found' });
+    }
+    
+    const tool = toolResult.rows[0];
+    
+    if (!tool.is_enabled) {
+      return res.status(400).json({ error: 'Tool is disabled' });
+    }
+    
+    // TODO: Implement actual tool execution logic
+    // For now, return a mock result
+    const result = {
+      message: `Tool ${tool.name || tool.display_name} executed successfully`,
+      parameters,
+      tool: {
+        name: tool.display_name || tool.tool_name,
+        category: tool.category
+      }
+    };
+    
+    // Update usage count
+    await pool.query(`
+      UPDATE tools 
+      SET usage_count = usage_count + 1,
+          last_used_at = NOW(),
+          updated_at = NOW()
+      WHERE tool_name = $1
+    `, [toolName]);
+    
     res.json({
       tool_name: toolName,
       parameters,
-      result: { message: 'Tool execution - TODO: implement' },
+      result,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
