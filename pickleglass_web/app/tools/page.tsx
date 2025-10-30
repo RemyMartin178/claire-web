@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -302,9 +303,14 @@ export default function ToolsPage() {
     try {
       setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
       
-      // Get user ID from auth context or headers
-      const headers = await getApiHeaders()
-      const userId = headers['X-Claire-UID'] || 'user-id-placeholder' // TODO: Get from auth context
+      // Get user ID from auth context
+      const { auth } = await import('@/utils/firebase')
+      const currentUser = auth.currentUser
+      const userId = currentUser?.uid
+      
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
       
       await openOAuthPopup({
         toolName: tool.tool_name || tool.name,
@@ -343,8 +349,14 @@ export default function ToolsPage() {
     try {
       setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
       
-      const headers = await getApiHeaders()
-      const userId = headers['X-Claire-UID'] || 'user-id-placeholder' // TODO: Get from auth context
+      // Get user ID from auth context
+      const { auth } = await import('@/utils/firebase')
+      const currentUser = auth.currentUser
+      const userId = currentUser?.uid
+      
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
       
       await revokeAuth(tool.tool_name || tool.name, userId)
       
@@ -521,10 +533,12 @@ export default function ToolsPage() {
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center p-1 overflow-hidden">
                           {tool.icon_url ? (
-                            <img 
+                            <Image 
                               src={tool.icon_url} 
                               alt={tool.name} 
-                              className="w-10 h-10 object-contain"
+                              width={40}
+                              height={40}
+                              className="object-contain"
                             />
                           ) : tool.icon ? (
                             <IconComponent className="w-6 h-6 text-gray-600" />
