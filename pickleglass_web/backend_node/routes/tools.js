@@ -20,8 +20,9 @@ router.get('/', async (req, res) => {
     const result = await pool.query(`
       SELECT 
         id,
-        tool_name as name,
+        COALESCE(display_name, REPLACE(tool_name, '_', ' ')) as name,
         display_name,
+        tool_name,
         description,
         icon,
         category,
