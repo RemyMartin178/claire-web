@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { Pool } = require('pg');
+const credentialService = require('../services/credentialService');
+const oauthService = require('../services/oauthService');
 
 // Database connection pool
 const pool = new Pool({
@@ -216,6 +218,122 @@ router.post('/:toolName/execute', async (req, res) => {
   } catch (error) {
     console.error('Failed to execute tool:', error);
     res.status(500).json({ error: 'Failed to execute tool' });
+  }
+});
+
+/**
+ * GET /api/v1/tools/:toolName/auth/authorize
+ * Get OAuth authorization URL for a tool
+ */
+router.get('/:toolName/auth/authorize', async (req, res) => {
+  try {
+    const { toolName } = req.params;
+    const userId = req.headers['x-claire-uid'] || req.query.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const providerName = req.query.provider || null;
+    const redirectUri = req.query.redirect_uri || null;
+    
+    const authUrl = oauthService.generateAuthUrl(toolName, providerName, redirectUri, userId);
+    
+    res.json({ authUrl });
+  } catch (error) {
+    console.error('Failed to generate auth URL:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/tools/:toolName/auth/callback
+ * Handle OAuth callback and store tokens
+ */
+router.get('/:toolName/auth/callback', async (req, res) => {
+  try {
+    const { toolName } = req.params;
+    const { code, state } = req.query;
+    
+    if (!code) {
+      return res.status(400).json({ error: 'Authorization code is required' });
+    }
+    
+    // Extract user ID from state
+    const stateParts = state.split(':');
+    const userId = stateParts.length >= 2 ? stateParts[1] : null;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'Invalid state parameter' });
+    }
+    
+    const providerName = req.query.provider || null;
+    const redirectUri = req.query.redirect_uri || null;
+    
+    // Exchange code for tokens
+    const tokens = await oauthService.exchangeCodeForTokens(toolName, code, redirectUri, providerName);
+    
+    // Store tokens
+    await credentialService.storeOAuthTokens(userId, toolName, tokens);
+    
+    // Redirect to success page
+    res.redirect(`${req.headers.origin || 'http://localhost:3000'}/tools?auth=success&tool=${toolName}`);
+  } catch (error) {
+    console.error('Failed to handle OAuth callback:', error);
+    res.redirect(`${req.headers.origin || 'http://localhost:3000'}/tools?auth=error&error=${encodeURIComponent(error.message)}`);
+  }
+});
+
+/**
+ * GET /api/v1/tools/:toolName/auth/status
+ * Check authentication status for a tool
+ */
+router.get('/:toolName/auth/status', async (req, res) => {
+  try {
+    const { toolName } = req.params;
+    const userId = req.headers['x-claire-uid'] || req.query.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    const hasValidCredentials = await credentialService.hasValidCredentials(userId, toolName);
+    
+    res.json({ 
+      authenticated: hasValidCredentials,
+      toolName,
+      userId
+    });
+  } catch (error) {
+    console.error('Failed to check auth status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * DELETE /api/v1/tools/:toolName/auth
+ * Revoke authentication for a tool
+ */
+router.delete('/:toolName/auth', async (req, res) => {
+  try {
+    const { toolName } = req.params;
+    const userId = req.headers['x-claire-uid'] || req.query.userId;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    await credentialService.deleteCredentials(userId, toolName);
+    
+    res.json({ 
+      success: true,
+      message: 'Authentication revoked successfully',
+      toolName,
+      userId
+    });
+  } catch (error) {
+    console.error('Failed to revoke auth:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

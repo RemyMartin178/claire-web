@@ -1,4 +1,3 @@
--- Step 1: Add icon_url column
 ALTER TABLE tools ADD COLUMN IF NOT EXISTS icon_url TEXT;
 
 -- Step 2: Re-add essential tools (this will work because we now have icon_url column)

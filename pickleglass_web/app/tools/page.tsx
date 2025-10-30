@@ -31,6 +31,7 @@ import {
 import { getApiHeaders } from '@/utils/api'
 import { Page, PageHeader } from '@/components/Page'
 import { PremiumGate } from '@/components/PremiumGate'
+import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth'
 
 interface Tool {
   id: string
@@ -297,6 +298,82 @@ export default function ToolsPage() {
     }
   }
 
+  const handleAuthConfigure = async (tool: Tool) => {
+    try {
+      setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
+      
+      // Get user ID from auth context or headers
+      const headers = await getApiHeaders()
+      const userId = headers['X-Claire-UID'] || 'user-id-placeholder' // TODO: Get from auth context
+      
+      await openOAuthPopup({
+        toolName: tool.tool_name || tool.name,
+        provider: tool.provider
+      }, userId)
+      
+      // Refresh auth status after a short delay
+      setTimeout(() => {
+        checkAuthStatus(tool.tool_name || tool.name, userId).then(status => {
+          setTools(prevTools =>
+            prevTools.map(t =>
+              t.id === tool.id
+                ? {
+                    ...t,
+                    is_configured: status.authenticated,
+                    authentication_status: status.authenticated ? 'authenticated' : 'not_configured'
+                  }
+                : t
+            )
+          )
+        })
+      }, 3000)
+    } catch (error) {
+      console.error('Failed to configure auth:', error)
+      alert(`Failed to configure authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(tool.id)
+        return newSet
+      })
+    }
+  }
+
+  const handleAuthRevoke = async (tool: Tool) => {
+    try {
+      setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
+      
+      const headers = await getApiHeaders()
+      const userId = headers['X-Claire-UID'] || 'user-id-placeholder' // TODO: Get from auth context
+      
+      await revokeAuth(tool.tool_name || tool.name, userId)
+      
+      // Update tool state
+      setTools(prevTools =>
+        prevTools.map(t =>
+          t.id === tool.id
+            ? {
+                ...t,
+                is_configured: false,
+                authentication_status: 'not_configured'
+              }
+            : t
+        )
+      )
+      
+      alert('Authentication revoked successfully')
+    } catch (error) {
+      console.error('Failed to revoke auth:', error)
+      alert(`Failed to revoke authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(tool.id)
+        return newSet
+      })
+    }
+  }
+
   const executeToolTest = async (toolName: string) => {
     setOperatingTools(prev => new Set(Array.from(prev).concat([`${toolName}_test`])))
     
@@ -520,6 +597,37 @@ export default function ToolsPage() {
                         )}
                         Tester
                       </Button>
+                      {tool.auth_type === 'oauth' && (
+                        tool.is_configured && tool.authentication_status === 'authenticated' ? (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleAuthRevoke(tool)}
+                            disabled={operatingTools.has(tool.id)}
+                            className="px-3 text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            {operatingTools.has(tool.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <X className="w-4 h-4" />
+                            )}
+                          </Button>
+                        ) : (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleAuthConfigure(tool)}
+                            disabled={operatingTools.has(tool.id)}
+                            className="px-3 text-green-600 border-green-300 hover:bg-green-50"
+                          >
+                            {operatingTools.has(tool.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm" 
