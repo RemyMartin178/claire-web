@@ -18,13 +18,33 @@ function getBackendUrl(): string {
 
 const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || getBackendUrl()
 
+function forwardAuthHeaders(req: NextRequest): HeadersInit {
+  const incoming = req.headers
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  const auth = incoming.get('authorization')
+  if (auth) headers['authorization'] = auth
+  const cookie = incoming.get('cookie')
+  if (cookie) headers['cookie'] = cookie
+  // Pass through common custom auth headers if present
+  const passThroughKeys = [
+    'x-user-id',
+    'x-claire-uid',
+    'x-firebase-token',
+  ]
+  for (const key of passThroughKeys) {
+    const val = incoming.get(key)
+    if (val) headers[key] = val
+  }
+  return headers
+}
+
 export async function GET(request: NextRequest) {
   try {
     const response = await fetch(`${BACKEND_URL}/api/v1/tools`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: forwardAuthHeaders(request),
     })
 
     if (!response.ok) {
@@ -48,9 +68,7 @@ export async function POST(request: NextRequest) {
     
     const response = await fetch(`${BACKEND_URL}/api/v1/tools`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: forwardAuthHeaders(request),
       body: JSON.stringify(body),
     })
 
