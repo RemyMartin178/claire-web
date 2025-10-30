@@ -1,14 +1,50 @@
 const express = require('express');
 const router = express.Router();
+const { Pool } = require('pg');
+
+// Database connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 /**
  * GET /api/v1/tools
- * List available tools
+ * List available tools from database
  */
 router.get('/', async (req, res) => {
   try {
-    // TODO: Implement tool fetching from database or config
-    const tools = [
+    console.log('🔍 Fetching tools from database...');
+    
+    // Query tools from database
+    const result = await pool.query(`
+      SELECT 
+        id,
+        tool_name as name,
+        display_name,
+        description,
+        icon,
+        category,
+        provider,
+        is_enabled,
+        usage_count,
+        success_rate,
+        CASE 
+          WHEN is_enabled THEN 'active'
+          ELSE 'inactive'
+        END as status
+      FROM tools
+      WHERE is_enabled = true
+      ORDER BY category, tool_name
+    `);
+    
+    console.log(`✅ Found ${result.rows.length} tools`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('❌ Failed to fetch tools:', error);
+    
+    // Fallback to hardcoded tools if database fails
+    const fallbackTools = [
       {
         id: 'web_search',
         name: 'Web Search',
@@ -19,14 +55,12 @@ router.get('/', async (req, res) => {
         is_enabled: true,
         usage_count: 0,
         success_rate: 100,
-        provider: 'perplexity'
+        provider: 'internal'
       }
     ];
     
-    res.json(tools);
-  } catch (error) {
-    console.error('Failed to fetch tools:', error);
-    res.status(500).json({ error: 'Failed to fetch tools' });
+    console.log('⚠️ Using fallback tools');
+    res.json(fallbackTools);
   }
 });
 
