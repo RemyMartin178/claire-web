@@ -207,7 +207,22 @@ export default function ToolsPage() {
                     <div className="flex items-center space-x-2">
                       <Switch 
                         checked={tool.is_enabled}
-                        onCheckedChange={() => {/* Handle toggle */}}
+                        onCheckedChange={async (enabled) => {
+                          try {
+                            const headers = await getApiHeaders()
+                            const toolName = tool.tool_name || tool.id
+                            const response = await fetch(`/api/v1/tools/${toolName}`, {
+                              method: 'PUT',
+                              headers,
+                              body: JSON.stringify({ is_enabled: enabled })
+                            })
+                            if (response.ok) {
+                              setTools(tools.map(t => t.id === tool.id ? { ...t, is_enabled: enabled } : t))
+                            }
+                          } catch (err) {
+                            console.error('Failed to toggle tool:', err)
+                          }
+                        }}
                         className="data-[state=checked]:bg-primary"
                       />
                     </div>
