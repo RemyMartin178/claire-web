@@ -25,6 +25,7 @@ router.get('/', async (req, res) => {
         tool_name,
         description,
         icon,
+        icon_url,
         category,
         provider,
         is_enabled,

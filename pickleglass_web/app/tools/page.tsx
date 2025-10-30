@@ -195,8 +195,18 @@ export default function ToolsPage() {
                 <Card key={tool.id} className="bg-white border border-gray-200 rounded-xl p-4 h-[220px] flex flex-col">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center p-1">
-                        <Wrench className="w-6 h-6 text-gray-600" />
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center p-1 overflow-hidden">
+                        {tool.icon_url ? (
+                          <img 
+                            src={tool.icon_url} 
+                            alt={tool.name} 
+                            className="w-10 h-10 object-contain"
+                          />
+                        ) : tool.icon ? (
+                          <span className="text-2xl">{tool.icon}</span>
+                        ) : (
+                          <Wrench className="w-6 h-6 text-gray-600" />
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center space-x-2 mb-1">
