@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -9,8 +10,22 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertCircle, X } from 'lucide-react'
 import { 
   Search,
+  Calculator,
+  Clock,
+  Monitor,
+  FileText,
+  Globe,
+  Network,
   Settings,
   PlayCircle,
+  BarChart3,
+  RefreshCw,
+  Filter,
+  CheckCircle,
+  AlertTriangle,
+  ExternalLink,
+  Square,
+  Info,
   Wrench
 } from 'lucide-react'
 import { getApiHeaders } from '@/utils/api'
@@ -20,78 +35,313 @@ import { PremiumGate } from '@/components/PremiumGate'
 interface Tool {
   id: string
   name: string
+  tool_name?: string
+  display_name?: string
   description: string
   icon: string
+  icon_url?: string
   category: string
   status: 'active' | 'inactive'
   is_enabled: boolean
   usage_count: number
+  execution_count?: number
+  last_used: string | null
+  last_executed_at?: string
+  execution_time_avg: number
+  avg_execution_time?: number
   success_rate: number
+  parameters: any
+  configuration?: any
   provider: string
+  version: string
+  requires_auth?: boolean
+  auth_type?: 'oauth' | 'api_key' | null | string
+  is_configured?: boolean
+  token_info?: {
+    expires_at?: string | null
+    has_refresh_token?: boolean
+  } | null
+  auth_status_checked?: boolean
+  mcp_server?: boolean
+  mcp_server_id?: string
+  server_status?: 'running' | 'stopped'
+  capabilities?: string[]
+  tool_count?: number
+  docker_image?: string
+  api_endpoint?: string
+  oauth_configured?: boolean
+  oauth_token_expires?: string
+  oauth_token_valid?: boolean
+  authentication_status?: 'authenticated' | 'not_configured'
+}
+
+const getApiUrl = async () => {
+  try {
+    const response = await fetch('/runtime-config.json')
+    if (response.ok) {
+      const config = await response.json()
+      return config.API_URL
+    }
+  } catch (error) {
+    console.warn('Failed to fetch runtime config, using fallback')
+  }
+  return 'http://localhost:64952/api/v1'
 }
 
 export default function ToolsPage() {
+  const pathname = usePathname()
   const [searchQuery, setSearchQuery] = useState('')
   const [tools, setTools] = useState<Tool[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [operatingTools, setOperatingTools] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     fetchTools()
   }, [])
 
-  const fetchTools = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const apiUrl = `/api/v1/tools`
-      console.log('🔧 Fetching tools via proxy:', apiUrl)
-      
-      const headers = await getApiHeaders()
-      console.log('🔧 Request headers:', headers)
-      
-      // Try proxy first
-      let response = await fetch(apiUrl, { headers })
-      
-      console.log('🔧 Response status:', response.status, response.statusText)
-      
-      if (!response.ok) {
-        // Fallback: call backend directly (for static hosting)
-        try {
-          const { getBackendUrl } = await import('@/utils/backend-url')
-          const directUrlBase = await getBackendUrl()
-          const directUrl = `${directUrlBase}/api/v1/tools`
-          console.log('↩️ Fallback direct tools URL:', directUrl)
-          response = await fetch(directUrl, { headers })
-          if (!response.ok) {
-            const errorText = await response.text()
-            console.error('❌ Backend error response (direct):', errorText)
-            throw new Error('Backend non disponible')
-          }
-        } catch (fallbackErr) {
-          throw fallbackErr
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && tools.length === 0 && !loading && !error) {
+        const lastFetch = sessionStorage.getItem('last_tools_fetch')
+        const now = Date.now()
+        if (!lastFetch || (now - parseInt(lastFetch)) > 30000) {
+          console.log('Page visible after long absence, refreshing tools...')
+          fetchTools()
         }
       }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [tools.length, loading, error])
+
+  const fetchTools = async () => {
+    try {
+      const lastFetch = sessionStorage.getItem('last_tools_fetch')
+      const now = Date.now()
+      if (lastFetch && (now - parseInt(lastFetch)) < 2000) {
+        console.log('Rate limiting: Skipping fetch, too recent')
+        return
+      }
       
-      const toolsData = await response.json()
-      setTools(toolsData)
+      sessionStorage.setItem('last_tools_fetch', now.toString())
+      setLoading(true)
+      
+      try {
+        const response = await fetch('/api/v1/tools', {
+          headers: await getApiHeaders()
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch tools')
+        }
+        
+        const toolsData = await response.json()
+        
+        const mappedTools = toolsData.map((tool: any) => ({
+          id: tool.id?.toString() || tool.tool_name,
+          name: tool.name || tool.display_name || tool.tool_name || 'Unnamed Tool',
+          tool_name: tool.tool_name,
+          display_name: tool.display_name,
+          description: tool.description || '',
+          icon: tool.icon || '🔧',
+          icon_url: tool.icon_url,
+          category: tool.category || 'utility',
+          status: tool.status || (tool.is_enabled ? 'active' : 'inactive'),
+          is_enabled: tool.is_enabled || false,
+          usage_count: tool.usage_count || 0,
+          execution_count: tool.execution_count,
+          last_used: tool.last_used_at || null,
+          last_executed_at: tool.last_executed_at,
+          execution_time_avg: tool.execution_time_avg || 0,
+          avg_execution_time: tool.avg_execution_time,
+          success_rate: tool.success_rate || 0,
+          configuration: tool.configuration || {},
+          parameters: tool.parameters || [],
+          provider: tool.provider || 'unknown',
+          version: tool.version || '1.0.0',
+          requires_auth: tool.requires_auth || false,
+          auth_type: tool.auth_type || null,
+          is_configured: tool.is_configured || false,
+          api_endpoint: tool.api_endpoint || null,
+          mcp_server: tool.mcp_server || false,
+          mcp_server_id: tool.mcp_server_id || null,
+          server_status: tool.server_status || null,
+          capabilities: tool.capabilities || [],
+          tool_count: tool.tool_count || 0,
+          oauth_configured: tool.oauth_configured || false,
+          oauth_token_expires: tool.oauth_token_expires || null,
+          oauth_token_valid: tool.oauth_token_valid || false,
+          authentication_status: tool.authentication_status || 'not_configured',
+          token_info: null,
+          auth_status_checked: false
+        }))
+        
+        setTools(mappedTools)
+      } catch (err) {
+        console.warn('Failed to fetch via proxy, trying direct backend...')
+        
+        const apiUrl = await getApiUrl()
+        const directResponse = await fetch(`${apiUrl}/tools`, {
+          headers: await getApiHeaders()
+        })
+        
+        if (!directResponse.ok) {
+          throw new Error('Failed to fetch tools')
+        }
+        
+        const toolsData = await directResponse.json()
+        const mappedTools = toolsData.map((tool: any) => ({
+          id: tool.id?.toString() || tool.tool_name,
+          name: tool.name || tool.display_name || tool.tool_name || 'Unnamed Tool',
+          tool_name: tool.tool_name,
+          display_name: tool.display_name,
+          description: tool.description || '',
+          icon: tool.icon || '🔧',
+          icon_url: tool.icon_url,
+          category: tool.category || 'utility',
+          status: tool.status || (tool.is_enabled ? 'active' : 'inactive'),
+          is_enabled: tool.is_enabled || false,
+          usage_count: tool.usage_count || 0,
+          execution_count: tool.execution_count,
+          last_used: tool.last_used_at || null,
+          last_executed_at: tool.last_executed_at,
+          execution_time_avg: tool.execution_time_avg || 0,
+          avg_execution_time: tool.avg_execution_time,
+          success_rate: tool.success_rate || 0,
+          configuration: tool.configuration || {},
+          parameters: tool.parameters || [],
+          provider: tool.provider || 'unknown',
+          version: tool.version || '1.0.0',
+          requires_auth: tool.requires_auth || false,
+          auth_type: tool.auth_type || null,
+          is_configured: tool.is_configured || false,
+          api_endpoint: tool.api_endpoint || null,
+          mcp_server: tool.mcp_server || false,
+          mcp_server_id: tool.mcp_server_id || null,
+          server_status: tool.server_status || null,
+          capabilities: tool.capabilities || [],
+          tool_count: tool.tool_count || 0,
+          oauth_configured: tool.oauth_configured || false,
+          oauth_token_expires: tool.oauth_token_expires || null,
+          oauth_token_valid: tool.oauth_token_valid || false,
+          authentication_status: tool.authentication_status || 'not_configured',
+          token_info: null,
+          auth_status_checked: false
+        }))
+        
+        setTools(mappedTools)
+      }
+      
+      setLoading(false)
+      setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch tools')
       console.warn('Tools endpoint not available:', err)
-      // Set demo tools for display purposes
       setTools([])
-    } finally {
       setLoading(false)
     }
   }
 
-  const categories = ['all', 'web_search', 'calculation', 'utility', 'system']
+  const handleToolToggle = async (toolId: string, enabled: boolean) => {
+    setOperatingTools(prev => new Set(Array.from(prev).concat([toolId])))
+    
+    try {
+      const toolName = tools.find(t => t.id === toolId)?.tool_name || toolId
+      
+      try {
+        const response = await fetch(`/api/v1/tools/${toolName}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(await getApiHeaders())
+          },
+          body: JSON.stringify({ is_enabled: enabled })
+        })
+        
+        if (!response.ok) {
+          throw new Error('Failed to toggle tool')
+        }
+      } catch (err) {
+        const apiUrl = await getApiUrl()
+        const directResponse = await fetch(`${apiUrl}/tools/${toolName}`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(await getApiHeaders())
+          },
+          body: JSON.stringify({ is_enabled: enabled })
+        })
+        
+        if (!directResponse.ok) {
+          throw new Error('Failed to toggle tool')
+        }
+      }
+      
+      setTools(prevTools => 
+        prevTools.map(tool => 
+          tool.id === toolId ? { ...tool, is_enabled: enabled, status: enabled ? 'active' : 'inactive' } : tool
+        )
+      )
+    } catch (err) {
+      console.error('Failed to toggle tool:', err)
+      alert(`Failed to toggle tool: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(toolId)
+        return newSet
+      })
+    }
+  }
+
+  const executeToolTest = async (toolName: string) => {
+    setOperatingTools(prev => new Set(Array.from(prev).concat([`${toolName}_test`])))
+    
+    try {
+      alert('Tool execution not yet fully implemented. This is a demo.')
+    } catch (err) {
+      console.error('Tool execution error:', err)
+      alert(`Tool execution failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(`${toolName}_test`)
+        return newSet
+      })
+    }
+  }
+
+  const getToolIcon = (iconName: string) => {
+    const iconMap: { [key: string]: any } = {
+      '🔍': Globe,
+      '🕷️': Network,
+      '⏰': Clock,
+      '💻': Monitor,
+      '🧮': Calculator,
+      '📄': FileText,
+      '🔢': Calculator,
+      '📧': Globe,
+      '📅': Clock,
+      '📁': FileText,
+      '🎫': Globe,
+      '💬': Globe,
+      '📝': FileText,
+      '🎨': Globe
+    }
+    return iconMap[iconName] || Wrench
+  }
+
+  const categories = ['all', 'web_search', 'calculation', 'utility', 'system', 'productivity', 'communication', 'development', 'design', 'storage']
 
   const filteredTools = tools.filter(tool => {
-    const matchesSearch = tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         tool.description.toLowerCase().includes(searchQuery.toLowerCase())
+    const toolName = tool.name || tool.tool_name || ''
+    const toolDescription = tool.description || ''
+    
+    const matchesSearch = toolName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         toolDescription.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = selectedCategory === 'all' || tool.category === selectedCategory
     return matchesSearch && matchesCategory
   })
@@ -116,7 +366,6 @@ export default function ToolsPage() {
         plan="plus"
         className="mb-6"
       >
-
         {/* Search Bar */}
         <div className="mb-8">
           <div className="relative max-w-md">
@@ -149,11 +398,7 @@ export default function ToolsPage() {
                   variant={selectedCategory === category ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
-                  className={`capitalize ${
-                    selectedCategory === category 
-                      ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb]' 
-                      : 'text-[#374151] border-gray-300 hover:bg-gray-50'
-                  }`}
+                  className="capitalize"
                 >
                   {category.replace('_', ' ')}
                 </Button>
@@ -191,94 +436,101 @@ export default function ToolsPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTools.map((tool) => (
-                <Card key={tool.id} className="bg-white border border-gray-200 rounded-xl p-4 h-[220px] flex flex-col">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center p-1 overflow-hidden">
-                        {tool.icon_url ? (
-                          <img 
-                            src={tool.icon_url} 
-                            alt={tool.name} 
-                            className="w-10 h-10 object-contain"
-                          />
-                        ) : tool.icon ? (
-                          <span className="text-2xl">{tool.icon}</span>
-                        ) : (
-                          <Wrench className="w-6 h-6 text-gray-600" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-2 mb-1">
-                          <h3 className="text-lg font-semibold text-gray-800 truncate">{tool.name}</h3>
+              {filteredTools.map((tool) => {
+                const IconComponent = getToolIcon(tool.icon)
+                return (
+                  <Card key={tool.id} className="bg-white border border-gray-200 rounded-xl p-4 h-[240px] flex flex-col">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center p-1 overflow-hidden">
+                          {tool.icon_url ? (
+                            <img 
+                              src={tool.icon_url} 
+                              alt={tool.name} 
+                              className="w-10 h-10 object-contain"
+                            />
+                          ) : tool.icon ? (
+                            <IconComponent className="w-6 h-6 text-gray-600" />
+                          ) : (
+                            <Wrench className="w-6 h-6 text-gray-600" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="text-lg font-semibold text-gray-800 truncate">{tool.name}</h3>
+                          </div>
+                          {tool.mcp_server && (
+                            <Badge variant="secondary" className="text-xs">
+                              MCP
+                            </Badge>
+                          )}
                         </div>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch 
+                          checked={tool.is_enabled}
+                          onCheckedChange={(enabled) => handleToolToggle(tool.id, enabled)}
+                          disabled={operatingTools.has(tool.id)}
+                          className="data-[state=checked]:bg-primary"
+                        />
+                        {operatingTools.has(tool.id) && (
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        checked={tool.is_enabled}
-                        onCheckedChange={async (enabled) => {
-                          try {
-                            const headers = await getApiHeaders()
-                            const toolName = tool.tool_name || tool.id
-                            const response = await fetch(`/api/v1/tools/${toolName}`, {
-                              method: 'PUT',
-                              headers,
-                              body: JSON.stringify({ is_enabled: enabled })
-                            })
-                            if (response.ok) {
-                              setTools(tools.map(t => t.id === tool.id ? { ...t, is_enabled: enabled } : t))
-                            }
-                          } catch (err) {
-                            console.error('Failed to toggle tool:', err)
-                          }
-                        }}
-                        className="data-[state=checked]:bg-primary"
-                      />
-                    </div>
-                  </div>
-                  
-                  <p className="text-sm text-gray-600 mb-3 flex-1 overflow-hidden" style={{
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical'
-                  }}>
-                    {tool.description}
-                  </p>
+                    
+                    <p className="text-sm text-gray-600 mb-3 flex-1 overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {tool.description}
+                    </p>
 
-                  <div className="grid grid-cols-2 gap-3 mb-3 text-xs flex-shrink-0">
-                    <div>
-                      <span className="text-gray-500">Succès:</span>
-                      <span className="ml-1 font-medium">{tool.success_rate}%</span>
+                    <div className="grid grid-cols-2 gap-3 mb-3 text-xs flex-shrink-0">
+                      <div>
+                        <span className="text-gray-500">Succès:</span>
+                        <span className="ml-1 font-medium">{tool.success_rate}%</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Utilisations:</span>
+                        <span className="ml-1 font-medium">{tool.usage_count}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Avg Time:</span>
+                        <span className="ml-1 font-medium">{tool.execution_time_avg}ms</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Fournisseur:</span>
+                        <span className="ml-1 font-medium">{tool.provider}</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Utilisations:</span>
-                      <span className="ml-1 font-medium">{tool.usage_count}</span>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-gray-500">Fournisseur:</span>
-                      <span className="ml-1 font-medium">{tool.provider}</span>
-                    </div>
-                  </div>
 
-                  <div className="flex space-x-2 mt-auto flex-shrink-0">
-                    <Button 
-                      size="sm" 
-                      className="flex-1 bg-[#3b82f6] text-white hover:bg-[#2563eb]"
-                    >
-                      <PlayCircle className="w-4 h-4 mr-1" />
-                      Tester
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="px-3 text-[#374151] border-gray-300 hover:bg-gray-50"
-                    >
-                      <Settings className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+                    <div className="flex space-x-2 mt-auto flex-shrink-0">
+                      <Button 
+                        size="sm" 
+                        onClick={() => executeToolTest(tool.id || tool.tool_name || tool.name)}
+                        disabled={!tool.is_enabled || operatingTools.has(`${tool.id || tool.tool_name || tool.name}_test`)}
+                        className="flex-1 bg-[#3b82f6] text-white hover:bg-[#2563eb]"
+                      >
+                        {operatingTools.has(`${tool.id || tool.tool_name || tool.name}_test`) ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <PlayCircle className="w-4 h-4 mr-1" />
+                        )}
+                        Tester
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="px-3 text-[#374151] border-gray-300 hover:bg-gray-50"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                )
+              })}
             </div>
           )}
         </main>
