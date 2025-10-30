@@ -16,7 +16,7 @@ function getBackendUrl(): string {
   }
 }
 
-const BACKEND_URL = process.env.pickleglass_API_URL || getBackendUrl()
+const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || getBackendUrl()
 
 export async function GET(request: NextRequest) {
   try {
