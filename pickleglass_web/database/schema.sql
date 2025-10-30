@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS tools (
     description TEXT,
     icon VARCHAR(50),
     category VARCHAR(50),
+    provider VARCHAR(100) DEFAULT 'internal',
     is_enabled BOOLEAN DEFAULT TRUE,
     usage_count INTEGER DEFAULT 0,
     success_rate DECIMAL(5,2) DEFAULT 100.00,
@@ -96,8 +97,13 @@ BEGIN
 END $$;
 
 -- Insert default tools
-INSERT INTO tools (tool_name, display_name, description, icon, category, is_enabled) VALUES
-    ('web_search', 'Web Search', 'Recherche web avec résultats pertinents', '🔍', 'web_search', TRUE),
-    ('calculator', 'Calculator', 'Calculateur avancé pour calculs mathématiques', '🔢', 'calculation', TRUE),
-    ('code_executor', 'Code Executor', 'Exécution de code dans différents langages', '💻', 'utility', TRUE)
+INSERT INTO tools (tool_name, display_name, description, icon, category, is_enabled, provider) VALUES
+    ('web_search', 'Web Search', 'Recherche web avec résultats pertinents', '🔍', 'web_search', TRUE, 'internal'),
+    ('calculator', 'Calculator', 'Calculateur avancé pour calculs mathématiques', '🔢', 'calculation', TRUE, 'internal'),
+    ('code_executor', 'Code Executor', 'Exécution de code dans différents langages', '💻', 'utility', TRUE, 'internal'),
+    ('date_time', 'Date & Time', 'Outil de gestion de dates et horaires', '📅', 'utility', TRUE, 'internal'),
+    ('text_processor', 'Text Processor', 'Traitement et analyse de texte', '📝', 'utility', TRUE, 'internal'),
+    ('url_summarizer', 'URL Summarizer', 'Résume le contenu d''une URL web', '🔗', 'web_search', TRUE, 'internal'),
+    ('weather', 'Weather API', 'Informations météorologiques', '🌤️', 'utility', TRUE, 'internal'),
+    ('image_generator', 'Image Generator', 'Génération d''images avec IA', '🎨', 'ai', TRUE, 'internal')
 ON CONFLICT (tool_name) DO NOTHING;
