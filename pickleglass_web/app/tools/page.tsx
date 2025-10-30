@@ -480,14 +480,18 @@ export default function ToolsPage() {
         <main>
           {/* Category Filter */}
           <div className="mb-8">
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap gap-3">
               {categories.map(category => (
                 <Button
                   key={category}
                   variant={selectedCategory === category ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
-                  className="capitalize"
+                  className={`capitalize font-medium transition-colors ${
+                    selectedCategory === category 
+                      ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] shadow-sm' 
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900'
+                  }`}
                 >
                   {category.replace('_', ' ')}
                 </Button>
@@ -531,19 +535,21 @@ export default function ToolsPage() {
                   <Card key={tool.id} className="bg-white border border-gray-200 rounded-xl p-4 h-[240px] flex flex-col">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center p-1 overflow-hidden">
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-1 overflow-hidden border border-blue-100">
                           {tool.icon_url ? (
-                            <Image 
+                            <img 
                               src={tool.icon_url} 
                               alt={tool.name} 
-                              width={40}
-                              height={40}
-                              className="object-contain"
+                              className="w-10 h-10 object-contain"
+                              onError={(e) => {
+                                // Fallback to emoji if image fails
+                                e.currentTarget.style.display = 'none';
+                              }}
                             />
                           ) : tool.icon ? (
-                            <IconComponent className="w-6 h-6 text-gray-600" />
+                            <span className="text-2xl">{tool.icon}</span>
                           ) : (
-                            <Wrench className="w-6 h-6 text-gray-600" />
+                            <Wrench className="w-6 h-6 text-blue-600" />
                           )}
                         </div>
                         <div>
