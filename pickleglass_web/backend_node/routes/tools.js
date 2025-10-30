@@ -3,6 +3,7 @@ const router = express.Router();
 const { Pool } = require('pg');
 const credentialService = require('../services/credentialService');
 const oauthService = require('../services/oauthService');
+const GoogleCalendarTool = require('../services/tools/googleCalendarTool');
 
 // Database connection pool
 const pool = new Pool({
@@ -188,17 +189,83 @@ router.post('/:toolName/execute', async (req, res) => {
     if (!tool.is_enabled) {
       return res.status(400).json({ error: 'Tool is disabled' });
     }
+
+    // Get user ID from request
+    const userId = req.headers['x-claire-uid'] || req.body.userId;
     
-    // TODO: Implement actual tool execution logic
-    // For now, return a mock result
-    const result = {
-      message: `Tool ${tool.name || tool.display_name} executed successfully`,
-      parameters,
-      tool: {
-        name: tool.display_name || tool.tool_name,
-        category: tool.category
+    // Execute tool based on type
+    let result;
+    try {
+      if (tool.provider === 'internal') {
+        // Internal tools (calculator, etc.) - simple mock for now
+        result = {
+          message: `Tool ${tool.display_name || tool.tool_name} executed successfully`,
+          parameters,
+          tool: {
+            name: tool.display_name || tool.tool_name,
+            category: tool.category
+          }
+        };
+      } else if (tool.tool_name === 'google_calendar') {
+        // Google Calendar integration
+        if (!userId) {
+          return res.status(401).json({ error: 'User authentication required' });
+        }
+
+        // Check if user has valid credentials
+        const hasCredentials = await credentialService.hasValidCredentials(userId, toolName);
+        if (!hasCredentials) {
+          return res.status(401).json({ 
+            error: `Authentication required. Please configure ${tool.display_name} in the tools page.` 
+          });
+        }
+
+        // Get credentials
+        const credentials = await credentialService.getOAuthTokens(userId, toolName);
+        if (!credentials) {
+          return res.status(401).json({ error: 'Failed to retrieve authentication credentials' });
+        }
+
+        // Execute Google Calendar operation
+        const googleTool = new GoogleCalendarTool();
+        await googleTool.initializeAuth(credentials.access_token);
+        
+        const operation = parameters.operation || 'testConnection';
+        
+        switch (operation) {
+          case 'listEvents':
+            result = await googleTool.listEvents(parameters);
+            break;
+          case 'createEvent':
+            result = await googleTool.createEvent(parameters);
+            break;
+          case 'getEvent':
+            result = await googleTool.getEvent(parameters);
+            break;
+          case 'testConnection':
+            result = await googleTool.testConnection();
+            break;
+          default:
+            result = {
+              success: false,
+              error: `Unknown operation: ${operation}`,
+              availableOperations: googleTool.getAvailableOperations()
+            };
+        }
+      } else {
+        // Other external tools - not implemented yet
+        result = {
+          success: false,
+          error: `Tool ${tool.display_name || tool.tool_name} is not yet implemented`,
+          parameters
+        };
       }
-    };
+    } catch (error) {
+      result = {
+        success: false,
+        error: error.message
+      };
+    }
     
     // Update usage count
     await pool.query(`
