@@ -10,6 +10,7 @@ import { getAssistants, type Assistant } from "@/utils/api"
 import { useAuth, isGuestUser } from "@/utils/auth"
 import { Page, PageHeader } from '@/components/Page'
 import { PremiumGate } from '@/components/PremiumGate'
+import { useAuth as useAuthContext } from '@/contexts/AuthContext'
 import { 
   Search, 
   Plus, 
@@ -21,6 +22,7 @@ import {
 export default function AIAgentsPage() {
   const router = useRouter()
   const { user, isAuthReady } = useAuth()
+  const { isAdmin, loading: authLoading } = useAuthContext()
   const [searchQuery, setSearchQuery] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [assistants, setAssistants] = useState<Assistant[]>([])
@@ -57,7 +59,7 @@ export default function AIAgentsPage() {
     return matchesSearch
   })
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -65,6 +67,32 @@ export default function AIAgentsPage() {
           <span>Chargement des agents...</span>
         </div>
       </div>
+    )
+  }
+
+  // Si pas admin, afficher message "Bientôt disponible"
+  if (!isAdmin) {
+    return (
+      <Page>
+        <PageHeader 
+          title="Agents IA" 
+          description="Découvrez et gérez vos assistants IA personnalisés"
+        />
+        
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-indigo-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Fonctionnalité bientôt disponible
+            </h3>
+            <p className="text-gray-600 max-w-md">
+              Les agents IA personnalisés seront bientôt disponibles pour tous les utilisateurs.
+            </p>
+          </div>
+        </div>
+      </Page>
     )
   }
 
