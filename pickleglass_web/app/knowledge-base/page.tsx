@@ -19,6 +19,7 @@ import { getApiHeaders, createKnowledgeFolder, type Folder } from '@/utils/api'
 import { Page, PageHeader } from '@/components/Page'
 import { PremiumGate } from '@/components/PremiumGate'
 import GuestGate from '@/components/GuestGate'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface KnowledgeDocument {
   id: string
@@ -40,6 +41,7 @@ interface UploadStatus {
 }
 
 export default function KnowledgeBasePage() {
+  const { isAdmin, loading: authLoading } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
@@ -272,7 +274,7 @@ export default function KnowledgeBasePage() {
     return matchesSearch
   })
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -280,6 +282,35 @@ export default function KnowledgeBasePage() {
           <span>Chargement des documents...</span>
         </div>
       </div>
+    )
+  }
+
+  // Si pas admin, afficher message "Bientôt disponible"
+  if (!isAdmin) {
+    return (
+      <GuestGate
+        feature="Knowledge Base"
+        description="Connectez-vous pour accéder et gérer votre base de connaissances."
+        requireAuth
+      >
+        <Page>
+          <PageHeader title="Base de connaissances" description="Gérez vos documents et dossiers" />
+          
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-8 h-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Fonctionnalité bientôt disponible
+              </h3>
+              <p className="text-gray-600 max-w-md">
+                La base de connaissances personnalisée sera bientôt disponible pour tous les utilisateurs.
+              </p>
+            </div>
+          </div>
+        </Page>
+      </GuestGate>
     )
   }
 

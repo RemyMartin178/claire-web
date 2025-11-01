@@ -33,6 +33,7 @@ import { getApiHeaders } from '@/utils/api'
 import { Page, PageHeader } from '@/components/Page'
 import { PremiumGate } from '@/components/PremiumGate'
 import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Tool {
   id: string
@@ -92,6 +93,7 @@ const getApiUrl = async () => {
 
 export default function ToolsPage() {
   const pathname = usePathname()
+  const { isAdmin, loading: authLoading } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [tools, setTools] = useState<Tool[]>([])
   const [loading, setLoading] = useState(true)
@@ -435,7 +437,7 @@ export default function ToolsPage() {
     return matchesSearch && matchesCategory
   })
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center space-x-2">
@@ -443,6 +445,29 @@ export default function ToolsPage() {
           <span>Chargement des outils...</span>
         </div>
       </div>
+    )
+  }
+
+  // Si pas admin, afficher message "Bientôt disponible"
+  if (!isAdmin) {
+    return (
+      <Page>
+        <PageHeader title="Outils & Intégrations" description="Gérez et configurez les outils Claire" />
+        
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Wrench className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Fonctionnalité bientôt disponible
+            </h3>
+            <p className="text-gray-600 max-w-md">
+              Les intégrations externes (Google Calendar, Gmail, GitHub, etc.) seront bientôt disponibles pour tous les utilisateurs.
+            </p>
+          </div>
+        </div>
+      </Page>
     )
   }
 
