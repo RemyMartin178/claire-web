@@ -1,25 +1,30 @@
+const { createLogger } = require('../../common/services/renderer-logger.js');
+
+const logger = createLogger('UI.HeaderController');
 import './MainHeader.js';
 import './ApiKeyHeader.js';
 import './PermissionHeader.js';
 import './WelcomeHeader.js';
+import './OnboardingHeader.js';
 
 class HeaderTransitionManager {
     constructor() {
         this.headerContainer      = document.getElementById('header-container');
-        this.currentHeaderType    = null;   // 'welcome' | 'apikey' | 'main' | 'permission'
+        this.currentHeaderType    = null;   // 'welcome' | 'apikey' | 'main' | 'permission' | 'onboarding'
         this.welcomeHeader        = null;
         this.apiKeyHeader         = null;
         this.mainHeader            = null;
         this.permissionHeader      = null;
+        this.onboardingHeader      = null;
 
         /**
          * only one header window is allowed
-         * @param {'welcome'|'apikey'|'main'|'permission'} type
+         * @param {'welcome'|'apikey'|'main'|'permission'|'onboarding'} type
          */
         this.ensureHeader = (type) => {
-            console.log('[HeaderController] ensureHeader: Ensuring header of type:', type);
+            logger.info('[HeaderController] ensureHeader: Ensuring header of type:', type);
             if (this.currentHeaderType === type) {
-                console.log('[HeaderController] ensureHeader: Header of type:', type, 'already exists.');
+                logger.info('[HeaderController] ensureHeader: Header of type:', type, 'already exists.');
                 return;
             }
 
@@ -29,6 +34,7 @@ class HeaderTransitionManager {
             this.apiKeyHeader = null;
             this.mainHeader = null;
             this.permissionHeader = null;
+            this.onboardingHeader = null;
 
             // Create new header element
             if (type === 'welcome') {
@@ -36,7 +42,7 @@ class HeaderTransitionManager {
                 this.welcomeHeader.loginCallback = () => this.handleLoginOption();
                 this.welcomeHeader.apiKeyCallback = () => this.handleApiKeyOption();
                 this.headerContainer.appendChild(this.welcomeHeader);
-                console.log('[HeaderController] ensureHeader: Header of type:', type, 'created.');
+                logger.info('[HeaderController] ensureHeader: Header of type:', type, 'created.');
             } else if (type === 'apikey') {
                 this.apiKeyHeader = document.createElement('apikey-header');
                 this.apiKeyHeader.stateUpdateCallback = (userState) => this.handleStateUpdate(userState);
@@ -45,43 +51,30 @@ class HeaderTransitionManager {
                     this._resizeForApiKey(e.detail.height); 
                 });
                 this.headerContainer.appendChild(this.apiKeyHeader);
-                console.log('[HeaderController] ensureHeader: Header of type:', type, 'created.');
+                logger.info('[HeaderController] ensureHeader: Header of type:', type, 'created.');
             } else if (type === 'permission') {
                 this.permissionHeader = document.createElement('permission-setup');
-                this.permissionHeader.addEventListener('request-resize', e => {
-                    this._resizeForPermissionHeader(e.detail.height); 
-                });
-                this.permissionHeader.continueCallback = async () => {
-                    if (window.api && window.api.headerController) {
-                        console.log('[HeaderController] Re-initializing model state after permission grant...');
-                        await window.api.headerController.reInitializeModelState();
-                    }
-                    this.transitionToMainHeader();
-                };
+                this.permissionHeader.continueCallback = () => this.transitionToMainHeader();
                 this.headerContainer.appendChild(this.permissionHeader);
+            } else if (type === 'onboarding') {
+                this.onboardingHeader = document.createElement('onboarding-header');
+                this.onboardingHeader.skipCallback = () => this.transitionToMainHeader();
+                this.onboardingHeader.completeCallback = () => this.transitionToMainHeader();
+                this.headerContainer.appendChild(this.onboardingHeader);
+                logger.info('[HeaderController] ensureHeader: Onboarding header created.');
             } else {
                 this.mainHeader = document.createElement('main-header');
                 this.headerContainer.appendChild(this.mainHeader);
                 this.mainHeader.startSlideInAnimation?.();
-                // Inject last known user state to avoid login flicker
-                if (this.lastUserState && this.lastUserState.isLoggedIn) {
-                    try {
-                        this.mainHeader.firebaseUser = this.lastUserState;
-                        this.mainHeader.requestUpdate?.();
-                        console.log('[HeaderController] Injected lastUserState into MainHeader');
-                    } catch (e) {
-                        console.warn('[HeaderController] Failed to inject lastUserState into MainHeader:', e?.message);
-                    }
-                }
             }
 
             this.currentHeaderType = type;
             this.notifyHeaderState(type === 'permission' ? 'apikey' : type); // Keep permission state as apikey for compatibility
         };
 
-        console.log('[HeaderController] Manager initialized');
+        logger.info('[HeaderController] Manager initialized');
 
-        // WelcomeHeader 콜백 메서드들
+        // WelcomeHeader [Korean comment translated] [Korean comment translated]
         this.handleLoginOption = this.handleLoginOption.bind(this);
         this.handleApiKeyOption = this.handleApiKeyOption.bind(this);
 
@@ -89,45 +82,23 @@ class HeaderTransitionManager {
 
         if (window.api) {
             window.api.headerController.onUserStateChanged((event, userState) => {
-                console.log('[HeaderController] Received user state change:', userState);
+                logger.info('[HeaderController] Received user state change:', userState);
                 this.handleStateUpdate(userState);
             });
 
             window.api.headerController.onAuthFailed((event, { message }) => {
-                console.error('[HeaderController] Received auth failure from main process:', message);
+                logger.error('Received auth failure from main process:', { message });
                 if (this.apiKeyHeader) {
                     this.apiKeyHeader.errorMessage = 'Authentication failed. Please try again.';
                     this.apiKeyHeader.isLoading = false;
                 }
             });
             window.api.headerController.onForceShowApiKeyHeader(async () => {
-                console.log('[HeaderController] Received broadcast to show apikey header. Switching now.');
-                const isConfigured = await window.api.apiKeyHeader.areProvidersConfigured();
-                if (!isConfigured) {
-                    await this._resizeForWelcome();
-                    this.ensureHeader('welcome');
-                } else {
-                    await this._resizeForApiKey();
-                    this.ensureHeader('apikey');
-                }
+                logger.info('[HeaderController] Received broadcast to show apikey header. Switching now.');
+                // Always show welcome header when user manually requests API key setup
+                await this._resizeForWelcome();
+                this.ensureHeader('welcome');
             });            
-            // Forcer la barre principale après deep link
-            window.api.headerController.onDeepLinkReceived((event, data) => {
-                console.log('[HeaderController] Deep link received → ensure main header now:', data);
-                this.transitionToMainHeader();
-            });
-
-            // Handshake: récupérer l'état courant au mount
-            (async () => {
-                try {
-                    console.log('[HeaderController] mount, asking current user…');
-                    const u = await window.api.common.getCurrentUser();
-                    console.log('[HeaderController] current user at mount =', u);
-                    if (u) this.handleStateUpdate(u);
-                } catch (e) {
-                    console.warn('[HeaderController] failed to get current user at mount:', e?.message);
-                }
-            })();
         }
     }
 
@@ -143,7 +114,7 @@ class HeaderTransitionManager {
         // We just need to request it.
         if (window.api) {
             const userState = await window.api.common.getCurrentUser();
-            console.log('[HeaderController] Bootstrapping with initial user state:', userState);
+            logger.info('[HeaderController] Bootstrapping with initial user state:', userState);
             this.handleStateUpdate(userState);
         } else {
             // Fallback for non-electron environment (testing/web)
@@ -154,53 +125,50 @@ class HeaderTransitionManager {
 
     //////// after_modelStateService ////////
     async handleStateUpdate(userState) {
-        console.log('[HeaderController] handleStateUpdate called with userState:', userState);
-        // Mémoriser le dernier état utilisateur connu pour éviter les clignotements
-        this.lastUserState = userState;
-
-        // 🔥 CORRECTION: Si l'utilisateur est connecté, rester sur le main header pour éviter la destruction
-        if (userState && userState.isLoggedIn) {
-            console.log('[HeaderController] User is logged in, ensuring main header to preserve connection state');
-            this.transitionToMainHeader();
+        const { isLoggedIn } = userState;
+        
+        logger.info('[HeaderController] handleStateUpdate: Proceeding to main interface, isLoggedIn:', isLoggedIn);
+        
+        // Check if onboarding should be shown first (but skip for authenticated users)
+        const shouldShowOnb = this.shouldShowOnboarding();
+        logger.info('[HeaderController] shouldShowOnboarding returned:', shouldShowOnb);
+        
+        if (shouldShowOnb && !isLoggedIn) {
+            logger.info('[HeaderController] Onboarding needed - showing onboarding header');
+            this.transitionToOnboardingHeader();
             return;
+        } else if (shouldShowOnb && isLoggedIn) {
+            logger.info('[HeaderController] Skipping onboarding for authenticated user');
         }
-
-        const isConfigured = await window.api.apiKeyHeader.areProvidersConfigured();
-        console.log('[HeaderController] areProvidersConfigured result:', isConfigured);
-
-        if (isConfigured) {
-            console.log('[HeaderController] Providers configured, checking permissions...');
-            // If providers are configured, always check permissions regardless of login state.
+        
+        logger.info('[HeaderController] Skipping onboarding - proceeding to main flow');
+        
+        if (isLoggedIn) {
             const permissionResult = await this.checkPermissions();
-            console.log('[HeaderController] Permission check result:', permissionResult);
             if (permissionResult.success) {
-                console.log('[HeaderController] Permissions OK, transitioning to main header');
                 this.transitionToMainHeader();
             } else {
-                console.log('[HeaderController] Permissions failed, showing permission setup');
                 this.transitionToPermissionHeader();
             }
         } else {
-            console.log('[HeaderController] Providers NOT configured, showing welcome header');
-            // If no providers are configured, show the welcome header to prompt for setup.
-            await this._resizeForWelcome();
-            this.ensureHeader('welcome');
+            // Go directly to main header even without login - no API key barriers
+            this.transitionToMainHeader();
         }
     }
 
-    // WelcomeHeader 콜백 메서드들
+    // WelcomeHeader [Korean comment translated] [Korean comment translated]
     async handleLoginOption() {
-        console.log('[HeaderController] Login option selected');
+        logger.info('[HeaderController] Login option selected');
         if (window.api) {
             await window.api.common.startFirebaseAuth();
         }
     }
 
     async handleApiKeyOption() {
-        console.log('[HeaderController] API key option selected');
+        logger.info('[HeaderController] API key option selected');
         await this._resizeForApiKey(400);
         this.ensureHeader('apikey');
-        // ApiKeyHeader에 뒤로가기 콜백 설정
+        // Set back callback for ApiKeyHeader
         if (this.apiKeyHeader) {
             this.apiKeyHeader.backCallback = () => this.transitionToWelcomeHeader();
         }
@@ -219,7 +187,7 @@ class HeaderTransitionManager {
     async transitionToPermissionHeader() {
         // Prevent duplicate transitions
         if (this.currentHeaderType === 'permission') {
-            console.log('[HeaderController] Already showing permission setup, skipping transition');
+            logger.info('[HeaderController] Already showing permission setup, skipping transition');
             return;
         }
 
@@ -228,7 +196,7 @@ class HeaderTransitionManager {
             try {
                 const permissionsCompleted = await window.api.headerController.checkPermissionsCompleted();
                 if (permissionsCompleted) {
-                    console.log('[HeaderController] Permissions were previously completed, checking current status...');
+                    logger.info('[HeaderController] Permissions were previously completed, checking current status...');
                     
                     // Double check current permission status
                     const permissionResult = await this.checkPermissions();
@@ -238,26 +206,14 @@ class HeaderTransitionManager {
                         return;
                     }
                     
-                    console.log('[HeaderController] Permissions were revoked, showing setup again');
+                    logger.info('[HeaderController] Permissions were revoked, showing setup again');
                 }
             } catch (error) {
-                console.error('[HeaderController] Error checking permissions completed status:', error);
+                logger.error('Error checking permissions completed status:', { error });
             }
         }
 
-        let initialHeight = 220;
-        if (window.api) {
-            try {
-                const userState = await window.api.common.getCurrentUser();
-                if (userState.mode === 'firebase') {
-                    initialHeight = 280;
-                }
-            } catch (e) {
-                console.error('Could not get user state for resize', e);
-            }
-        }
-
-        await this._resizeForPermissionHeader(initialHeight);
+        await this._resizeForPermissionHeader();
         this.ensureHeader('permission');
     }
 
@@ -270,30 +226,83 @@ class HeaderTransitionManager {
         this.ensureHeader('main');
     }
 
+    async transitionToOnboardingHeader() {
+        if (this.currentHeaderType === 'onboarding') {
+            return this._resizeForOnboarding();
+        }
+
+        await this._resizeForOnboarding();
+        this.ensureHeader('onboarding');
+    }
+
     async _resizeForMain() {
         if (!window.api) return;
-        console.log('[HeaderController] _resizeForMain: Resizing window to 353x47');
-        return window.api.headerController.resizeHeaderWindow({ width: 353, height: 47 }).catch(() => {});
+        logger.info('[HeaderController] _resizeForMain: Resizing window to 580x60');
+        return window.api.headerController.resizeHeaderWindow({ width: 580, height: 60 }).catch(() => {});
     }
 
     async _resizeForApiKey(height = 370) {
         if (!window.api) return;
-        console.log(`[HeaderController] _resizeForApiKey: Resizing window to 456x${height}`);
+        logger.info('_resizeForApiKey: Resizing window to 456x');
         return window.api.headerController.resizeHeaderWindow({ width: 456, height: height }).catch(() => {});
     }
 
-    async _resizeForPermissionHeader(height) {
+    async _resizeForPermissionHeader() {
         if (!window.api) return;
-        const finalHeight = height || 220;
-        return window.api.headerController.resizeHeaderWindow({ width: 285, height: finalHeight })
+        return window.api.headerController.resizeHeaderWindow({ width: 285, height: 220 })
             .catch(() => {});
     }
 
     async _resizeForWelcome() {
         if (!window.api) return;
-        console.log('[HeaderController] _resizeForWelcome: Resizing window to 456x370');
+        logger.info('[HeaderController] _resizeForWelcome: Resizing window to 456x370');
         return window.api.headerController.resizeHeaderWindow({ width: 456, height: 364 })
             .catch(() => {});
+    }
+
+    async _resizeForOnboarding() {
+        if (!window.api) return;
+        logger.info('[HeaderController] _resizeForOnboarding: Resizing window for onboarding');
+        return window.api.headerController.resizeHeaderWindow({ width: 480, height: 420 })
+            .catch(() => {});
+    }
+
+    shouldShowOnboarding() {
+        logger.info('[HeaderController] Checking if onboarding should be shown');
+        
+        const forceOnboarding = localStorage.getItem('forceOnboarding');
+        const onboardingCompleted = localStorage.getItem('onboardingCompleted');
+        const lastOnboardingDate = localStorage.getItem('lastOnboardingDate');
+        
+        logger.info('[HeaderController] Onboarding localStorage:', {
+            forceOnboarding,
+            onboardingCompleted,
+            lastOnboardingDate
+        });
+        
+        // Check for dev environment flag
+        if (forceOnboarding === 'true') {
+            logger.info('[HeaderController] [OK] ONBOARDING NEEDED - forceOnboarding is true');
+            return true;
+        }
+
+        // Check if onboarding was never completed
+        if (!onboardingCompleted) {
+            logger.info('[HeaderController] [OK] ONBOARDING NEEDED - never completed');
+            return true;
+        }
+
+        // Check if 15 days have passed since last onboarding
+        if (lastOnboardingDate) {
+            const daysSinceLastOnboarding = (Date.now() - new Date(lastOnboardingDate).getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSinceLastOnboarding > 15) {
+                logger.info('[HeaderController] [OK] ONBOARDING NEEDED - 15+ days since last onboarding');
+                return true;
+            }
+        }
+
+        logger.info('[HeaderController] [ERROR] ONBOARDING NOT NEEDED');
+        return false;
     }
 
     async checkPermissions() {
@@ -303,7 +312,7 @@ class HeaderTransitionManager {
         
         try {
             const permissions = await window.api.headerController.checkSystemPermissions();
-            console.log('[HeaderController] Current permissions:', permissions);
+            logger.info('[HeaderController] Current permissions:', permissions);
             
             if (!permissions.needsSetup) {
                 return { success: true };
@@ -319,7 +328,7 @@ class HeaderTransitionManager {
                 error: errorMessage
             };
         } catch (error) {
-            console.error('[HeaderController] Error checking permissions:', error);
+            logger.error('Error checking permissions:', { error });
             return { 
                 success: false, 
                 error: 'Failed to check permissions' 

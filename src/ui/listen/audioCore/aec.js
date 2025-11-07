@@ -1,3 +1,6 @@
+const { createLogger } = require('../../../common/services/renderer-logger.js');
+
+const logger = createLogger('UI.Aec');
 var createAecModule = (() => {
   var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
   return (

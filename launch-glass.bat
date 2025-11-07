@@ -32,16 +32,28 @@ echo.
 
 REM Launch the app (prefer packaged Glass.exe)
 cd /d "%SCRIPT_DIR%"
-if exist "%SCRIPT_DIR%dist\win-unpacked\Glass.exe" (
+if exist "%SCRIPT_DIR%dist-out\win-unpacked\Glass.exe" (
+    echo Lancement via Glass.exe packagé (dist-out)...
+    "%SCRIPT_DIR%dist-out\win-unpacked\Glass.exe" --enable-logging --v=1
+) else if exist "%SCRIPT_DIR%dist\win-unpacked\Glass.exe" (
     echo Lancement via Glass.exe packagé...
     "%SCRIPT_DIR%dist\win-unpacked\Glass.exe" --enable-logging --v=1
 ) else (
-    if exist "%SCRIPT_DIR%dist\win-unpacked\electron.exe" (
+    if exist "%SCRIPT_DIR%dist-out\win-unpacked\electron.exe" (
+        echo Lancement via electron.exe packagé (dist-out)...
+        "%SCRIPT_DIR%dist-out\win-unpacked\electron.exe" --enable-logging --v=1 "%SCRIPT_DIR%src\index.js"
+    ) else if exist "%SCRIPT_DIR%dist\win-unpacked\electron.exe" (
         echo Lancement via electron.exe packagé...
-        "%SCRIPT_DIR%dist\win-unpacked\electron.exe" --enable-logging --v=1 "%SCRIPT_DIR%"
+        "%SCRIPT_DIR%dist\win-unpacked\electron.exe" --enable-logging --v=1 "%SCRIPT_DIR%src\index.js"
     ) else (
-        echo Lancement via npx electron...
-        npx electron --enable-logging --v=1 "%SCRIPT_DIR%"
+        echo Lancement via electron local (sans npx)...
+        if exist "%SCRIPT_DIR%node_modules\electron\cli.js" (
+            node "%SCRIPT_DIR%node_modules\electron\cli.js" --enable-logging --v=1 "%SCRIPT_DIR%src\index.js"
+        ) else (
+            echo Electron local introuvable. Installation...
+            npm install electron --no-audit --no-fund
+            node "%SCRIPT_DIR%node_modules\electron\cli.js" --enable-logging --v=1 "%SCRIPT_DIR%src\index.js"
+        )
     )
 )
 

@@ -1,3 +1,6 @@
+const { createLogger } = require('../../common/services/renderer-logger.js');
+
+const logger = createLogger('UI.Smd');
 /*
 Streaming Markdown Parser and Renderer
 MIT License
@@ -1646,20 +1649,20 @@ export function logger_renderer() {
 
 /** @type {Logger_Renderer_Add_Token} */
 export function logger_add_token(data, type) {
-    console.log("add_token:", token_to_string(type))
+    logger.info("add_token:", token_to_string(type))
 }
 
 /** @type {Logger_Renderer_End_Token} */
 export function logger_end_token(data) {
-    console.log("end_token")
+    logger.info("end_token")
 }
 
 /** @type {Logger_Renderer_Add_Text} */
 export function logger_add_text(data, text) {
-    console.log('add_text: "%s"', text)
+    logger.info('add_text: "%s"', text)
 }
 
 /** @type {Logger_Renderer_Set_Attr} */
 export function logger_set_attr(data, type, value) {
-    console.log('set_attr: %s="%s"', attr_to_html_attr(type), value)
+    logger.info('set_attr: %s="%s"', attr_to_html_attr(type), value)
 }

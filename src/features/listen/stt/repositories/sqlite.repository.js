@@ -1,25 +1,15 @@
-const sqliteClient = require('../../../common/services/sqliteClient');
+/**
+ * SQLite STT Repository - REMOVED
+ * This functionality has been migrated to backend API endpoints.
+ * Use the backend API instead of this SQLite repository.
+ */
 
 function addTranscript({ uid, sessionId, speaker, text }) {
-    // uid is ignored in the SQLite implementation
-    const db = sqliteClient.getDb();
-    const transcriptId = require('crypto').randomUUID();
-    const now = Math.floor(Date.now() / 1000);
-    const query = `INSERT INTO transcripts (id, session_id, start_at, speaker, text, created_at) VALUES (?, ?, ?, ?, ?, ?)`;
-    
-    try {
-        db.prepare(query).run(transcriptId, sessionId, now, speaker, text, now);
-        return { id: transcriptId };
-    } catch (err) {
-        console.error('Error adding transcript:', err);
-        throw err;
-    }
+    throw new Error('SQLite repository has been removed. Use backend API endpoints instead.');
 }
 
 function getAllTranscriptsBySessionId(sessionId) {
-    const db = sqliteClient.getDb();
-    const query = "SELECT * FROM transcripts WHERE session_id = ? ORDER BY start_at ASC";
-    return db.prepare(query).all(sessionId);
+    throw new Error('SQLite repository has been removed. Use backend API endpoints instead.');
 }
 
 module.exports = {

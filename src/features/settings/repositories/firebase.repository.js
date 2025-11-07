@@ -1,7 +1,10 @@
 const { collection, doc, addDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy } = require('firebase/firestore');
-const { getFirestoreInstance } = require('../../common/services/firebaseClient');
-const { createEncryptedConverter } = require('../../common/repositories/firestoreConverter');
-const encryptionService = require('../../common/services/encryptionService');
+const { getFirestoreInstance } = require('../../../common/services/firebaseClient');
+const { createEncryptedConverter } = require('../../../common/repositories/firestoreConverter');
+const encryptionService = require('../../../common/services/encryptionService');
+const { createLogger } = require('../../../common/services/logger.js');
+
+const logger = createLogger('Firebase.repository');
 
 const userPresetConverter = createEncryptedConverter(['prompt', 'title']);
 
@@ -104,7 +107,7 @@ async function getAutoUpdate(uid) {
         if (userSnap.exists()) {
             const data = userSnap.data();
             if (typeof data.auto_update_enabled !== 'undefined') {
-                console.log('Firebase: Auto update setting found:', data.auto_update_enabled);
+                logger.info('Firebase: Auto update setting found:', data.auto_update_enabled);
                 return !!data.auto_update_enabled;
             } else {
                 // Field does not exist, just return default
@@ -115,7 +118,7 @@ async function getAutoUpdate(uid) {
             return true;
         }
     } catch (error) {
-        console.error('Firebase: Error getting auto_update_enabled setting:', error);
+        logger.error('Error occurred', { error  });
         return true; // fallback to enabled
     }
 }
@@ -130,7 +133,7 @@ async function setAutoUpdate(uid, isEnabled) {
         // If user doc does not exist, do nothing (no creation)
         return { success: true };
     } catch (error) {
-        console.error('Firebase: Error setting auto-update:', error);
+        logger.error('Error occurred', { error  });
         return { success: false, error: error.message };
     }
 }

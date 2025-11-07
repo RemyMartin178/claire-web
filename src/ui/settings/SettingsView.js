@@ -1,19 +1,64 @@
 import { html, css, LitElement } from '../assets/lit-core-2.7.4.min.js';
-// import { getOllamaProgressTracker } from '../../features/common/services/localProgressTracker.js'; // 제거됨
+import { ThemeMixin } from '../mixins/ThemeMixin.js';
+// import { getOllamaProgressTracker } from '../../features/common/services/localProgressTracker.js'; // [Korean comment translated]
 
-export class SettingsView extends LitElement {
+export class SettingsView extends ThemeMixin(LitElement) {
     static styles = css`
         * {
-            font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', Arial, sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
             cursor: default;
             user-select: none;
+            font-weight: 400;
         }
 
         :host {
             display: block;
-            width: 240px;
+            width: 100%;
             height: 100%;
-            color: white;
+            color: var(--text-primary, #1f2937);
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        /* Dark mode CSS variables */
+        html.dark {
+            --background-primary: #1f2937;
+            --background-secondary: #374151;
+            --background-tertiary: #4b5563;
+            --surface-elevated: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-tertiary: #9ca3af;
+            --border-light: #4b5563;
+            --border-medium: #6b7280;
+            --border-strong: #9ca3af;
+            --interactive-primary: #3b82f6;
+            --interactive-primary-hover: #2563eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Light mode CSS variables (defaults) */
+        html.light {
+            --background-primary: #ffffff;
+            --background-secondary: #f8f9fa;
+            --background-tertiary: #f1f3f4;
+            --surface-elevated: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --border-light: #e5e7eb;
+            --border-medium: #d1d5db;
+            --border-strong: #9ca3af;
+            --interactive-primary: #2563eb;
+            --interactive-primary-hover: #1d4ed8;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
 
         .settings-container {
@@ -21,15 +66,32 @@ export class SettingsView extends LitElement {
             flex-direction: column;
             height: 100%;
             width: 100%;
-            background: rgba(20, 20, 20, 0.8);
+            background: rgba(0, 0, 0, 0.6);
             border-radius: 12px;
-            outline: 0.5px rgba(255, 255, 255, 0.2) solid;
-            outline-offset: -1px;
+            outline: none;
             box-sizing: border-box;
             position: relative;
             overflow-y: auto;
-            padding: 12px 12px;
-            z-index: 1000;
+            padding: 16px;
+            z-index: 1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .settings-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 12px;
+            padding: 1px;
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            pointer-events: none;
         }
 
         .settings-container::-webkit-scrollbar {
@@ -50,21 +112,15 @@ export class SettingsView extends LitElement {
             background: rgba(255, 255, 255, 0.3);
         }
 
-        .settings-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.15);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            filter: blur(10px);
-            z-index: -1;
+        .opacity-button:hover {
+            background: var(--background-tertiary, #f1f3f4) !important;
+            border-color: var(--border-strong, #9ca3af) !important;
         }
+
+        .opacity-button:active {
+            transform: scale(0.95);
+        }
+
             
         .settings-button[disabled],
         .api-key-section input[disabled] {
@@ -78,7 +134,7 @@ export class SettingsView extends LitElement {
             justify-content: space-between;
             align-items: flex-start;
             padding-bottom: 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid var(--border-light, #e5e7eb);
             position: relative;
             z-index: 1;
         }
@@ -90,16 +146,17 @@ export class SettingsView extends LitElement {
         }
 
         .app-title {
-            font-size: 13px;
-            font-weight: 500;
-            color: white;
+            font-size: 15px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.95);
             margin: 0 0 4px 0;
         }
 
         .account-info {
-            font-size: 11px;
+            font-size: 12px;
             color: rgba(255, 255, 255, 0.7);
             margin: 0;
+            font-weight: 300;
         }
 
         .invisibility-icon {
@@ -117,6 +174,15 @@ export class SettingsView extends LitElement {
             height: 16px;
         }
 
+        /* Ensure text colors work in both light and dark modes */
+        :host-context(html.light) .invisibility-icon svg path {
+            fill: #1f2937 !important;
+        }
+
+        :host-context(html.dark) .invisibility-icon svg path {
+            fill: #f9fafb !important;
+        }
+
         .shortcuts-section {
             display: flex;
             flex-direction: column;
@@ -131,12 +197,13 @@ export class SettingsView extends LitElement {
             justify-content: space-between;
             align-items: center;
             padding: 4px 0;
-            color: white;
-            font-size: 11px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
         }
 
         .shortcut-name {
             font-weight: 300;
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .shortcut-keys {
@@ -146,7 +213,8 @@ export class SettingsView extends LitElement {
         }
 
         .cmd-key, .shortcut-key {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--background-tertiary, #f1f3f4);
+            border: 1px solid var(--border-light, #e5e7eb);
             border-radius: 3px;
             width: 16px;
             height: 16px;
@@ -154,8 +222,9 @@ export class SettingsView extends LitElement {
             align-items: center;
             justify-content: center;
             font-size: 11px;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.9);
+            font-weight: 400;
+            color: var(--text-secondary, #6b7280);
+            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
         }
 
         /* Buttons Section */
@@ -164,19 +233,19 @@ export class SettingsView extends LitElement {
             flex-direction: column;
             gap: 4px;
             padding-top: 6px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--border-light, #e5e7eb);
             position: relative;
             z-index: 1;
             flex: 1;
         }
 
         .settings-button {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            color: white;
-            padding: 5px 10px;
-            font-size: 11px;
+            background: var(--background-secondary, #f8f9fa);
+            border: 1px solid var(--border-light, #e5e7eb);
+            border-radius: 6px;
+            color: var(--text-primary, #1f2937);
+            padding: 8px 12px;
+            font-size: 13px;
             font-weight: 400;
             cursor: pointer;
             transition: all 0.15s ease;
@@ -184,11 +253,13 @@ export class SettingsView extends LitElement {
             align-items: center;
             justify-content: center;
             white-space: nowrap;
+            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
         }
 
         .settings-button:hover {
-            background: rgba(255, 255, 255, 0.15);
-            border-color: rgba(255, 255, 255, 0.3);
+            background: var(--background-tertiary, #f1f3f4);
+            border-color: var(--border-medium, #d1d5db);
+            box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
         }
 
         .settings-button:active {
@@ -204,14 +275,15 @@ export class SettingsView extends LitElement {
         }
 
         .settings-button.danger {
-            background: rgba(255, 59, 48, 0.1);
-            border-color: rgba(255, 59, 48, 0.3);
-            color: rgba(255, 59, 48, 0.9);
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #dc2626;
         }
 
         .settings-button.danger:hover {
-            background: rgba(255, 59, 48, 0.15);
-            border-color: rgba(255, 59, 48, 0.4);
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.4);
+            color: #b91c1c;
         }
 
         .move-buttons, .bottom-buttons {
@@ -221,29 +293,36 @@ export class SettingsView extends LitElement {
 
         .api-key-section {
             padding: 6px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--border-light, #e5e7eb);
         }
 
         .api-key-section input {
             width: 100%;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-            border-radius: 4px;
-            padding: 4px;
-            font-size: 11px;
+            background: var(--background-secondary, #f8f9fa);
+            border: 1px solid var(--border-light, #e5e7eb);
+            color: var(--text-primary, #1f2937);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
             margin-bottom: 4px;
             box-sizing: border-box;
+            transition: all 0.15s ease;
         }
 
         .api-key-section input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
+            color: var(--text-tertiary, #9ca3af);
+        }
+        
+        .api-key-section input:focus {
+            outline: none;
+            border-color: var(--interactive-primary, #2563eb);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         /* Preset Management Section */
         .preset-section {
             padding: 6px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--border-light, #e5e7eb);
         }
 
         .preset-header {
@@ -256,18 +335,18 @@ export class SettingsView extends LitElement {
         .preset-title {
             font-size: 11px;
             font-weight: 500;
-            color: white;
+            color: var(--text-primary, #1f2937);
         }
 
         .preset-count {
             font-size: 9px;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-tertiary, #9ca3af);
             margin-left: 4px;
         }
 
         .preset-toggle {
             font-size: 10px;
-            color: rgba(255, 255, 255, 0.6);
+            color: var(--text-secondary, #6b7280);
             cursor: pointer;
             padding: 2px 4px;
             border-radius: 2px;
@@ -275,7 +354,7 @@ export class SettingsView extends LitElement {
         }
 
         .preset-toggle:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--background-tertiary, #f1f3f4);
         }
 
         .preset-list {
@@ -290,33 +369,33 @@ export class SettingsView extends LitElement {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 6px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 3px;
+            padding: 6px 8px;
+            background: var(--background-secondary, #f8f9fa);
+            border-radius: 6px;
             cursor: pointer;
             transition: all 0.15s ease;
             font-size: 11px;
-            border: 1px solid transparent;
+            border: 1px solid var(--border-light, #e5e7eb);
         }
 
         .preset-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.1);
+            background: var(--background-tertiary, #f1f3f4);
+            border-color: var(--border-medium, #d1d5db);
         }
 
         .preset-item.selected {
-            background: rgba(0, 122, 255, 0.25);
-            border-color: rgba(0, 122, 255, 0.6);
-            box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.3);
+            background: rgba(37, 99, 235, 0.1);
+            border-color: var(--interactive-primary, #2563eb);
+            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.2);
         }
 
         .preset-name {
-            color: white;
+            color: var(--text-primary, #1f2937);
             flex: 1;
             text-overflow: ellipsis;
             overflow: hidden;
             white-space: nowrap;
-            font-weight: 300;
+            font-weight: 400;
         }
 
         .preset-item.selected .preset-name {
@@ -325,7 +404,7 @@ export class SettingsView extends LitElement {
 
         .preset-status {
             font-size: 9px;
-            color: rgba(0, 122, 255, 0.8);
+            color: var(--interactive-primary, #2563eb);
             font-weight: 500;
             margin-left: 6px;
         }
@@ -333,19 +412,19 @@ export class SettingsView extends LitElement {
         .no-presets-message {
             padding: 12px 8px;
             text-align: center;
-            color: rgba(255, 255, 255, 0.5);
+            color: var(--text-tertiary, #9ca3af);
             font-size: 10px;
             line-height: 1.4;
         }
 
         .no-presets-message .web-link {
-            color: rgba(0, 122, 255, 0.8);
+            color: var(--interactive-primary, #2563eb);
             text-decoration: underline;
             cursor: pointer;
         }
 
         .no-presets-message .web-link:hover {
-            color: rgba(0, 122, 255, 1);
+            color: var(--interactive-primary-hover, #1d4ed8);
         }
 
         .loading-state {
@@ -353,15 +432,15 @@ export class SettingsView extends LitElement {
             align-items: center;
             justify-content: center;
             padding: 20px;
-            color: rgba(255, 255, 255, 0.7);
+            color: var(--text-secondary, #6b7280);
             font-size: 11px;
         }
 
         .loading-spinner {
             width: 12px;
             height: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-top: 1px solid rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--border-light, #e5e7eb);
+            border-top: 1px solid var(--interactive-primary, #2563eb);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-right: 6px;
@@ -373,7 +452,7 @@ export class SettingsView extends LitElement {
 
         .api-key-section, .model-selection-section {
             padding: 8px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid var(--border-light, #e5e7eb);
             display: flex;
             flex-direction: column;
             gap: 10px;
@@ -386,95 +465,282 @@ export class SettingsView extends LitElement {
         label {
             font-size: 11px;
             font-weight: 500;
-            color: rgba(255, 255, 255, 0.8);
+            color: var(--text-secondary, #6b7280);
             margin-left: 2px;
         }
         label > strong {
-            color: white;
+            color: var(--text-primary, #1f2937);
             font-weight: 600;
         }
         .provider-key-group input {
-            width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2);
-            color: white; border-radius: 4px; padding: 5px 8px; font-size: 11px; box-sizing: border-box;
+            width: 100%; background: var(--background-secondary, #f8f9fa); border: 1px solid var(--border-light, #e5e7eb);
+            color: var(--text-primary, #1f2937); border-radius: 6px; padding: 8px 12px; font-size: 12px; box-sizing: border-box;
+            transition: all 0.15s ease;
+        }
+        
+        .provider-key-group input:focus {
+            outline: none;
+            border-color: var(--interactive-primary, #2563eb);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         .key-buttons { display: flex; gap: 4px; }
         .key-buttons .settings-button { flex: 1; padding: 4px; }
         .model-list {
             display: flex; flex-direction: column; gap: 2px; max-height: 120px;
-            overflow-y: auto; background: rgba(0,0,0,0.3); border-radius: 4px;
-            padding: 4px; margin-top: 4px;
+            overflow-y: auto; background: var(--background-secondary, #f8f9fa); border: 1px solid var(--border-light, #e5e7eb);
+            border-radius: 6px; padding: 6px; margin-top: 4px;
         }
         .model-item { 
-            padding: 5px 8px; 
-            font-size: 11px; 
-            border-radius: 3px; 
+            padding: 6px 10px; 
+            font-size: 12px; 
+            border-radius: 4px; 
             cursor: pointer; 
-            transition: background-color 0.15s; 
+            transition: all 0.15s ease; 
             display: flex; 
             justify-content: space-between; 
-            align-items: center; 
+            align-items: center;
+            color: var(--text-primary, #1f2937); 
         }
-        .model-item:hover { background-color: rgba(255,255,255,0.1); }
-        .model-item.selected { background-color: rgba(0, 122, 255, 0.4); font-weight: 500; }
+        .model-item:hover { background-color: var(--background-tertiary, #f1f3f4); }
+        .model-item.selected { 
+            background-color: rgba(37, 99, 235, 0.1); 
+            border: 1px solid var(--interactive-primary, #2563eb);
+            font-weight: 500;
+            color: var(--interactive-primary, #2563eb);
+        }
         .model-status { 
             font-size: 9px; 
-            color: rgba(255,255,255,0.6); 
+            color: var(--text-tertiary, #9ca3af); 
             margin-left: 8px; 
         }
-        .model-status.installed { color: rgba(0, 255, 0, 0.8); }
-        .model-status.not-installed { color: rgba(255, 200, 0, 0.8); }
+        .model-status.installed { color: #10b981; }
+        .model-status.not-installed { color: #f59e0b; }
         .install-progress {
             flex: 1;
             height: 4px;
-            background: rgba(255,255,255,0.1);
+            background: var(--background-tertiary, #f1f3f4);
             border-radius: 2px;
             margin-left: 8px;
             overflow: hidden;
         }
         .install-progress-bar {
             height: 100%;
-            background: rgba(0, 122, 255, 0.8);
+            background: var(--interactive-primary, #2563eb);
             transition: width 0.3s ease;
         }
         
         /* Dropdown styles */
         select.model-dropdown {
-            background: rgba(0,0,0,0.2);
-            color: white;
+            background: var(--background-secondary, #f8f9fa);
+            color: var(--text-primary, #1f2937);
+            border: 1px solid var(--border-light, #e5e7eb);
+            border-radius: 6px;
+            padding: 8px 12px;
             cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        select.model-dropdown:focus {
+            outline: none;
+            border-color: var(--interactive-primary, #2563eb);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         
         select.model-dropdown option {
-            background: #1a1a1a;
-            color: white;
+            background: var(--surface-elevated, #ffffff);
+            color: var(--text-primary, #1f2937);
         }
         
         select.model-dropdown option:disabled {
-            color: rgba(255,255,255,0.4);
+            color: var(--text-tertiary, #9ca3af);
         }
-            
-        /* ────────────────[ GLASS BYPASS ]─────────────── */
-        :host-context(body.has-glass) {
-            animation: none !important;
-            transition: none !important;
-            transform: none !important;
-            will-change: auto !important;
+        
+        /* Add spinner animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        :host-context(body.has-glass) * {
-            background: transparent !important;
-            filter: none !important;
-            backdrop-filter: none !important;
-            box-shadow: none !important;
-            outline: none !important;
-            border: none !important;
-            border-radius: 0 !important;
-            transition: none !important;
-            animation: none !important;
+        /* Clean button hover effects */
+        .opacity-button:hover,
+        .theme-toggle-button:hover {
+            opacity: 0.7;
+            transform: scale(1.1);
+        }
+        
+        /* Hide/show icons based on theme */
+        :host-context(html.light) .sun-icon { display: block; }
+        :host-context(html.light) .moon-icon { display: none; }
+        :host-context(html.dark) .sun-icon { display: none; }
+        :host-context(html.dark) .moon-icon { display: block; }
+
+        /* Click-through toggle styles */
+        .clickthrough-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            transition: all 0.15s ease;
+        }
+        
+        .clickthrough-toggle:hover {
+            background: var(--background-secondary, #f8f9fa);
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: var(--border-medium, #d1d5db);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .toggle-switch.enabled {
+            background: var(--text-primary, #1f2937);
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #ffffff;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-switch.enabled .toggle-slider {
+            transform: translateX(24px);
+        }
+        
+        /* Small toggle switches for consistent sizing */
+        .toggle-switch.small {
+            width: 36px;
+            height: 18px;
+            border-radius: 9px;
+        }
+        
+        .toggle-switch.small .toggle-slider {
+            width: 14px;
+            height: 14px;
+            top: 2px;
+            left: 2px;
+        }
+        
+        .toggle-switch.small.enabled .toggle-slider {
+            transform: translateX(18px);
+        }
+        
+        /* Theme toggle button specific styling */
+        .theme-toggle-button {
+            color: var(--text-primary, #1f2937);
+        }
+        
+        /* Theme icon color fixes */
+        .theme-toggle-button svg {
+            stroke: var(--text-primary, #1f2937);
+        }
+        
+        /* Ensure proper colors in light and dark modes */
+        :host-context(html.light) .theme-toggle-button {
+            color: #1f2937;
+        }
+        
+        :host-context(html.light) .theme-toggle-button svg {
+            stroke: #1f2937;
+        }
+        
+        :host-context(html.dark) .theme-toggle-button {
+            color: #f9fafb;
+        }
+        
+        :host-context(html.dark) .theme-toggle-button svg {
+            stroke: #f9fafb;
         }
 
-        :host-context(body.has-glass) .settings-container::before {
-            display: none !important;
+        /* ────────────────[ GLASS STYLE OVERRIDE ]─────────────── */
+        .settings-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .section-title {
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 500;
+            font-size: 13px;
+        }
+        
+        .section-description {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+            font-size: 12px;
+        }
+        
+        .settings-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 400;
+            font-size: 13px;
+        }
+        
+        .settings-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+        
+        .provider-key-group input,
+        .model-list,
+        select.model-dropdown {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.95);
+        }
+        
+        .provider-key-group input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+        
+        label {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        label > strong {
+            color: rgba(255, 255, 255, 0.95);
+        }
+        
+        .cmd-key, .shortcut-key {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .model-item {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .model-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .model-item.selected {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+        
+        .preset-item {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .preset-item:hover {
+            background: rgba(255, 255, 255, 0.12);
         }
     `;
 
@@ -491,6 +757,9 @@ export class SettingsView extends LitElement {
         availableLlmModels: { type: Array, state: true },
         availableSttModels: { type: Array, state: true },
         selectedLlm: { type: String, state: true },
+        windowOpacity: { type: Number, state: true },
+        clickThroughEnabled: { type: Boolean, state: true },
+        // theme property now handled by ThemeMixin
         selectedStt: { type: String, state: true },
         isLlmListVisible: { type: Boolean },
         isSttListVisible: { type: Boolean },
@@ -513,7 +782,6 @@ export class SettingsView extends LitElement {
         //////// after_modelStateService ////////
         this.shortcuts = {};
         this.firebaseUser = null;
-        this.isLoggedIn = false;
         this.apiKeys = { openai: '', gemini: '', anthropic: '', whisper: '' };
         this.providerConfig = {};
         this.isLoading = true;
@@ -528,6 +796,10 @@ export class SettingsView extends LitElement {
         this.presets = [];
         this.selectedPreset = null;
         this.showPresets = false;
+        // Theme is now handled by ThemeMixin
+        // Window management
+        this.windowOpacity = 1.0; // Default 100% opacity
+        this.clickThroughEnabled = false; // Default click-through disabled
         // Ollama related
         this.ollamaStatus = { installed: false, running: false };
         this.ollamaModels = [];
@@ -576,62 +848,22 @@ export class SettingsView extends LitElement {
         this.requestUpdate();
     }
 
-    async loadLocalAIStatus() {
-        try {
-            // Load Ollama status
-            const ollamaStatus = await window.api.settingsView.getOllamaStatus();
-            if (ollamaStatus?.success) {
-                this.ollamaStatus = { installed: ollamaStatus.installed, running: ollamaStatus.running };
-                this.ollamaModels = ollamaStatus.models || [];
-            }
-            
-            // Load Whisper models status only if Whisper is enabled
-            if (this.apiKeys?.whisper === 'local') {
-                const whisperModelsResult = await window.api.settingsView.getWhisperInstalledModels();
-                if (whisperModelsResult?.success) {
-                    const installedWhisperModels = whisperModelsResult.models;
-                    if (this.providerConfig?.whisper) {
-                        this.providerConfig.whisper.sttModels.forEach(m => {
-                            const installedInfo = installedWhisperModels.find(i => i.id === m.id);
-                            if (installedInfo) {
-                                m.installed = installedInfo.installed;
-                            }
-                        });
-                    }
-                }
-            }
-            
-            // Trigger UI update
-            this.requestUpdate();
-        } catch (error) {
-            console.error('Error loading LocalAI status:', error);
-        }
-    }
-
     //////// after_modelStateService ////////
     async loadInitialData() {
-        console.log('[SettingsView] Initial state - isLoggedIn:', this.isLoggedIn, 'firebaseUser:', !!this.firebaseUser);
         if (!window.api) return;
         this.isLoading = true;
         try {
-            // Load essential data first
-            const [userState, modelSettings, presets, contentProtection, shortcuts] = await Promise.all([
+            const [userState, modelSettings, presets, contentProtection, shortcuts, ollamaStatus, whisperModelsResult] = await Promise.all([
                 window.api.settingsView.getCurrentUser(),
                 window.api.settingsView.getModelSettings(), // Facade call
                 window.api.settingsView.getPresets(),
                 window.api.settingsView.getContentProtectionStatus(),
-                window.api.settingsView.getCurrentShortcuts()
+                window.api.settingsView.getCurrentShortcuts(),
+                window.api.settingsView.getOllamaStatus(),
+                window.api.settingsView.getWhisperInstalledModels()
             ]);
             
-            if (userState && userState.isLoggedIn) {
-                this.firebaseUser = userState;
-                this.isLoggedIn = true;
-                console.log('[SettingsView] User is logged in:', userState.email || 'Unknown');
-            } else {
-                this.firebaseUser = null;
-                this.isLoggedIn = false;
-                console.log('[SettingsView] User is NOT logged in');
-            }
+            if (userState && userState.isLoggedIn) this.firebaseUser = userState;
             
             if (modelSettings.success) {
                 const { config, storedKeys, availableLlm, availableStt, selectedModels } = modelSettings.data;
@@ -650,9 +882,23 @@ export class SettingsView extends LitElement {
                 const firstUserPreset = this.presets.find(p => p.is_default === 0);
                 if (firstUserPreset) this.selectedPreset = firstUserPreset;
             }
-            
-            // Load LocalAI status asynchronously to improve initial load time
-            this.loadLocalAIStatus();
+            // Ollama status
+            if (ollamaStatus?.success) {
+                this.ollamaStatus = { installed: ollamaStatus.installed, running: ollamaStatus.running };
+                this.ollamaModels = ollamaStatus.models || [];
+            }
+            // Whisper status
+            if (whisperModelsResult?.success) {
+                const installedWhisperModels = whisperModelsResult.models;
+                if (this.providerConfig.whisper) {
+                    this.providerConfig.whisper.sttModels.forEach(m => {
+                        const installedInfo = installedWhisperModels.find(i => i.id === m.id);
+                        if (installedInfo) {
+                            m.installed = installedInfo.installed;
+                        }
+                    });
+                }
+            }
         } catch (error) {
             console.error('Error loading initial settings data:', error);
         } finally {
@@ -754,7 +1000,7 @@ export class SettingsView extends LitElement {
             this.saving = false;
         }
 
-        // 데이터 새로고침 후, 목록의 표시 상태를 토글합니다.
+        // Data [Korean comment translated] [Korean comment translated], [Korean comment translated] [Korean comment translated] Status[Korean comment translated] [Korean comment translated].
         this[visibilityProp] = !this[visibilityProp];
         this.requestUpdate();
     }
@@ -802,20 +1048,20 @@ export class SettingsView extends LitElement {
     
     async installOllamaModel(modelName) {
         try {
-            // Ollama 모델 다운로드 시작
+            // Ollama Model [Korean comment translated] Start
             this.installingModels = { ...this.installingModels, [modelName]: 0 };
             this.requestUpdate();
 
-            // 진행률 이벤트 리스너 설정 - 통합 LocalAI 이벤트 사용
+            // [Korean comment translated] [Korean comment translated] [Korean comment translated] Settings
             const progressHandler = (event, data) => {
-                if (data.service === 'ollama' && data.model === modelName) {
-                    this.installingModels = { ...this.installingModels, [modelName]: data.progress || 0 };
+                if (data.modelId === modelName) {
+                    this.installingModels = { ...this.installingModels, [modelName]: data.progress };
                     this.requestUpdate();
                 }
             };
 
-            // 통합 LocalAI 이벤트 리스너 등록
-            window.api.settingsView.onLocalAIInstallProgress(progressHandler);
+            // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
+            window.api.settingsView.onOllamaPullProgress(progressHandler);
 
             try {
                 const result = await window.api.settingsView.pullOllamaModel(modelName);
@@ -825,15 +1071,15 @@ export class SettingsView extends LitElement {
                     delete this.installingModels[modelName];
                     this.requestUpdate();
                     
-                    // 상태 새로고침
+                    // Status [Korean comment translated]
                     await this.refreshOllamaStatus();
                     await this.refreshModelData();
                 } else {
                     throw new Error(result.error || 'Installation failed');
                 }
             } finally {
-                // 통합 LocalAI 이벤트 리스너 제거
-                window.api.settingsView.removeOnLocalAIInstallProgress(progressHandler);
+                // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
+                window.api.settingsView.removeOnOllamaPullProgress(progressHandler);
             }
         } catch (error) {
             console.error(`[SettingsView] Error installing model ${modelName}:`, error);
@@ -848,52 +1094,34 @@ export class SettingsView extends LitElement {
         this.requestUpdate();
         
         try {
-            // Set up progress listener - 통합 LocalAI 이벤트 사용
-            const progressHandler = (event, data) => {
-                if (data.service === 'whisper' && data.model === modelId) {
-                    this.installingModels = { ...this.installingModels, [modelId]: data.progress || 0 };
+            // Set up progress listener
+            const progressHandler = (event, { modelId: id, progress }) => {
+                if (id === modelId) {
+                    this.installingModels = { ...this.installingModels, [modelId]: progress };
                     this.requestUpdate();
                 }
             };
             
-            window.api.settingsView.onLocalAIInstallProgress(progressHandler);
+            window.api.settingsView.onWhisperDownloadProgress(progressHandler);
             
             // Start download
             const result = await window.api.settingsView.downloadWhisperModel(modelId);
             
             if (result.success) {
-                // Update the model's installed status
-                if (this.providerConfig?.whisper?.sttModels) {
-                    const modelInfo = this.providerConfig.whisper.sttModels.find(m => m.id === modelId);
-                    if (modelInfo) {
-                        modelInfo.installed = true;
-                    }
-                }
-                
-                // Remove from installing models
-                delete this.installingModels[modelId];
-                this.requestUpdate();
-                
-                // Reload LocalAI status to get fresh data
-                await this.loadLocalAIStatus();
-                
                 // Auto-select the model after download
                 await this.selectModel('stt', modelId);
             } else {
-                // Remove from installing models on failure too
-                delete this.installingModels[modelId];
-                this.requestUpdate();
                 alert(`Failed to download Whisper model: ${result.error}`);
             }
             
             // Cleanup
-            window.api.settingsView.removeOnLocalAIInstallProgress(progressHandler);
+            window.api.settingsView.removeOnWhisperDownloadProgress(progressHandler);
         } catch (error) {
             console.error(`[SettingsView] Error downloading Whisper model ${modelId}:`, error);
-            // Remove from installing models on error
+            alert(`Error downloading ${modelId}: ${error.message}`);
+        } finally {
             delete this.installingModels[modelId];
             this.requestUpdate();
-            alert(`Error downloading ${modelId}: ${error.message}`);
         }
     }
     
@@ -907,18 +1135,19 @@ export class SettingsView extends LitElement {
         return null;
     }
 
+    async handleWhisperModelSelect(modelId) {
+        if (!modelId) return;
+        
+        // Select the model (will trigger download if needed)
+        await this.selectModel('stt', modelId);
+    }
 
-    async handleUsePicklesKey(e) {
+    handleUsePicklesKey(e) {
         e.preventDefault()
         if (this.wasJustDragged) return
-        try {
-            console.log('[SettingsView] Starting Firebase login flow...');
-            // Utiliser le même système d'authentification que la barre flottante
-            await window.api.common.firebaseLogin();
-            console.log('[SettingsView] Firebase login flow initiated');
-        } catch (err) {
-            console.error('[SettingsView] Firebase login flow failed:', err);
-        }
+    
+        console.log("Requesting Firebase authentication from main process...")
+        window.api.settingsView.startFirebaseAuth();
     }
     //////// after_modelStateService ////////
 
@@ -929,12 +1158,12 @@ export class SettingsView extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         
+        // Theme initialization is now handled by ThemeMixin
+        
         this.setupEventListeners();
         this.setupIpcListeners();
         this.setupWindowResize();
         this.loadAutoUpdateSetting();
-        // Force one height calculation immediately (innerHeight may be 0 at first)
-        setTimeout(() => this.updateScrollHeight(), 0);
     }
 
     disconnectedCallback() {
@@ -967,26 +1196,12 @@ export class SettingsView extends LitElement {
         
         this._userStateListener = (event, userState) => {
             console.log('[SettingsView] Received user-state-changed:', userState);
-            const wasLoggedIn = this.isLoggedIn;
-            
             if (userState && userState.isLoggedIn) {
                 this.firebaseUser = userState;
-                this.isLoggedIn = true;
-                console.log('[SettingsView] User logged in:', userState.displayName || userState.email || 'Unknown');
             } else {
                 this.firebaseUser = null;
-                this.isLoggedIn = false;
-                console.log('[SettingsView] User logged out or not logged in');
             }
-            
-            // Seulement recharger les données si l'état de connexion a changé
-            if (wasLoggedIn !== this.isLoggedIn) {
-                this.loadAutoUpdateSetting();
-                // Reload model settings when user state changes (Firebase login/logout)
-                this.loadInitialData();
-            }
-            
-            // Force UI update
+            this.loadAutoUpdateSetting();
             this.requestUpdate();
         };
         
@@ -996,14 +1211,14 @@ export class SettingsView extends LitElement {
             this.requestUpdate();
         };
 
-        // 프리셋 업데이트 리스너 추가
+        // [Korean comment translated] Update [Korean comment translated] [Korean comment translated]
         this._presetsUpdatedListener = async (event) => {
             console.log('[SettingsView] Received presets-updated, refreshing presets');
             try {
                 const presets = await window.api.settingsView.getPresets();
                 this.presets = presets || [];
                 
-                // 현재 선택된 프리셋이 삭제되었는지 확인 (사용자 프리셋만 고려)
+                // [Korean comment translated] [Korean comment translated] [Korean comment translated] Delete[Korean comment translated] Confirm (User [Korean comment translated] [Korean comment translated])
                 const userPresets = this.presets.filter(p => p.is_default === 0);
                 if (this.selectedPreset && !userPresets.find(p => p.id === this.selectedPreset.id)) {
                     this.selectedPreset = userPresets.length > 0 ? userPresets[0] : null;
@@ -1019,10 +1234,16 @@ export class SettingsView extends LitElement {
             this.shortcuts = keybinds;
         };
         
+        this._clickThroughListener = (event, enabled) => {
+            console.log('[SettingsView] Received click-through-changed:', enabled);
+            this.clickThroughEnabled = enabled;
+        };
+        
         window.api.settingsView.onUserStateChanged(this._userStateListener);
         window.api.settingsView.onSettingsUpdated(this._settingsUpdatedListener);
         window.api.settingsView.onPresetsUpdated(this._presetsUpdatedListener);
         window.api.settingsView.onShortcutsUpdated(this._shortcutListener);
+        window.api.settingsView.onClickThroughChanged(this._clickThroughListener);
     }
 
     cleanupIpcListeners() {
@@ -1039,6 +1260,9 @@ export class SettingsView extends LitElement {
         }
         if (this._shortcutListener) {
             window.api.settingsView.removeOnShortcutsUpdated(this._shortcutListener);
+        }
+        if (this._clickThroughListener) {
+            window.api.settingsView.removeOnClickThroughChanged(this._clickThroughListener);
         }
     }
 
@@ -1060,13 +1284,11 @@ export class SettingsView extends LitElement {
     }
 
     updateScrollHeight() {
-        // Electron 일부 시점에서 window.innerHeight 가 0 으로 보고되는 버그 보호
-        const rawHeight = window.innerHeight || (window.screen ? window.screen.height : 0);
-        const MIN_HEIGHT = 300; // 최소 보장 높이
-        const maxHeight = Math.max(MIN_HEIGHT, rawHeight);
-
+        const windowHeight = window.innerHeight;
+        const maxHeight = windowHeight;
+        
         this.style.maxHeight = `${maxHeight}px`;
-
+        
         const container = this.shadowRoot?.querySelector('.settings-container');
         if (container) {
             container.style.maxHeight = `${maxHeight}px`;
@@ -1075,8 +1297,6 @@ export class SettingsView extends LitElement {
 
     handleMouseEnter = () => {
         window.api.settingsView.cancelHideSettingsWindow();
-        // Recalculate height in case it was set to 0 before
-        this.updateScrollHeight();
     }
 
     handleMouseLeave = () => {
@@ -1101,7 +1321,7 @@ export class SettingsView extends LitElement {
             'Up': '↑', 'Down': '↓', 'Left': '←', 'Right': '→'
         };
 
-        // scrollDown/scrollUp의 특수 처리
+        // scrollDown/scrollUp[Korean comment translated] [Korean comment translated] Process
         if (accelerator.includes('↕')) {
             const keys = accelerator.replace('↕','').split('+');
             keys.push('↕');
@@ -1134,10 +1354,6 @@ export class SettingsView extends LitElement {
 
     async handlePersonalize() {
         console.log('Personalize clicked');
-        if (!this.firebaseUser) {
-            console.warn('[SettingsView] Block personalize: not authenticated');
-            return;
-        }
         try {
             await window.api.settingsView.openPersonalizePage();
         } catch (error) {
@@ -1175,31 +1391,32 @@ export class SettingsView extends LitElement {
         window.api.settingsView.quitApplication();
     }
 
-    async handleFirebaseLogout() {
+    handleFirebaseLogout() {
         console.log('Firebase Logout clicked');
-        try {
-            await window.api.common.firebaseLogout();
-            console.log('Firebase Logout successful');
-        } catch (error) {
-            console.error('Firebase Logout failed:', error);
-        }
-
-        // Always clear local user state regardless of Firebase result
-        this.clearUserData();
-        this.requestUpdate();
+        window.api.settingsView.firebaseLogout();
     }
 
-    clearUserData() {
-        console.log('[SettingsView] Clearing all user data');
-        this.firebaseUser = null;
-
-        // Clear any cached user data
-        if (window.api?.settingsView?.clearUserCache) {
-            window.api.settingsView.clearUserCache();
+    async handleWebDashboardClick() {
+        console.log('Web Dashboard clicked');
+        try {
+            const webUrl = await window.api.common.getWebUrl();
+            if (this.firebaseUser) {
+                // User is logged in - go directly to keys page
+                window.api.common.openExternal(`${webUrl}/settings/models`);
+            } else {
+                // User is not logged in - go to login page with redirect to keys
+                window.api.common.openExternal(`${webUrl}/login?redirect=settings/models`);
+            }
+        } catch (error) {
+            console.error('Failed to get web URL:', error);
+            // Fallback to default port
+            const fallbackUrl = 'http://localhost:3000';
+            if (this.firebaseUser) {
+                window.api.common.openExternal(`${fallbackUrl}/settings/models`);
+            } else {
+                window.api.common.openExternal(`${fallbackUrl}/login?redirect=settings/models`);
+            }
         }
-
-        // Reset any user-specific settings to defaults
-        this.loadInitialData();
     }
 
     async handleOllamaShutdown() {
@@ -1230,6 +1447,73 @@ export class SettingsView extends LitElement {
         }
     }
 
+    async increaseOpacity() {
+        const newOpacity = Math.min(1.0, this.windowOpacity + 0.1);
+        await this.updateWindowOpacity(newOpacity);
+    }
+
+    async decreaseOpacity() {
+        const newOpacity = Math.max(0.1, this.windowOpacity - 0.1);
+        await this.updateWindowOpacity(newOpacity);
+    }
+
+    async updateWindowOpacity(opacity) {
+        if (!window.api || !window.api.settingsView.setWindowOpacity) {
+            console.warn('[SettingsView] Window opacity API not available');
+            return;
+        }
+        
+        try {
+            const result = await window.api.settingsView.setWindowOpacity(opacity);
+            if (result && result.success) {
+                this.windowOpacity = result.opacity;
+                console.log(`[SettingsView] Window opacity updated to: ${Math.round(this.windowOpacity * 100)}%`);
+                this.requestUpdate();
+            } else {
+                console.error('[SettingsView] Failed to set window opacity:', result?.error);
+            }
+        } catch (error) {
+            console.error('[SettingsView] Error setting window opacity:', error);
+        }
+    }
+
+    async toggleTheme() {
+        // Use the centralized theme system instead of local logic
+        console.log(`[SettingsView] Toggling theme from ${this.currentTheme}`);
+        
+        try {
+            const result = await super.toggleTheme(); // Call ThemeMixin method
+            
+            if (result.success) {
+                console.log(`[SettingsView] Theme successfully toggled to ${result.theme}`);
+            } else {
+                console.error(`[SettingsView] Failed to toggle theme: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('[SettingsView] Error toggling theme:', error);
+        }
+    }
+
+    async toggleClickThrough() {
+        if (!window.api || !window.api.settingsView.toggleClickThrough) {
+            console.warn('[SettingsView] Click-through API not available');
+            return;
+        }
+
+        try {
+            const result = await window.api.settingsView.toggleClickThrough();
+            if (result && result.success) {
+                this.clickThroughEnabled = result.enabled;
+                console.log(`[SettingsView] Click-through ${this.clickThroughEnabled ? 'enabled' : 'disabled'}`);
+                this.requestUpdate();
+            } else {
+                console.error('[SettingsView] Failed to toggle click-through:', result?.error);
+            }
+        } catch (error) {
+            console.error('[SettingsView] Error toggling click-through:', error);
+        }
+    }
+
     //////// after_modelStateService ////////
     render() {
         if (this.isLoading) {
@@ -1245,191 +1529,86 @@ export class SettingsView extends LitElement {
 
         const loggedIn = !!this.firebaseUser;
 
-        const apiKeyManagementHTML = html`
-            <div class="api-key-section">
-                ${Object.entries(this.providerConfig)
-                    .filter(([id, config]) => !id.includes('-glass'))
-                    .map(([id, config]) => {
-                        if (id === 'ollama') {
-                            // Special UI for Ollama
-                            return html`
-                                <div class="provider-key-group">
-                                    <label>${config.name} (Local)</label>
-                                    ${this.ollamaStatus.installed && this.ollamaStatus.running ? html`
-                                        <div style="padding: 8px; background: rgba(0,255,0,0.1); border-radius: 4px; font-size: 11px; color: rgba(0,255,0,0.8);">
-                                            ✓ Ollama is running
-                                        </div>
-                                        <button class="settings-button full-width danger" @click=${this.handleOllamaShutdown}>
-                                            Stop Ollama Service
-                                        </button>
-                                    ` : this.ollamaStatus.installed ? html`
-                                        <div style="padding: 8px; background: rgba(255,200,0,0.1); border-radius: 4px; font-size: 11px; color: rgba(255,200,0,0.8);">
-                                            ⚠ Ollama installed but not running
-                                        </div>
-                                        <button class="settings-button full-width" @click=${() => this.handleSaveKey(id)}>
-                                            Start Ollama
-                                        </button>
-                                    ` : html`
-                                        <div style="padding: 8px; background: rgba(255,100,100,0.1); border-radius: 4px; font-size: 11px; color: rgba(255,100,100,0.8);">
-                                            ✗ Ollama not installed
-                                        </div>
-                                        <button class="settings-button full-width" @click=${() => this.handleSaveKey(id)}>
-                                            Install & Setup Ollama
-                                        </button>
-                                    `}
-                                </div>
-                            `;
-                        }
-                        
-                        if (id === 'whisper') {
-                            // Simplified UI for Whisper without model selection
-                            return html`
-                                <div class="provider-key-group">
-                                    <label>${config.name} (Local STT)</label>
-                                    ${this.apiKeys[id] === 'local' ? html`
-                                        <div style="padding: 8px; background: rgba(0,255,0,0.1); border-radius: 4px; font-size: 11px; color: rgba(0,255,0,0.8); margin-bottom: 8px;">
-                                            ✓ Whisper is enabled
-                                        </div>
-                                        <button class="settings-button full-width danger" @click=${() => this.handleClearKey(id)}>
-                                            Disable Whisper
-                                        </button>
-                                    ` : html`
-                                        <button class="settings-button full-width" @click=${() => this.handleSaveKey(id)}>
-                                            Enable Whisper STT
-                                        </button>
-                                    `}
-                                </div>
-                            `;
-                        }
-                        
-                        // Regular providers
-                        return html`
-                        <div class="provider-key-group">
-                            <label for="key-input-${id}">${config.name} API Key</label>
-                            <input type="password" id="key-input-${id}"
-                                placeholder=${loggedIn ? "Using Pickle's Key" : `Enter ${config.name} API Key`} 
-                                .value=${this.apiKeys[id] || ''}
-                            >
-                            <div class="key-buttons">
-                               <button class="settings-button" @click=${() => this.handleSaveKey(id)} >Save</button>
-                               <button class="settings-button danger" @click=${() => this.handleClearKey(id)} }>Clear</button>
-                            </div>
-                        </div>
-                        `;
-                    })}
-            </div>
-        `;
-        
-        const getModelName = (type, id) => {
-            const models = type === 'llm' ? this.availableLlmModels : this.availableSttModels;
-            const model = models.find(m => m.id === id);
-            return model ? model.name : id;
-        }
-
-        const modelSelectionHTML = html`
-            <div class="model-selection-section">
-                <div class="model-select-group">
-                    <label>LLM Model: <strong>${getModelName('llm', this.selectedLlm) || 'Not Set'}</strong></label>
-                    <button class="settings-button full-width" @click=${() => this.toggleModelList('llm')} ?disabled=${this.saving || this.availableLlmModels.length === 0}>
-                        Change LLM Model
-                    </button>
-                    ${this.isLlmListVisible ? html`
-                        <div class="model-list">
-                            ${this.availableLlmModels.map(model => {
-                                const isOllama = this.getProviderForModel('llm', model.id) === 'ollama';
-                                const ollamaModel = isOllama ? this.ollamaModels.find(m => m.name === model.id) : null;
-                                const isInstalling = this.installingModels[model.id] !== undefined;
-                                const installProgress = this.installingModels[model.id] || 0;
-                                
-                                return html`
-                                    <div class="model-item ${this.selectedLlm === model.id ? 'selected' : ''}" 
-                                         @click=${() => this.selectModel('llm', model.id)}>
-                                        <span>${model.name}</span>
-                                        ${isOllama ? html`
-                                            ${isInstalling ? html`
-                                                <div class="install-progress">
-                                                    <div class="install-progress-bar" style="width: ${installProgress}%"></div>
-                                </div>
-                                            ` : ollamaModel?.installed ? html`
-                                                <span class="model-status installed">✓ Installed</span>
-                                            ` : html`
-                                                <span class="model-status not-installed">Click to install</span>
-                                            `}
-                                        ` : ''}
-                                    </div>
-                                `;
-                            })}
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="model-select-group">
-                    <label>STT Model: <strong>${getModelName('stt', this.selectedStt) || 'Not Set'}</strong></label>
-                    <button class="settings-button full-width" @click=${() => this.toggleModelList('stt')} ?disabled=${this.saving || this.availableSttModels.length === 0}>
-                        Change STT Model
-                    </button>
-                    ${this.isSttListVisible ? html`
-                        <div class="model-list">
-                            ${this.availableSttModels.map(model => {
-                                const isWhisper = this.getProviderForModel('stt', model.id) === 'whisper';
-                                const whisperModel = isWhisper && this.providerConfig?.whisper?.sttModels 
-                                    ? this.providerConfig.whisper.sttModels.find(m => m.id === model.id) 
-                                    : null;
-                                const isInstalling = this.installingModels[model.id] !== undefined;
-                                const installProgress = this.installingModels[model.id] || 0;
-                                
-                                return html`
-                                    <div class="model-item ${this.selectedStt === model.id ? 'selected' : ''}" 
-                                         @click=${() => this.selectModel('stt', model.id)}>
-                                        <span>${model.name}</span>
-                                        ${isWhisper ? html`
-                                            ${isInstalling ? html`
-                                                <div class="install-progress">
-                                                    <div class="install-progress-bar" style="width: ${installProgress}%"></div>
-                                                </div>
-                                            ` : whisperModel?.installed ? html`
-                                                <span class="model-status installed">✓ Installed</span>
-                                            ` : html`
-                                                <span class="model-status not-installed">Not Installed</span>
-                                            `}
-                                        ` : ''}
-                                    </div>
-                                `;
-                            })}
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-
         return html`
             <div class="settings-container">
                 <div class="header-section">
                     <div>
-                        <h1 class="app-title">Pickle Glass</h1>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                            <img src="../assets/xerus.svg" alt="Xerus" style="width: 24px; height: 24px;">
+                            <h1 class="app-title">Xerus</h1>
+                        </div>
                         <div class="account-info">
-                            ${this.isLoggedIn && this.firebaseUser
-                                ? html`Account: ${this.firebaseUser.displayName || this.firebaseUser.email || 'Connecté'}`
-                                : `Account: Non connecté`
+                            ${this.firebaseUser
+                                ? html`Account: ${this.firebaseUser.email || 'Logged In'}`
+                                : `Account: Not Logged In`
                             }
                         </div>
                     </div>
-                    <div class="invisibility-icon ${this.isContentProtectionOn ? 'visible' : ''}" title="Invisibility is On">
+                    <div class="invisibility-icon ${!this.isContentProtectionOn ? 'visible' : ''}" title="Content Protection is Off">
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M9.785 7.41787C8.7 7.41787 7.79 8.19371 7.55667 9.22621C7.0025 8.98704 6.495 9.05121 6.11 9.22037C5.87083 8.18204 4.96083 7.41787 3.88167 7.41787C2.61583 7.41787 1.58333 8.46204 1.58333 9.75121C1.58333 11.0404 2.61583 12.0845 3.88167 12.0845C5.08333 12.0845 6.06333 11.1395 6.15667 9.93787C6.355 9.79787 6.87417 9.53537 7.51 9.94954C7.615 11.1454 8.58333 12.0845 9.785 12.0845C11.0508 12.0845 12.0833 11.0404 12.0833 9.75121C12.0833 8.46204 11.0508 7.41787 9.785 7.41787ZM3.88167 11.4195C2.97167 11.4195 2.2425 10.6729 2.2425 9.75121C2.2425 8.82954 2.9775 8.08287 3.88167 8.08287C4.79167 8.08287 5.52083 8.82954 5.52083 9.75121C5.52083 10.6729 4.79167 11.4195 3.88167 11.4195ZM9.785 11.4195C8.875 11.4195 8.14583 10.6729 8.14583 9.75121C8.14583 8.82954 8.875 8.08287 9.785 8.08287C10.695 8.08287 11.43 8.82954 11.43 9.75121C11.43 10.6729 10.6892 11.4195 9.785 11.4195ZM12.6667 5.95954H1V6.83454H12.6667V5.95954ZM8.8925 1.36871C8.76417 1.08287 8.4375 0.931207 8.12833 1.03037L6.83333 1.46204L5.5325 1.03037L5.50333 1.02454C5.19417 0.93704 4.8675 1.10037 4.75083 1.39787L3.33333 5.08454H10.3333L8.91 1.39787L8.8925 1.36871Z" fill="white"/>
+                            <path d="M9.785 7.41787C8.7 7.41787 7.79 8.19371 7.55667 9.22621C7.0025 8.98704 6.495 9.05121 6.11 9.22037C5.87083 8.18204 4.96083 7.41787 3.88167 7.41787C2.61583 7.41787 1.58333 8.46204 1.58333 9.75121C1.58333 11.0404 2.61583 12.0845 3.88167 12.0845C5.08333 12.0845 6.06333 11.1395 6.15667 9.93787C6.355 9.79787 6.87417 9.53537 7.51 9.94954C7.615 11.1454 8.58333 12.0845 9.785 12.0845C11.0508 12.0845 12.0833 11.0404 12.0833 9.75121C12.0833 8.46204 11.0508 7.41787 9.785 7.41787ZM3.88167 11.4195C2.97167 11.4195 2.2425 10.6729 2.2425 9.75121C2.2425 8.82954 2.9775 8.08287 3.88167 8.08287C4.79167 8.08287 5.52083 8.82954 5.52083 9.75121C5.52083 10.6729 4.79167 11.4195 3.88167 11.4195ZM9.785 11.4195C8.875 11.4195 8.14583 10.6729 8.14583 9.75121C8.14583 8.82954 8.875 8.08287 9.785 8.08287C10.695 8.08287 11.43 8.82954 11.43 9.75121C11.43 10.6729 10.6892 11.4195 9.785 11.4195ZM12.6667 5.95954H1V6.83454H12.6667V5.95954ZM8.8925 1.36871C8.76417 1.08287 8.4375 0.931207 8.12833 1.03037L6.83333 1.46204L5.5325 1.03037L5.50333 1.02454C5.19417 0.93704 4.8675 1.10037 4.75083 1.39787L3.33333 5.08454H10.3333L8.91 1.39787L8.8925 1.36871Z"/>
                         </svg>
                     </div>
                 </div>
 
-                ${apiKeyManagementHTML}
-                ${modelSelectionHTML}
+                <div class="web-link" style="margin: 12px 0; text-align: center; color: var(--interactive-primary, #2563eb); cursor: pointer; font-size: 12px; text-decoration: underline;" @click=${this.handleWebDashboardClick}>
+                    Manage API keys in your web dashboard
+                </div>
 
-                <div class="buttons-section" style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 6px; margin-top: 6px;">
+                <div class="buttons-section" style="border-top: 1px solid var(--border-light, #e5e7eb); padding-top: 6px; margin-top: 6px;">
                     <button class="settings-button full-width" @click=${this.openShortcutEditor}>
                         Edit Shortcuts
                     </button>
                 </div>
 
-                
+                <!-- Theme & Opacity Combined Controls -->
+                <div class="theme-opacity-section" style="border-top: 1px solid var(--border-light, #e5e7eb); padding-top: 8px; margin-top: 8px;">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
+                        <button class="opacity-button" @click=${this.decreaseOpacity} style="background: none; border: none; color: var(--text-primary, #1f2937); font-size: 20px; font-weight: 500; cursor: pointer; transition: all 0.15s; padding: 6px; display: flex; align-items: center; justify-content: center;">
+                            −
+                        </button>
+                        
+                        <button class="theme-toggle-button" @click=${this.toggleTheme} style="background: none; border: none; padding: 6px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;">
+                            <!-- Sun Icon (visible in light mode) -->
+                            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width: 20px; height: 20px; stroke-width: 2;">
+                                <circle cx="12" cy="12" r="4" />
+                                <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                            </svg>
+                            <!-- Moon Icon (visible in dark mode) -->
+                            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="width: 20px; height: 20px; stroke-width: 2;">
+                                <path d="M12 3a6 6 0 0 0 9 9a9 9 0 1 1-9-9" />
+                            </svg>
+                        </button>
+                        
+                        <button class="opacity-button" @click=${this.increaseOpacity} style="background: none; border: none; color: var(--text-primary, #1f2937); font-size: 20px; font-weight: 500; cursor: pointer; transition: all 0.15s; padding: 6px; display: flex; align-items: center; justify-content: center;">
+                            +
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Click-Through & Visibility Toggles -->
+                <div class="toggles-section" style="border-top: 1px solid var(--border-light, #e5e7eb); padding-top: 12px; margin-top: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                        <!-- Click Through Toggle -->
+                        <div class="toggle-item" @click=${this.toggleClickThrough} style="display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1;">
+                            <span style="font-size: 13px; color: var(--text-primary, #1f2937); font-weight: 400;">Click Through</span>
+                            <div class="toggle-switch small ${this.clickThroughEnabled ? 'enabled' : ''}">
+                                <div class="toggle-slider"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Visibility Toggle -->
+                        <div class="toggle-item" @click=${this.handleToggleInvisibility} style="display: flex; align-items: center; gap: 6px; cursor: pointer; flex: 1; justify-content: flex-end;">
+                            <span style="font-size: 13px; color: var(--text-primary, #1f2937); font-weight: 400;">Visibility</span>
+                            <div class="toggle-switch small ${this.isContentProtectionOn ? 'enabled' : ''}">
+                                <div class="toggle-slider"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid var(--border-light, #e5e7eb); margin: 12px 0;">
+
                 <div class="shortcuts-section">
                     ${this.getMainShortcuts().map(shortcut => html`
                         <div class="shortcut-item">
@@ -1441,71 +1620,22 @@ export class SettingsView extends LitElement {
                     `)}
                 </div>
 
-                <div class="preset-section">
-                    <div class="preset-header">
-                        <span class="preset-title">
-                            My Presets
-                            <span class="preset-count">(${this.presets.filter(p => p.is_default === 0).length})</span>
-                        </span>
-                        <span class="preset-toggle" @click=${this.togglePresets}>
-                            ${this.showPresets ? '▼' : '▶'}
-                        </span>
-                    </div>
-                    
-                    <div class="preset-list ${this.showPresets ? '' : 'hidden'}">
-                        ${this.presets.filter(p => p.is_default === 0).length === 0 ? html`
-                            <div class="no-presets-message">
-                                No custom presets yet.<br>
-                                <span class="web-link" @click=${this.handlePersonalize}>
-                                    Create your first preset
-                                </span>
-                            </div>
-                        ` : this.presets.filter(p => p.is_default === 0).map(preset => html`
-                            <div class="preset-item ${this.selectedPreset?.id === preset.id ? 'selected' : ''}"
-                                 @click=${() => this.handlePresetSelect(preset)}>
-                                <span class="preset-name">${preset.title}</span>
-                                ${this.selectedPreset?.id === preset.id ? html`<span class="preset-status">Selected</span>` : ''}
-                            </div>
-                        `)}
-                    </div>
-                </div>
-
                 <div class="buttons-section">
-                    <button class="settings-button full-width" @click=${this.handlePersonalize}>
-                        <span>Personalize / Meeting Notes</span>
-                    </button>
-                    <button class="settings-button full-width" @click=${this.handleToggleAutoUpdate} ?disabled=${this.autoUpdateLoading}>
-                        <span>Automatic Updates: ${this.autoUpdateEnabled ? 'On' : 'Off'}</span>
-                    </button>
-                    
-                    <div class="move-buttons">
-                        <button class="settings-button half-width" @click=${this.handleMoveLeft}>
-                            <span>← Move</span>
-                        </button>
-                        <button class="settings-button half-width" @click=${this.handleMoveRight}>
-                            <span>Move →</span>
-                        </button>
-                    </div>
-                    
-                    <button class="settings-button full-width" @click=${this.handleToggleInvisibility}>
-                        <span>${this.isContentProtectionOn ? 'Disable Invisibility' : 'Enable Invisibility'}</span>
-                    </button>
-                    
                     <div class="bottom-buttons">
-                        ${this.isLoggedIn
+                        ${this.firebaseUser
                             ? html`
                                 <button class="settings-button half-width danger" @click=${this.handleFirebaseLogout}>
-                                    <span>Se déconnecter</span>
+                                    <span>Logout</span>
                                 </button>
                                 `
                             : html`
                                 <button class="settings-button half-width" @click=${this.handleUsePicklesKey}>
-                                    <span>Se connecter</span>
+                                    <span>Login</span>
                                 </button>
                                 `
                         }
                         <button class="settings-button half-width danger" @click=${this.handleQuit}>
-                            <span>Quitter</span>
+                            <span>Quit</span>
                         </button>
                     </div>
                 </div>

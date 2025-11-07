@@ -1,36 +1,41 @@
 # electron-builder.yml
 
 # The unique application ID
-appId: com.pickle.glass
+appId: com.pickle.claire
 
 # The user-facing application name
-productName: Glass
+productName: Claire
 
 # Publish configuration for GitHub releases
 publish:
     provider: github
     owner: pickle-com
-    repo: glass
+    repo: claire
     releaseType: draft
 
 # Protocols configuration for deep linking
 protocols:
-    name: PickleGlass Protocol
+    name: Claire Protocol
     schemes: 
+        - claire
         - pickleglass
 
 # List of files to be included in the app package
 files:
     - src/**/*
     - package.json
-    - pickleglass_web/backend_node/**/*
+    - backend/**/*
     - '!**/node_modules/electron/**'
+    - '!**/.env*'
+    - '!**/test-db-connection.js'
     - public/build/**/*
 
 # Additional resources to be copied into the app's resources directory
 extraResources:
     - from: pickleglass_web/out
       to: out
+    - from: src/common/config/production-config.js
+      to: config/production-config.js
 
 asarUnpack:
     - "src/ui/assets/SystemAudioDump"
@@ -56,7 +61,7 @@ nsis:
     deleteAppDataOnUninstall: true
     createDesktopShortcut: always
     createStartMenuShortcut: true
-    shortcutName: Glass
+    shortcutName: Claire
 
 # macOS specific configuration
 mac:

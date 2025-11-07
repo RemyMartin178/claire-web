@@ -1,5 +1,8 @@
 // renderer.js
 const listenCapture = require('./listenCapture.js');
+const { createLogger } = require('../../../common/services/renderer-logger.js');
+
+const logger = createLogger('UI.Renderer');
 const params        = new URLSearchParams(window.location.search);
 const isListenView  = params.get('view') === 'listen';
 
@@ -16,14 +19,14 @@ window.pickleGlass = {
 
 window.api.renderer.onChangeListenCaptureState((_event, { status }) => {
     if (!isListenView) {
-        console.log('[Renderer] Non-listen view: ignoring capture-state change');
+        logger.info('[Renderer] Non-listen view: ignoring capture-state change');
         return;
     }
     if (status === "stop") {
-        console.log('[Renderer] Session ended – stopping local capture');
+        logger.info('[Renderer] Session ended – stopping local capture');
         listenCapture.stopCapture();
     } else {
-        console.log('[Renderer] Session initialized – starting local capture');
+        logger.info('[Renderer] Session initialized – starting local capture');
         listenCapture.startCapture();
     }
 });

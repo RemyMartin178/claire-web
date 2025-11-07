@@ -1,6 +1,7 @@
 import { html, css, LitElement } from '../assets/lit-core-2.7.4.min.js';
+import { ThemeMixin } from '../mixins/ThemeMixin.js';
 
-export class ApiKeyHeader extends LitElement {
+export class ApiKeyHeader extends ThemeMixin(LitElement) {
     //////// after_modelStateService ////////
     static properties = {
         llmApiKey: { type: String },
@@ -51,7 +52,7 @@ export class ApiKeyHeader extends LitElement {
             align-items: flex-start;
             gap: 24px;
             display: flex;
-            -webkit-app-region: no-drag;
+            -webkit-app-region: drag;
         }
         .header {
             width: 100%;
@@ -335,7 +336,7 @@ export class ApiKeyHeader extends LitElement {
         this.sttApiKey = '';
         this.llmProvider = 'openai';
         this.sttProvider = 'openai';
-        this.providers = { llm: [], stt: [] }; // 초기화
+        this.providers = { llm: [], stt: [] }; // Initialize
         // Ollama related
         this.modelSuggestions = [];
         this.userModelHistory = [];
@@ -401,8 +402,6 @@ export class ApiKeyHeader extends LitElement {
         this.handleSttModelChange = this.handleSttModelChange.bind(this);
         this.handleBack = this.handleBack.bind(this);
         this.handleClose = this.handleClose.bind(this);
-        this.handleMouseMove = this.handleMouseMove.bind(this);
-        this.handleMouseUp = this.handleMouseUp.bind(this);
     }
 
     updated(changedProperties) {
@@ -438,7 +437,7 @@ export class ApiKeyHeader extends LitElement {
             const sttProviders = [];
 
             for (const id in config) {
-                // 'openai-glass' 같은 가상 Provider는 UI에 표시하지 않음
+                // 'openai-glass' [Korean comment translated] [Korean comment translated] Provider[Korean comment translated] UI[Korean comment translated] [Korean comment translated] [Korean comment translated]
                 if (id.includes('-glass')) continue;
                 const hasLlmModels = config[id].llmModels.length > 0 || id === 'ollama';
                 const hasSttModels = config[id].sttModels.length > 0 || id === 'whisper';
@@ -453,11 +452,11 @@ export class ApiKeyHeader extends LitElement {
 
             this.providers = { llm: llmProviders, stt: sttProviders };
 
-            // 기본 선택 값 설정
+            // [Korean comment translated] [Korean comment translated] [Korean comment translated] Settings
             if (llmProviders.length > 0) this.llmProvider = llmProviders[0].id;
             if (sttProviders.length > 0) this.sttProvider = sttProviders[0].id;
 
-            // Ollama 상태 및 모델 제안 로드
+            // Ollama Status [Korean comment translated] Model [Korean comment translated] [Korean comment translated]
             if (ollamaStatus?.success) {
                 this.ollamaStatus = {
                     installed: ollamaStatus.installed,
@@ -492,10 +491,6 @@ export class ApiKeyHeader extends LitElement {
             initialWindowX: initialPosition.x,
             initialWindowY: initialPosition.y,
             moved: false,
-            rafId: null,
-            pendingUpdate: false,
-            lastX: null,
-            lastY: null
         };
 
         window.addEventListener('mousemove', this.handleMouseMove);
@@ -515,19 +510,8 @@ export class ApiKeyHeader extends LitElement {
         const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
         const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
 
-        // Stocker la position à mettre à jour
-        this.dragState.lastX = newWindowX;
-        this.dragState.lastY = newWindowY;
-
-        // Utiliser requestAnimationFrame pour limiter les appels à 60fps
-        if (!this.dragState.pendingUpdate && window.api?.apiKeyHeader) {
-            this.dragState.pendingUpdate = true;
-            this.dragState.rafId = requestAnimationFrame(() => {
-                if (this.dragState && window.api?.apiKeyHeader) {
-                    window.api.apiKeyHeader.moveHeaderTo(this.dragState.lastX, this.dragState.lastY);
-                    this.dragState.pendingUpdate = false;
-                }
-            });
+        if (window.api?.apiKeyHeader) {
+            window.api.apiKeyHeader.moveHeaderTo(newWindowX, newWindowY);
         }
     }
 
@@ -535,11 +519,6 @@ export class ApiKeyHeader extends LitElement {
         if (!this.dragState) return;
 
         const wasDragged = this.dragState.moved;
-
-        // Annuler le requestAnimationFrame s'il y en a un en attente
-        if (this.dragState.rafId) {
-            cancelAnimationFrame(this.dragState.rafId);
-        }
 
         window.removeEventListener('mousemove', this.handleMouseMove);
         this.dragState = null;
@@ -555,7 +534,6 @@ export class ApiKeyHeader extends LitElement {
     handleInput(e) {
         this.apiKey = e.target.value;
         this.clearMessages();
-        console.log('Input changed:', this.apiKey?.length || 0, 'chars');
 
         this.requestUpdate();
         this.updateComplete.then(() => {
@@ -577,7 +555,6 @@ export class ApiKeyHeader extends LitElement {
     handleProviderChange(e) {
         this.selectedProvider = e.target.value;
         this.clearMessages();
-        console.log('Provider changed to:', this.selectedProvider);
         this.requestUpdate();
     }
 
@@ -600,7 +577,6 @@ export class ApiKeyHeader extends LitElement {
         this.retryCount = 0;
 
         if (this.llmProvider === 'ollama') {
-            console.log('[ApiKeyHeader] Ollama selected, initiating connection...');
             await this._initializeOllamaConnection();
             // Start health monitoring for Ollama
             this._startHealthMonitoring();
@@ -622,7 +598,6 @@ export class ApiKeyHeader extends LitElement {
 
             if (this.retryCount < this.maxRetries) {
                 const delay = this.baseRetryDelay * Math.pow(2, this.retryCount);
-                console.log(`[ApiKeyHeader] Retrying Ollama connection in ${delay}ms (attempt ${this.retryCount + 1}/${this.maxRetries})`);
 
                 this.retryCount++;
 
@@ -647,7 +622,6 @@ export class ApiKeyHeader extends LitElement {
     }
 
     _cancelAllActiveOperations() {
-        console.log(`[ApiKeyHeader] Cancelling ${this.activeOperations.size} active operations and ${this.operationQueue.length} queued operations`);
 
         // Cancel active operations
         for (const [operationType, operation] of this.activeOperations) {
@@ -699,7 +673,6 @@ export class ApiKeyHeader extends LitElement {
         // Increase if performance is good
         if (metrics.successRate > 90 && metrics.averageResponseTime < 3000 && this.maxConcurrentOperations < 3) {
             this.maxConcurrentOperations++;
-            console.log(`[ApiKeyHeader] Increased max concurrent operations to ${this.maxConcurrentOperations}`);
         }
     }
 
@@ -714,7 +687,6 @@ export class ApiKeyHeader extends LitElement {
             this._performHealthCheck();
         }, this.healthCheck.intervalMs);
 
-        console.log(`[ApiKeyHeader] Health monitoring started (interval: ${this.healthCheck.intervalMs}ms)`);
     }
 
     _stopHealthMonitoring() {
@@ -726,7 +698,6 @@ export class ApiKeyHeader extends LitElement {
             this.healthCheck.intervalId = null;
         }
 
-        console.log('[ApiKeyHeader] Health monitoring stopped');
     }
 
     async _performHealthCheck() {
@@ -830,7 +801,6 @@ export class ApiKeyHeader extends LitElement {
             const whisperProvider = this.providers.stt.find(p => p.id === 'whisper');
             if (whisperProvider) {
                 this.sttProvider = 'whisper';
-                console.log('[ApiKeyHeader] Auto-selected Whisper for STT');
             }
         }
 
@@ -851,7 +821,6 @@ export class ApiKeyHeader extends LitElement {
                 throw new Error(`Operation queue full (${this.maxQueueSize}), rejecting ${operationType}`);
             }
 
-            console.log(`[ApiKeyHeader] Queuing operation ${operationType} (${this.activeOperations.size} active)`);
             return this._queueOperation(operationId, operationType, operation, options);
         }
 
@@ -878,7 +847,6 @@ export class ApiKeyHeader extends LitElement {
                 this.operationQueue.push(queuedOperation);
             }
 
-            console.log(`[ApiKeyHeader] Queued ${operationType} (queue size: ${this.operationQueue.length})`);
         });
     }
 
@@ -888,7 +856,6 @@ export class ApiKeyHeader extends LitElement {
 
         // Check if similar operation is already running
         if (this.activeOperations.has(operationType)) {
-            console.log(`[ApiKeyHeader] Operation ${operationType} already in progress, cancelling previous`);
             this._cancelOperation(operationType);
         }
 
@@ -952,7 +919,6 @@ export class ApiKeyHeader extends LitElement {
         if (!queuedOp) return;
 
         const queueTime = Date.now() - queuedOp.queuedAt;
-        console.log(`[ApiKeyHeader] Processing queued operation ${queuedOp.type} (waited ${queueTime}ms)`);
 
         try {
             const result = await this._executeImmediately(
@@ -971,7 +937,6 @@ export class ApiKeyHeader extends LitElement {
         const operation = this.activeOperations.get(operationType);
         if (operation) {
             this._cleanupOperation(operation.id, operationType);
-            console.log(`[ApiKeyHeader] Cancelled operation: ${operationType}`);
         }
     }
 
@@ -985,7 +950,6 @@ export class ApiKeyHeader extends LitElement {
 
     _updateConnectionState(newState, reason = '') {
         if (this.connectionState !== newState) {
-            console.log(`[ApiKeyHeader] Connection state: ${this.connectionState} -> ${newState} (${reason})`);
             this.connectionState = newState;
             this.lastStateChange = Date.now();
 
@@ -1059,7 +1023,7 @@ export class ApiKeyHeader extends LitElement {
             if (result?.success) {
                 this.modelSuggestions = result.suggestions || [];
 
-                // 기본 모델 선택 (설치된 모델 중 첫 번째)
+                // [Korean comment translated] Model [Korean comment translated] ([Korean comment translated] Model [Korean comment translated] [Korean comment translated] [Korean comment translated])
                 if (!this.selectedLlmModel && this.modelSuggestions.length > 0) {
                     const installedModel = this.modelSuggestions.find(m => m.status === 'installed');
                     if (installedModel) {
@@ -1114,9 +1078,6 @@ export class ApiKeyHeader extends LitElement {
         this.requestUpdate();
 
         const progressHandler = (event, data) => {
-            // 통합 LocalAI 이벤트에서 Ollama 진행률만 처리
-            if (data.service !== 'ollama') return;
-            
             let baseProgress = 0;
             let stageTotal = 0;
 
@@ -1157,26 +1118,21 @@ export class ApiKeyHeader extends LitElement {
         let operationCompleted = false;
         const completionTimeout = setTimeout(async () => {
             if (!operationCompleted) {
-                console.log('[ApiKeyHeader] Operation timeout, checking status manually...');
                 await this._handleOllamaSetupCompletion(true);
             }
         }, 15000); // 15 second timeout
 
-        const completionHandler = async (event, data) => {
-            // 통합 LocalAI 이벤트에서 Ollama 완료만 처리
-            if (data.service !== 'ollama') return;
+        const completionHandler = async (event, result) => {
             if (operationCompleted) return;
             operationCompleted = true;
             clearTimeout(completionTimeout);
 
-            window.api.apiKeyHeader.removeOnLocalAIProgress(progressHandler);
-            // installation-complete 이벤트는 성공을 의미
-            await this._handleOllamaSetupCompletion(true);
+            window.api.apiKeyHeader.removeOnOllamaInstallProgress(progressHandler);
+            await this._handleOllamaSetupCompletion(result.success, result.error);
         };
 
-        // 통합 LocalAI 이벤트 사용
-        window.api.apiKeyHeader.onLocalAIComplete(completionHandler);
-        window.api.apiKeyHeader.onLocalAIProgress(progressHandler);
+        window.api.apiKeyHeader.onceOllamaInstallComplete(completionHandler);
+        window.api.apiKeyHeader.onOllamaInstallProgress(progressHandler);
 
         try {
             let result;
@@ -1202,8 +1158,8 @@ export class ApiKeyHeader extends LitElement {
             operationCompleted = true;
             clearTimeout(completionTimeout);
             console.error('[ApiKeyHeader] Ollama setup failed:', error);
-            window.api.apiKeyHeader.removeOnLocalAIProgress(progressHandler);
-            window.api.apiKeyHeader.removeOnLocalAIComplete(completionHandler);
+            window.api.apiKeyHeader.removeOnOllamaInstallProgress(progressHandler);
+            window.api.apiKeyHeader.removeOnceOllamaInstallComplete(completionHandler);
             await this._handleOllamaSetupCompletion(false, error.message);
         }
     }
@@ -1214,7 +1170,7 @@ export class ApiKeyHeader extends LitElement {
 
         if (success) {
             await this.refreshOllamaStatus();
-            this.successMessage = '✓ Ollama is ready!';
+            this.successMessage = '[OK] Ollama is ready!';
         } else {
             this.llmError = `*Setup failed: ${errorMessage || 'Unknown error'}`;
         }
@@ -1333,7 +1289,7 @@ export class ApiKeyHeader extends LitElement {
 
             // Create robust progress handler with timeout protection
             progressHandler = (event, data) => {
-                if (data.service === 'ollama' && data.model === modelName && !this._isOperationCancelled(modelName)) {
+                if (data.model === modelName && !this._isOperationCancelled(modelName)) {
                     const progress = Math.round(Math.max(0, Math.min(100, data.progress || 0)));
 
                     if (progress !== this.installProgress) {
@@ -1344,8 +1300,8 @@ export class ApiKeyHeader extends LitElement {
                 }
             };
 
-            // Set up progress tracking - 통합 LocalAI 이벤트 사용
-            window.api.apiKeyHeader.onLocalAIProgress(progressHandler);
+            // Set up progress tracking
+            window.api.apiKeyHeader.onOllamaPullProgress(progressHandler);
 
             // Execute the model pull with timeout
             const installPromise = window.api.apiKeyHeader.pullOllamaModel(modelName);
@@ -1363,7 +1319,7 @@ export class ApiKeyHeader extends LitElement {
 
                 // Refresh status and show success
                 await this.refreshOllamaStatus();
-                this.successMessage = `✓ ${modelName} ready`;
+                this.successMessage = `[OK] ${modelName} ready`;
                 this.messageTimestamp = Date.now();
             } else {
                 throw new Error(result.error || 'Installation failed');
@@ -1375,7 +1331,7 @@ export class ApiKeyHeader extends LitElement {
         } finally {
             // Comprehensive cleanup
             if (progressHandler) {
-                window.api.apiKeyHeader.removeOnLocalAIProgress(progressHandler);
+                window.api.apiKeyHeader.removeOnOllamaPullProgress(progressHandler);
             }
 
             this.installingModel = null;
@@ -1405,17 +1361,17 @@ export class ApiKeyHeader extends LitElement {
         let progressHandler = null;
 
         try {
-            // Set up robust progress listener - 통합 LocalAI 이벤트 사용
-            progressHandler = (event, data) => {
-                if (data.service === 'whisper' && data.model === modelId) {
-                    const cleanProgress = Math.round(Math.max(0, Math.min(100, data.progress || 0)));
+            // Set up robust progress listener
+            progressHandler = (event, { modelId: id, progress }) => {
+                if (id === modelId) {
+                    const cleanProgress = Math.round(Math.max(0, Math.min(100, progress || 0)));
                     this.whisperInstallingModels = { ...this.whisperInstallingModels, [modelId]: cleanProgress };
                     console.log(`[ApiKeyHeader] Whisper download progress: ${cleanProgress}% for ${modelId}`);
                     this.requestUpdate();
                 }
             };
 
-            window.api.apiKeyHeader.onLocalAIProgress(progressHandler);
+            window.api.apiKeyHeader.onWhisperDownloadProgress(progressHandler);
 
             // Start download with timeout protection
             const downloadPromise = window.api.apiKeyHeader.downloadWhisperModel(modelId);
@@ -1424,7 +1380,7 @@ export class ApiKeyHeader extends LitElement {
             const result = await Promise.race([downloadPromise, timeoutPromise]);
 
             if (result?.success) {
-                this.successMessage = `✓ ${modelId} downloaded successfully`;
+                this.successMessage = `[OK] ${modelId} downloaded successfully`;
                 this.messageTimestamp = Date.now();
                 console.log(`[ApiKeyHeader] Whisper model ${modelId} downloaded successfully`);
 
@@ -1442,7 +1398,7 @@ export class ApiKeyHeader extends LitElement {
         } finally {
             // Cleanup
             if (progressHandler) {
-                window.api.apiKeyHeader.removeOnLocalAIProgress(progressHandler);
+                window.api.apiKeyHeader.removeOnWhisperDownloadProgress(progressHandler);
             }
             delete this.whisperInstallingModels[modelId];
             this.requestUpdate();
@@ -1644,9 +1600,8 @@ export class ApiKeyHeader extends LitElement {
     //////// after_modelStateService ////////
 
 
-    ////TODO: 뭔가 넘어가는 애니메이션 로직에 문제가 있음
+    ////TODO: There seems to be an issue with the transition animation logic
     startSlideOutAnimation() {
-        console.log('[ApiKeyHeader] startSlideOutAnimation: Starting slide out animation.');
         this.classList.add('sliding-out');
         
         // Fallback: if animation doesn't trigger animationend event, force transition
@@ -1860,7 +1815,7 @@ export class ApiKeyHeader extends LitElement {
                 ${this.getCombinedModelSuggestions().map(
                     model => html`
                         <option value=${model.name}>
-                            ${model.name} ${model.status === 'installed' ? '✓ Installed' : model.status === 'history' ? '📝 Recent' : '- Available'}
+                            ${model.name} ${model.status === '`installed' ? '[OK] Installed' : model.status === 'history' ? '[TEXT] Recent' : '- Available'}
                         </option>
                     `
                 )}
@@ -1934,9 +1889,9 @@ export class ApiKeyHeader extends LitElement {
     }
 
     openPrivacyPolicy() {
-        console.log('🔊 openPrivacyPolicy ApiKeyHeader');
+        console.log('[AUDIO] openPrivacyPolicy ApiKeyHeader');
         if (window.api?.common) {
-            window.api.common.openExternal('https://pickle.com/privacy-policy');
+            window.api.common.openExternal('https://xerus.ai/privacy-policy');
         }
     }
 

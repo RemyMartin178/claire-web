@@ -1,6 +1,7 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
+import { ThemeMixin } from '../../mixins/ThemeMixin.js';
 
-export class SummaryView extends LitElement {
+export class SummaryView extends ThemeMixin(LitElement) {
     static styles = css`
         :host {
             display: block;
@@ -9,26 +10,28 @@ export class SummaryView extends LitElement {
 
         /* Inherit font styles from parent */
 
-        /* highlight.js 스타일 추가 */
+        /* highlight.js [Korean comment translated] [Korean comment translated] */
         .insights-container pre {
-            background: rgba(0, 0, 0, 0.4) !important;
+            background: var(--background-secondary, #f8f9fa) !important;
             border-radius: 8px !important;
             padding: 12px !important;
             margin: 8px 0 !important;
             overflow-x: auto !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid var(--border-light, #e5e7eb) !important;
             white-space: pre !important;
             word-wrap: normal !important;
             word-break: normal !important;
+            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05)) !important;
         }
 
         .insights-container code {
             font-family: 'Monaco', 'Menlo', 'Consolas', monospace !important;
-            font-size: 11px !important;
+            font-size: 12px !important;
             background: transparent !important;
             white-space: pre !important;
             word-wrap: normal !important;
             word-break: normal !important;
+            color: var(--text-primary, #1f2937) !important;
         }
 
         .insights-container pre code {
@@ -39,92 +42,102 @@ export class SummaryView extends LitElement {
         }
 
         .insights-container p code {
-            background: rgba(255, 255, 255, 0.1) !important;
-            padding: 2px 4px !important;
-            border-radius: 3px !important;
-            color: #ffd700 !important;
+            background: var(--background-tertiary, #f1f3f4) !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            color: var(--interactive-primary, #2563eb) !important;
+            border: 1px solid var(--border-light, #e5e7eb) !important;
         }
 
+        /* Light theme syntax highlighting */
         .hljs-keyword {
-            color: #ff79c6 !important;
+            color: #7c3aed !important;
         }
         .hljs-string {
-            color: #f1fa8c !important;
+            color: #059669 !important;
         }
         .hljs-comment {
-            color: #6272a4 !important;
+            color: #6b7280 !important;
         }
         .hljs-number {
-            color: #bd93f9 !important;
+            color: #dc2626 !important;
         }
         .hljs-function {
-            color: #50fa7b !important;
+            color: #2563eb !important;
         }
         .hljs-variable {
-            color: #8be9fd !important;
+            color: #0891b2 !important;
         }
         .hljs-built_in {
-            color: #ffb86c !important;
+            color: #ea580c !important;
         }
         .hljs-title {
-            color: #50fa7b !important;
+            color: #2563eb !important;
         }
         .hljs-attr {
-            color: #50fa7b !important;
+            color: #2563eb !important;
         }
         .hljs-tag {
-            color: #ff79c6 !important;
+            color: #7c3aed !important;
         }
 
         .insights-container {
             overflow-y: auto;
-            padding: 12px 16px 16px 16px;
+            padding: 16px 20px 20px 20px;
             position: relative;
             z-index: 1;
             min-height: 150px;
             max-height: 600px;
             flex: 1;
+            background: var(--surface-elevated, #ffffff);
+            border-radius: 12px;
+            border: 1px solid var(--border-light, #e5e7eb);
+            box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+            opacity: var(--window-opacity, 1.0);
         }
 
         /* Visibility handled by parent component */
 
         .insights-container::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
         .insights-container::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 4px;
+            background: var(--background-secondary, #f8f9fa);
+            border-radius: 3px;
         }
         .insights-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
+            background: var(--border-medium, #d1d5db);
+            border-radius: 3px;
         }
         .insights-container::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
+            background: var(--border-strong, #9ca3af);
         }
 
         insights-title {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 15px;
-            font-weight: 500;
+            color: var(--text-primary, #1f2937);
+            font-size: 16px;
+            font-weight: 600;
             font-family: 'Helvetica Neue', sans-serif;
-            margin: 12px 0 8px 0;
+            margin: 16px 0 12px 0;
             display: block;
+            border-bottom: 2px solid var(--interactive-primary, #2563eb);
+            padding-bottom: 4px;
         }
 
         .insights-container h4 {
-            color: #ffffff;
-            font-size: 12px;
+            color: var(--text-primary, #1f2937);
+            font-size: 14px;
             font-weight: 600;
-            margin: 12px 0 8px 0;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: transparent;
+            margin: 16px 0 10px 0;
+            padding: 6px 12px;
+            border-radius: 6px;
+            background: var(--background-secondary, #f8f9fa);
             cursor: default;
+            border-left: 3px solid var(--interactive-primary, #2563eb);
         }
 
         .insights-container h4:hover {
-            background: transparent;
+            background: var(--background-tertiary, #f1f3f4);
         }
 
         .insights-container h4:first-child {
@@ -132,33 +145,38 @@ export class SummaryView extends LitElement {
         }
 
         .outline-item {
-            color: #ffffff;
-            font-size: 11px;
-            line-height: 1.4;
-            margin: 4px 0;
-            padding: 6px 8px;
-            border-radius: 4px;
-            background: transparent;
-            transition: background-color 0.15s ease;
+            color: var(--text-primary, #1f2937);
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 6px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: var(--background-secondary, #f8f9fa);
+            transition: all 0.15s ease;
             cursor: pointer;
             word-wrap: break-word;
+            border: 1px solid var(--border-light, #e5e7eb);
         }
 
         .outline-item:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--background-tertiary, #f1f3f4);
+            border-color: var(--border-medium, #d1d5db);
+            transform: translateX(2px);
+            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
         }
 
         .request-item {
-            color: #ffffff;
-            font-size: 12px;
-            line-height: 1.2;
-            margin: 4px 0;
-            padding: 6px 8px;
-            border-radius: 4px;
-            background: transparent;
+            color: var(--text-primary, #1f2937);
+            font-size: 13px;
+            line-height: 1.4;
+            margin: 6px 0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: var(--background-secondary, #f8f9fa);
             cursor: default;
             word-wrap: break-word;
-            transition: background-color 0.15s ease;
+            transition: all 0.15s ease;
+            border: 1px solid var(--border-light, #e5e7eb);
         }
 
         .request-item.clickable {
@@ -166,70 +184,83 @@ export class SummaryView extends LitElement {
             transition: all 0.15s ease;
         }
         .request-item.clickable:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: var(--background-tertiary, #f1f3f4);
+            border-color: var(--border-medium, #d1d5db);
             transform: translateX(2px);
+            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
         }
 
-        /* 마크다운 렌더링된 콘텐츠 스타일 */
+        /* [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] */
         .markdown-content {
-            color: #ffffff;
-            font-size: 11px;
-            line-height: 1.4;
-            margin: 4px 0;
-            padding: 6px 8px;
-            border-radius: 4px;
-            background: transparent;
+            color: var(--text-primary, #1f2937);
+            font-size: 13px;
+            line-height: 1.6;
+            margin: 6px 0;
+            padding: 10px 14px;
+            border-radius: 8px;
+            background: var(--background-secondary, #f8f9fa);
             cursor: pointer;
             word-wrap: break-word;
             transition: all 0.15s ease;
+            border: 1px solid var(--border-light, #e5e7eb);
         }
 
         .markdown-content:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: translateX(2px);
+            background: var(--background-tertiary, #f1f3f4);
+            border-color: var(--interactive-primary, #2563eb);
+            transform: translateX(3px);
+            box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
         }
 
         .markdown-content p {
-            margin: 4px 0;
+            margin: 6px 0;
+            color: var(--text-primary, #1f2937);
         }
 
         .markdown-content ul,
         .markdown-content ol {
-            margin: 4px 0;
-            padding-left: 16px;
+            margin: 8px 0;
+            padding-left: 20px;
         }
 
         .markdown-content li {
-            margin: 2px 0;
+            margin: 4px 0;
+            color: var(--text-primary, #1f2937);
         }
 
         .markdown-content a {
-            color: #8be9fd;
+            color: var(--interactive-primary, #2563eb);
             text-decoration: none;
+            font-weight: 500;
         }
 
         .markdown-content a:hover {
             text-decoration: underline;
+            color: var(--interactive-primary-hover, #1d4ed8);
         }
 
         .markdown-content strong {
             font-weight: 600;
-            color: #f8f8f2;
+            color: var(--text-primary, #1f2937);
         }
 
         .markdown-content em {
             font-style: italic;
-            color: #f1fa8c;
+            color: var(--text-secondary, #6b7280);
         }
 
         .empty-state {
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100px;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 12px;
+            flex: 1;
+            min-height: 200px;
+            color: var(--text-tertiary, #9ca3af);
+            font-size: 14px;
             font-style: italic;
+            background: var(--background-secondary, #f8f9fa);
+            border-radius: 8px;
+            border: 2px dashed var(--border-light, #e5e7eb);
         }
     `;
 
@@ -237,6 +268,7 @@ export class SummaryView extends LitElement {
         structuredData: { type: Object },
         isVisible: { type: Boolean },
         hasCompletedRecording: { type: Boolean },
+        windowOpacity: { type: Number },
     };
 
     constructor() {
@@ -249,8 +281,9 @@ export class SummaryView extends LitElement {
         };
         this.isVisible = true;
         this.hasCompletedRecording = false;
+        this.windowOpacity = 1.0;
 
-        // 마크다운 라이브러리 초기화
+        // [Korean comment translated] [Korean comment translated] Initialize
         this.marked = null;
         this.hljs = null;
         this.isLibrariesLoaded = false;
@@ -266,6 +299,12 @@ export class SummaryView extends LitElement {
             window.api.summaryView.onSummaryUpdate((event, data) => {
                 this.structuredData = data;
                 this.requestUpdate();
+            });
+
+            // Listen for opacity changes
+            window.api.on('window-opacity-changed', (event, opacity) => {
+                this.windowOpacity = opacity;
+                this.updateOpacityStyle();
             });
         }
     }
@@ -288,18 +327,23 @@ export class SummaryView extends LitElement {
         this.requestUpdate();
     }
 
+    updateOpacityStyle() {
+        this.style.setProperty('--window-opacity', this.windowOpacity);
+        this.requestUpdate();
+    }
+
     async loadLibraries() {
         try {
             if (!window.marked) {
-                await this.loadScript('../../../assets/marked-4.3.0.min.js');
+                await this.loadScript('../../assets/marked-4.3.0.min.js');
             }
 
             if (!window.hljs) {
-                await this.loadScript('../../../assets/highlight-11.9.0.min.js');
+                await this.loadScript('../../ui/assets/highlight-11.9.0.min.js');
             }
 
             if (!window.DOMPurify) {
-                await this.loadScript('../../../assets/dompurify-3.0.7.min.js');
+                await this.loadScript('../../ui/assets/dompurify-3.0.7.min.js');
             }
 
             this.marked = window.marked;
@@ -389,7 +433,7 @@ export class SummaryView extends LitElement {
 
                         if (this.DOMPurify.removed && this.DOMPurify.removed.length > 0) {
                             console.warn('Unsafe content detected in insights, showing plain text');
-                            element.textContent = '⚠️ ' + originalText;
+                            element.textContent = '[WARNING] ' + originalText;
                             return;
                         }
                     }
@@ -404,19 +448,19 @@ export class SummaryView extends LitElement {
     }
 
     async handleRequestClick(requestText) {
-        console.log('🔥 Analysis request clicked:', requestText);
+        console.log('[FIRE] Analysis request clicked:', requestText);
 
         if (window.api) {
             try {
                 const result = await window.api.summaryView.sendQuestionFromSummary(requestText);
 
                 if (result.success) {
-                    console.log('✅ Question sent to AskView successfully');
+                    console.log('[OK] Question sent to AskView successfully');
                 } else {
-                    console.error('❌ Failed to send question to AskView:', result.error);
+                    console.error('[ERROR] Failed to send question to AskView:', result.error);
                 }
             } catch (error) {
-                console.error('❌ Error in handleRequestClick:', error);
+                console.error('[ERROR] Error in handleRequestClick:', error);
             }
         }
     }

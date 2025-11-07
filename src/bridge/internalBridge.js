@@ -1,26 +1,11 @@
 // src/bridge/internalBridge.js
 const { EventEmitter } = require('events');
 
-// FeatureCore와 WindowCore를 잇는 내부 이벤트 버스
+// FeatureCore[Korean comment translated] WindowCore[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
 const internalBridge = new EventEmitter();
 module.exports = internalBridge;
 
-// 예시 이벤트
+// [Korean comment translated] [Korean comment translated]
 // internalBridge.on('content-protection-changed', (enabled) => {
-//   // windowManager에서 처리
+//   // windowManager[Korean comment translated] Process
 // });
-
-// In-memory store for pending-session verifiers (desktop)
-const pendingSessionVerifiers = new Map();
-
-// API for other parts of the app to set/get verifier
-internalBridge.on('mobile:setCodeVerifier', ({ session_id, code_verifier }) => {
-  if (session_id && code_verifier) {
-    pendingSessionVerifiers.set(session_id, code_verifier);
-  }
-});
-
-internalBridge.on('mobile:getCodeVerifier', ({ session_id, reply }) => {
-  const v = pendingSessionVerifiers.get(session_id);
-  if (typeof reply === 'function') reply(v);
-});

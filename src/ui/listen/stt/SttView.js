@@ -1,6 +1,7 @@
 import { html, css, LitElement } from '../../assets/lit-core-2.7.4.min.js';
+import { ThemeMixin } from '../../mixins/ThemeMixin.js';
 
-export class SttView extends LitElement {
+export class SttView extends ThemeMixin(LitElement) {
     static styles = css`
         :host {
             display: block;
@@ -11,70 +12,98 @@ export class SttView extends LitElement {
 
         .transcription-container {
             overflow-y: auto;
-            padding: 12px 12px 16px 12px;
+            padding: 16px 20px 20px 20px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             min-height: 150px;
             max-height: 600px;
             position: relative;
             z-index: 1;
             flex: 1;
+            background: var(--surface-elevated, #ffffff);
         }
 
         /* Visibility handled by parent component */
 
         .transcription-container::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
         .transcription-container::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 4px;
+            background: var(--background-secondary, #f8f9fa);
+            border-radius: 3px;
         }
         .transcription-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
+            background: var(--border-medium, #d1d5db);
+            border-radius: 3px;
         }
         .transcription-container::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
+            background: var(--border-strong, #9ca3af);
         }
 
         .stt-message {
-            padding: 8px 12px;
-            border-radius: 12px;
-            max-width: 80%;
+            padding: 10px 16px;
+            border-radius: 16px;
+            max-width: 85%;
             word-wrap: break-word;
             word-break: break-word;
-            line-height: 1.5;
-            font-size: 13px;
-            margin-bottom: 4px;
+            line-height: 1.6;
+            font-size: 14px;
+            margin-bottom: 6px;
             box-sizing: border-box;
+            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+            border: 1px solid transparent;
         }
 
         .stt-message.them {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.9);
+            background: var(--background-secondary, #f8f9fa);
+            color: var(--text-primary, #1f2937);
             align-self: flex-start;
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 6px;
             margin-right: auto;
+            border-color: var(--border-light, #e5e7eb);
         }
 
         .stt-message.me {
-            background: rgba(0, 122, 255, 0.8);
-            color: white;
+            background: var(--interactive-primary, #2563eb);
+            color: var(--text-inverse, #ffffff);
             align-self: flex-end;
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 6px;
             margin-left: auto;
+            border-color: var(--interactive-primary, #2563eb);
+        }
+
+        .stt-message.agent {
+            background: rgba(139, 92, 246, 0.15); /* Simple purple background */
+            color: var(--text-primary, #1f2937);
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+            margin-right: auto;
+            border-left: 3px solid #8b5cf6; /* Purple left border for distinction */
+        }
+
+        .agent-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #8b5cf6;
+            margin-bottom: 4px;
+            margin-left: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .empty-state {
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100px;
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 12px;
+            flex: 1;
+            min-height: 200px;
+            color: var(--text-tertiary, #9ca3af);
+            font-size: 14px;
             font-style: italic;
+            background: var(--background-secondary, #f8f9fa);
+            border-radius: 8px;
+            border: 2px dashed var(--border-light, #e5e7eb);
         }
     `;
 
@@ -115,6 +144,15 @@ export class SttView extends LitElement {
 
     handleSttUpdate(event, { speaker, text, isFinal, isPartial }) {
         if (text === undefined) return;
+
+        // Debug: Log ALL incoming messages to see speaker classification
+        console.log('[TOOL] [DEBUG] STT message received:');
+        console.log('  speaker:', JSON.stringify(speaker));
+        console.log('  text:', text.substring(0, 50) + '...');
+        console.log('  isFinal:', isFinal);
+        console.log('  isPartial:', isPartial);
+        console.log('  speakerClass:', this.getSpeakerClass(speaker));
+        console.log('  isAgent:', this.isAgentMessage({speaker}));
 
         const container = this.shadowRoot.querySelector('.transcription-container');
         this._shouldScrollAfterUpdate = container ? container.scrollTop + container.clientHeight >= container.scrollHeight - 10 : false;
@@ -185,7 +223,25 @@ export class SttView extends LitElement {
     }
 
     getSpeakerClass(speaker) {
-        return speaker.toLowerCase() === 'me' ? 'me' : 'them';
+        const speakerLower = speaker.toLowerCase();
+        if (speakerLower === 'me') return 'me';
+        if (speakerLower === 'agent' || speakerLower === 'assistant') return 'agent';
+        return 'them';
+    }
+
+    shouldShowAgentLabel(msg, index) {
+        // Show agent label if this is an agent message and either:
+        // 1. It's the first message, or
+        // 2. The previous message is not from an agent
+        if (!this.isAgentMessage(msg)) return false;
+        if (index === 0) return true;
+        const prevMsg = this.sttMessages[index - 1];
+        return !this.isAgentMessage(prevMsg);
+    }
+
+    isAgentMessage(msg) {
+        const speakerLower = msg.speaker.toLowerCase();
+        return speakerLower === 'agent' || speakerLower === 'assistant';
     }
 
     getTranscriptText() {
@@ -212,9 +268,15 @@ export class SttView extends LitElement {
             <div class="transcription-container">
                 ${this.sttMessages.length === 0
                     ? html`<div class="empty-state">Waiting for speech...</div>`
-                    : this.sttMessages.map(msg => html`
-                        <div class="stt-message ${this.getSpeakerClass(msg.speaker)}">
-                            ${msg.text}
+                    : this.sttMessages.map((msg, index) => html`
+                        <div>
+                            ${this.shouldShowAgentLabel(msg, index) 
+                                ? html`<div class="agent-label">Agent</div>` 
+                                : ''
+                            }
+                            <div class="stt-message ${this.getSpeakerClass(msg.speaker)}">
+                                ${msg.text}
+                            </div>
                         </div>
                     `)
                 }

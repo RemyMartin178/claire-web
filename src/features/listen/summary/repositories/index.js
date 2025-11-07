@@ -1,13 +1,10 @@
-const sqliteRepository = require('./sqlite.repository');
+// SQLite repository has been removed - using Firebase/backend API only
 const firebaseRepository = require('./firebase.repository');
-const authService = require('../../../common/services/authService');
+const authService = require('../../../../common/services/authService');
 
 function getBaseRepository() {
-    const user = authService.getCurrentUser();
-    if (user && user.isLoggedIn) {
-        return firebaseRepository;
-    }
-    return sqliteRepository;
+    // SQLite has been removed - always use Firebase/backend API
+    return firebaseRepository;
 }
 
 const summaryRepositoryAdapter = {

@@ -19,7 +19,7 @@ function getCurrentDisplay(window) {
 
 class WindowLayoutManager {
     /**
-     * @param {Map<string, BrowserWindow>} windowPool - 관리할 창들의 맵
+     * @param {Map<string, BrowserWindow>} windowPool - Map of windows to manage
      */
     constructor(windowPool) {
         this.windowPool = windowPool;
@@ -27,15 +27,139 @@ class WindowLayoutManager {
         this.PADDING = 80;
     }
 
-    getHeaderPosition = () => {
-        const header = this.windowPool.get('header');
-        if (header) {
-            const [x, y] = header.getPosition();
-            return { x, y };
-        }
-        return { x: 0, y: 0 };
-    };
+    updateLayout() {
+        if (this.isUpdating) return;
+        this.isUpdating = true;
 
+        setImmediate(() => {
+            this.positionWindows();
+            this.isUpdating = false;
+        });
+    }
+
+    /**
+     * 
+     * @param {object} [visibilityOverride] - { listen: true, ask: true }
+     * @returns {{listen: {x:number, y:number}|null, ask: {x:number, y:number}|null}}
+     */
+    getTargetBoundsForFeatureWindows(visibilityOverride = {}) {
+        const header = this.windowPool.get('header');
+        if (!header?.getBounds) return {};
+ 
+        const headerBounds = header.getBounds();
+        const display = getCurrentDisplay(header);
+        const { width: screenWidth, height: screenHeight } = display.workAreaSize;
+        const { x: workAreaX, y: workAreaY } = display.workArea;
+ 
+        const ask = this.windowPool.get('ask');
+        const listen = this.windowPool.get('listen');
+ 
+        const askVis = visibilityOverride.ask !== undefined ?
+            visibilityOverride.ask :
+            (ask && ask.isVisible() && !ask.isDestroyed());
+        const listenVis = visibilityOverride.listen !== undefined ?
+            visibilityOverride.listen :
+            (listen && listen.isVisible() && !listen.isDestroyed());
+ 
+        if (!askVis && !listenVis) return {};
+ 
+        const PAD = 8;
+        const headerTopRel = headerBounds.y - workAreaY;
+        const headerBottomRel = headerTopRel + headerBounds.height;
+        const headerCenterXRel = headerBounds.x - workAreaX + headerBounds.width / 2;
+        
+        const relativeX = headerCenterXRel / screenWidth;
+        const relativeY = (headerBounds.y - workAreaY) / screenHeight;
+        const strategy = this.determineLayoutStrategy(headerBounds, screenWidth, screenHeight, relativeX, relativeY, workAreaX, workAreaY);
+ 
+        const askB = ask ? ask.getBounds() : null;
+        const listenB = listen ? listen.getBounds() : null;
+ 
+        const result = { listen: null, ask: null };
+ 
+        if (askVis && listenVis) {
+            let askXRel = headerCenterXRel - (askB.width / 2);
+            let listenXRel = askXRel - listenB.width - PAD;
+ 
+            if (listenXRel < PAD) {
+                listenXRel = PAD;
+                askXRel = listenXRel + listenB.width + PAD;
+            }
+            if (askXRel + askB.width > screenWidth - PAD) {
+                askXRel = screenWidth - PAD - askB.width;
+                listenXRel = askXRel - listenB.width - PAD;
+            }
+            
+            // [[Korean comment translated]] 'above'[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated], 'below'[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
+            if (strategy.primary === 'above') {
+                const windowBottomAbs = headerBounds.y - PAD;
+                const askY = windowBottomAbs - askB.height;
+                const listenY = windowBottomAbs - listenB.height;
+                result.ask = { x: Math.round(askXRel + workAreaX), y: Math.round(askY) };
+                result.listen = { x: Math.round(listenXRel + workAreaX), y: Math.round(listenY) };
+            } else { // 'below'
+                const yPos = headerBottomRel + PAD;
+                const yAbs = yPos + workAreaY;
+                result.ask = { x: Math.round(askXRel + workAreaX), y: Math.round(yAbs) };
+                result.listen = { x: Math.round(listenXRel + workAreaX), y: Math.round(yAbs) };
+            }
+ 
+        } else { // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] ([Korean comment translated] [Korean comment translated] Confirm)
+            const winB = askVis ? askB : listenB;
+            let xRel = headerCenterXRel - winB.width / 2;
+            xRel = Math.max(PAD, Math.min(screenWidth - winB.width - PAD, xRel));
+
+            let yPos;
+            if (strategy.primary === 'above') {
+                const windowBottomRel = headerTopRel - PAD;
+                yPos = windowBottomRel - winB.height;
+            } else { // 'below'
+                yPos = headerBottomRel + PAD;
+            }
+            
+            const abs = { x: Math.round(xRel + workAreaX), y: Math.round(yPos + workAreaY) };
+            if (askVis) result.ask = abs;
+            if (listenVis) result.listen = abs;
+        }
+        return result;
+    }
+
+    positionWindows() {
+        const header = this.windowPool.get('header');
+        if (!header?.getBounds) return;
+
+        const headerBounds = header.getBounds();
+        const display = getCurrentDisplay(header);
+        const { width: screenWidth, height: screenHeight } = display.workAreaSize;
+        const { x: workAreaX, y: workAreaY } = display.workArea;
+
+        const headerCenterX = headerBounds.x - workAreaX + headerBounds.width / 2;
+        const headerCenterY = headerBounds.y - workAreaY + headerBounds.height / 2;
+
+        const relativeX = headerCenterX / screenWidth;
+        const relativeY = headerCenterY / screenHeight;
+
+        const strategy = this.determineLayoutStrategy(headerBounds, screenWidth, screenHeight, relativeX, relativeY, workAreaX, workAreaY);
+
+        this.positionFeatureWindows(headerBounds, strategy, screenWidth, screenHeight, workAreaX, workAreaY);
+        const settings = this.windowPool.get('settings');
+        if (settings && !settings.isDestroyed() && settings.isVisible()) {
+            const settingPos = this.calculateSettingsWindowPosition();
+            if (settingPos) {
+                const { width, height } = settings.getBounds();
+                settings.setBounds({ x: settingPos.x, y: settingPos.y, width, height });
+            }
+        }
+        
+        const agentSelector = this.windowPool.get('agent-selector');
+        if (agentSelector && !agentSelector.isDestroyed() && agentSelector.isVisible()) {
+            const agentSelectorPos = this.calculateAgentSelectorWindowPosition();
+            if (agentSelectorPos) {
+                const { width, height } = agentSelector.getBounds();
+                agentSelector.setBounds({ x: agentSelectorPos.x, y: agentSelectorPos.y, width, height });
+            }
+        }
+    }
 
     /**
      * 
@@ -64,6 +188,67 @@ class WindowLayoutManager {
     }
 
 
+    positionFeatureWindows(headerBounds, strategy, screenWidth, screenHeight, workAreaX, workAreaY) {
+        const ask = this.windowPool.get('ask');
+        const listen = this.windowPool.get('listen');
+        const askVisible = ask && ask.isVisible() && !ask.isDestroyed();
+        const listenVisible = listen && listen.isVisible() && !listen.isDestroyed();
+
+        if (!askVisible && !listenVisible) return;
+
+        const PAD = 8;
+        const headerTopRel = headerBounds.y - workAreaY;
+        const headerBottomRel = headerTopRel + headerBounds.height;
+        const headerCenterXRel = headerBounds.x - workAreaX + headerBounds.width / 2;
+        
+        let askBounds = askVisible ? ask.getBounds() : null;
+        let listenBounds = listenVisible ? listen.getBounds() : null;
+
+        if (askVisible && listenVisible) {
+            let askXRel = headerCenterXRel - (askBounds.width / 2);
+            let listenXRel = askXRel - listenBounds.width - PAD;
+
+            if (listenXRel < PAD) {
+                listenXRel = PAD;
+                askXRel = listenXRel + listenBounds.width + PAD;
+            }
+            if (askXRel + askBounds.width > screenWidth - PAD) {
+                askXRel = screenWidth - PAD - askBounds.width;
+                listenXRel = askXRel - listenBounds.width - PAD;
+            }
+
+            // [[Korean comment translated]] 'above'[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated], 'below'[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
+            if (strategy.primary === 'above') {
+                const windowBottomAbs = headerBounds.y - PAD;
+                const askY = windowBottomAbs - askBounds.height;
+                const listenY = windowBottomAbs - listenBounds.height;
+                ask.setBounds({ x: Math.round(askXRel + workAreaX), y: Math.round(askY), width: askBounds.width, height: askBounds.height });
+                listen.setBounds({ x: Math.round(listenXRel + workAreaX), y: Math.round(listenY), width: listenBounds.width, height: listenBounds.height });
+            } else { // 'below'
+                const yPos = headerBottomRel + PAD;
+                const yAbs = yPos + workAreaY;
+                ask.setBounds({ x: Math.round(askXRel + workAreaX), y: Math.round(yAbs), width: askBounds.width, height: askBounds.height });
+                listen.setBounds({ x: Math.round(listenXRel + workAreaX), y: Math.round(yAbs), width: listenBounds.width, height: listenBounds.height });
+            }
+        
+        } else { // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] ([Korean comment translated] [Korean comment translated] Confirm)
+            const win = askVisible ? ask : listen;
+            const winBounds = askVisible ? askBounds : listenBounds;
+            let xRel = headerCenterXRel - winBounds.width / 2;
+            xRel = Math.max(PAD, Math.min(screenWidth - winBounds.width - PAD, xRel));
+
+            let yPos;
+            if (strategy.primary === 'above') {
+                const windowBottomRel = headerTopRel - PAD;
+                yPos = windowBottomRel - winBounds.height;
+            } else { // 'below'
+                yPos = headerBottomRel + PAD;
+            }
+            const yAbs = yPos + workAreaY;
+
+            win.setBounds({ x: Math.round(xRel + workAreaX), y: Math.round(yAbs), width: winBounds.width, height: winBounds.height });
+        }
+    }
 
     /**
      * @returns {{x: number, y: number} | null}
@@ -93,212 +278,55 @@ class WindowLayoutManager {
         return { x: Math.round(clampedX), y: Math.round(clampedY) };
     }
 
-
-    calculateHeaderResize(header, { width, height }) {
-        if (!header) return null;
-        const currentBounds = header.getBounds();
-        const centerX = currentBounds.x + currentBounds.width / 2;
-        const newX = Math.round(centerX - width / 2);
-        const display = getCurrentDisplay(header);
-        const { x: workAreaX, width: workAreaWidth } = display.workArea;
-        const clampedX = Math.max(workAreaX, Math.min(workAreaX + workAreaWidth - width, newX));
-        return { x: clampedX, y: currentBounds.y, width, height };
-    }
-    
-    calculateClampedPosition(header, { x: newX, y: newY }) {
-        // Unbounded movement requested: return raw coordinates
-        return { x: Math.round(newX), y: Math.round(newY) };
-    }
-    
-    calculateWindowHeightAdjustment(senderWindow, targetHeight) {
-        if (!senderWindow) return null;
-        const currentBounds = senderWindow.getBounds();
-        const minHeight = senderWindow.getMinimumSize()[1];
-        const maxHeight = senderWindow.getMaximumSize()[1];
-        let adjustedHeight = Math.max(minHeight, targetHeight);
-        if (maxHeight > 0) {
-            adjustedHeight = Math.min(maxHeight, adjustedHeight);
-        }
-        console.log(`[Layout Debug] calculateWindowHeightAdjustment: targetHeight=${targetHeight}`);
-        return { ...currentBounds, height: adjustedHeight };
-    }
-    
-    // 기존 getTargetBoundsForFeatureWindows를 이 함수로 대체합니다.
-    calculateFeatureWindowLayout(visibility, headerBoundsOverride = null) {
+    calculateAgentSelectorWindowPosition() {
         const header = this.windowPool.get('header');
-        const headerBounds = headerBoundsOverride || (header ? header.getBounds() : null);
+        const agentSelector = this.windowPool.get('agent-selector');
 
-        if (!headerBounds) return {};
+        if (!header || header.isDestroyed() || !agentSelector || agentSelector.isDestroyed()) {
+            return null;
+        }
 
-        let display;
-        if (headerBoundsOverride) {
-            const boundsCenter = {
-                x: headerBounds.x + headerBounds.width / 2,
-                y: headerBounds.y + headerBounds.height / 2,
-            };
-            display = screen.getDisplayNearestPoint(boundsCenter);
-        } else {
-            display = getCurrentDisplay(header);
-        }
-    
-        const { width: screenWidth, height: screenHeight, x: workAreaX, y: workAreaY } = display.workArea;
-    
-        const ask = this.windowPool.get('ask');
-        const listen = this.windowPool.get('listen');
-        const settings = this.windowPool.get('settings');
-    
-        const askVis = visibility.ask && ask && !ask.isDestroyed();
-        const listenVis = visibility.listen && listen && !listen.isDestroyed();
-    
-        if (!askVis && !listenVis) return {};
-    
-        const PAD = 8;
-        const headerTopRel = headerBounds.y - workAreaY;
-        const headerBottomRel = headerTopRel + headerBounds.height;
-        const headerCenterXRel = headerBounds.x - workAreaX + headerBounds.width / 2;
-        
-        const relativeX = headerCenterXRel / screenWidth;
-        const relativeY = (headerBounds.y - workAreaY) / screenHeight;
-        const strategy = this.determineLayoutStrategy(headerBounds, screenWidth, screenHeight, relativeX, relativeY, workAreaX, workAreaY);
-    
-        const askB = askVis ? ask.getBounds() : null;
-        const listenB = listenVis ? listen.getBounds() : null;
-        const settingsVis = settings && !settings.isDestroyed() && settings.isVisible();
-        const settingsB = settingsVis ? settings.getBounds() : null;
+        const headerBounds = header.getBounds();
+        const agentSelectorBounds = agentSelector.getBounds();
+        const display = getCurrentDisplay(header);
+        const { x: workAreaX, y: workAreaY, width: screenWidth, height: screenHeight } = display.workArea;
 
-        if (askVis) {
-            console.log(`[Layout Debug] Ask Window Bounds: height=${askB.height}, width=${askB.width}`);
-        }
-        if (listenVis) {
-            console.log(`[Layout Debug] Listen Window Bounds: height=${listenB.height}, width=${listenB.width}`);
-        }
-    
-        const layout = {};
-    
-        if (askVis && listenVis) {
-            let askXRel = headerCenterXRel - (askB.width / 2);
-            let listenXRel = askXRel - listenB.width - PAD;
-    
-            // No screen clamping: allow windows to go off-screen when needed
-            
-            if (strategy.primary === 'above') {
-                const windowBottomAbs = headerBounds.y - PAD;
-                layout.ask = { x: Math.round(askXRel + workAreaX), y: Math.round(windowBottomAbs - askB.height), width: askB.width, height: askB.height };
-                layout.listen = { x: Math.round(listenXRel + workAreaX), y: Math.round(windowBottomAbs - listenB.height), width: listenB.width, height: listenB.height };
-            } else { // 'below'
-                const yAbs = headerBounds.y + headerBounds.height + PAD;
-                // If settings is visible below the header (default), avoid any horizontal overlap by reserving space to its left
-                if (settingsVis && settingsB) {
-                    const allowedMaxRight = settingsB.x - PAD - workAreaX;
-                    // Place ask so that its right edge does not exceed allowedMaxRight
-                    const desiredAskRight = Math.min(askXRel + askB.width, allowedMaxRight);
-                    askXRel = Math.max(PAD, desiredAskRight - askB.width);
-                    // Place listen to the left of ask
-                    listenXRel = askXRel - listenB.width - PAD;
-                    // No further screen clamp; only ensure relative spacing
-                }
-                layout.ask = { x: Math.round(askXRel + workAreaX), y: Math.round(yAbs), width: askB.width, height: askB.height };
-                layout.listen = { x: Math.round(listenXRel + workAreaX), y: Math.round(yAbs), width: listenB.width, height: listenB.height };
-            }
-        } else { // Single window
-            const winName = askVis ? 'ask' : 'listen';
-            const winB = askVis ? askB : listenB;
-            if (!winB) return {};
-    
-            let xRel = headerCenterXRel - winB.width / 2;
-            // No screen clamping for single window
-    
-            let yPos;
-            if (strategy.primary === 'above') {
-                yPos = (headerBounds.y - workAreaY) - PAD - winB.height;
-            } else { // 'below'
-                yPos = (headerBounds.y - workAreaY) + headerBounds.height + PAD;
-                if (settingsVis && settingsB) {
-                    const allowedMaxRight = settingsB.x - PAD - workAreaX;
-                    const desiredRight = Math.min(xRel + winB.width, allowedMaxRight);
-                    xRel = Math.max(PAD, desiredRight - winB.width);
-                }
-            }
-            
-            layout[winName] = { x: Math.round(xRel + workAreaX), y: Math.round(yPos + workAreaY), width: winB.width, height: winB.height };
-        }
-        return layout;
+
+        const PAD = 5;
+        // Position below the agent dropdown button area (right side of header)
+        const agentButtonPadding = 120; // Agent dropdown is on the right side
+
+        const x = headerBounds.x + headerBounds.width - agentSelectorBounds.width - agentButtonPadding;
+        const y = headerBounds.y + headerBounds.height + PAD;
+
+        const clampedX = Math.max(workAreaX + 10, Math.min(workAreaX + screenWidth - agentSelectorBounds.width - 10, x));
+        const clampedY = Math.max(workAreaY + 10, Math.min(workAreaY + screenHeight - agentSelectorBounds.height - 10, y));
+
+        const finalPosition = { x: Math.round(clampedX), y: Math.round(clampedY) };
+
+        return finalPosition;
     }
-    
-    calculateShortcutSettingsWindowPosition() {
+
+    positionShortcutSettingsWindow() {
         const header = this.windowPool.get('header');
         const shortcutSettings = this.windowPool.get('shortcut-settings');
-        if (!header || !shortcutSettings) return null;
-    
+
+        if (!header || header.isDestroyed() || !shortcutSettings || shortcutSettings.isDestroyed()) {
+            return;
+        }
+
         const headerBounds = header.getBounds();
         const shortcutBounds = shortcutSettings.getBounds();
-        const { workArea } = getCurrentDisplay(header);
-    
-        let newX = Math.round(headerBounds.x + (headerBounds.width / 2) - (shortcutBounds.width / 2));
-        let newY = Math.round(headerBounds.y);
-    
-        newX = Math.max(workArea.x, Math.min(newX, workArea.x + workArea.width - shortcutBounds.width));
-        newY = Math.max(workArea.y, Math.min(newY, workArea.y + workArea.height - shortcutBounds.height));
-    
-        return { x: newX, y: newY, width: shortcutBounds.width, height: shortcutBounds.height };
-    }
-
-    calculateStepMovePosition(header, direction) {
-        if (!header) return null;
-        const currentBounds = header.getBounds();
-        const stepSize = 80; // 이동 간격
-        let targetX = currentBounds.x;
-        let targetY = currentBounds.y;
-    
-        switch (direction) {
-            case 'left': targetX -= stepSize; break;
-            case 'right': targetX += stepSize; break;
-            case 'up': targetY -= stepSize; break;
-            case 'down': targetY += stepSize; break;
-        }
-    
-        return this.calculateClampedPosition(header, { x: targetX, y: targetY });
-    }
-    
-    calculateEdgePosition(header, direction) {
-        if (!header) return null;
         const display = getCurrentDisplay(header);
         const { workArea } = display;
-        const currentBounds = header.getBounds();
-    
-        let targetX = currentBounds.x;
-        let targetY = currentBounds.y;
-    
-        switch (direction) {
-            case 'left': targetX = workArea.x; break;
-            case 'right': targetX = workArea.x + workArea.width - currentBounds.width; break;
-            case 'up': targetY = workArea.y; break;
-            case 'down': targetY = workArea.y + workArea.height - currentBounds.height; break;
-        }
-        return { x: targetX, y: targetY };
-    }
-    
-    calculateNewPositionForDisplay(window, targetDisplayId) {
-        if (!window) return null;
-    
-        const targetDisplay = screen.getAllDisplays().find(d => d.id === targetDisplayId);
-        if (!targetDisplay) return null;
-    
-        const currentBounds = window.getBounds();
-        const currentDisplay = getCurrentDisplay(window);
-    
-        if (currentDisplay.id === targetDisplay.id) return { x: currentBounds.x, y: currentBounds.y };
-    
-        const relativeX = (currentBounds.x - currentDisplay.workArea.x) / currentDisplay.workArea.width;
-        const relativeY = (currentBounds.y - currentDisplay.workArea.y) / currentDisplay.workArea.height;
-        
-        const targetX = targetDisplay.workArea.x + targetDisplay.workArea.width * relativeX;
-        const targetY = targetDisplay.workArea.y + targetDisplay.workArea.height * relativeY;
-    
-        const clampedX = Math.max(targetDisplay.workArea.x, Math.min(targetX, targetDisplay.workArea.x + targetDisplay.workArea.width - currentBounds.width));
-        const clampedY = Math.max(targetDisplay.workArea.y, Math.min(targetY, targetDisplay.workArea.y + targetDisplay.workArea.height - currentBounds.height));
-    
-        return { x: Math.round(clampedX), y: Math.round(clampedY) };
+
+        let newX = Math.round(headerBounds.x + (headerBounds.width / 2) - (shortcutBounds.width / 2));
+        let newY = Math.round(headerBounds.y);
+
+        newX = Math.max(workArea.x, Math.min(newX, workArea.x + workArea.width - shortcutBounds.width));
+        newY = Math.max(workArea.y, Math.min(newY, workArea.y + workArea.height - shortcutBounds.height));
+
+        shortcutSettings.setBounds({ x: newX, y: newY, width: shortcutBounds.width, height: shortcutBounds.height });
     }
     
     /**

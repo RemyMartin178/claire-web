@@ -2,12 +2,14 @@ const { globalShortcut, screen } = require('electron');
 const shortcutsRepository = require('./repositories');
 const internalBridge = require('../../bridge/internalBridge');
 const askService = require('../ask/askService');
+const { createLogger } = require('../../common/services/logger.js');
+
+const logger = createLogger('ShortcutsService');
 
 
 class ShortcutsService {
     constructor() {
         this.lastVisibleWindows = new Set(['header']);
-        this.mouseEventsIgnored = false;
         this.windowPool = null;
         this.allWindowVisibility = true;
     }
@@ -15,10 +17,10 @@ class ShortcutsService {
     initialize(windowPool) {
         this.windowPool = windowPool;
         internalBridge.on('reregister-shortcuts', () => {
-            console.log('[ShortcutsService] Reregistering shortcuts due to header state change.');
+            logger.info('[ShortcutsService] Reregistering shortcuts due to header state change.');
             this.registerShortcuts();
         });
-        console.log('[ShortcutsService] Initialized with dependencies and event listener.');
+        logger.info('[ShortcutsService] Initialized with dependencies and event listener.');
     }
 
     async openShortcutSettingsWindow () {
@@ -28,14 +30,14 @@ class ShortcutsService {
 
         globalShortcut.unregisterAll();
         internalBridge.emit('window:requestVisibility', { name: 'shortcut-settings', visible: true });
-        console.log('[ShortcutsService] Shortcut settings window opened.');
+        logger.info('[ShortcutsService] Shortcut settings window opened.');
         return { success: true };
     }
 
     async closeShortcutSettingsWindow () {
         await this.registerShortcuts();
         internalBridge.emit('window:requestVisibility', { name: 'shortcut-settings', visible: false });
-        console.log('[ShortcutsService] Shortcut settings window closed.');
+        logger.info('[ShortcutsService] Shortcut settings window closed.');
         return { success: true };
     }
 
@@ -45,7 +47,7 @@ class ShortcutsService {
             await this.closeShortcutSettingsWindow();
             return { success: true };
         } catch (error) {
-            console.error("Failed to save shortcuts:", error);
+            logger.error('Error occurred', { error  });
             await this.closeShortcutSettingsWindow();
             return { success: false, error: error.message };
         }
@@ -78,7 +80,7 @@ class ShortcutsService {
         let keybindsArray = await shortcutsRepository.getAllKeybinds();
 
         if (!keybindsArray || keybindsArray.length === 0) {
-            console.log(`[Shortcuts] No keybinds found. Loading defaults.`);
+            logger.info('No keybinds found. Loading defaults.');
             const defaults = this.getDefaultKeybinds();
             await this.saveKeybinds(defaults); 
             return defaults;
@@ -99,7 +101,7 @@ class ShortcutsService {
         }
 
         if (needsUpdate) {
-            console.log('[Shortcuts] Updating missing keybinds with defaults.');
+            logger.info('[Shortcuts] Updating missing keybinds with defaults.');
             await this.saveKeybinds(keybinds);
         }
 
@@ -117,7 +119,7 @@ class ShortcutsService {
             }
         }
         await shortcutsRepository.upsertKeybinds(keybindsToSave);
-        console.log(`[Shortcuts] Saved keybinds.`);
+        logger.info('Saved keybinds.');
     }
 
     async toggleAllWindowsVisibility() {
@@ -137,7 +139,7 @@ class ShortcutsService {
 
     async registerShortcuts(registerOnlyToggleVisibility = false) {
         if (!this.windowPool) {
-            console.error('[Shortcuts] Service not initialized. Cannot register shortcuts.');
+            logger.error('Service not initialized. Cannot register shortcuts.');
             return;
         }
         const keybinds = await this.loadKeybinds();
@@ -164,7 +166,7 @@ class ShortcutsService {
             if (keybinds.toggleVisibility) {
                 globalShortcut.register(keybinds.toggleVisibility, () => this.toggleAllWindowsVisibility());
             }
-            console.log('[Shortcuts] registerOnlyToggleVisibility, only toggleVisibility shortcut is registered.');
+            logger.info('[Shortcuts] registerOnlyToggleVisibility, only toggleVisibility shortcut is registered.');
             return;
         }
 
@@ -197,7 +199,7 @@ class ShortcutsService {
             if (keybinds.toggleVisibility) {
                 globalShortcut.register(keybinds.toggleVisibility, () => this.toggleAllWindowsVisibility());
             }
-            console.log('[Shortcuts] ApiKeyHeader is active, only toggleVisibility shortcut is registered.');
+            logger.info('[Shortcuts] ApiKeyHeader is active, only toggleVisibility shortcut is registered.');
             return;
         }
 
@@ -243,11 +245,8 @@ class ShortcutsService {
                     break;
                 case 'toggleClickThrough':
                      callback = () => {
-                        this.mouseEventsIgnored = !this.mouseEventsIgnored;
-                        if(mainWindow && !mainWindow.isDestroyed()){
-                            mainWindow.setIgnoreMouseEvents(this.mouseEventsIgnored, { forward: true });
-                            mainWindow.webContents.send('click-through-toggled', this.mouseEventsIgnored);
-                        }
+                        const windowManager = require('../../window/windowManager');
+                        windowManager.toggleClickThrough();
                      };
                      break;
                 case 'manualScreenshot':
@@ -269,16 +268,16 @@ class ShortcutsService {
                 try {
                     globalShortcut.register(accelerator, callback);
                 } catch(e) {
-                    console.error(`[Shortcuts] Failed to register shortcut for "${action}" (${accelerator}):`, e.message);
+                    logger.error(`Failed to register shortcut for ${action} (${accelerator}):`, e.message);
                 }
             }
         }
-        console.log('[Shortcuts] All shortcuts have been registered.');
+        logger.info('[Shortcuts] All shortcuts have been registered.');
     }
 
     unregisterAll() {
         globalShortcut.unregisterAll();
-        console.log('[Shortcuts] All shortcuts have been unregistered.');
+        logger.info('[Shortcuts] All shortcuts have been unregistered.');
     }
 }
 

@@ -1,15 +1,19 @@
 const { ipcMain, BrowserWindow } = require('electron');
 const Store = require('electron-store');
-const authService = require('../common/services/authService');
+const authService = require('../../common/services/authService');
 const settingsRepository = require('./repositories');
 const { getStoredApiKey, getStoredProvider, windowPool } = require('../../window/windowManager');
 
 // New imports for common services
-const modelStateService = require('../common/services/modelStateService');
-const localAIManager = require('../common/services/localAIManager');
+const modelStateService = require('../../common/services/modelStateService');
+const ollamaService = require('../../common/services/ollamaService');
+const whisperService = require('../../common/services/whisperService');
+const { createLogger } = require('../../common/services/logger.js');
+
+const logger = createLogger('SettingsService');
 
 const store = new Store({
-    name: 'pickle-glass-settings',
+    name: 'xerus-settings',
     defaults: {
         users: {}
     }
@@ -26,19 +30,25 @@ const NOTIFICATION_CONFIG = {
 // New facade functions for model state management
 async function getModelSettings() {
     try {
-        const [config, storedKeys, selectedModels, availableLlm, availableStt] = await Promise.all([
+        const [config, storedKeys, selectedModels] = await Promise.all([
             modelStateService.getProviderConfig(),
             modelStateService.getAllApiKeys(),
             modelStateService.getSelectedModels(),
-            modelStateService.getAvailableModels('llm'),
-            modelStateService.getAvailableModels('stt')
         ]);
+        
+        // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
+        const availableLlm = modelStateService.getAvailableModels('llm');
+        const availableStt = modelStateService.getAvailableModels('stt');
         
         return { success: true, data: { config, storedKeys, availableLlm, availableStt, selectedModels } };
     } catch (error) {
-        console.error('[SettingsService] Error getting model settings:', error);
+        logger.error('Error getting model settings:', { error });
         return { success: false, error: error.message };
     }
+}
+
+async function validateAndSaveKey(provider, key) {
+    return modelStateService.handleValidateKey(provider, key);
 }
 
 async function clearApiKey(provider) {
@@ -51,21 +61,17 @@ async function setSelectedModel(type, modelId) {
     return { success };
 }
 
-// LocalAI facade functions
+// Ollama facade functions
 async function getOllamaStatus() {
-    return localAIManager.getServiceStatus('ollama');
+    return ollamaService.getStatus();
 }
 
 async function ensureOllamaReady() {
-    const status = await localAIManager.getServiceStatus('ollama');
-    if (!status.installed || !status.running) {
-        await localAIManager.startService('ollama');
-    }
-    return { success: true };
+    return ollamaService.ensureReady();
 }
 
 async function shutdownOllama() {
-    return localAIManager.stopService('ollama');
+    return ollamaService.shutdown(false); // false for graceful shutdown
 }
 
 
@@ -100,11 +106,11 @@ class WindowNotificationManager {
         const relevantWindows = this.getRelevantWindows(windowTypes);
         
         if (relevantWindows.length === 0) {
-            console.log(`[WindowNotificationManager] No relevant windows found for event: ${event}`);
+            logger.info('No relevant windows found for event:');
             return;
         }
 
-        console.log(`[WindowNotificationManager] Sending ${event} to ${relevantWindows.length} relevant windows`);
+        logger.info('Sending  to  relevant windows');
         
         relevantWindows.forEach(win => {
             try {
@@ -114,7 +120,7 @@ class WindowNotificationManager {
                     win.webContents.send(event);
                 }
             } catch (error) {
-                console.warn(`[WindowNotificationManager] Failed to send ${event} to window:`, error.message);
+                logger.warn('Failed to send event to window:', { message: error.message });
             }
         });
     }
@@ -173,7 +179,7 @@ const DEFAULT_KEYBINDS = {
         moveRight: 'Cmd+Right',
         toggleVisibility: 'Cmd+\\',
         toggleClickThrough: 'Cmd+M',
-        nextStep: 'Cmd+Enter',
+        nextStep: 'Cmd+Alt+N',
         manualScreenshot: 'Cmd+Shift+S',
         previousResponse: 'Cmd+[',
         nextResponse: 'Cmd+]',
@@ -187,7 +193,7 @@ const DEFAULT_KEYBINDS = {
         moveRight: 'Ctrl+Right',
         toggleVisibility: 'Ctrl+\\',
         toggleClickThrough: 'Ctrl+M',
-        nextStep: 'Ctrl+Enter',
+        nextStep: 'Ctrl+Alt+N',
         manualScreenshot: 'Ctrl+Shift+S',
         previousResponse: 'Ctrl+[',
         nextResponse: 'Ctrl+]',
@@ -229,7 +235,7 @@ async function getSettings() {
         currentSettings = { ...defaultSettings, ...savedSettings };
         return currentSettings;
     } catch (error) {
-        console.error('[SettingsService] Error getting settings from store:', error);
+        logger.error('Error getting settings from store:', { error });
         return getDefaultSettings();
     }
 }
@@ -250,7 +256,7 @@ async function saveSettings(settings) {
 
         return { success: true };
     } catch (error) {
-        console.error('[SettingsService] Error saving settings to store:', error);
+        logger.error('Error saving settings to store:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -261,7 +267,7 @@ async function getPresets() {
         const presets = await settingsRepository.getPresets();
         return presets;
     } catch (error) {
-        console.error('[SettingsService] Error getting presets:', error);
+        logger.error('Error getting presets:', { error });
         return [];
     }
 }
@@ -271,7 +277,7 @@ async function getPresetTemplates() {
         const templates = await settingsRepository.getPresetTemplates();
         return templates;
     } catch (error) {
-        console.error('[SettingsService] Error getting preset templates:', error);
+        logger.error('Error getting preset templates:', { error });
         return [];
     }
 }
@@ -289,7 +295,7 @@ async function createPreset(title, prompt) {
         
         return { success: true, id: result.id };
     } catch (error) {
-        console.error('[SettingsService] Error creating preset:', error);
+        logger.error('Error creating preset:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -307,7 +313,7 @@ async function updatePreset(id, title, prompt) {
         
         return { success: true };
     } catch (error) {
-        console.error('[SettingsService] Error updating preset:', error);
+        logger.error('Error updating preset:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -324,7 +330,7 @@ async function deletePreset(id) {
         
         return { success: true };
     } catch (error) {
-        console.error('[SettingsService] Error deleting preset:', error);
+        logger.error('Error deleting preset:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -348,7 +354,7 @@ async function saveApiKey(apiKey, provider = 'openai') {
         
         return { success: true };
     } catch (error) {
-        console.error('[SettingsService] Error saving API key:', error);
+        logger.error('Error saving API key:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -374,10 +380,10 @@ async function removeApiKey() {
             }
         });
         
-        console.log('[SettingsService] API key removed for all providers');
+        logger.info('[SettingsService] API key removed for all providers');
         return { success: true };
     } catch (error) {
-        console.error('[SettingsService] Error removing API key:', error);
+        logger.error('Error removing API key:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -396,7 +402,7 @@ async function updateContentProtection(enabled) {
         
         return await saveSettings(settings);
     } catch (error) {
-        console.error('[SettingsService] Error updating content protection:', error);
+        logger.error('Error updating content protection:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -405,7 +411,7 @@ async function getAutoUpdateSetting() {
     try {
         return settingsRepository.getAutoUpdate();
     } catch (error) {
-        console.error('[SettingsService] Error getting auto update setting:', error);
+        logger.error('Error getting auto update setting:', { error });
         return true; // Fallback to enabled
     }
 }
@@ -415,7 +421,7 @@ async function setAutoUpdateSetting(isEnabled) {
         await settingsRepository.setAutoUpdate(isEnabled);
         return { success: true };
     } catch (error) {
-        console.error('[SettingsService] Error setting auto update setting:', error);
+        logger.error('Error setting auto update setting:', { error });
         return { success: false, error: error.message };
     }
 }
@@ -424,13 +430,13 @@ function initialize() {
     // cleanup 
     windowNotificationManager.cleanup();
     
-    console.log('[SettingsService] Initialized and ready.');
+    logger.info('[SettingsService] Initialized and ready.');
 }
 
 // Cleanup function
 function cleanup() {
     windowNotificationManager.cleanup();
-    console.log('[SettingsService] Cleaned up resources.');
+    logger.info('[SettingsService] Cleaned up resources.');
 }
 
 function notifyPresetUpdate(action, presetId, title = null) {
@@ -458,6 +464,7 @@ module.exports = {
     setAutoUpdateSetting,
     // Model settings facade
     getModelSettings,
+    validateAndSaveKey,
     clearApiKey,
     setSelectedModel,
     // Ollama facade

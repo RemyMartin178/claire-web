@@ -1,20 +1,40 @@
-const sqliteRepository = require('./sqlite.repository');
-const firebaseRepository = require('./firebase.repository');
-const authService = require('../../common/services/authService');
+// SQLite repository has been removed - using Neon PostgreSQL only
+const neonRepository = require('./neon.repository');
+const authService = require('../../../common/services/authService');
 
 function getBaseRepository() {
-    const user = authService.getCurrentUser();
-    if (user && user.isLoggedIn) {
-        return firebaseRepository;
-    }
-    return sqliteRepository;
+    // SQLite has been removed - always use Neon PostgreSQL (via backend API)
+    console.log('[SEARCH] [DEBUG] Using Neon repository');
+    return neonRepository;
 }
 
 // The adapter layer that injects the UID
 const askRepositoryAdapter = {
-    addAiMessage: ({ sessionId, role, content, model }) => {
+    addAiMessage: async ({ sessionId, role, content, model }) => {
         const uid = authService.getCurrentUserId();
-        return getBaseRepository().addAiMessage({ uid, sessionId, role, content, model });
+        const repository = getBaseRepository();
+        
+        console.log('[SEARCH] [DEBUG] askRepositoryAdapter.addAiMessage called:', {
+            uid,
+            sessionId,
+            role,
+            model,
+            contentLength: content?.length || 0,
+            repositoryType: 'Neon'
+        });
+        
+        try {
+            const result = await repository.addAiMessage({ uid, sessionId, role, content, model });
+            console.log('[OK] [DEBUG] askRepositoryAdapter.addAiMessage succeeded');
+            return result;
+        } catch (error) {
+            console.log('[ERROR] [DEBUG] askRepositoryAdapter.addAiMessage failed:', {
+                error: error.message,
+                code: error.code,
+                name: error.name
+            });
+            throw error;
+        }
     },
     getAllAiMessagesBySessionId: (sessionId) => {
         // This function does not require a UID at the service level.

@@ -1,9 +1,14 @@
 const { BrowserWindow } = require('electron');
-const { getSystemPrompt } = require('../../common/prompts/promptBuilder.js');
-const { createLLM } = require('../../common/ai/factory');
-const sessionRepository = require('../../common/repositories/session');
+// Use simple prompt builder instead of domain prompt manager
+const { getSystemPrompt } = require('../../../common/prompts/promptBuilder.js');
+const { createLLM } = require('../../../common/ai/factory');
+const sessionRepository = require('../../../common/repositories/session');
 const summaryRepository = require('./repositories');
-const modelStateService = require('../../common/services/modelStateService');
+const modelStateService = require('../../../common/services/modelStateService');
+const { createLogger } = require('../../../common/services/logger.js');
+
+const logger = createLogger('SummaryService');
+// const { getStoredApiKey, getStoredProvider, getCurrentModelInfo } = require('../../../window/windowManager.js');
 
 class SummaryService {
     constructor() {
@@ -38,8 +43,11 @@ class SummaryService {
     addConversationTurn(speaker, text) {
         const conversationText = `${speaker.toLowerCase()}: ${text.trim()}`;
         this.conversationHistory.push(conversationText);
-        console.log(`💬 Added conversation text: ${conversationText}`);
-        console.log(`📈 Total conversation history: ${this.conversationHistory.length} texts`);
+        logger.info(`[CHAT] Added conversation text: ${conversationText}`);
+        logger.info(`📈 Total conversation history: ${this.conversationHistory.length} texts`);
+
+        // Debug: show the actual conversation history
+        console.log('DEBUG conversation history:', this.conversationHistory.map((text, i) => `${i+1}: ${text.substring(0, 50)}...`));
 
         // Trigger analysis if needed
         this.triggerAnalysisIfNeeded();
@@ -53,7 +61,7 @@ class SummaryService {
         this.conversationHistory = [];
         this.previousAnalysisResult = null;
         this.analysisHistory = [];
-        console.log('🔄 Conversation history and analysis state reset');
+        logger.info('[LOADING] Conversation history and analysis state reset');
     }
 
     /**
@@ -68,16 +76,16 @@ class SummaryService {
     }
 
     async makeOutlineAndRequests(conversationTexts, maxTurns = 30) {
-        console.log(`🔍 makeOutlineAndRequests called - conversationTexts: ${conversationTexts.length}`);
+        logger.info(`[SEARCH] makeOutlineAndRequests called - conversationTexts: ${conversationTexts.length}`);
 
         if (conversationTexts.length === 0) {
-            console.log('⚠️ No conversation texts available for analysis');
+            logger.info('[WARNING] No conversation texts available for analysis');
             return null;
         }
 
         const recentConversation = this.formatConversationForPrompt(conversationTexts, maxTurns);
 
-        // 이전 분석 결과를 프롬프트에 포함
+        // [Korean comment translated] [Korean comment translated] Result[Korean comment translated] [Korean comment translated] [Korean comment translated]
         let contextualPrompt = '';
         if (this.previousAnalysisResult) {
             contextualPrompt = `
@@ -90,19 +98,27 @@ Please build upon this context while analyzing the new conversation segments.
 `;
         }
 
-        const basePrompt = getSystemPrompt('pickle_glass_analysis', '', false);
-        const systemPrompt = basePrompt.replace('{{CONVERSATION_HISTORY}}', recentConversation);
+        const systemPrompt = getSystemPrompt('xerus_analysis', contextualPrompt, false)
+            .replace('{{CONVERSATION_HISTORY}}', recentConversation);
 
         try {
             if (this.currentSessionId) {
                 await sessionRepository.touch(this.currentSessionId);
             }
 
-            const modelInfo = await modelStateService.getCurrentModelInfo('llm');
+            const modelInfo = modelStateService.getCurrentModelInfo('llm');
+            console.log('DEBUG LLM modelInfo:', { 
+                hasModelInfo: !!modelInfo, 
+                provider: modelInfo?.provider, 
+                model: modelInfo?.model, 
+                hasApiKey: !!modelInfo?.apiKey 
+            });
+            
             if (!modelInfo || !modelInfo.apiKey) {
+                console.log('ERROR: LLM analysis failing - no model or API key');
                 throw new Error('AI model or API key is not configured.');
             }
-            console.log(`🤖 Sending analysis request to ${modelInfo.provider} using model ${modelInfo.model}`);
+            logger.info(`[AI] Sending analysis request to ${modelInfo.provider} using model ${modelInfo.model}`);
             
             const messages = [
                 {
@@ -135,21 +151,21 @@ Keep all points concise and build upon previous analysis if provided.`,
                 },
             ];
 
-            console.log('🤖 Sending analysis request to AI...');
+            logger.info('[AI] Sending analysis request to AI...');
 
             const llm = createLLM(modelInfo.provider, {
                 apiKey: modelInfo.apiKey,
                 model: modelInfo.model,
                 temperature: 0.7,
                 maxTokens: 1024,
-                usePortkey: modelInfo.provider === 'openai-glass',
-                portkeyVirtualKey: modelInfo.provider === 'openai-glass' ? modelInfo.apiKey : undefined,
+                usePortkey: false,
+                portkeyVirtualKey: undefined,
             });
 
             const completion = await llm.chat(messages);
 
             const responseText = completion.content;
-            console.log(`✅ Analysis response received: ${responseText}`);
+            logger.info(`[OK] Analysis response received: ${responseText}`);
             const structuredData = this.parseResponseText(responseText, this.previousAnalysisResult);
 
             if (this.currentSessionId) {
@@ -163,11 +179,11 @@ Keep all points concise and build upon previous analysis if provided.`,
                         model: modelInfo.model
                     });
                 } catch (err) {
-                    console.error('[DB] Failed to save summary:', err);
+                    logger.error('Failed to save summary:', { err });
                 }
             }
 
-            // 분석 결과 저장
+            // [Korean comment translated] Result Save
             this.previousAnalysisResult = structuredData;
             this.analysisHistory.push({
                 timestamp: Date.now(),
@@ -181,8 +197,8 @@ Keep all points concise and build upon previous analysis if provided.`,
 
             return structuredData;
         } catch (error) {
-            console.error('❌ Error during analysis generation:', error.message);
-            return this.previousAnalysisResult; // 에러 시 이전 결과 반환
+            logger.error('[ERROR] Error during analysis generation:', { message: error.message });
+            return this.previousAnalysisResult; // [Korean comment translated] [Korean comment translated] [Korean comment translated] Result [Korean comment translated]
         }
     }
 
@@ -191,10 +207,10 @@ Keep all points concise and build upon previous analysis if provided.`,
             summary: [],
             topic: { header: '', bullets: [] },
             actions: [],
-            followUps: ['✉️ Draft a follow-up email', '✅ Generate action items', '📝 Show summary'],
+            followUps: ['✉️ Draft a follow-up email', '[OK] Generate action items', '[TEXT] Show summary'],
         };
 
-        // 이전 결과가 있으면 기본값으로 사용
+        // [Korean comment translated] Result[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
         if (previousResult) {
             structuredData.topic.header = previousResult.topic.header;
             structuredData.summary = [...previousResult.summary];
@@ -209,7 +225,7 @@ Keep all points concise and build upon previous analysis if provided.`,
             for (const line of lines) {
                 const trimmedLine = line.trim();
 
-                // 섹션 헤더 감지
+                // [Korean comment translated] [Korean comment translated] [Korean comment translated]
                 if (trimmedLine.startsWith('**Summary Overview**')) {
                     currentSection = 'summary-overview';
                     continue;
@@ -229,11 +245,11 @@ Keep all points concise and build upon previous analysis if provided.`,
                     continue;
                 }
 
-                // 컨텐츠 파싱
+                // [Korean comment translated] [Korean comment translated]
                 if (trimmedLine.startsWith('-') && currentSection === 'summary-overview') {
                     const summaryPoint = trimmedLine.substring(1).trim();
                     if (summaryPoint && !structuredData.summary.includes(summaryPoint)) {
-                        // 기존 summary 업데이트 (최대 5개 유지)
+                        // [Korean comment translated] summary Update ([Korean comment translated] 5[Korean comment translated] [Korean comment translated])
                         structuredData.summary.unshift(summaryPoint);
                         if (structuredData.summary.length > 5) {
                             structuredData.summary.pop();
@@ -245,7 +261,7 @@ Keep all points concise and build upon previous analysis if provided.`,
                         structuredData.topic.bullets.push(bullet);
                     }
                 } else if (currentSection === 'explanation' && trimmedLine) {
-                    // explanation을 topic bullets에 추가 (문장 단위로)
+                    // explanation[Korean comment translated] topic bullets[Korean comment translated] [Korean comment translated] ([Korean comment translated] [Korean comment translated])
                     const sentences = trimmedLine
                         .split(/\.\s+/)
                         .filter(s => s.trim().length > 0)
@@ -264,18 +280,18 @@ Keep all points concise and build upon previous analysis if provided.`,
                 }
             }
 
-            // 기본 액션 추가
-            const defaultActions = ['✨ What should I say next?', '💬 Suggest follow-up questions'];
+            // [Korean comment translated] [Korean comment translated] [Korean comment translated]
+            const defaultActions = ['✨ What should I say next?', '[CHAT] Suggest follow-up questions'];
             defaultActions.forEach(action => {
                 if (!structuredData.actions.includes(action)) {
                     structuredData.actions.push(action);
                 }
             });
 
-            // 액션 개수 제한
+            // [Korean comment translated] [Korean comment translated] [Korean comment translated]
             structuredData.actions = structuredData.actions.slice(0, 5);
 
-            // 유효성 검증 및 이전 데이터 병합
+            // [Korean comment translated] Validation [Korean comment translated] [Korean comment translated] Data [Korean comment translated]
             if (structuredData.summary.length === 0 && previousResult) {
                 structuredData.summary = previousResult.summary;
             }
@@ -283,32 +299,43 @@ Keep all points concise and build upon previous analysis if provided.`,
                 structuredData.topic.bullets = previousResult.topic.bullets;
             }
         } catch (error) {
-            console.error('❌ Error parsing response text:', error);
-            // 에러 시 이전 결과 반환
+            logger.error('Error occurred:', { error });
+            // [Korean comment translated] [Korean comment translated] [Korean comment translated] Result [Korean comment translated]
             return (
                 previousResult || {
                     summary: [],
                     topic: { header: 'Analysis in progress', bullets: [] },
-                    actions: ['✨ What should I say next?', '💬 Suggest follow-up questions'],
-                    followUps: ['✉️ Draft a follow-up email', '✅ Generate action items', '📝 Show summary'],
+                    actions: ['✨ What should I say next?', '[CHAT] Suggest follow-up questions'],
+                    followUps: ['✉️ Draft a follow-up email', '[OK] Generate action items', '[TEXT] Show summary'],
                 }
             );
         }
 
-        console.log('📊 Final structured data:', JSON.stringify(structuredData, null, 2));
+        logger.info('[DATA] Final structured data:', JSON.stringify(structuredData, null, 2));
         return structuredData;
     }
 
     /**
-     * Triggers analysis when conversation history reaches 5 texts.
+     * Triggers analysis more frequently for better live insights experience.
+     * Now triggers at 3, 6, 10, 15, 20, etc. turns for more responsive insights.
      */
     async triggerAnalysisIfNeeded() {
-        if (this.conversationHistory.length >= 5 && this.conversationHistory.length % 5 === 0) {
-            console.log(`Triggering analysis - ${this.conversationHistory.length} conversation texts accumulated`);
+        const length = this.conversationHistory.length;
+        
+        // Trigger analysis at strategic intervals for responsive insights
+        const shouldTrigger = 
+            length === 5 ||  // First insights after 5 turns
+            length === 10 ||  // Second update
+            (length >= 15 && length % 5 === 0);  // Then every 5 turns
+        
+        if (shouldTrigger) {
+            logger.info(`Triggering analysis - ${length} conversation texts accumulated`);
 
             const data = await this.makeOutlineAndRequests(this.conversationHistory);
+            
             if (data) {
-                console.log('Sending structured data to renderer');
+                logger.info('Sending structured data to renderer');
+                console.log('DEBUG sending summary-update to renderer:', JSON.stringify(data, null, 2));
                 this.sendToRenderer('summary-update', data);
                 
                 // Notify callback
@@ -316,7 +343,7 @@ Keep all points concise and build upon previous analysis if provided.`,
                     this.onAnalysisComplete(data);
                 }
             } else {
-                console.log('No analysis data returned');
+                logger.info('No analysis data returned');
             }
         }
     }
@@ -327,6 +354,33 @@ Keep all points concise and build upon previous analysis if provided.`,
             history: this.analysisHistory,
             conversationLength: this.conversationHistory.length,
         };
+    }
+
+    /**
+     * Debug method to manually trigger analysis for testing
+     */
+    async forceAnalysis() {
+        logger.info(`[TOOL] Force triggering analysis - ${this.conversationHistory.length} conversation texts`);
+        
+        if (this.conversationHistory.length === 0) {
+            logger.warn('No conversation history available for analysis');
+            return null;
+        }
+
+        const data = await this.makeOutlineAndRequests(this.conversationHistory);
+        if (data) {
+            logger.info('[OK] Force analysis completed, sending to renderer');
+            this.sendToRenderer('summary-update', data);
+            
+            // Notify callback
+            if (this.onAnalysisComplete) {
+                this.onAnalysisComplete(data);
+            }
+            return data;
+        } else {
+            logger.warn('[ERROR] Force analysis returned no data');
+            return null;
+        }
     }
 }
 

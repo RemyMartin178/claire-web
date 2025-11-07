@@ -1,6 +1,7 @@
 import { html, css, LitElement } from '../assets/lit-core-2.7.4.min.js';
+import { ThemeMixin } from '../mixins/ThemeMixin.js';
 
-export class WelcomeHeader extends LitElement {
+export class WelcomeHeader extends ThemeMixin(LitElement) {
     static styles = css`
         :host {
             display: block;
@@ -16,28 +17,30 @@ export class WelcomeHeader extends LitElement {
             width: 100%;
             box-sizing: border-box;
             height: auto;
-            padding: 24px 16px;
-            background: rgba(0, 0, 0, 0.64);
-            box-shadow: 0px 0px 0px 1.5px rgba(255, 255, 255, 0.64) inset;
+            padding: 32px 24px;
+            background: #ffffff !important;
+            border: 1px solid #e5e7eb !important;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
             border-radius: 16px;
             flex-direction: column;
             justify-content: flex-start;
             align-items: flex-start;
             gap: 32px;
             display: inline-flex;
-            -webkit-app-region: no-drag;
+            -webkit-app-region: drag;
+            position: relative;
         }
         .close-button {
             -webkit-app-region: no-drag;
             position: absolute;
-            top: 16px;
-            right: 16px;
-            width: 20px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            border-radius: 5px;
-            color: rgba(255, 255, 255, 0.7);
+            top: 20px;
+            right: 20px;
+            width: 28px;
+            height: 28px;
+            background: #f8f9fa !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 6px;
+            color: #6b7280 !important;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -47,10 +50,13 @@ export class WelcomeHeader extends LitElement {
             font-size: 16px;
             line-height: 1;
             padding: 0;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
         }
         .close-button:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.9);
+            background: #f1f3f4 !important;
+            border-color: #d1d5db !important;
+            color: #1f2937 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
         }
         .header-section {
             flex-direction: column;
@@ -60,28 +66,34 @@ export class WelcomeHeader extends LitElement {
             display: flex;
         }
         .title {
-            color: white;
-            font-size: 18px;
+            color: #1f2937 !important;
+            font-size: 20px;
             font-weight: 700;
         }
         .subtitle {
-            color: white;
-            font-size: 14px;
+            color: #6b7280 !important;
+            font-size: 15px;
             font-weight: 500;
         }
         .option-card {
             width: 100%;
             justify-content: flex-start;
             align-items: flex-start;
-            gap: 8px;
+            gap: 12px;
             display: inline-flex;
+            background: #f8f9fa !important;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.15s ease;
         }
         .divider {
-            width: 1px;
+            width: 3px;
             align-self: stretch;
             position: relative;
-            background: #bebebe;
+            background: #2563eb !important;
             border-radius: 2px;
+            min-height: 60px;
         }
         .option-content {
             flex: 1 1 0;
@@ -93,40 +105,43 @@ export class WelcomeHeader extends LitElement {
             min-width: 0;
         }
         .option-title {
-            color: white;
-            font-size: 14px;
+            color: #1f2937 !important;
+            font-size: 15px;
             font-weight: 700;
         }
         .option-description {
-            color: #dcdcdc;
-            font-size: 12px;
+            color: #6b7280 !important;
+            font-size: 13px;
             font-weight: 400;
-            line-height: 18px;
-            letter-spacing: 0.12px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            line-height: 20px;
+            letter-spacing: 0.1px;
+            white-space: normal;
+            overflow: visible;
         }
         .action-button {
             -webkit-app-region: no-drag;
-            padding: 8px 10px;
-            background: rgba(132.6, 132.6, 132.6, 0.8);
-            box-shadow: 0px 2px 2px rgba(0, 0, 0, 0.16);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            padding: 12px 16px;
+            background: #2563eb !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+            border-radius: 8px;
+            border: 1px solid #2563eb !important;
             justify-content: center;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             display: flex;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.15s ease;
+            min-width: 160px;
         }
         .action-button:hover {
-            background: rgba(150, 150, 150, 0.9);
+            background: #1d4ed8 !important;
+            border-color: #1d4ed8 !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+            transform: translateY(-1px);
         }
         .button-text {
-            color: white;
-            font-size: 12px;
+            color: #ffffff !important;
+            font-size: 13px;
             font-weight: 600;
         }
         .button-icon {
@@ -138,8 +153,8 @@ export class WelcomeHeader extends LitElement {
             justify-content: center;
         }
         .arrow-icon {
-            border: solid white;
-            border-width: 0 1.2px 1.2px 0;
+            border: solid #ffffff !important;
+            border-width: 0 1.5px 1.5px 0;
             display: inline-block;
             padding: 3px;
             transform: rotate(-45deg);
@@ -148,16 +163,29 @@ export class WelcomeHeader extends LitElement {
         .footer {
             align-self: stretch;
             text-align: center;
-            color: #dcdcdc;
+            color: #9ca3af !important;
             font-size: 12px;
             font-weight: 500;
-            line-height: 19.2px;
+            line-height: 20px;
         }
         .footer-link {
             text-decoration: underline;
             cursor: pointer;
             -webkit-app-region: no-drag;
+            color: #2563eb !important;
+            transition: color 0.15s ease;
         }
+        
+        .footer-link:hover {
+            color: #1d4ed8 !important;
+        }
+        
+        .option-card:hover {
+            background: #f1f3f4 !important;
+            border-color: #d1d5db !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+        }
+
     `;
 
     static properties = {
@@ -170,6 +198,31 @@ export class WelcomeHeader extends LitElement {
         this.loginCallback = () => {};
         this.apiKeyCallback = () => {};
         this.handleClose = this.handleClose.bind(this);
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        // Debug: Check current body classes
+        console.log('[SEARCH] WelcomeHeader connectedCallback - body classes:', document.body.className);
+        console.log('[SEARCH] WelcomeHeader connectedCallback - has-glass present:', document.body.classList.contains('has-glass'));
+        
+        // Force light theme by removing glass mode class
+        if (document.body.classList.contains('has-glass')) {
+            document.body.classList.remove('has-glass');
+            console.log('[STYLE] Forced light theme for WelcomeHeader - removed has-glass class');
+        } else {
+            console.log('[INFO] No has-glass class found, should be using light theme');
+        }
+        
+        // Also log the computed styles to see what's actually being applied
+        setTimeout(() => {
+            const containerElement = this.shadowRoot?.querySelector('.container');
+            if (containerElement) {
+                const computedStyle = window.getComputedStyle(containerElement);
+                console.log('[STYLE] Container computed background:', computedStyle.backgroundColor);
+                console.log('[STYLE] Container computed border:', computedStyle.border);
+            }
+        }, 100);
     }
 
     updated(changedProperties) {
@@ -188,7 +241,7 @@ export class WelcomeHeader extends LitElement {
             <div class="container">
                 <button class="close-button" @click=${this.handleClose}>×</button>
                 <div class="header-section">
-                    <div class="title">Welcome to Glass</div>
+                    <div class="title">Bienvenue sur Claire</div>
                     <div class="subtitle">Choose how to connect your AI model</div>
                 </div>
                 <div class="option-card">
@@ -196,7 +249,7 @@ export class WelcomeHeader extends LitElement {
                     <div class="option-content">
                         <div class="option-title">Quick start with default API key</div>
                         <div class="option-description">
-                            100% free with Pickle's OpenAI key<br/>No personal data collected<br/>Sign up with Google in seconds
+                            100% gratuit<br/>Aucune donnée personnelle collectée<br/>Connexion avec Google en quelques secondes
                         </div>
                     </div>
                     <button class="action-button" @click=${this.loginCallback}>
@@ -218,7 +271,7 @@ export class WelcomeHeader extends LitElement {
                     </button>
                 </div>
                 <div class="footer">
-                    Glass does not collect your personal data —
+                    Claire ne collecte pas vos données personnelles —
                     <span class="footer-link" @click=${this.openPrivacyPolicy}>See details</span>
                 </div>
             </div>
@@ -226,9 +279,9 @@ export class WelcomeHeader extends LitElement {
     }
 
     openPrivacyPolicy() {
-        console.log('🔊 openPrivacyPolicy WelcomeHeader');
+        console.log('[AUDIO] openPrivacyPolicy WelcomeHeader');
         if (window.api?.common) {
-            window.api.common.openExternal('https://pickle.com/privacy-policy');
+            window.api.common.openExternal('https://clairia.app/privacy-policy');
         }
     }
 }
