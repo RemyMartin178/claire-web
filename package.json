@@ -20,7 +20,7 @@
         "build:release": "npm run build:all && electron-builder --config electron-builder-signed.yml --publish always",
         "publish": "npm run build:all && electron-builder --config electron-builder.yml --publish always",
         "lint": "eslint --ext .ts,.tsx,.js .",
-        "postinstall": "electron-builder install-app-deps",
+        "postinstall": "if [ \"$VERCEL\" != \"1\" ]; then electron-builder install-app-deps; fi",
         "build:renderer": "node build.js",
         "build:web": "cd pickleglass_web && npm run build && cd ..",
         "build:all": "npm run build:renderer && npm run build:web",

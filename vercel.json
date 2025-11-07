@@ -1,0 +1,13 @@
+{
+  "buildCommand": "cd pickleglass_web && npm install && npm run build",
+  "outputDirectory": "pickleglass_web/out",
+  "installCommand": "cd pickleglass_web && npm install",
+  "framework": null,
+  "ignoreCommand": "echo 'Skipping default build check'",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
+}
+
