@@ -124,15 +124,15 @@ class AuthService {
             const webUrl = isPackaged 
                 ? 'https://app.clairia.app' 
                 : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
-            // Use /personalize?desktop=true to create session and get deeplink redirect
-            const authUrl = `${webUrl}/personalize?desktop=true`;
-            logger.info('Opening personalize page with desktop mode:', authUrl);
+            // Open login page with electron mode to get direct deeplink after Google auth
+            const authUrl = `${webUrl}/login?mode=electron`;
+            logger.info('Opening login page with electron mode:', authUrl);
             await shell.openExternal(authUrl);
-            logger.info('[Auth] Opened personalize URL - waiting for deeplink callback');
+            logger.info('[Auth] Opened login URL - waiting for deeplink callback');
             
             return { success: true };
         } catch (error) {
-            logger.error('Failed to open personalize URL:', { error });
+            logger.error('Failed to open login URL:', { error });
             return { success: false, error: error.message };
         }
     }
