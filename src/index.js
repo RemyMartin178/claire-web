@@ -634,6 +634,37 @@ async function handleCustomUrl(url) {
         
         logger.info('[Custom URL] Action:', action, 'Params:', params);
 
+        // Handle auth with subpath (e.g., pickleglass://auth/callback)
+        if (action === 'auth') {
+            const subPath = (urlObj.pathname || '').replace(/^\//, '');
+            if (subPath === 'callback') {
+                const code = params.code;
+                const state = params.state;
+                logger.info('[deeplink] received auth callback', { code, state });
+                
+                // Focus the app window
+                const { windowPool } = require('./window/windowManager.js');
+                const header = windowPool.get('header');
+                if (header) {
+                    if (header.isMinimized()) header.restore();
+                    header.focus();
+                }
+                
+                // Send to renderer process
+                const { BrowserWindow } = require('electron');
+                BrowserWindow.getAllWindows().forEach(win => {
+                    if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
+                        win.webContents.send('mobile-auth:callback', { code, state });
+                        // Notify header controller about deep link
+                        win.webContents.send('header-controller:deep-link-received', { action: 'auth', subPath: 'callback' });
+                    }
+                });
+                
+                await handleMobileAuthCallback(params);
+            }
+            return;
+        }
+
         switch (action) {
             case 'login':
             case 'auth-success':
