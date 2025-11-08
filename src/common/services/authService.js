@@ -124,15 +124,20 @@ class AuthService {
             const webUrl = isPackaged 
                 ? 'https://app.clairia.app' 
                 : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
-            // Open login page with electron mode to get direct deeplink after Google auth
-            const authUrl = `${webUrl}/login?mode=electron`;
-            logger.info('Opening login page with electron mode:', authUrl);
+            
+            // Generate unique session ID before opening browser
+            const sessionId = 'sess-' + Math.random().toString(36).slice(2, 15);
+            logger.info('[Auth] Created session ID:', sessionId);
+            
+            // Open login page with mobile flow and session ID
+            const authUrl = `${webUrl}/auth/login?flow=mobile&session_id=${sessionId}`;
+            logger.info('[Auth] Opening login page with mobile flow:', authUrl);
             await shell.openExternal(authUrl);
             logger.info('[Auth] Opened login URL - waiting for deeplink callback');
             
             return { success: true };
         } catch (error) {
-            logger.error('Failed to open login URL:', { error });
+            logger.error('[Auth] Failed to open login URL:', { error });
             return { success: false, error: error.message };
         }
     }
