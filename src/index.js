@@ -694,6 +694,86 @@ async function handleCustomUrl(url) {
     }
 }
 
+async function handleMobileAuthCallback(params) {
+    try {
+        const { code, state } = params;
+        logger.info('[Auth] Processing deep link - session_id:', code);
+
+        // Get session data from Firestore and create custom token
+        const admin = require('firebase-admin');
+        const fs = require('fs');
+        const path = require('path');
+
+        // Initialize Firebase Admin with proper credentials
+        if (!admin.apps.length) {
+            logger.info('[Auth] Initializing Firebase Admin...');
+
+            // Try to load credentials from bundled file first
+            const RES_DIR = (app && app.isPackaged) ? process.resourcesPath : path.join(__dirname, '..');
+            const saPath = path.join(RES_DIR, 'dedale-database-23102cfe0ceb.json');
+
+            let cred = null;
+            if (fs.existsSync(saPath)) {
+                try {
+                    cred = admin.credential.cert(JSON.parse(fs.readFileSync(saPath,'utf8')));
+                    logger.info('[firebase] loaded credentials from bundled file');
+                } catch (e) {
+                    logger.error('[firebase] failed to load bundled credentials:', e.message);
+                }
+            } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+                try {
+                    cred = admin.credential.cert(require(process.env.GOOGLE_APPLICATION_CREDENTIALS));
+                    logger.info('[firebase] loaded credentials from env var');
+                } catch (e) {
+                    logger.error('[firebase] failed to load env credentials:', e.message);
+                }
+            } else {
+                logger.warn('[firebase] no credentials found (some features may not work)');
+            }
+
+            admin.initializeApp(cred ? { credential: cred, projectId: 'dedale-database' } : { projectId: 'dedale-database' });
+        }
+        
+        logger.info('[Auth] Reading session data from Firestore for session:', code);
+        
+        const sessionDoc = await admin.firestore().collection('pending_sessions').doc(code).get();
+        
+        if (!sessionDoc.exists) {
+            logger.error('[Auth] Session not found in Firestore:', code);
+            throw new Error('session_not_found');
+        }
+        
+        const sessionData = sessionDoc.data();
+        const uid = sessionData.uid;
+        
+        if (!uid) {
+            logger.error('[Auth] No UID found for session:', code);
+            throw new Error('no_uid_found');
+        }
+        
+        logger.info('[Auth] Creating custom token for UID:', uid);
+        
+        // Create custom token with Firebase Admin
+        const custom_token = await admin.auth().createCustomToken(uid);
+        
+        // Mark as used
+        await admin.firestore().collection('pending_sessions').doc(code).update({
+            used: true,
+            used_at: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        logger.info('[Auth] Got custom token, signing in...');
+
+        // Sign in with the custom token
+        await authService.signInWithCustomToken(custom_token);
+        
+        logger.info('[Auth] signInWithCustomToken successful - user should be connected');
+
+    } catch (e) {
+        logger.error('[Auth] FAIL:', e?.message);
+    }
+}
+
 async function handleFirebaseAuthCallback(params) {
     const userRepository = require('./common/repositories/user');
     const { token: idToken } = params;
