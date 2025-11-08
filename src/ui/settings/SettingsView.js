@@ -1534,8 +1534,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
                 <div class="header-section">
                     <div>
                         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                            <img src="../assets/xerus.svg" alt="Xerus" style="width: 24px; height: 24px;">
-                            <h1 class="app-title">Xerus</h1>
+                            <h1 class="app-title">Claire</h1>
                         </div>
                         <div class="account-info">
                             ${this.firebaseUser
@@ -1625,12 +1624,12 @@ export class SettingsView extends ThemeMixin(LitElement) {
                         ${this.firebaseUser
                             ? html`
                                 <button class="settings-button half-width danger" @click=${this.handleFirebaseLogout}>
-                                    <span>Logout</span>
+                                    <span>Se déconnecter</span>
                                 </button>
                                 `
                             : html`
                                 <button class="settings-button half-width" @click=${this.handleUsePicklesKey}>
-                                    <span>Login</span>
+                                    <span>Se connecter</span>
                                 </button>
                                 `
                         }
