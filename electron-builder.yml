@@ -36,8 +36,6 @@ extraResources:
       to: out
     - from: src/common/config/production-config.js
       to: config/production-config.js
-    - from: dedale-database-23102cfe0ceb.json
-      to: dedale-database-23102cfe0ceb.json
 
 asarUnpack:
     - "src/ui/assets/SystemAudioDump"
