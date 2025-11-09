@@ -31,10 +31,15 @@ class AuthService {
         userModelSelectionsRepository.setAuthService(this);
     }
 
-    initialize() {
+    async initialize() {
         if (this.isInitialized) return this.initializationPromise;
 
-        this.initializationPromise = new Promise((resolve) => {
+        this.initializationPromise = new Promise(async (resolve) => {
+            // Initialize Firebase client FIRST
+            const { initializeFirebase } = require('./firebaseClient');
+            await initializeFirebase();
+            logger.info('[AuthService] Firebase client initialized');
+            
             const auth = getFirebaseAuth();
             let resolved = false;
             

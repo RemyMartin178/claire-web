@@ -61,12 +61,12 @@ function createElectronStorePersistence(storeName = 'firebase-auth-session') {
 }
 
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDiRhYY1fPCyJhWxFuVXPdxp_7Ld6Qj_Ag',
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'auth.clairia.app',
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dedale-database',
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dedale-database.appspot.com',
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '100635676468',
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:100635676468:web:46fdecfad3133fef4b5f61',
 };
 
 let firebaseApp = null;
@@ -74,7 +74,7 @@ let firebaseAuth = null;
 let firestoreInstance = null; // To hold the specific DB instance
 
 async function initializeFirebase() {
-    if (firebaseApp) {
+    if (firebaseApp && firebaseAuth) {
         logger.info('[FirebaseClient] Firebase already initialized.');
         return;
     }
