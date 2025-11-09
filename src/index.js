@@ -714,7 +714,7 @@ async function handleMobileAuthCallback(params) {
         // In production, use Railway backend; in dev, use localhost
         const isPackaged = app.isPackaged;
         const backendUrl = isPackaged 
-            ? (process.env.pickleglass_API_URL || 'https://your-railway-backend.railway.app')
+            ? (process.env.pickleglass_API_URL || 'https://claire-web-production.up.railway.app')
             : 'http://localhost:3001';
         const exchangeUrl = `${backendUrl}/api/v1/auth/mobile-auth/exchange`;
         
