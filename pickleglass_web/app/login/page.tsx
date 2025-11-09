@@ -9,11 +9,20 @@ export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isElectronMode, setIsElectronMode] = useState(false)
+  const [isMobileFlow, setIsMobileFlow] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const mode = urlParams.get('mode')
+    const flow = urlParams.get('flow')
+    const session = urlParams.get('session_id')
+    
     setIsElectronMode(mode === 'electron')
+    setIsMobileFlow(flow === 'mobile')
+    setSessionId(session)
+    
+    console.log('[Login] Page loaded with params:', { mode, flow, session_id: session })
   }, [])
 
   const handleGoogleSignIn = async () => {
@@ -27,7 +36,45 @@ export default function LoginPage() {
       if (user) {
         console.log('✅ Google login successful:', user.uid)
 
-        if (isElectronMode) {
+        // Handle mobile flow (from Electron app with session_id)
+        if (isMobileFlow && sessionId) {
+          try {
+            const idToken = await user.getIdToken()
+            const refreshToken = (user as any).refreshToken
+            
+            console.log('📱 [Mobile Flow] Associating session:', sessionId)
+            
+            // Call backend to associate session with user
+            const response = await fetch('/auth/associate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                session_id: sessionId, 
+                id_token: idToken,
+                refresh_token: refreshToken
+              })
+            })
+            
+            const data = await response.json()
+            
+            if (!data.success) {
+              console.error('❌ [Mobile Flow] Associate failed:', data.error)
+              alert('Erreur lors de l\'association de la session. Veuillez réessayer.')
+              return
+            }
+            
+            console.log('✅ [Mobile Flow] Session associated, redirecting to success page')
+            
+            // Redirect to success page with session_id
+            router.push(`/auth/success?flow=mobile&session_id=${sessionId}`)
+            
+          } catch (error) {
+            console.error('❌ [Mobile Flow] Processing failed:', error)
+            alert('Erreur lors de la connexion. Veuillez réessayer.')
+          }
+        }
+        // Handle old electron mode (deprecated)
+        else if (isElectronMode) {
           try {
             const idToken = await user.getIdToken()
             
@@ -47,6 +94,7 @@ export default function LoginPage() {
             alert('Login completed. Please return to Claire app.')
           }
         } 
+        // Normal web flow
         else {
           router.push('/activity')
         }
@@ -67,8 +115,11 @@ export default function LoginPage() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Bienvenue sur Claire</h1>
         <p className="text-gray-600 mt-2">Connectez-vous avec votre compte Google pour synchroniser vos données.</p>
-        {isElectronMode && (
+        {(isElectronMode || isMobileFlow) && (
           <p className="text-sm text-blue-600 mt-1 font-medium">🔗 Connexion demandée depuis l'application Claire</p>
+        )}
+        {isMobileFlow && sessionId && (
+          <p className="text-xs text-gray-500 mt-1">Session ID: {sessionId.slice(0, 12)}...</p>
         )}
       </div>
       
