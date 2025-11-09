@@ -765,6 +765,11 @@ async function handleMobileAuthCallback(params) {
         console.log('🔑 Got custom token, signing in...');
         logger.info('[Auth] Got custom token, signing in...');
 
+        // Initialize Firebase client if not already done
+        const { initializeFirebase } = require('./common/services/firebaseClient');
+        await initializeFirebase();
+        console.log('✅ Firebase client initialized');
+
         // Sign in with the custom token
         await authService.signInWithCustomToken(custom_token);
         

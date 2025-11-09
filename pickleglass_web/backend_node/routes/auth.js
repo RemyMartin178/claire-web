@@ -5,7 +5,30 @@ const { ipcRequest } = require('../ipcBridge');
 const { initFirebaseAdmin } = require('../firebaseAdmin');
 
 const nowMs = () => Date.now();
-const ttlMs = 2 * 60 * 1000; // 2 minutes
+const ttlMs = 5 * 60 * 1000; // 5 minutes
+
+// Cleanup expired sessions every 10 minutes
+setInterval(async () => {
+  try {
+    const admin = initFirebaseAdmin();
+    const db = admin.firestore();
+    const expiredTime = admin.firestore.Timestamp.fromMillis(nowMs() - ttlMs);
+    
+    const expiredSessions = await db.collection('pending_sessions')
+      .where('created_at', '<', expiredTime)
+      .limit(100)
+      .get();
+    
+    if (!expiredSessions.empty) {
+      const batch = db.batch();
+      expiredSessions.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      console.log(`🧹 [Auth] Cleaned up ${expiredSessions.size} expired sessions`);
+    }
+  } catch (error) {
+    console.error('❌ [Auth] Session cleanup failed:', error.message);
+  }
+}, 10 * 60 * 1000);
 
 // POST /pending-session
 // SECURITY: Generates PKCE state/challenge, stores verifier hash, TTL 2 min, one-time
