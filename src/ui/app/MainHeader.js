@@ -69,7 +69,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
             top: 0; left: 0; right: 0; bottom: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0, 0, 0, 0.3);
             border-radius: 9000px;
             z-index: -1;
         }
@@ -475,7 +475,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
             -webkit-app-region: no-drag;
             height: 32px;
             padding: 0 20px;
-            background: rgba(255, 255, 255, 0.14);
+            background: transparent;
             border-radius: 9000px;
             border: none;
             cursor: pointer;
@@ -491,7 +491,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.08);
             border-radius: 9000px;
             z-index: -1;
             transition: background 0.15s ease;
@@ -513,26 +513,12 @@ export class MainHeader extends ThemeMixin(LitElement) {
         }
 
         .login-button:hover::before {
-            background: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.12);
         }
 
         .login-button:disabled {
             cursor: default;
             opacity: 0.6;
-        }
-
-        /* Spinner orange qui tourne */
-        .auth-spinner {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: conic-gradient(from 0deg, rgba(255, 149, 0, 0.2), rgba(255, 149, 0, 1));
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
         }
 
         /* Animation d'apparition des boutons */
@@ -1063,9 +1049,10 @@ export class MainHeader extends ThemeMixin(LitElement) {
         this.requestUpdate();
 
         try {
-            if (window.api && window.api.common && window.api.common.startFirebaseAuthFlow) {
+            if (window.api && window.api.common && window.api.common.startFirebaseAuth) {
                 console.log('[MainHeader] Starting Firebase auth flow');
-                const result = await window.api.common.startFirebaseAuthFlow();
+                const result = await window.api.common.startFirebaseAuth();
+                console.log('[MainHeader] Auth flow result:', result);
                 if (!result || !result.success) {
                     console.error('[MainHeader] Auth flow failed:', result?.error);
                     this.isAuthenticating = false;
@@ -1167,7 +1154,11 @@ export class MainHeader extends ThemeMixin(LitElement) {
             return html`
                 <div class="header" @mousedown=${this.handleMouseDown}>
                     <div class="login-container">
-                        <div class="auth-spinner"></div>
+                        <marble-listen-button
+                            .state=${'idle'}
+                            .ttsEnabled=${false}
+                            ?disabled=${true}
+                        ></marble-listen-button>
                         <button 
                             class="login-button" 
                             @click=${this._handleLoginClick}
