@@ -80,8 +80,13 @@ class AuthService {
                     this.currentUserMode = 'firebase';
                     this.isFirebaseClientReady = true; // Mark Firebase client as ready
 
-                    // Clean up any zombie sessions from a previous run for this user.
-                    await sessionRepository.endAllActiveSessions();
+                    // Clean up any zombie sessions from a previous run for this user (non-blocking)
+                    try {
+                        await sessionRepository.endAllActiveSessions();
+                        logger.info('[AuthService] Sessions cleaned up');
+                    } catch (sessionError) {
+                        logger.warn('[AuthService] Session cleanup failed (non-critical):', sessionError.message);
+                    }
 
                     // ** Initialize encryption key for the logged-in user **
                     await encryptionService.initializeKey(user.uid);
@@ -98,8 +103,13 @@ class AuthService {
                     this.currentUserMode = 'local';
                     this.isFirebaseClientReady = false; // Reset Firebase client readiness
 
-                    // End active sessions for the local/default user as well.
-                    await sessionRepository.endAllActiveSessions();
+                    // End active sessions for the local/default user as well (non-blocking)
+                    try {
+                        await sessionRepository.endAllActiveSessions();
+                        logger.info('[AuthService] Local sessions cleaned up');
+                    } catch (sessionError) {
+                        logger.warn('[AuthService] Local session cleanup failed (non-critical):', sessionError.message);
+                    }
 
                     // ** Initialize encryption key for the default/local user **
                     await encryptionService.initializeKey(this.currentUserId);
