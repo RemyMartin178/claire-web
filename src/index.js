@@ -713,11 +713,15 @@ async function handleMobileAuthCallback(params) {
         // Use backend API to exchange session for custom token
         // In production, use Railway backend; in dev, use localhost
         const isPackaged = app.isPackaged;
+        console.log('🔍 app.isPackaged:', isPackaged);
+        console.log('🔍 process.env.pickleglass_API_URL:', process.env.pickleglass_API_URL);
+        
         const backendUrl = isPackaged 
             ? (process.env.pickleglass_API_URL || 'https://claire-web-production.up.railway.app')
             : 'http://localhost:3001';
         const exchangeUrl = `${backendUrl}/api/v1/auth/mobile-auth/exchange`;
         
+        console.log('📡 Backend URL:', backendUrl);
         console.log('📡 Calling exchange API:', exchangeUrl);
         logger.info('[Auth] Exchanging session via web API:', exchangeUrl);
         
