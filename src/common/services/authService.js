@@ -65,8 +65,6 @@ class AuthService {
             }, 10000); // 10 second timeout
             
             onAuthStateChanged(auth, async (user) => {
-                if (resolved) return; // Already resolved due to timeout
-                
                 const previousUser = this.currentUser;
 
                 if (user) {
@@ -101,9 +99,12 @@ class AuthService {
                     // ** Initialize encryption key for the default/local user **
                     await encryptionService.initializeKey(this.currentUserId);
                 }
+                
+                // ALWAYS broadcast user state changes, not just during initialization
                 this.broadcastUserState();
                 
-                if (!this.isInitialized) {
+                // Resolve initialization promise only once
+                if (!this.isInitialized && !resolved) {
                     resolved = true;
                     clearTimeout(timeoutId);
                     this.isInitialized = true;
