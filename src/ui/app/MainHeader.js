@@ -12,6 +12,8 @@ export class MainHeader extends ThemeMixin(LitElement) {
         selectedPersonality: { type: Object, state: true },
         ttsEnabled: { type: Boolean, state: true },
         agentModeActive: { type: Boolean, state: true },
+        isUserLoggedIn: { type: Boolean, state: true },
+        isAuthenticating: { type: Boolean, state: true },
     };
 
     static styles = css`
@@ -461,6 +463,116 @@ export class MainHeader extends ThemeMixin(LitElement) {
             stroke: white;
         }
 
+        /* Login State Styles */
+        .login-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 8px;
+        }
+
+        .login-button {
+            -webkit-app-region: no-drag;
+            height: 32px;
+            padding: 0 20px;
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 9000px;
+            border: none;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 255, 255, 0.14);
+            border-radius: 9000px;
+            z-index: -1;
+            transition: background 0.15s ease;
+        }
+
+        .login-button::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 9000px;
+            padding: 1px;
+            background: linear-gradient(169deg, rgba(255, 255, 255, 0.17) 0%, rgba(255, 255, 255, 0.08) 50%, rgba(255, 255, 255, 0.17) 100%);
+            -webkit-mask:
+                linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        .login-button:hover::before {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .login-button:disabled {
+            cursor: default;
+            opacity: 0.6;
+        }
+
+        /* Spinner orange qui tourne */
+        .auth-spinner {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, rgba(255, 149, 0, 0.2), rgba(255, 149, 0, 1));
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Animation d'apparition des boutons */
+        .header-center.fade-in {
+            animation: fadeInButtons 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes fadeInButtons {
+            from {
+                opacity: 0;
+                transform: scale(0.8) translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .header-center > * {
+            animation: slideInButton 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            opacity: 0;
+        }
+
+        .header-center > *:nth-child(1) { animation-delay: 0.05s; }
+        .header-center > *:nth-child(2) { animation-delay: 0.1s; }
+        .header-center > *:nth-child(3) { animation-delay: 0.15s; }
+        .header-center > *:nth-child(4) { animation-delay: 0.2s; }
+        .header-center > *:nth-child(5) { animation-delay: 0.25s; }
+
+        @keyframes slideInButton {
+            from {
+                opacity: 0;
+                transform: translateX(-15px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+        }
+
 
         `;
 
@@ -479,6 +591,8 @@ export class MainHeader extends ThemeMixin(LitElement) {
         this.selectedPersonality = null;
         this.ttsEnabled = localStorage.getItem('claire_tts_enabled') === 'true';
         this.agentModeActive = false; // Separate from TTS enabled - tracks if user is in agent conversation mode
+        this.isUserLoggedIn = false; // Track Firebase authentication state
+        this.isAuthenticating = false; // Track if user is in the process of authenticating
         this.handleAnimationEnd = this.handleAnimationEnd.bind(this);
         this.handleMouseMove = this.handleMouseMove.bind(this);
         this.handleMouseUp = this.handleMouseUp.bind(this);
@@ -617,6 +731,34 @@ export class MainHeader extends ThemeMixin(LitElement) {
         this.addEventListener('animationend', this.handleAnimationEnd);
 
         if (window.api) {
+            // Listen for Firebase authentication state changes
+            this._userStateListener = (event, userState) => {
+                console.log('[MainHeader] User state changed:', userState);
+                const wasLoggedOut = !this.isUserLoggedIn;
+                this.isUserLoggedIn = userState.isLoggedIn;
+                this.isAuthenticating = false; // Reset authenticating state
+                
+                // Trigger animation when transitioning from logged out to logged in
+                if (wasLoggedOut && this.isUserLoggedIn) {
+                    console.log('[MainHeader] User just logged in - triggering animation');
+                    this.requestUpdate();
+                }
+            };
+            
+            if (window.api.common && window.api.common.onUserStateChanged) {
+                window.api.common.onUserStateChanged(this._userStateListener);
+            }
+            
+            // Check initial user state
+            if (window.api.common && window.api.common.getCurrentUser) {
+                window.api.common.getCurrentUser().then(userState => {
+                    console.log('[MainHeader] Initial user state:', userState);
+                    this.isUserLoggedIn = userState.isLoggedIn;
+                    this.requestUpdate();
+                }).catch(error => {
+                    console.warn('[MainHeader] Could not get initial user state:', error);
+                });
+            }
 
             this._sessionStateTextListener = (event, { success }) => {
                 if (success) {
@@ -774,6 +916,9 @@ export class MainHeader extends ThemeMixin(LitElement) {
         }
         
         if (window.api) {
+            if (this._userStateListener && window.api.common) {
+                window.api.common.removeOnUserStateChanged(this._userStateListener);
+            }
             if (this._sessionStateTextListener) {
                 window.api.mainHeader.removeOnListenChangeSessionResult(this._sessionStateTextListener);
             }
@@ -910,6 +1055,35 @@ export class MainHeader extends ThemeMixin(LitElement) {
         }
     }
 
+    async _handleLoginClick() {
+        if (this.wasJustDragged || this.isAuthenticating) return;
+
+        console.log('[MainHeader] Login button clicked');
+        this.isAuthenticating = true;
+        this.requestUpdate();
+
+        try {
+            if (window.api && window.api.common && window.api.common.startFirebaseAuthFlow) {
+                console.log('[MainHeader] Starting Firebase auth flow');
+                const result = await window.api.common.startFirebaseAuthFlow();
+                if (!result || !result.success) {
+                    console.error('[MainHeader] Auth flow failed:', result?.error);
+                    this.isAuthenticating = false;
+                    this.requestUpdate();
+                }
+                // isAuthenticating will be reset by user-state-changed event
+            } else {
+                console.error('[MainHeader] Auth API not available');
+                this.isAuthenticating = false;
+                this.requestUpdate();
+            }
+        } catch (error) {
+            console.error('[MainHeader] Error starting auth flow:', error);
+            this.isAuthenticating = false;
+            this.requestUpdate();
+        }
+    }
+
     handleMarbleTTSToggle(event) {
         const { ttsEnabled, originalState } = event.detail;
         console.log(`[MainHeader] Marble TTS toggle received: ${ttsEnabled}, originalState: ${originalState}`);
@@ -988,6 +1162,25 @@ export class MainHeader extends ThemeMixin(LitElement) {
         };
         const showStopIcon = listenButtonText === 'Stop' || listenButtonText === 'Done';
 
+        // Render login state if user is not logged in
+        if (!this.isUserLoggedIn) {
+            return html`
+                <div class="header" @mousedown=${this.handleMouseDown}>
+                    <div class="login-container">
+                        <div class="auth-spinner"></div>
+                        <button 
+                            class="login-button" 
+                            @click=${this._handleLoginClick}
+                            ?disabled=${this.isAuthenticating}
+                        >
+                            ${this.isAuthenticating ? 'Connexion en cours...' : 'Se connecter'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render full header when logged in
         return html`
             <div class="header" @mousedown=${this.handleMouseDown}>
                 <div class="header-left">
@@ -1000,7 +1193,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
                     ></marble-listen-button>
                 </div>
 
-                <div class="header-center">
+                <div class="header-center fade-in">
                     <div class="header-actions" @click=${() => this._handleAskClick()}>
                         <div class="action-text">
                             <div class="action-text-content">Ask AI</div>
