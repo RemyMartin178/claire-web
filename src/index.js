@@ -5,15 +5,6 @@
 // } catch (err) {
 // }
 
-// Only load .env in development (not in packaged/production builds)
-const { app: electronApp } = require('electron');
-if (!electronApp || !electronApp.isPackaged) {
-    require('dotenv').config();
-    console.log('[STARTUP] 📝 Loaded .env file for development');
-} else {
-    console.log('[STARTUP] 🚀 Production mode - using system environment variables');
-}
-
 // COMPREHENSIVE error handlers (CRITICAL FIX)
 process.on('unhandledRejection', (reason, promise) => {
     console.log('[UNHANDLED-REJECTION] Caught unhandled promise rejection:', reason);
@@ -35,6 +26,14 @@ if (require('electron-squirrel-startup')) {
 }
 
 const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
+
+// Only load .env in development (not in packaged/production builds)
+if (!app.isPackaged) {
+    require('dotenv').config();
+    console.log('[STARTUP] 📝 Loaded .env file for development');
+} else {
+    console.log('[STARTUP] 🚀 Production mode - skipping .env, using system environment variables');
+}
 
 const { createWindows } = require('./window/windowManager.js');
 

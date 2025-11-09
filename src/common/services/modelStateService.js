@@ -7,13 +7,6 @@ const encryptionService = require('./encryptionService');
 const providerSettingsRepository = require('../repositories/providerSettings');
 const userModelSelectionsRepository = require('../repositories/userModelSelections');
 
-// Ensure environment variables are loaded
-try {
-    require('dotenv').config();
-} catch (error) {
-    // Ignore error if dotenv is not available or already loaded
-}
-
 // Import authService directly (singleton)
 const authService = require('./authService');
 const { createLogger } = require('./logger.js');
