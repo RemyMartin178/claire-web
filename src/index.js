@@ -611,10 +611,15 @@ function setupWebDataHandlers() {
 
 async function handleCustomUrl(url) {
     try {
+        console.log('========================================');
+        console.log('🔗 DEEPLINK INTERCEPTED!');
+        console.log('URL:', url);
+        console.log('========================================');
         logger.info('[Custom URL] Processing URL:', url);
         
         // Validate and clean URL
         if (!url || typeof url !== 'string' || !(url.startsWith('pickleglass://') || url.startsWith('claire://'))) {
+            console.log('❌ INVALID URL FORMAT:', url);
             logger.error('Invalid URL format:', { url });
             return;
         }
@@ -637,9 +642,11 @@ async function handleCustomUrl(url) {
         // Handle auth with subpath (e.g., pickleglass://auth/callback)
         if (action === 'auth') {
             const subPath = (urlObj.pathname || '').replace(/^\//, '');
+            console.log('🔐 AUTH ACTION DETECTED - subPath:', subPath);
             if (subPath === 'callback') {
                 const code = params.code;
                 const state = params.state;
+                console.log('✅ AUTH CALLBACK - code:', code, 'state:', state);
                 logger.info('[deeplink] received auth callback', { code, state });
                 
                 // Focus the app window
@@ -697,6 +704,10 @@ async function handleCustomUrl(url) {
 async function handleMobileAuthCallback(params) {
     try {
         const { code, state } = params;
+        console.log('========================================');
+        console.log('🔥 STARTING MOBILE AUTH CALLBACK');
+        console.log('Session ID:', code);
+        console.log('========================================');
         logger.info('[Auth] Processing deep link - session_id:', code);
 
         // Get session data from Firestore and create custom token
