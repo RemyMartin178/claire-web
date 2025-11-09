@@ -98,11 +98,12 @@ async function initializeFirebase() {
                 persistence: [ElectronStorePersistence],
             });
 
-            // Initialize Firestore with the default database (matches project name)
-            firestoreInstance = getFirestore(firebaseApp);
+            // DON'T initialize Firestore at startup - it will be initialized lazily when needed
+            // This prevents "Missing or insufficient permissions" errors at startup
+            // firestoreInstance = getFirestore(firebaseApp);
 
-            logger.info('[FirebaseClient] Firebase initialized successfully with class-based electron-store persistence.');
-            logger.info('[FirebaseClient] Firestore instance is targeting the default database.');
+            logger.info('[FirebaseClient] Firebase Auth initialized successfully with electron-store persistence.');
+            logger.info('[FirebaseClient] Firestore will be initialized lazily when needed.');
 
             clearTimeout(timeoutId);
             resolve();
@@ -123,7 +124,13 @@ function getFirebaseAuth() {
 
 function getFirestoreInstance() {
     if (!firestoreInstance) {
-        throw new Error("Firestore has not been initialized. Call initializeFirebase() first.");
+        // Lazy initialization of Firestore
+        if (!firebaseApp) {
+            throw new Error("Firebase App has not been initialized. Call initializeFirebase() first.");
+        }
+        logger.info('[FirebaseClient] Lazy initializing Firestore...');
+        firestoreInstance = getFirestore(firebaseApp);
+        logger.info('[FirebaseClient] Firestore initialized successfully.');
     }
     return firestoreInstance;
 }
