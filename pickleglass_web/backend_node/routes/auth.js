@@ -2,60 +2,10 @@ const express = require('express');
 const crypto = require('node:crypto');
 const router = express.Router();
 const { ipcRequest } = require('../ipcBridge');
-const path = require('node:path');
-const Database = require('better-sqlite3');
 const { initFirebaseAdmin } = require('../firebaseAdmin');
-
-// SQLite: pending sessions store (TTL + one-time use)
-const dbPath = path.join(process.cwd(), 'pending_sessions.sqlite');
-const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.exec(`CREATE TABLE IF NOT EXISTS pending_sessions (
-  session_id TEXT PRIMARY KEY,
-  state TEXT NOT NULL,
-  code_challenge TEXT NOT NULL,
-  code_verifier_hash TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  expires_at INTEGER NOT NULL,
-  used_at INTEGER,
-  uid TEXT,
-  id_token TEXT,
-  refresh_token TEXT
-)`);
-
-// Attempt to add missing columns if the table pre-existed without them
-try { db.exec('ALTER TABLE pending_sessions ADD COLUMN uid TEXT'); } catch (_) {}
-try { db.exec('ALTER TABLE pending_sessions ADD COLUMN id_token TEXT'); } catch (_) {}
-try { db.exec('ALTER TABLE pending_sessions ADD COLUMN refresh_token TEXT'); } catch (_) {}
 
 const nowMs = () => Date.now();
 const ttlMs = 2 * 60 * 1000; // 2 minutes
-
-function sha256Base64Url(input) {
-  const hash = crypto.createHash('sha256').update(input).digest();
-  return hash
-    .toString('base64')
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-// Cleanup old/used sessions opportunistically
-const cleanupStmt = db.prepare('DELETE FROM pending_sessions WHERE expires_at < ? OR used_at IS NOT NULL');
-
-// Fonction de nettoyage améliorée
-function cleanupExpiredSessions() {
-    try {
-        const deletedCount = cleanupStmt.run(nowMs());
-        if (deletedCount.changes > 0) {
-            console.log(`[Auth] Cleaned up ${deletedCount.changes} expired/used sessions`);
-        }
-    } catch (error) {
-        console.error('[Auth] Error during session cleanup:', error);
-    }
-}
-
-// Nettoyage au démarrage et toutes les 5 minutes
-cleanupExpiredSessions();
-setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
 
 // POST /pending-session
 // SECURITY: Generates PKCE state/challenge, stores verifier hash, TTL 2 min, one-time
@@ -220,45 +170,45 @@ router.post('/mobile-auth/exchange', async (req, res) => {
       return res.status(400).json({ success: false, error: 'session_id_required' });
     }
 
-    // Read session from SQLite
-    const row = db.prepare('SELECT * FROM pending_sessions WHERE session_id = ?').get(session_id);
+    // Read session from Firestore
+    const admin = initFirebaseAdmin();
+    const sessionDoc = await admin.firestore().collection('pending_sessions').doc(session_id).get();
     
-    if (!row) {
+    if (!sessionDoc.exists) {
       console.log('❌ [Mobile Auth] Session not found:', session_id);
       return res.status(404).json({ success: false, error: 'session_not_found' });
     }
     
-    if (row.used_at) {
+    const sessionData = sessionDoc.data();
+    
+    if (sessionData.used) {
       console.log('⚠️ [Mobile Auth] Session already used:', session_id);
       return res.status(400).json({ success: false, error: 'session_already_used' });
     }
     
-    if (row.expires_at < nowMs()) {
-      console.log('❌ [Mobile Auth] Session expired:', session_id);
-      return res.status(400).json({ success: false, error: 'session_expired' });
-    }
-    
-    if (!row.uid) {
+    if (!sessionData.uid) {
       console.log('❌ [Mobile Auth] No UID in session (user not authenticated yet):', session_id);
       return res.status(400).json({ success: false, error: 'session_not_authenticated' });
     }
     
-    console.log('✅ [Mobile Auth] Session found for UID:', row.uid);
+    console.log('✅ [Mobile Auth] Session found for UID:', sessionData.uid);
     
     // Create custom token
-    console.log('🔑 [Mobile Auth] Creating custom token for UID:', row.uid);
-    const admin = initFirebaseAdmin();
-    const customToken = await admin.auth().createCustomToken(row.uid);
+    console.log('🔑 [Mobile Auth] Creating custom token for UID:', sessionData.uid);
+    const customToken = await admin.auth().createCustomToken(sessionData.uid);
     
     // Mark session as used
-    db.prepare('UPDATE pending_sessions SET used_at = ? WHERE session_id = ?').run(nowMs(), session_id);
+    await admin.firestore().collection('pending_sessions').doc(session_id).update({
+      used: true,
+      used_at: admin.firestore.FieldValue.serverTimestamp()
+    });
     
     console.log('🎉 [Mobile Auth] Custom token created successfully');
     
     res.json({
       success: true,
       custom_token: customToken,
-      uid: row.uid
+      uid: sessionData.uid
     });
   } catch (error) {
     console.error('❌ [Mobile Auth] Exchange failed:', error.message);
