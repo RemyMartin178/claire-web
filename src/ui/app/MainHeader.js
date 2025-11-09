@@ -719,31 +719,48 @@ export class MainHeader extends ThemeMixin(LitElement) {
         if (window.api) {
             // Listen for Firebase authentication state changes
             this._userStateListener = (event, userState) => {
-                console.log('[MainHeader] User state changed:', userState);
+                console.log('[MainHeader] ✅ User state changed event received:', userState);
+                console.log('[MainHeader] Current isUserLoggedIn:', this.isUserLoggedIn);
+                console.log('[MainHeader] New isLoggedIn:', userState.isLoggedIn);
+                
                 const wasLoggedOut = !this.isUserLoggedIn;
                 this.isUserLoggedIn = userState.isLoggedIn;
                 this.isAuthenticating = false; // Reset authenticating state
                 
+                console.log('[MainHeader] Updated isUserLoggedIn to:', this.isUserLoggedIn);
+                console.log('[MainHeader] Updated isAuthenticating to:', this.isAuthenticating);
+                
                 // Trigger animation when transitioning from logged out to logged in
                 if (wasLoggedOut && this.isUserLoggedIn) {
-                    console.log('[MainHeader] User just logged in - triggering animation');
+                    console.log('[MainHeader] 🎉 User just logged in - triggering animation');
+                    this.requestUpdate();
+                } else {
+                    console.log('[MainHeader] Requesting update (no animation)');
                     this.requestUpdate();
                 }
             };
             
+            console.log('[MainHeader] Setting up user state listener...');
             if (window.api.common && window.api.common.onUserStateChanged) {
                 window.api.common.onUserStateChanged(this._userStateListener);
+                console.log('[MainHeader] ✅ User state listener registered');
+            } else {
+                console.error('[MainHeader] ❌ window.api.common.onUserStateChanged not available!');
             }
             
             // Check initial user state
+            console.log('[MainHeader] Checking initial user state...');
             if (window.api.common && window.api.common.getCurrentUser) {
                 window.api.common.getCurrentUser().then(userState => {
-                    console.log('[MainHeader] Initial user state:', userState);
+                    console.log('[MainHeader] ✅ Initial user state:', userState);
                     this.isUserLoggedIn = userState.isLoggedIn;
+                    console.log('[MainHeader] Set initial isUserLoggedIn to:', this.isUserLoggedIn);
                     this.requestUpdate();
                 }).catch(error => {
-                    console.warn('[MainHeader] Could not get initial user state:', error);
+                    console.error('[MainHeader] ❌ Could not get initial user state:', error);
                 });
+            } else {
+                console.error('[MainHeader] ❌ window.api.common.getCurrentUser not available!');
             }
 
             this._sessionStateTextListener = (event, { success }) => {
@@ -902,7 +919,8 @@ export class MainHeader extends ThemeMixin(LitElement) {
         }
         
         if (window.api) {
-            if (this._userStateListener && window.api.common) {
+            if (this._userStateListener && window.api.common && window.api.common.removeOnUserStateChanged) {
+                console.log('[MainHeader] Removing user state listener');
                 window.api.common.removeOnUserStateChanged(this._userStateListener);
             }
             if (this._sessionStateTextListener) {
