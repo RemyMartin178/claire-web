@@ -208,6 +208,68 @@ router.post('/exchange', async (req, res) => {
   }
 });
 
+// POST /mobile-auth/exchange
+// Exchange mobile session ID for custom token (for Electron app deeplink flow)
+router.post('/mobile-auth/exchange', async (req, res) => {
+  try {
+    const { session_id } = req.body;
+    console.log('📱 [Mobile Auth] Exchange request received for session:', session_id);
+
+    if (!session_id) {
+      console.log('❌ [Mobile Auth] Missing session_id');
+      return res.status(400).json({ success: false, error: 'session_id_required' });
+    }
+
+    // Read session from SQLite
+    const row = db.prepare('SELECT * FROM pending_sessions WHERE session_id = ?').get(session_id);
+    
+    if (!row) {
+      console.log('❌ [Mobile Auth] Session not found:', session_id);
+      return res.status(404).json({ success: false, error: 'session_not_found' });
+    }
+    
+    if (row.used_at) {
+      console.log('⚠️ [Mobile Auth] Session already used:', session_id);
+      return res.status(400).json({ success: false, error: 'session_already_used' });
+    }
+    
+    if (row.expires_at < nowMs()) {
+      console.log('❌ [Mobile Auth] Session expired:', session_id);
+      return res.status(400).json({ success: false, error: 'session_expired' });
+    }
+    
+    if (!row.uid) {
+      console.log('❌ [Mobile Auth] No UID in session (user not authenticated yet):', session_id);
+      return res.status(400).json({ success: false, error: 'session_not_authenticated' });
+    }
+    
+    console.log('✅ [Mobile Auth] Session found for UID:', row.uid);
+    
+    // Create custom token
+    console.log('🔑 [Mobile Auth] Creating custom token for UID:', row.uid);
+    const admin = initFirebaseAdmin();
+    const customToken = await admin.auth().createCustomToken(row.uid);
+    
+    // Mark session as used
+    db.prepare('UPDATE pending_sessions SET used_at = ? WHERE session_id = ?').run(nowMs(), session_id);
+    
+    console.log('🎉 [Mobile Auth] Custom token created successfully');
+    
+    res.json({
+      success: true,
+      custom_token: customToken,
+      uid: row.uid
+    });
+  } catch (error) {
+    console.error('❌ [Mobile Auth] Exchange failed:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: 'exchange_failed',
+      details: error.message 
+    });
+  }
+});
+
 // POST /auth/logout
 // SECURITY: revoke refresh tokens and clear cookie
 router.post('/logout', async (req, res) => {
