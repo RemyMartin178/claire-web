@@ -227,7 +227,24 @@ class AuthService {
         try {
             const userCredential = await signInWithCustomToken(auth, token);
             logger.info('Successfully signed in with custom token for user:', { uid: userCredential.user.uid });
-            // onAuthStateChanged will handle the state update and broadcast
+            
+            // Wait for onAuthStateChanged to update the state
+            return new Promise((resolve) => {
+                const checkInterval = setInterval(() => {
+                    if (this.currentUser && this.currentUser.uid === userCredential.user.uid) {
+                        clearInterval(checkInterval);
+                        logger.info('[Auth] User state updated by onAuthStateChanged');
+                        resolve();
+                    }
+                }, 100);
+                
+                // Timeout after 5 seconds
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    logger.warn('[Auth] Timeout waiting for onAuthStateChanged, resolving anyway');
+                    resolve();
+                }, 5000);
+            });
         } catch (error) {
             logger.error('Error signing in with custom token:', { error });
             throw error; // Re-throw to be handled by the caller

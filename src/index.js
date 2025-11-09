@@ -770,11 +770,16 @@ async function handleMobileAuthCallback(params) {
         await initializeFirebase();
         console.log('✅ Firebase client initialized');
 
-        // Sign in with the custom token
+        // Sign in with the custom token (waits for onAuthStateChanged internally)
         await authService.signInWithCustomToken(custom_token);
         
         console.log('🎉 Sign in successful!');
         logger.info('[Auth] signInWithCustomToken successful - user should be connected');
+        
+        // Force broadcast to ensure UI updates
+        console.log('📡 Broadcasting user state...');
+        authService.broadcastUserState();
+        console.log('✅ User state broadcast sent');
 
     } catch (e) {
         console.log('❌ AUTH CALLBACK FAILED:', e?.message);
