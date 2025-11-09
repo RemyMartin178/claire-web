@@ -315,8 +315,9 @@ class AuthService {
     }
 
     async signOut() {
-        const auth = getFirebaseAuth();
         try {
+            const auth = getFirebaseAuth();
+            
             // Clear any ongoing auth polling
             if (this.authPollingInterval) {
                 clearInterval(this.authPollingInterval);
@@ -324,15 +325,35 @@ class AuthService {
                 logger.info('[AuthService] Cleared auth polling interval on sign out');
             }
 
-            // End all active sessions for the current user BEFORE signing out.
-            await sessionRepository.endAllActiveSessions();
+            // End all active sessions for the current user BEFORE signing out (non-blocking)
+            try {
+                await sessionRepository.endAllActiveSessions();
+                logger.info('[AuthService] Sessions ended before sign out');
+            } catch (sessionError) {
+                logger.warn('[AuthService] Session cleanup failed during sign out (non-critical):', sessionError.message);
+            }
 
             await signOut(auth);
-            logger.info('[AuthService] User sign-out initiated successfully.');
-            // onAuthStateChanged will handle the state update and broadcast,
-            // which will also re-evaluate the API key status.
+            logger.info('[AuthService] ✅ User sign-out successful');
+            
+            // Manually update state to local mode
+            this.currentUser = null;
+            this.currentUserId = 'default_user';
+            this.currentUserMode = 'local';
+            this.isFirebaseClientReady = false;
+            
+            // Broadcast the state change
+            this.broadcastUserState();
+            logger.info('[AuthService] ✅ User state broadcast after sign out');
+            
         } catch (error) {
-            logger.error('Error signing out:', { error });
+            logger.error('[AuthService] ❌ Error signing out:', { error: error.message });
+            // Even if sign out fails, reset to local mode
+            this.currentUser = null;
+            this.currentUserId = 'default_user';
+            this.currentUserMode = 'local';
+            this.isFirebaseClientReady = false;
+            this.broadcastUserState();
         }
     }
     
