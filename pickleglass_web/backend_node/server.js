@@ -50,6 +50,7 @@ app.get('/health', (req, res) => {
 });
 
 // Import routes
+app.use('/auth', require('./routes/auth'));
 app.use('/api/v1/tools', require('./routes/tools'));
 app.use('/api/v1/knowledge', require('./routes/knowledge'));
 
