@@ -713,10 +713,15 @@ async function handleMobileAuthCallback(params) {
         // Use backend API to exchange session for custom token
         // In production, use Railway backend; in dev, use localhost
         const isPackaged = app.isPackaged;
+        const execPath = process.execPath || '';
+        const isProduction = isPackaged || execPath.includes('Claire.exe') || execPath.includes('dist');
+        
         console.log('🔍 app.isPackaged:', isPackaged);
+        console.log('🔍 process.execPath:', execPath);
+        console.log('🔍 isProduction:', isProduction);
         console.log('🔍 process.env.pickleglass_API_URL:', process.env.pickleglass_API_URL);
         
-        const backendUrl = isPackaged 
+        const backendUrl = isProduction 
             ? (process.env.pickleglass_API_URL || 'https://claire-web-production.up.railway.app')
             : 'http://localhost:3001';
         const exchangeUrl = `${backendUrl}/api/v1/auth/mobile-auth/exchange`;
