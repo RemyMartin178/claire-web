@@ -1,5 +1,5 @@
-// SQLite and Firebase repositories have been removed - using Backend API repository only
-const backendRepository = require('./backend.repository');
+// Prefer Firebase repository for sessions in production to avoid backend 404s
+const firebaseRepository = require('./firebase.repository');
 
 let authService = null;
 
@@ -8,8 +8,7 @@ function setAuthService(service) {
 }
 
 function getBaseRepository() {
-    // Always use Backend API repository - SQLite and Firebase have been removed
-    return backendRepository;
+    return firebaseRepository;
 }
 
 // The adapter layer that injects the UID

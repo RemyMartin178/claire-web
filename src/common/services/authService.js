@@ -225,29 +225,34 @@ class AuthService {
     async signInWithCustomToken(token) {
         const auth = getFirebaseAuth();
         try {
+            logger.info('[Auth] Signing in with custom token...');
             const userCredential = await signInWithCustomToken(auth, token);
-            logger.info('Successfully signed in with custom token for user:', { uid: userCredential.user.uid });
+            logger.info('[Auth] ✅ signInWithCustomToken completed, user:', { uid: userCredential.user.uid, email: userCredential.user.email });
             
-            // Wait for onAuthStateChanged to update the state
-            return new Promise((resolve) => {
-                const checkInterval = setInterval(() => {
-                    if (this.currentUser && this.currentUser.uid === userCredential.user.uid) {
-                        clearInterval(checkInterval);
-                        logger.info('[Auth] User state updated by onAuthStateChanged');
-                        resolve();
-                    }
-                }, 100);
-                
-                // Timeout after 5 seconds
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    logger.warn('[Auth] Timeout waiting for onAuthStateChanged, resolving anyway');
-                    resolve();
-                }, 5000);
-            });
+            // MANUALLY update state immediately (don't wait for onAuthStateChanged)
+            this.currentUser = userCredential.user;
+            this.currentUserId = userCredential.user.uid;
+            this.currentUserMode = 'firebase';
+            this.isFirebaseClientReady = true;
+            
+            logger.info('[Auth] ✅ User state manually updated');
+            
+            // Initialize encryption for the logged-in user
+            await encryptionService.initializeKey(userCredential.user.uid);
+            logger.info('[Auth] ✅ Encryption key initialized');
+            
+            // Clean up zombie sessions (with error handling for Firestore permissions)
+            try {
+                await sessionRepository.endAllActiveSessions();
+                logger.info('[Auth] ✅ Sessions cleaned up');
+            } catch (sessionError) {
+                logger.warn('[Auth] ⚠️ Session cleanup failed (non-critical):', sessionError.message);
+            }
+            
+            logger.info('[Auth] ✅ signInWithCustomToken completed successfully');
         } catch (error) {
-            logger.error('Error signing in with custom token:', { error });
-            throw error; // Re-throw to be handled by the caller
+            logger.error('[Auth] ❌ Error signing in with custom token:', { error: error.message, stack: error.stack });
+            throw error;
         }
     }
 
