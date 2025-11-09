@@ -710,13 +710,9 @@ async function handleMobileAuthCallback(params) {
         console.log('========================================');
         logger.info('[Auth] Processing deep link - session_id:', code);
 
-        // Use web API to exchange session for custom token
-        const isPackaged = app.isPackaged;
-        const webUrl = isPackaged 
-            ? 'https://app.clairia.app' 
-            : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
-        
-        const exchangeUrl = `${webUrl}/api/mobile-auth/exchange`;
+        // Use backend API to exchange session for custom token
+        const backendUrl = process.env.pickleglass_API_URL || 'http://localhost:3001';
+        const exchangeUrl = `${backendUrl}/api/mobile-auth/exchange`;
         
         console.log('📡 Calling exchange API:', exchangeUrl);
         logger.info('[Auth] Exchanging session via web API:', exchangeUrl);
