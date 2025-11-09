@@ -724,6 +724,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
                 console.log('[MainHeader] New isLoggedIn:', userState.isLoggedIn);
                 
                 const wasLoggedOut = !this.isUserLoggedIn;
+                const wasLoggedIn = this.isUserLoggedIn;
                 this.isUserLoggedIn = userState.isLoggedIn;
                 this.isAuthenticating = false; // Reset authenticating state
                 
@@ -733,6 +734,9 @@ export class MainHeader extends ThemeMixin(LitElement) {
                 // Trigger animation when transitioning from logged out to logged in
                 if (wasLoggedOut && this.isUserLoggedIn) {
                     console.log('[MainHeader] 🎉 User just logged in - triggering animation');
+                    this.requestUpdate();
+                } else if (wasLoggedIn && !this.isUserLoggedIn) {
+                    console.log('[MainHeader] 👋 User just logged out - triggering fade-out animation');
                     this.requestUpdate();
                 } else {
                     console.log('[MainHeader] Requesting update (no animation)');
