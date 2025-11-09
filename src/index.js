@@ -5,7 +5,14 @@
 // } catch (err) {
 // }
 
-require('dotenv').config();
+// Only load .env in development (not in packaged/production builds)
+const { app: electronApp } = require('electron');
+if (!electronApp || !electronApp.isPackaged) {
+    require('dotenv').config();
+    console.log('[STARTUP] 📝 Loaded .env file for development');
+} else {
+    console.log('[STARTUP] 🚀 Production mode - using system environment variables');
+}
 
 // COMPREHENSIVE error handlers (CRITICAL FIX)
 process.on('unhandledRejection', (reason, promise) => {
