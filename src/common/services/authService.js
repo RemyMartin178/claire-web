@@ -67,7 +67,7 @@ class AuthService {
                         resolve();
                     });
                 }
-            }, 10000); // 10 second timeout
+            }, 2000); // 2 second timeout - faster startup
             
             onAuthStateChanged(auth, async (user) => {
                 const previousUser = this.currentUser;
