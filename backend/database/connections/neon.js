@@ -55,8 +55,7 @@ class NeonDBConnection {
    */
   validateEnvironment() {
     const requiredVars = [
-      'DATABASE_URL',
-      'NEON_PROJECT_ID'
+      'DATABASE_URL'
     ];
 
     const missing = requiredVars.filter(varName => !process.env[varName]);
@@ -72,6 +71,11 @@ class NeonDBConnection {
       const error = 'DATABASE_URL must be a valid PostgreSQL connection string starting with postgresql://';
       logger.error(error);
       throw new Error(error);
+    }
+
+    // NEON_PROJECT_ID is optional (not required for Supabase or other Postgres providers)
+    if (!process.env.NEON_PROJECT_ID) {
+      logger.warn('NEON_PROJECT_ID not set (optional, only required for Neon-specific features)');
     }
 
     logger.info('Environment validation passed');
