@@ -199,7 +199,7 @@ class NeonDBConnection {
   }
 
   /**
-   * Execute a query with parameters using serverless client
+   * Execute a query with parameters using pg Pool
    */
   async query(text, params = []) {
     let retryCount = 0;
@@ -207,42 +207,15 @@ class NeonDBConnection {
 
     while (retryCount <= maxRetries) {
       try {
-        // Ensure serverless client is initialized
-        if (!this.sql || !this.isConnected) {
+        // Ensure pool is initialized
+        if (!this.pool || !this.isConnected) {
           await this.initialize();
         }
 
         const start = Date.now();
         
-        // Use correct Neon serverless client API - they changed the syntax
-        let result;
-        
-        try {
-          if (params && params.length > 0) {
-            // Use the new sql.query() method for parameterized queries
-            result = await this.sql.query(text, params);
-          } else {
-            // For queries without parameters, use the unsafe method for literal SQL
-            // This handles cases where the query contains $ signs that aren't parameters
-            result = await this.sql.unsafe(text);
-          }
-          
-          // Neon serverless client should return an array directly
-          if (!Array.isArray(result)) {
-            logger.warn('Expected array but got', { 
-              type: typeof result, 
-              constructor: result.constructor?.name 
-            });
-            result = [];
-          }
-        } catch (queryError) {
-          logger.error('Query execution failed', { 
-            error: queryError.message, 
-            query: text.substring(0, 100),
-            hasParams: !!(params && params.length > 0)
-          });
-          result = [];
-        }
+        // Use pg Pool.query() directly (works with Supabase, Neon, and any PostgreSQL)
+        const result = await this.pool.query(text, params);
         
         const duration = Date.now() - start;
         
@@ -254,15 +227,12 @@ class NeonDBConnection {
         }
         
         logger.debug('Query executed successfully', { 
-          rowCount: result.length, 
-          hasRows: result && result.length > 0 
+          rowCount: result.rowCount || 0, 
+          hasRows: result.rows && result.rows.length > 0 
         });
         
-        // Return in consistent format with proper rowCount
-        return { 
-          rows: result || [], 
-          rowCount: result ? result.length : 0
-        };
+        // Return in consistent format (pg already returns { rows, rowCount })
+        return result;
 
       } catch (error) {
         retryCount++;
@@ -292,20 +262,23 @@ class NeonDBConnection {
    * Execute a transaction
    */
   async transaction(callback) {
+    const client = await this.pool.connect();
     try {
-      await this.sql`BEGIN`;
+      await client.query('BEGIN');
       logger.debug('Transaction started');
       
       const result = await callback(this);
       
-      await this.sql`COMMIT`;
+      await client.query('COMMIT');
       logger.debug('Transaction committed');
       
       return result;
     } catch (error) {
       logger.warn('Transaction rolled back', { error: error.message });
-      await this.sql`ROLLBACK`;
+      await client.query('ROLLBACK');
       throw error;
+    } finally {
+      client.release();
     }
   }
 
