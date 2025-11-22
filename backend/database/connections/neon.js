@@ -1,10 +1,10 @@
 /**
- * Neon Database Connection - Standalone Backend Service
- * Extracted from xerus_web/backend_node/utils/neon-db.js
+ * PostgreSQL Database Connection - Standalone Backend Service
+ * Compatible with Neon, Supabase, and any PostgreSQL provider
  * Backend Dev Agent 💻 - Clean Architecture Implementation
  */
 
-const { neon } = require('@neondatabase/serverless');
+const { Pool } = require('pg');
 const { createLogger, format, transports } = require('winston');
 
 // Load environment variables
@@ -86,16 +86,12 @@ class NeonDBConnection {
    */
   async initialize() {
     try {
-
-      // Initialize Neon serverless client for simple queries
-      this.sql = neon(this.config.databaseUrl);
-      logger.info('Neon serverless client initialized');
-
-      // Initialize persistent connection pool
-      const { Pool } = require('@neondatabase/serverless');
+      // Initialize persistent connection pool using standard pg driver
+      // Works with Neon, Supabase, and any PostgreSQL provider
       this.pool = new Pool({
         connectionString: this.config.databaseUrl,
-        ...this.config.poolConfig
+        ...this.config.poolConfig,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
       });
 
       // Add error handlers for the pool
@@ -115,10 +111,19 @@ class NeonDBConnection {
       });
 
       // Test connection
-      const result = await this.sql`SELECT NOW() as current_time`;
+      const result = await this.pool.query('SELECT NOW() as current_time');
       logger.info('Database connection test successful', { 
-        current_time: result[0].current_time 
+        current_time: result.rows[0].current_time 
       });
+      
+      // Create sql helper for tagged template literals (Neon-style API)
+      this.sql = async (strings, ...values) => {
+        const text = strings.reduce((acc, str, i) => {
+          return acc + str + (i < values.length ? `$${i + 1}` : '');
+        }, '');
+        const result = await this.pool.query(text, values);
+        return result.rows;
+      };
       
       this.isConnected = true;
       return true;
@@ -135,24 +140,24 @@ class NeonDBConnection {
   async healthCheck() {
     const start = Date.now();
     try {
-      // Ensure SQL client is initialized
-      if (!this.sql) {
+      // Ensure pool is initialized
+      if (!this.pool) {
         await this.initialize();
       }
       
-      const result = await this.sql`
+      const result = await this.pool.query(`
         SELECT 
           version() as version,
           current_database() as current_database,
           (SELECT count(*) FROM pg_stat_activity WHERE state = 'active') as active_connections
-      `;
+      `);
       
       const response_time = Date.now() - start;
       
       return {
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        database: result[0],
+        database: result.rows[0],
         response_time
       };
     } catch (error) {
