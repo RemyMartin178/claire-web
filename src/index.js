@@ -728,7 +728,7 @@ async function handleMobileAuthCallback(params) {
         
         // In production, ALWAYS use Railway - ignore any .env values
         const backendUrl = isProduction 
-            ? 'https://claire-web-production.up.railway.app'
+            ? 'https://backend-production-ba2c.up.railway.app'
             : 'http://localhost:3001';
         const exchangeUrl = `${backendUrl}/auth/mobile-auth/exchange`;
         
@@ -925,11 +925,24 @@ async function startWebStack() {
 
   logger.info(`[TOOL] Allocated ports: API=${apiPort}, Frontend=${frontendPort}`);
 
+  const defaultProdApiUrl = 'https://backend-production-ba2c.up.railway.app';
+  const defaultProdWebUrl = 'https://app.clairia.app';
+  const defaultApiUrl = app.isPackaged ? defaultProdApiUrl : `http://localhost:${apiPort}`;
+  const defaultWebUrl = app.isPackaged ? defaultProdWebUrl : `http://localhost:${frontendPort}`;
+
   // Set environment variables for inter-service communication (compatible with Glass/pickleglass)
-  process.env.pickleglass_API_URL = `http://localhost:${apiPort}`;
-  process.env.pickleglass_WEB_URL = `http://localhost:${frontendPort}`;
-  process.env.xerus_API_URL = `http://localhost:${apiPort}`;
-  process.env.XERUS_WEB_URL = `http://localhost:${frontendPort}`;
+  if (!process.env.pickleglass_API_URL) {
+    process.env.pickleglass_API_URL = defaultApiUrl;
+  }
+  if (!process.env.pickleglass_WEB_URL) {
+    process.env.pickleglass_WEB_URL = defaultWebUrl;
+  }
+  if (!process.env.xerus_API_URL) {
+    process.env.xerus_API_URL = defaultApiUrl;
+  }
+  if (!process.env.XERUS_WEB_URL) {
+    process.env.XERUS_WEB_URL = defaultWebUrl;
+  }
 
   logger.info(`🌍 Environment variables set:`, {
     pickleglass_API_URL: process.env.pickleglass_API_URL,

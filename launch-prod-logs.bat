@@ -3,7 +3,7 @@ setlocal enableextensions
 set "SCRIPT_DIR=%~dp0"
 
 REM URLs de production (Railway)
-set "pickleglass_API_URL=https://claire-web-production.up.railway.app"
+set "pickleglass_API_URL=https://backend-production-ba2c.up.railway.app"
 set "pickleglass_WEB_URL=https://app.clairia.app"
 
 echo ========================================
