@@ -8,17 +8,44 @@ const { createLogger } = require('../../services/logger.js');
 
 const logger = createLogger('Backend.SessionRepository');
 
-const BACKEND_URL = process.env.pickleglass_API_URL || 'http://localhost:3001';
+const BACKEND_URL = (process.env.pickleglass_API_URL || 'http://localhost:3001') + '/api/v1';
+
+/**
+ * Get Firebase ID token for authentication
+ */
+async function getFirebaseToken() {
+    try {
+        const authService = require('../../services/authService');
+        const currentUser = authService.currentUser;
+        
+        if (currentUser && currentUser.getIdToken) {
+            const token = await currentUser.getIdToken(true);
+            console.log('[SEARCH] [DEBUG] Firebase token retrieved successfully');
+            return token;
+        }
+        
+        console.log('[SEARCH] [WARN] No Firebase user found, using development token');
+        return null;
+    } catch (error) {
+        console.log('[SEARCH] [ERROR] Failed to get Firebase token:', error.message);
+        return null;
+    }
+}
 
 async function getById(id) {
     console.log('[SEARCH] [DEBUG] Backend getById called with:', { id });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         const response = await fetch(`${BACKEND_URL}/conversations/${id}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
             }
         });
 
@@ -55,11 +82,16 @@ async function create(uid, type = 'ask') {
     console.log('[SEARCH] [DEBUG] Backend create called with:', { uid, type });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         const response = await fetch(`${BACKEND_URL}/conversations`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
                 'X-User-ID': uid,
             },
             body: JSON.stringify({
@@ -88,11 +120,16 @@ async function getAllByUserId(uid) {
     console.log('[SEARCH] [DEBUG] Backend getAllByUserId called with:', { uid });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         const response = await fetch(`${BACKEND_URL}/conversations?limit=50`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
                 'X-User-ID': uid,
             }
         });
@@ -126,11 +163,16 @@ async function updateTitle(id, title) {
     console.log('[SEARCH] [DEBUG] Backend updateTitle called with:', { id, title });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         const response = await fetch(`${BACKEND_URL}/conversations/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
             },
             body: JSON.stringify({ title })
         });
@@ -151,11 +193,16 @@ async function deleteWithRelatedData(id) {
     console.log('[SEARCH] [DEBUG] Backend deleteWithRelatedData called with:', { id });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         const response = await fetch(`${BACKEND_URL}/conversations/${id}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
             }
         });
 
@@ -179,12 +226,17 @@ async function end(id) {
     console.log('[SEARCH] [DEBUG] Backend end called with:', { id });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         // Backend doesn't currently support ending sessions, but we can update metadata
         const response = await fetch(`${BACKEND_URL}/conversations/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
             },
             body: JSON.stringify({ 
                 metadata: { ended_at: Math.floor(Date.now() / 1000) }
@@ -207,11 +259,16 @@ async function updateType(id, type) {
     console.log('[SEARCH] [DEBUG] Backend updateType called with:', { id, type });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         const response = await fetch(`${BACKEND_URL}/conversations/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
             },
             body: JSON.stringify({ 
                 metadata: { session_type: type }
@@ -234,12 +291,17 @@ async function touch(id) {
     console.log('[SEARCH] [DEBUG] Backend touch called with:', { id });
     
     try {
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token';
+        
         // Touch by updating metadata with current timestamp
         const response = await fetch(`${BACKEND_URL}/conversations/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
             },
             body: JSON.stringify({ 
                 metadata: { last_touched: Math.floor(Date.now() / 1000) }

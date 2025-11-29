@@ -1089,38 +1089,54 @@ const moveHeaderTo = (newX, newY) => {
 const adjustWindowHeight = (sender, targetHeight) => {
     const senderWindow = BrowserWindow.fromWebContents(sender);
     
-    if (senderWindow) {
-        // DPI Scaling Fix - Get display information
-        const display = screen.getPrimaryDisplay();
-        const scaleFactor = display.scaleFactor;
-        
-        const currentBounds = senderWindow.getBounds();
-        const currentContentBounds = senderWindow.getContentBounds();
-        
-        // Ensure window is ready for resize
-        if (senderWindow.isMinimized()) {
-            senderWindow.restore();
-        }
-        
-        const wasResizable = senderWindow.isResizable();
-        
-        if (!wasResizable) {
-            senderWindow.setResizable(true);
-        }
+    if (!senderWindow) {
+        return;
+    }
+    
+    // Validate targetHeight - must be a valid number
+    if (targetHeight === undefined || targetHeight === null || isNaN(targetHeight)) {
+        console.warn('[WindowManager] adjustWindowHeight: Invalid targetHeight:', targetHeight);
+        return;
+    }
+    
+    // Convert to number if it's a string
+    targetHeight = Number(targetHeight);
+    if (isNaN(targetHeight) || targetHeight <= 0) {
+        console.warn('[WindowManager] adjustWindowHeight: Invalid targetHeight value:', targetHeight);
+        return;
+    }
+    
+    // DPI Scaling Fix - Get display information
+    const display = screen.getPrimaryDisplay();
+    const scaleFactor = display.scaleFactor;
+    
+    const currentBounds = senderWindow.getBounds();
+    const currentContentBounds = senderWindow.getContentBounds();
+    
+    // Ensure window is ready for resize
+    if (senderWindow.isMinimized()) {
+        senderWindow.restore();
+    }
+    
+    const wasResizable = senderWindow.isResizable();
+    
+    if (!wasResizable) {
+        senderWindow.setResizable(true);
+    }
 
-        const minHeight = senderWindow.getMinimumSize()[1];
-        const maxHeight = senderWindow.getMaximumSize()[1];
-        
-        let adjustedHeight;
-        if (maxHeight === 0) {
-            adjustedHeight = Math.max(minHeight, targetHeight);
-        } else {
-            adjustedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
-        }
-        
-        // Try multiple resize approaches to fix DPI issues
-        // Approach 1: Use setContentSize (recommended for DPI issues)
-        senderWindow.setContentSize(currentContentBounds.width, adjustedHeight);
+    const minHeight = senderWindow.getMinimumSize()[1];
+    const maxHeight = senderWindow.getMaximumSize()[1];
+    
+    let adjustedHeight;
+    if (maxHeight === 0) {
+        adjustedHeight = Math.max(minHeight, targetHeight);
+    } else {
+        adjustedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
+    }
+    
+    // Try multiple resize approaches to fix DPI issues
+    // Approach 1: Use setContentSize (recommended for DPI issues)
+    senderWindow.setContentSize(currentContentBounds.width, adjustedHeight);
         
         // Small delay then try setSize as fallback
         setTimeout(() => {
