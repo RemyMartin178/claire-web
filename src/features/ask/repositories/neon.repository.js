@@ -7,6 +7,28 @@ const fetch = require('node-fetch');
 
 const BACKEND_URL = (process.env.pickleglass_API_URL || 'http://localhost:3001') + '/api/v1';
 
+/**
+ * Get Firebase ID token for authentication
+ */
+async function getFirebaseToken() {
+    try {
+        const authService = require('../../../common/services/authService');
+        const currentUser = authService.currentUser;
+        
+        if (currentUser && currentUser.getIdToken) {
+            const token = await currentUser.getIdToken(true);
+            console.log('[SEARCH] [DEBUG] Firebase token retrieved successfully');
+            return token;
+        }
+        
+        console.log('[SEARCH] [WARN] No Firebase user found, using development token');
+        return null;
+    } catch (error) {
+        console.log('[SEARCH] [ERROR] Failed to get Firebase token:', error.message);
+        return null;
+    }
+}
+
 async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }) {
     console.log('[SEARCH] [DEBUG] Neon addAiMessage called with:', {
         uid,
@@ -19,11 +41,17 @@ async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }
     try {
         console.log('[SEARCH] [DEBUG] Attempting to save message to Neon via backend API');
         
+        // Get Firebase token for production authentication
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token'; // Fallback for dev mode
+        
         const response = await fetch(`${BACKEND_URL}/conversations/${sessionId}/messages`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
                 'X-User-ID': uid,
             },
             body: JSON.stringify({
@@ -51,9 +79,7 @@ async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }
             uid
         });
         
-        // For now, throw a descriptive error
-        // TODO: Implement authenticated user support in backend conversations API
-        throw new Error(`Neon repository: Backend conversation API needs authenticated user support. ${error.message}`);
+        throw new Error(`Neon repository: Backend conversation API error. ${error.message}`);
     }
 }
 
@@ -61,11 +87,17 @@ async function getAllAiMessagesBySessionId(sessionId) {
     console.log('[SEARCH] [DEBUG] Getting all messages for session:', sessionId);
     
     try {
+        // Get Firebase token for production authentication
+        const firebaseToken = await getFirebaseToken();
+        const authHeader = firebaseToken 
+            ? `Bearer ${firebaseToken}` 
+            : 'Bearer development_token'; // Fallback for dev mode
+        
         const response = await fetch(`${BACKEND_URL}/conversations/${sessionId}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': 'Bearer development_token',
+                'Authorization': authHeader,
             }
         });
 

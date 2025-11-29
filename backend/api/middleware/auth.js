@@ -303,12 +303,16 @@ const authMiddleware = async (req, res, next) => {
         const decodedToken = await admin.auth().verifyIdToken(token);
         
         // Extract user information from Firebase token
+        // Use custom claims if present, otherwise default to standard user permissions
+        const userPermissions = decodedToken.permissions || DEFAULT_USER_PERMISSIONS;
+        const userRole = decodedToken.role || 'user';
+        
         req.user = {
           id: decodedToken.uid,
           email: decodedToken.email,
           emailVerified: decodedToken.email_verified,
-          role: decodedToken.role || 'user', // Custom claims
-          permissions: decodedToken.permissions || [], // Custom claims
+          role: userRole,
+          permissions: userPermissions,
           firebaseUser: true
         };
 
@@ -316,6 +320,7 @@ const authMiddleware = async (req, res, next) => {
           userId: req.user.id,
           email: req.user.email,
           role: req.user.role,
+          permissions: userPermissions.length,
           path: req.path
         });
 
