@@ -37,15 +37,17 @@ async function getUserSubscription() {
             }
         }
 
-        // Récupérer le token Firebase
+        // Récupérer le token Firebase (même méthode que backend.repository.js)
         let firebaseToken;
         try {
-            if (currentUser.getIdToken) {
-                firebaseToken = await currentUser.getIdToken(true);
-            } else if (currentUser.accessToken) {
-                firebaseToken = currentUser.accessToken;
+            // Utiliser authService.currentUser (propriété directe) au lieu de getCurrentUser()
+            const firebaseUser = authService.currentUser;
+            
+            if (firebaseUser && firebaseUser.getIdToken) {
+                firebaseToken = await firebaseUser.getIdToken(true);
+                logger.debug('[SubscriptionService] Firebase token retrieved successfully');
             } else {
-                logger.warn('[SubscriptionService] No Firebase token available');
+                logger.warn('[SubscriptionService] No Firebase user found or getIdToken not available');
                 return {
                     plan: 'free',
                     isPremium: false,

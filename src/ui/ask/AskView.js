@@ -371,6 +371,11 @@ export class AskView extends LitElement {
             min-height: 0;
             max-height: 400px;
             position: relative;
+            color: #FFFFFF !important; /* Force white color like "AI response" label */
+        }
+        
+        .response-container * {
+            color: inherit !important; /* All children inherit white color */
         }
 
         .response-container.hidden {
