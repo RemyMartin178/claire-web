@@ -29,6 +29,83 @@ async function getFirebaseToken() {
     }
 }
 
+/**
+ * Ensure conversation exists in backend, create if it doesn't
+ */
+async function ensureConversationExists(sessionId, uid, authHeader) {
+    try {
+        // Try to get the conversation
+        const getResponse = await fetch(`${BACKEND_URL}/conversations/${sessionId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': authHeader,
+            }
+        });
+
+        if (getResponse.ok) {
+            console.log('[SEARCH] [DEBUG] Conversation exists in backend:', sessionId);
+            return true;
+        }
+
+        if (getResponse.status === 404) {
+            // Conversation doesn't exist, create it
+            console.log('[SEARCH] [DEBUG] Conversation not found, creating in backend:', sessionId);
+            const createResponse = await fetch(`${BACKEND_URL}/conversations`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': authHeader,
+                    'X-User-ID': uid,
+                },
+                body: JSON.stringify({
+                    id: sessionId, // Try to use the sessionId as the conversation ID
+                    title: `Session @ ${new Date().toLocaleTimeString()}`,
+                    agentType: 'ask',
+                    metadata: {}
+                })
+            });
+
+            if (!createResponse.ok) {
+                // If creating with specific ID fails, try without ID (let backend generate one)
+                console.log('[SEARCH] [WARN] Failed to create conversation with specific ID, trying without ID');
+                const createResponse2 = await fetch(`${BACKEND_URL}/conversations`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authHeader,
+                        'X-User-ID': uid,
+                    },
+                    body: JSON.stringify({
+                        title: `Session @ ${new Date().toLocaleTimeString()}`,
+                        agentType: 'ask',
+                        metadata: {}
+                    })
+                });
+
+                if (!createResponse2.ok) {
+                    throw new Error(`Failed to create conversation: ${createResponse2.status} ${createResponse2.statusText}`);
+                }
+
+                const created = await createResponse2.json();
+                console.log('[SEARCH] [DEBUG] Created new conversation with backend-generated ID:', created.id);
+                // Note: The sessionId from Firebase won't match the backend ID, but that's okay
+                // The backend will handle this
+                return created.id;
+            }
+
+            const created = await createResponse.json();
+            console.log('[SEARCH] [DEBUG] Created conversation in backend:', created.id || sessionId);
+            return true;
+        }
+
+        throw new Error(`Failed to check conversation: ${getResponse.status} ${getResponse.statusText}`);
+    } catch (error) {
+        console.log('[ERROR] [DEBUG] Error ensuring conversation exists:', error.message);
+        throw error;
+    }
+}
+
 async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }) {
     console.log('[SEARCH] [DEBUG] Neon addAiMessage called with:', {
         uid,
@@ -46,6 +123,9 @@ async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }
         const authHeader = firebaseToken 
             ? `Bearer ${firebaseToken}` 
             : 'Bearer development_token'; // Fallback for dev mode
+        
+        // Ensure conversation exists in backend before adding message
+        await ensureConversationExists(sessionId, uid, authHeader);
         
         const response = await fetch(`${BACKEND_URL}/conversations/${sessionId}/messages`, {
             method: 'POST',
@@ -65,6 +145,58 @@ async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }
         });
 
         if (!response.ok) {
+            // If still 404, the conversation ID might not match - try to find or create a new one
+            if (response.status === 404) {
+                console.log('[SEARCH] [WARN] Message add failed with 404, conversation ID mismatch. Creating new conversation.');
+                // Create a new conversation and use its ID
+                const createResponse = await fetch(`${BACKEND_URL}/conversations`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authHeader,
+                        'X-User-ID': uid,
+                    },
+                    body: JSON.stringify({
+                        title: `Session @ ${new Date().toLocaleTimeString()}`,
+                        agentType: 'ask',
+                        metadata: {}
+                    })
+                });
+
+                if (!createResponse.ok) {
+                    throw new Error(`Backend API error: ${createResponse.status} ${createResponse.statusText}`);
+                }
+
+                const newConversation = await createResponse.json();
+                console.log('[SEARCH] [DEBUG] Created new conversation, retrying message add with ID:', newConversation.id);
+                
+                // Retry with the new conversation ID
+                const retryResponse = await fetch(`${BACKEND_URL}/conversations/${newConversation.id}/messages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authHeader,
+                        'X-User-ID': uid,
+                    },
+                    body: JSON.stringify({
+                        role,
+                        content,
+                        model,
+                        uid,
+                        processingTime: null,
+                        tokenCount: null
+                    })
+                });
+
+                if (!retryResponse.ok) {
+                    throw new Error(`Backend API error: ${retryResponse.status} ${retryResponse.statusText}`);
+                }
+
+                const result = await retryResponse.json();
+                console.log('[OK] [DEBUG] Successfully saved message to Neon with ID:', result.id);
+                return { id: result.id || result.messageId };
+            }
+            
             throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
         }
 

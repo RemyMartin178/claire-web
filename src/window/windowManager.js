@@ -1137,20 +1137,19 @@ const adjustWindowHeight = (sender, targetHeight) => {
     // Try multiple resize approaches to fix DPI issues
     // Approach 1: Use setContentSize (recommended for DPI issues)
     senderWindow.setContentSize(currentContentBounds.width, adjustedHeight);
+    
+    // Small delay then try setSize as fallback
+    setTimeout(() => {
+        const dpiAdjustedHeight = Math.round(adjustedHeight);
+        const dpiAdjustedWidth = Math.round(currentBounds.width);
+        senderWindow.setSize(dpiAdjustedWidth, dpiAdjustedHeight, false);
         
-        // Small delay then try setSize as fallback
-        setTimeout(() => {
-            const dpiAdjustedHeight = Math.round(adjustedHeight);
-            const dpiAdjustedWidth = Math.round(currentBounds.width);
-            senderWindow.setSize(dpiAdjustedWidth, dpiAdjustedHeight, false);
-            
-            if (!wasResizable) {
-                senderWindow.setResizable(false);
-            }
+        if (!wasResizable) {
+            senderWindow.setResizable(false);
+        }
 
-            updateLayout();
-        }, 100);
-    }
+        updateLayout();
+    }, 100);
 };
 
 
