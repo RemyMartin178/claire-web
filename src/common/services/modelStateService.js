@@ -212,7 +212,7 @@ class ModelStateService extends EventEmitter {
             }
             
             // Fallback to environment variables for missing API keys
-            
+            // Les clés API sont récupérées depuis le backend Railway
             const envMapping = {
                 'openai': process.env.OPENAI_API_KEY,
                 'gemini': process.env.GEMINI_API_KEY,

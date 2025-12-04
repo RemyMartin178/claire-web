@@ -564,11 +564,9 @@ class AskService {
             await askRepository.addAiMessage({ sessionId, role: 'user', content: userPrompt.trim() });
             logger.info('DB: Saved user prompt to session');
             
-            const modelInfo = modelStateService.getCurrentModelInfo('llm');
-            if (!modelInfo || !modelInfo.apiKey) {
-                throw new Error('AI model or API key not configured.');
-            }
-            logger.info(`Using model: ${modelInfo.model} for provider: ${modelInfo.provider}`);
+            // Backend Railway mode: Skip local API key check
+            // The backend has the API keys configured in Railway environment variables
+            logger.info('[AskService] Using backend Railway API - API keys managed server-side');
 
             // Check if there's a persistent area selected, use it instead of full screen
             let screenshotResult;
@@ -818,12 +816,15 @@ class AskService {
                 });
             }
             
-            // Check if we should use backend agent execution first (optimized path)
-            if (this.selectedAgentId) {
-                logger.info('[AskService] Using backend agent execution for agent ID:', this.selectedAgentId);
+            // Always use backend agent execution (Railway has API keys)
+            // Use selected agent or fallback to first available agent
+            const agentIdToUse = this.selectedAgentId || (await this.getAgents()).agents?.[0]?.id;
+            
+            if (agentIdToUse) {
+                logger.info('[AskService] Using backend agent execution for agent ID:', agentIdToUse);
                 try {
                     const { agentsApiClient } = require('../../domains/agents');
-                    const agentResponse = await agentsApiClient.executeAgent(this.selectedAgentId, {
+                    const agentResponse = await agentsApiClient.executeAgent(agentIdToUse, {
                         message: userPrompt,
                         conversationHistory: conversationHistoryRaw || [],
                         context: screenshotBase64 ? {
