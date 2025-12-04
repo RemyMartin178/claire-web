@@ -26,13 +26,47 @@ if (require('electron-squirrel-startup')) {
 }
 
 const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
+const path = require('path');
+const fs = require('fs');
 
 // Always load .env file if it exists (for both development and production)
 try {
-    require('dotenv').config();
-    console.log('[STARTUP] 📝 Loaded .env file successfully');
+    const envPath = app.isPackaged 
+        ? path.join(process.resourcesPath, 'app.asar.unpacked', '.env')
+        : path.join(__dirname, '..', '.env');
+    
+    // Try multiple locations for .env file
+    const possiblePaths = [
+        envPath,
+        path.join(__dirname, '..', '.env'), // Development
+        path.join(process.cwd(), '.env'), // Current directory
+        path.join(app.getAppPath(), '.env'), // App path
+        path.join(process.resourcesPath, '.env'), // Resources folder
+        path.join(__dirname, '.env') // Current source directory
+    ];
+    
+    let loaded = false;
+    for (const tryPath of possiblePaths) {
+        if (fs.existsSync(tryPath)) {
+            require('dotenv').config({ path: tryPath });
+            console.log('[STARTUP] 📝 Loaded .env file from:', tryPath);
+            
+            // Log loaded environment variables (without showing actual values)
+            if (process.env.OPENAI_API_KEY) console.log('[STARTUP] ✅ OPENAI_API_KEY detected');
+            if (process.env.ANTHROPIC_API_KEY) console.log('[STARTUP] ✅ ANTHROPIC_API_KEY detected');
+            if (process.env.GEMINI_API_KEY) console.log('[STARTUP] ✅ GEMINI_API_KEY detected');
+            
+            loaded = true;
+            break;
+        }
+    }
+    
+    if (!loaded) {
+        console.log('[STARTUP] ⚠️ No .env file found in any location, using system environment variables');
+        console.log('[STARTUP] Searched paths:', possiblePaths);
+    }
 } catch (error) {
-    console.log('[STARTUP] ⚠️ No .env file found, using system environment variables');
+    console.log('[STARTUP] ⚠️ Error loading .env file:', error.message);
 }
 
 const { createWindows } = require('./window/windowManager.js');
@@ -43,8 +77,6 @@ const { initializeFirebase } = require('./common/services/firebaseClient');
 // const databaseInitializer = require('./common/services/databaseInitializer'); // Phase 1 Fix: SQLite removed
 
 const authService = require('./common/services/authService');
-
-const path = require('node:path');
 
 const express = require('express');
 
