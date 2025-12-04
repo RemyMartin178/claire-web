@@ -537,14 +537,14 @@ export class AskView extends LitElement {
         .response-line h4,
         .response-line h5,
         .response-line h6 {
-            color: rgba(255, 255, 255, 0.95);
+            color: rgba(255, 255, 255, 1.0);
             margin: 16px 0 8px 0;
             font-weight: 600;
         }
 
         .response-line p {
             margin: 8px 0;
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(255, 255, 255, 1.0);
         }
 
         .response-line ul,
@@ -555,12 +555,12 @@ export class AskView extends LitElement {
 
         .response-line li {
             margin: 4px 0;
-            color: rgba(255, 255, 255, 0.9);
+            color: rgba(255, 255, 255, 1.0);
         }
 
         .response-line code {
-            background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 1.0);
             padding: 2px 6px;
             border-radius: 4px;
             font-family: 'Monaco', 'Menlo', monospace;
@@ -568,13 +568,13 @@ export class AskView extends LitElement {
         }
 
         .response-line pre {
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 1.0);
             padding: 12px;
             border-radius: 6px;
             overflow-x: auto;
             margin: 12px 0;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
 
         .response-line pre code {
@@ -583,11 +583,11 @@ export class AskView extends LitElement {
         }
 
         .response-line blockquote {
-            border-left: 3px solid rgba(255, 255, 255, 0.3);
+            border-left: 3px solid rgba(255, 255, 255, 0.4);
             margin: 12px 0;
             padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 1.0);
         }
 
         .empty-state {
