@@ -27,12 +27,12 @@ if (require('electron-squirrel-startup')) {
 
 const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
 
-// Only load .env in development (not in packaged/production builds)
-if (!app.isPackaged) {
+// Always load .env file if it exists (for both development and production)
+try {
     require('dotenv').config();
-    console.log('[STARTUP] 📝 Loaded .env file for development');
-} else {
-    console.log('[STARTUP] 🚀 Production mode - skipping .env, using system environment variables');
+    console.log('[STARTUP] 📝 Loaded .env file successfully');
+} catch (error) {
+    console.log('[STARTUP] ⚠️ No .env file found, using system environment variables');
 }
 
 const { createWindows } = require('./window/windowManager.js');
