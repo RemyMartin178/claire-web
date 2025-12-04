@@ -569,9 +569,11 @@ class AskService {
             logger.info('[AskService] Using backend Railway API - API keys managed server-side');
 
             // Check if there's a persistent area selected, use it instead of full screen
+            // OPTIMIZATION: Reduce screenshot quality for faster upload
             let screenshotResult;
             let screenshotBase64 = null;
             let screenshotContext = 'full screen';
+            const SCREENSHOT_QUALITY = 50; // Reduced from 75 to 50 for faster upload
             
             try {
                 // Try to get persistent area capture first
@@ -631,14 +633,14 @@ class AskService {
                         error: persistentAreaResult.error,
                         persistentAreaResult: persistentAreaResult
                     });
-                    screenshotResult = await captureScreenshot({ quality: 75 });
+                    screenshotResult = await captureScreenshot({ quality: SCREENSHOT_QUALITY });
                     screenshotBase64 = screenshotResult.success ? screenshotResult.base64 : null;
                     screenshotContext = 'full screen';
                     logger.info('[AskService] Using full screen capture (persistent area failed)');
                 }
             } catch (error) {
                 logger.warn('[AskService] Failed to check persistent area, using full screen:', error);
-                screenshotResult = await captureScreenshot({ quality: 75 });
+                screenshotResult = await captureScreenshot({ quality: SCREENSHOT_QUALITY });
                 screenshotBase64 = screenshotResult.success ? screenshotResult.base64 : null;
                 screenshotContext = 'full screen';
             }
@@ -651,6 +653,9 @@ class AskService {
                 timestamp: Date.now()
             });
 
+            // OPTIMIZATION: Skip memory storage for faster response
+            // Comment out memory storage to save 10 seconds
+            /*
             // Add screenshot to context manager if available
             if (screenshotBase64) {
                 const contextWidth = screenshotResult.width || screenshotResult.metadata?.area?.width;
@@ -745,6 +750,8 @@ class AskService {
                     });
                 }
             }
+            */ // END memory storage skip
+            logger.info('[AskService] OPTIMIZATION: Skipped memory storage for faster response');
 
             const conversationHistory = this._formatConversationForPrompt(conversationHistoryRaw);
 
