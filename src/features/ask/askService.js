@@ -29,6 +29,9 @@ const { platformManager } = require('../../main/platform-manager');
 // Import auth service for user context
 const authService = require('../../common/services/authService');
 
+// Import subscription service to check user plan
+const subscriptionService = require('../../common/services/subscriptionService');
+
 // Import memory API client for backend memory storage
 const MemoryApiClient = require('../../domains/conversation/memory-api-client');
 
@@ -832,8 +835,105 @@ class AskService {
                 });
             }
             
-            // Always use backend agent execution (Railway has API keys)
-            // Use selected agent or fallback to agent ID 1 (default)
+            // Check user subscription plan
+            const subscription = await subscriptionService.getUserSubscription();
+            const isPremium = subscription.isPremium; // 'plus' or 'enterprise'
+            
+            logger.info('[AskService] User subscription plan:', {
+                plan: subscription.plan,
+                isPremium: isPremium,
+                isActive: subscription.isActive
+            });
+            
+            // Use local API for premium users (faster response), Railway for free users
+            if (isPremium) {
+                logger.info('[AskService] Premium user detected - using local API for fast response');
+                
+                // Get API key and model from modelStateService
+                const modelInfo = modelStateService.getCurrentModelInfo('llm');
+                if (!modelInfo || !modelInfo.apiKey) {
+                    logger.error('[AskService] Premium user but no API key configured, falling back to Railway');
+                    // Fall through to Railway backend
+                } else {
+                    try {
+                        // Use OpenAI API directly for premium users
+                        const OpenAI = require('openai');
+                        const client = new OpenAI({ apiKey: modelInfo.apiKey });
+                        
+                        const modelToUse = modelInfo.model || 'gpt-4-turbo';
+                        logger.info('[AskService] Calling OpenAI API directly with model:', modelToUse);
+                        
+                        // Format messages for OpenAI API
+                        // OpenAI expects: string for text-only, or array for multimodal
+                        const openaiMessages = messages.map(msg => {
+                            if (msg.role === 'system') {
+                                return { role: 'system', content: msg.content };
+                            }
+                            // For user messages, if content is array with images, keep it
+                            // Otherwise, convert to string
+                            if (Array.isArray(msg.content) && msg.content.length === 1 && msg.content[0].type === 'text') {
+                                return { role: 'user', content: msg.content[0].text };
+                            }
+                            return msg; // Keep array format for multimodal
+                        });
+                        
+                        // Call OpenAI API with messages (supports text + images)
+                        const response = await client.chat.completions.create({
+                            model: modelToUse,
+                            messages: openaiMessages,
+                            temperature: 0.7,
+                            max_tokens: 4096
+                        });
+                        
+                        const aiResponse = response.choices[0]?.message?.content?.trim() || '';
+                        
+                        if (!aiResponse) {
+                            throw new Error('Empty response from OpenAI API');
+                        }
+                        
+                        logger.info('[AskService] Local API response received:', {
+                            responseLength: aiResponse.length,
+                            responsePreview: aiResponse.substring(0, 100)
+                        });
+                        
+                        // Update UI
+                        const askWin = getWindowPool()?.get('ask');
+                        if (askWin && !askWin.isDestroyed()) {
+                            this.state.isLoading = false;
+                            this.state.isStreaming = false;
+                            this.state.currentResponse = aiResponse;
+                            this.state.showTextInput = true;
+                            
+                            this._broadcastState();
+                            askWin.webContents.send('ask:responseComplete', {
+                                response: aiResponse,
+                                sessionId
+                            });
+                            
+                            logger.info('[AskService] UI updated with local API response');
+                        }
+                        
+                        // Save to database
+                        await this.askRepository.addAiMessage({ 
+                            sessionId, 
+                            role: 'assistant', 
+                            content: aiResponse
+                        });
+                        
+                        logger.info('[AskService] Local API execution completed successfully');
+                        return { success: true, response: aiResponse };
+                    } catch (localApiError) {
+                        logger.error('[AskService] Local API execution failed, falling back to Railway:', {
+                            error: localApiError.message || localApiError,
+                            stack: localApiError.stack
+                        });
+                        // Fall through to Railway backend as fallback
+                    }
+                }
+            }
+            
+            // Use Railway backend for free users or as fallback for premium users
+            logger.info('[AskService] Using Railway backend (free plan or fallback)');
             const agentIdToUse = this.selectedAgentId || 1;
             
             if (agentIdToUse) {
