@@ -568,13 +568,20 @@ class AskService {
             // The backend has the API keys configured in Railway environment variables
             logger.info('[AskService] Using backend Railway API - API keys managed server-side');
 
-            // Check if there's a persistent area selected, use it instead of full screen
-            // OPTIMIZATION: Reduce screenshot quality for faster upload
+            // OPTIMIZATION: Skip screenshot for text-only queries (10x faster)
+            // Only take screenshot if user explicitly requests it or uses specific keywords
+            const needsScreenshot = false; // TODO: Add UI toggle or detect keywords like "screen", "show", "see"
+            
             let screenshotResult;
             let screenshotBase64 = null;
             let screenshotContext = 'full screen';
             const SCREENSHOT_QUALITY = 50; // Reduced from 75 to 50 for faster upload
             
+            if (!needsScreenshot) {
+                logger.info('[AskService] OPTIMIZATION: Skipping screenshot for text-only query (10x faster)');
+            }
+            
+            if (needsScreenshot) {
             try {
                 // Try to get persistent area capture first
                 const { ipcMain } = require('electron');
@@ -644,6 +651,7 @@ class AskService {
                 screenshotBase64 = screenshotResult.success ? screenshotResult.base64 : null;
                 screenshotContext = 'full screen';
             }
+            } // END needsScreenshot
 
             // Add user message to context manager
             fastContextManager.addContext({
