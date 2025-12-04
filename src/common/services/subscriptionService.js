@@ -1,6 +1,6 @@
 const authService = require('./authService');
 const { createLogger } = require('./logger');
-const resourcePoolManager = require('../../domains/infrastructure/resource-pool-manager');
+const { resourcePoolManager } = require('./resource-pool-manager');
 
 const logger = createLogger('SubscriptionService');
 
