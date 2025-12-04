@@ -124,5 +124,5 @@ dedale-database-*.json
 xerus-master/
 glass-fix/
 clairia_web/
-backend/
+# backend/ - temporairement suivi pour Railway
 temp_*.txt

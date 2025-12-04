@@ -26,7 +26,9 @@ files:
     - package.json
     - backend/**/*
     - '!**/node_modules/electron/**'
-    - '!**/.env*'
+    - .env
+    - '!**/.env.test'
+    - '!**/.env.local'
     - '!**/test-db-connection.js'
     - public/build/**/*
 
