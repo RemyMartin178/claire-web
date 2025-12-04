@@ -537,14 +537,15 @@ export class AskView extends LitElement {
         .response-line h4,
         .response-line h5,
         .response-line h6 {
-            color: rgba(255, 255, 255, 1.0);
+            color: #FFFFFF;
             margin: 16px 0 8px 0;
             font-weight: 600;
         }
 
         .response-line p {
             margin: 8px 0;
-            color: rgba(255, 255, 255, 1.0);
+            color: #FFFFFF;
+            line-height: 1.6;
         }
 
         .response-line ul,
@@ -555,12 +556,13 @@ export class AskView extends LitElement {
 
         .response-line li {
             margin: 4px 0;
-            color: rgba(255, 255, 255, 1.0);
+            color: #FFFFFF;
+            line-height: 1.5;
         }
 
         .response-line code {
             background: rgba(255, 255, 255, 0.15);
-            color: rgba(255, 255, 255, 1.0);
+            color: #FFFFFF;
             padding: 2px 6px;
             border-radius: 4px;
             font-family: 'Monaco', 'Menlo', monospace;
@@ -569,7 +571,7 @@ export class AskView extends LitElement {
 
         .response-line pre {
             background: rgba(255, 255, 255, 0.08);
-            color: rgba(255, 255, 255, 1.0);
+            color: #FFFFFF;
             padding: 12px;
             border-radius: 6px;
             overflow-x: auto;
@@ -587,7 +589,7 @@ export class AskView extends LitElement {
             margin: 12px 0;
             padding: 8px 16px;
             background: rgba(255, 255, 255, 0.08);
-            color: rgba(255, 255, 255, 1.0);
+            color: #FFFFFF;
         }
 
         .empty-state {
