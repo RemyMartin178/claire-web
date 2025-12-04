@@ -858,9 +858,23 @@ class AskService {
                             this.state.isStreaming = false;
                             this.state.currentResponse = agentResponse.response;
                             this.state.showTextInput = true;
+                            
+                            // Log response for debugging
+                            logger.info('[AskService] Backend response:', {
+                                responseLength: agentResponse.response?.length,
+                                responsePreview: agentResponse.response?.substring(0, 100)
+                            });
+                            
+                            // Broadcast state to all listeners
                             this._broadcastState();
                             
-                            logger.info('[AskService] UI updated with agent response - state broadcasted');
+                            // Also send directly to Ask window
+                            askWin.webContents.send('ask:responseComplete', {
+                                response: agentResponse.response,
+                                sessionId
+                            });
+                            
+                            logger.info('[AskService] UI updated with agent response - state broadcasted and sent directly');
                         } else {
                             logger.warn('[AskService] Ask window not available, skipping UI update');
                         }
