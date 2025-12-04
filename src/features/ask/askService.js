@@ -817,8 +817,8 @@ class AskService {
             }
             
             // Always use backend agent execution (Railway has API keys)
-            // Use selected agent or fallback to first available agent
-            const agentIdToUse = this.selectedAgentId || (await this.getAgents()).agents?.[0]?.id;
+            // Use selected agent or fallback to agent ID 1 (default)
+            const agentIdToUse = this.selectedAgentId || 1;
             
             if (agentIdToUse) {
                 logger.info('[AskService] Using backend agent execution for agent ID:', agentIdToUse);
