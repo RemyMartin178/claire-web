@@ -568,9 +568,8 @@ class AskService {
             // The backend has the API keys configured in Railway environment variables
             logger.info('[AskService] Using backend Railway API - API keys managed server-side');
 
-            // OPTIMIZATION: Skip screenshot for text-only queries (10x faster)
-            // Only take screenshot if user explicitly requests it or uses specific keywords
-            const needsScreenshot = false; // TODO: Add UI toggle or detect keywords like "screen", "show", "see"
+            // SMART OPTIMIZATION: Analyze prompt to decide if screenshot is needed
+            const needsScreenshot = this._promptNeedsScreenshot(userPrompt.trim());
             
             let screenshotResult;
             let screenshotBase64 = null;
@@ -578,7 +577,9 @@ class AskService {
             const SCREENSHOT_QUALITY = 50; // Reduced from 75 to 50 for faster upload
             
             if (!needsScreenshot) {
-                logger.info('[AskService] OPTIMIZATION: Skipping screenshot for text-only query (10x faster)');
+                logger.info('[AskService] OPTIMIZATION: Text-only query detected, skipping screenshot (10x faster)');
+            } else {
+                logger.info('[AskService] Screenshot required based on prompt analysis');
             }
             
             if (needsScreenshot) {
@@ -1528,6 +1529,61 @@ class AskService {
                 providerStats: this.getProviderStatistics()
             }
         };
+    }
+
+    /**
+     * Analyze prompt to determine if screenshot is needed
+     * @param {string} prompt - User prompt
+     * @returns {boolean} True if screenshot is needed
+     */
+    _promptNeedsScreenshot(prompt) {
+        const lowerPrompt = prompt.toLowerCase();
+        
+        // Keywords that indicate screenshot is needed
+        const screenshotKeywords = [
+            'écran', 'screen', 'affich', 'voir', 'see', 'show', 'look',
+            'montre', 'regarde', 'observe', 'analyse', 'analyze', 
+            'image', 'photo', 'capture', 'visual',
+            'que vois-tu', 'what do you see', 'what\'s on',
+            'décris', 'describe', 'explique ce que', 'explain what',
+            'ce qui est', 'what is', 'cet écran', 'this screen',
+            'cette page', 'this page', 'ce site', 'this site',
+            'corrige', 'fix', 'erreur', 'error', 'bug',
+            'code', 'fichier', 'file', 'document'
+        ];
+        
+        // Keywords that indicate text-only query (no screenshot needed)
+        const textOnlyKeywords = [
+            'c\'est quoi', 'what is', 'qui est', 'who is',
+            'comment faire', 'how to', 'how do',
+            'pourquoi', 'why', 'quand', 'when',
+            'définition', 'definition', 'explique-moi', 'explain',
+            'calcule', 'calculate', 'combien', 'how much',
+            'traduis', 'translate', 'écris', 'write',
+            'code', 'programme', 'program', 'script'
+        ];
+        
+        // Check for screenshot keywords
+        const hasScreenshotKeyword = screenshotKeywords.some(keyword => lowerPrompt.includes(keyword));
+        
+        // Check for text-only keywords
+        const hasTextOnlyKeyword = textOnlyKeywords.some(keyword => lowerPrompt.includes(keyword));
+        
+        // If screenshot keyword found, definitely need screenshot
+        if (hasScreenshotKeyword) {
+            logger.info('[AskService] Screenshot required - detected keyword in prompt');
+            return true;
+        }
+        
+        // If text-only keyword found and no screenshot keyword, skip screenshot
+        if (hasTextOnlyKeyword && !hasScreenshotKeyword) {
+            logger.info('[AskService] Text-only query detected - no screenshot needed');
+            return false;
+        }
+        
+        // Default: NO screenshot (faster by default, user can request it explicitly)
+        logger.info('[AskService] Default: no screenshot (text-only mode for speed)');
+        return false;
     }
 
     /**
