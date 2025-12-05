@@ -1164,6 +1164,7 @@ class AskService {
                         logger.info('[AskService] Backend agent execution completed successfully');
                         
                         // Consommer le quota après une requête réussie
+                        const requestQuotaService = require('../../common/services/requestQuotaService');
                         await requestQuotaService.consumeRequest();
                         
                         return { success: true, response: agentResponse.response };
