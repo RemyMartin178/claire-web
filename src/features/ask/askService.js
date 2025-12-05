@@ -524,6 +524,40 @@ class AskService {
         const startTime = Date.now();
         const requestId = this.generateRequestId();
         
+        // Vérifier le quota avant de traiter la requête
+        const requestQuotaService = require('../../common/services/requestQuotaService');
+        const quotaCheck = await requestQuotaService.checkQuota();
+        
+        if (!quotaCheck.allowed) {
+            const errorMessage = `Limite de requêtes atteinte. Vous avez utilisé ${quotaCheck.used}/${quotaCheck.limit} requêtes aujourd'hui. Réessayez après ${quotaCheck.resetAt.toLocaleTimeString('fr-FR')} ou passez à Claire Plus pour un accès illimité.`;
+            logger.warn('[AskService] Request blocked by quota:', {
+                used: quotaCheck.used,
+                limit: quotaCheck.limit,
+                remaining: quotaCheck.remaining
+            });
+            
+            // Afficher l'erreur à l'utilisateur
+            const askWin = getWindowPool()?.get('ask');
+            if (askWin && !askWin.isDestroyed()) {
+                this.state.isLoading = false;
+                this.state.currentResponse = errorMessage;
+                this._broadcastState();
+                askWin.webContents.send('ask:responseComplete', {
+                    response: errorMessage,
+                    sessionId: null,
+                    error: true
+                });
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        logger.debug('[AskService] Quota check passed:', {
+            remaining: quotaCheck.remaining,
+            plan: quotaCheck.plan
+        });
+        const requestId = this.generateRequestId();
+        
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
             ...this.state,
@@ -1128,6 +1162,10 @@ class AskService {
                         });
                         
                         logger.info('[AskService] Backend agent execution completed successfully');
+                        
+                        // Consommer le quota après une requête réussie
+                        await requestQuotaService.consumeRequest();
+                        
                         return { success: true, response: agentResponse.response };
                     } else {
                         logger.error('[AskService] Backend agent execution failed - Invalid response:', {

@@ -967,29 +967,31 @@ export class MainHeader extends ThemeMixin(LitElement) {
         this.isTogglingSession = true;
 
         try {
-            if (window.api) {
-                // Check if API keys are configured and show helpful message if needed
-                console.log('[MainHeader] [SEARCH] DEBUG: About to check hasConfiguredProviders...');
-                const hasProviders = await window.api.apiKeyHeader.hasConfiguredProviders();
-                console.log('[MainHeader] [SEARCH] DEBUG: hasConfiguredProviders returned:', hasProviders);
-                
-                if (!hasProviders) {
-                    // Show helpful message about API keys but don't force login
-                    console.log('[MainHeader] API keys not configured, showing settings hint');
-                    alert('To use the Listen feature, please add your AI provider API keys in Settings first.');
-                    this.isTogglingSession = false;
-                    // Open settings window to help user
-                    window.api.mainHeader.showSettingsWindow();
-                    return;
-                }
-                
-                // Proceed with listen functionality if providers are configured
+            if (window.api && window.api.mainHeader) {
+                // Proceed directly with listen functionality
+                // The listen service will handle API key validation internally
                 const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
+                console.log('[MainHeader] Sending listen button click:', listenButtonText);
+                
                 await window.api.mainHeader.sendListenButtonClick(listenButtonText);
+                
+                // Reset flag after a short delay to allow the operation to complete
+                setTimeout(() => {
+                    this.isTogglingSession = false;
+                }, 500);
+            } else {
+                console.error('[MainHeader] window.api.mainHeader not available');
+                this.isTogglingSession = false;
             }
         } catch (error) {
-            console.error('IPC invoke for session change failed:', error);
+            console.error('[MainHeader] IPC invoke for session change failed:', error);
             this.isTogglingSession = false;
+            
+            // Show user-friendly error message
+            if (window.api && window.api.mainHeader) {
+                // Try to show error in UI if possible
+                console.error('[MainHeader] Listen button error:', error.message);
+            }
         }
     }
 

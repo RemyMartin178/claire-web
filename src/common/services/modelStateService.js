@@ -225,26 +225,34 @@ class ModelStateService extends EventEmitter {
             
             // Force load from environment variables (prioritize .env over database)
             // This ensures that API keys in .env are always used, even if empty values exist in DB
+            logger.debug('[ModelStateService] Loading API keys from environment:', {
+                openai: !!process.env.OPENAI_API_KEY,
+                gemini: !!process.env.GEMINI_API_KEY,
+                anthropic: !!process.env.ANTHROPIC_API_KEY,
+                deepgram: !!process.env.DEEPGRAM_API_KEY
+            });
+            
             for (const [provider, envKey] of Object.entries(envMapping)) {
                 if (envKey && envKey.trim() !== '') {
                     // Always use .env value if it exists and is not empty
                     apiKeys[provider] = envKey;
-                    logger.info(`[ModelStateService] Loaded ${provider} API key from environment (length: ${envKey.length})`);
+                    logger.info(`[ModelStateService] ✅ Loaded ${provider} API key from environment (length: ${envKey.length})`);
                 } else if (!apiKeys[provider] || apiKeys[provider] === '' || apiKeys[provider] === null) {
                     // Keep existing value only if .env doesn't have it
                     // If DB has empty/null, keep it as null
                     if (apiKeys[provider] === '' || apiKeys[provider] === null) {
                         apiKeys[provider] = null;
                     }
+                    logger.debug(`[ModelStateService] ⚠️ No ${provider} API key in environment or database`);
                 }
             }
             
             // Debug log: Show which API keys are loaded
-            logger.debug('[ModelStateService] API keys loaded:', {
-                openai: apiKeys.openai ? `***${apiKeys.openai.slice(-4)}` : 'null',
-                gemini: apiKeys.gemini ? `***${apiKeys.gemini.slice(-4)}` : 'null',
-                anthropic: apiKeys.anthropic ? `***${apiKeys.anthropic.slice(-4)}` : 'null',
-                deepgram: apiKeys.deepgram ? `***${apiKeys.deepgram.slice(-4)}` : 'null'
+            logger.info('[ModelStateService] API keys summary:', {
+                openai: apiKeys.openai ? `***${apiKeys.openai.slice(-4)} (${apiKeys.openai.length} chars)` : 'null',
+                gemini: apiKeys.gemini ? `***${apiKeys.gemini.slice(-4)} (${apiKeys.gemini.length} chars)` : 'null',
+                anthropic: apiKeys.anthropic ? `***${apiKeys.anthropic.slice(-4)} (${apiKeys.anthropic.length} chars)` : 'null',
+                deepgram: apiKeys.deepgram ? `***${apiKeys.deepgram.slice(-4)} (${apiKeys.deepgram.length} chars)` : 'null'
             });
             
             
