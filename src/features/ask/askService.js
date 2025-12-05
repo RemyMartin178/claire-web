@@ -912,16 +912,16 @@ class AskService {
                 }
                 
                 if (!selectedProvider || !selectedApiKey || !selectedModel) {
-                    logger.error('[AskService] Premium user but no valid API key/model configured for plan', {
+                    logger.warn('[AskService] Premium user but no valid API key/model configured for plan - falling back to Railway', {
                         plan: plan,
                         checkedProviders: providers,
                         openaiKey: !!modelStateService.getApiKey('openai'),
                         anthropicKey: !!modelStateService.getApiKey('anthropic'),
                         geminiKey: !!modelStateService.getApiKey('gemini')
                     });
-                    // Premium user but no API key - erreur claire
-                    throw new Error('Premium user but no valid API key configured. Please add an API key in settings.');
-                }
+                    // Premium user but no API key - fallback to Railway instead of throwing error
+                    // Continue to Railway backend below
+                } else {
                 
                 // Use selected provider API directly for premium users
                 try {
@@ -1090,10 +1090,11 @@ class AskService {
                     // Ne pas fallback vers Railway - lancer l'erreur pour que l'utilisateur sache
                     throw new Error(`API ${selectedProvider} failed: ${localApiError.message}`);
                 }
+                }
             }
             
-            // Use Railway backend ONLY for free users (no fallback for premium users)
-            if (!isPremium || !isActive) {
+            // Use Railway backend for free users OR premium users without API keys
+            if (!isPremium || !isActive || !selectedProvider) {
                 logger.info('[AskService] Using Railway backend (free plan)');
                 const agentIdToUse = this.selectedAgentId || 1;
                 
