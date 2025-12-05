@@ -1073,13 +1073,13 @@ class AskService {
                             content: aiResponse
                         });
                         
-                    logger.info(`[AskService] ${selectedProvider} API execution completed successfully with model ${selectedModel}`);
-                    
-                    // Consommer le quota après une requête réussie
-                    const requestQuotaService = require('../../common/services/requestQuotaService');
-                    await requestQuotaService.consumeRequest();
-                    
-                    return { success: true, response: aiResponse };
+                        logger.info(`[AskService] ${selectedProvider} API execution completed successfully with model ${selectedModel}`);
+                        
+                        // Consommer le quota après une requête réussie
+                        const requestQuotaService = require('../../common/services/requestQuotaService');
+                        await requestQuotaService.consumeRequest();
+                        
+                        return { success: true, response: aiResponse };
                 } catch (localApiError) {
                     logger.error(`[AskService] ${selectedProvider} API execution failed:`, {
                         provider: selectedProvider,
