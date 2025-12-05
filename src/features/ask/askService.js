@@ -556,7 +556,6 @@ class AskService {
             remaining: quotaCheck.remaining,
             plan: quotaCheck.plan
         });
-        const requestId = this.generateRequestId();
         
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
