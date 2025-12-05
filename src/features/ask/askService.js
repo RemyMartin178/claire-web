@@ -849,18 +849,28 @@ class AskService {
             if (isPremium) {
                 logger.info('[AskService] Premium user detected - using local API for fast response');
                 
-                // Get API key and model from modelStateService
-                const modelInfo = modelStateService.getCurrentModelInfo('llm');
-                if (!modelInfo || !modelInfo.apiKey) {
+                // Get API key directly from modelStateService (even if no model is selected)
+                const openaiApiKey = modelStateService.getApiKey('openai');
+                
+                // If no API key in modelStateService, try process.env directly as fallback
+                const apiKey = openaiApiKey || process.env.OPENAI_API_KEY;
+                
+                if (!apiKey || apiKey === 'local' || apiKey.trim() === '') {
                     logger.error('[AskService] Premium user but no API key configured, falling back to Railway');
+                    logger.debug('[AskService] API key check:', { 
+                        fromModelState: !!openaiApiKey, 
+                        fromEnv: !!process.env.OPENAI_API_KEY,
+                        value: apiKey ? '***' : null
+                    });
                     // Fall through to Railway backend
                 } else {
                     try {
                         // Use OpenAI API directly for premium users
                         const OpenAI = require('openai');
-                        const client = new OpenAI({ apiKey: modelInfo.apiKey });
+                        const client = new OpenAI({ apiKey: apiKey });
                         
-                        const modelToUse = modelInfo.model || 'gpt-4-turbo';
+                        // Use gpt-4-turbo by default for premium users, or gpt-4o if available
+                        const modelToUse = 'gpt-4-turbo';
                         logger.info('[AskService] Calling OpenAI API directly with model:', modelToUse);
                         
                         // Format messages for OpenAI API

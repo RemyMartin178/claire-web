@@ -223,12 +223,29 @@ class ModelStateService extends EventEmitter {
             };
             
             
+            // Force load from environment variables (prioritize .env over database)
+            // This ensures that API keys in .env are always used, even if empty values exist in DB
             for (const [provider, envKey] of Object.entries(envMapping)) {
-                if (!apiKeys[provider] && envKey) {
+                if (envKey && envKey.trim() !== '') {
+                    // Always use .env value if it exists and is not empty
                     apiKeys[provider] = envKey;
-                    logger.info(`[ModelStateService] Loaded ${provider} API key from environment`);
+                    logger.info(`[ModelStateService] Loaded ${provider} API key from environment (length: ${envKey.length})`);
+                } else if (!apiKeys[provider] || apiKeys[provider] === '' || apiKeys[provider] === null) {
+                    // Keep existing value only if .env doesn't have it
+                    // If DB has empty/null, keep it as null
+                    if (apiKeys[provider] === '' || apiKeys[provider] === null) {
+                        apiKeys[provider] = null;
+                    }
                 }
             }
+            
+            // Debug log: Show which API keys are loaded
+            logger.debug('[ModelStateService] API keys loaded:', {
+                openai: apiKeys.openai ? `***${apiKeys.openai.slice(-4)}` : 'null',
+                gemini: apiKeys.gemini ? `***${apiKeys.gemini.slice(-4)}` : 'null',
+                anthropic: apiKeys.anthropic ? `***${apiKeys.anthropic.slice(-4)}` : 'null',
+                deepgram: apiKeys.deepgram ? `***${apiKeys.deepgram.slice(-4)}` : 'null'
+            });
             
             
             // Load global model selections
