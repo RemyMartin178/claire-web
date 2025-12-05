@@ -1095,105 +1095,107 @@ class AskService {
             // Use Railway backend ONLY for free users (no fallback for premium users)
             if (!isPremium || !isActive) {
                 logger.info('[AskService] Using Railway backend (free plan)');
-            const agentIdToUse = this.selectedAgentId || 1;
-            
-            if (agentIdToUse) {
-                logger.info('[AskService] Using backend agent execution for agent ID:', agentIdToUse);
-                try {
-                    const { agentsApiClient } = require('../../domains/agents');
-                    const agentResponse = await agentsApiClient.executeAgent(agentIdToUse, {
-                        message: userPrompt,
-                        conversationHistory: conversationHistoryRaw || [],
-                        context: screenshotBase64 ? {
-                            image: screenshotBase64,
-                            imageContext: screenshotContext
-                        } : {}
-                    });
-                    
-                    logger.debug('[AskService] Agent response received:', { 
-                        agentId: this.selectedAgentId,
-                        agentResponse: agentResponse ? 'defined' : 'undefined',
-                        hasResponse: agentResponse?.response ? 'yes' : 'no',
-                        responseType: typeof agentResponse?.response,
-                        keys: agentResponse ? Object.keys(agentResponse) : 'no keys',
-                        success: agentResponse?.success
-                    });
-                    
-                    // Check if we have a valid response
-                    if (agentResponse && agentResponse.success && agentResponse.response) {
-                        const askWin = getWindowPool()?.get('ask');
-                        
-                        logger.debug('[AskService] Window check:', {
-                            hasWindowPool: !!getWindowPool(),
-                            hasAskWindow: !!askWin,
-                            isDestroyed: askWin ? askWin.isDestroyed() : 'no window'
+                const agentIdToUse = this.selectedAgentId || 1;
+                
+                if (agentIdToUse) {
+                    logger.info('[AskService] Using backend agent execution for agent ID:', agentIdToUse);
+                    try {
+                        const { agentsApiClient } = require('../../domains/agents');
+                        const agentResponse = await agentsApiClient.executeAgent(agentIdToUse, {
+                            message: userPrompt,
+                            conversationHistory: conversationHistoryRaw || [],
+                            context: screenshotBase64 ? {
+                                image: screenshotBase64,
+                                imageContext: screenshotContext
+                            } : {}
                         });
                         
-                        if (askWin && !askWin.isDestroyed()) {
-                            // Update internal state to match streaming behavior
-                            this.state.isLoading = false;
-                            this.state.isStreaming = false;
-                            this.state.currentResponse = agentResponse.response;
-                            this.state.showTextInput = true;
-                            
-                            // Log response for debugging
-                            logger.info('[AskService] Backend response:', {
-                                responseLength: agentResponse.response?.length,
-                                responsePreview: agentResponse.response?.substring(0, 100)
-                            });
-                            
-                            // Broadcast state to all listeners
-                            this._broadcastState();
-                            
-                            // Also send directly to Ask window
-                            askWin.webContents.send('ask:responseComplete', {
-                                response: agentResponse.response,
-                                sessionId
-                            });
-                            
-                            logger.info('[AskService] UI updated with agent response - state broadcasted and sent directly');
-                        } else {
-                            logger.warn('[AskService] Ask window not available, skipping UI update');
-                        }
-                        
-                        // Save to database regardless of window state
-                        await this.askRepository.addAiMessage({ 
-                            sessionId, 
-                            role: 'assistant', 
-                            content: agentResponse.response
-                        });
-                        
-                        logger.info('[AskService] Backend agent execution completed successfully');
-                        
-                        // Consommer le quota après une requête réussie
-                        const requestQuotaService = require('../../common/services/requestQuotaService');
-                        await requestQuotaService.consumeRequest();
-                        
-                        return { success: true, response: agentResponse.response };
-                    } else {
-                        logger.error('[AskService] Backend agent execution failed - Invalid response:', {
+                        logger.debug('[AskService] Agent response received:', { 
                             agentId: this.selectedAgentId,
-                            success: agentResponse?.success,
-                            hasResponse: !!agentResponse?.response,
-                            error: agentResponse?.error,
-                            agentResponse: agentResponse
+                            agentResponse: agentResponse ? 'defined' : 'undefined',
+                            hasResponse: agentResponse?.response ? 'yes' : 'no',
+                            responseType: typeof agentResponse?.response,
+                            keys: agentResponse ? Object.keys(agentResponse) : 'no keys',
+                            success: agentResponse?.success
                         });
-                        throw new Error(`Backend agent execution failed: ${agentResponse?.error || 'Invalid response'}`);
+                        
+                        // Check if we have a valid response
+                        if (agentResponse && agentResponse.success && agentResponse.response) {
+                            const askWin = getWindowPool()?.get('ask');
+                            
+                            logger.debug('[AskService] Window check:', {
+                                hasWindowPool: !!getWindowPool(),
+                                hasAskWindow: !!askWin,
+                                isDestroyed: askWin ? askWin.isDestroyed() : 'no window'
+                            });
+                            
+                            if (askWin && !askWin.isDestroyed()) {
+                                // Update internal state to match streaming behavior
+                                this.state.isLoading = false;
+                                this.state.isStreaming = false;
+                                this.state.currentResponse = agentResponse.response;
+                                this.state.showTextInput = true;
+                                
+                                // Log response for debugging
+                                logger.info('[AskService] Backend response:', {
+                                    responseLength: agentResponse.response?.length,
+                                    responsePreview: agentResponse.response?.substring(0, 100)
+                                });
+                                
+                                // Broadcast state to all listeners
+                                this._broadcastState();
+                                
+                                // Also send directly to Ask window
+                                askWin.webContents.send('ask:responseComplete', {
+                                    response: agentResponse.response,
+                                    sessionId
+                                });
+                                
+                                logger.info('[AskService] UI updated with agent response - state broadcasted and sent directly');
+                            } else {
+                                logger.warn('[AskService] Ask window not available, skipping UI update');
+                            }
+                            
+                            // Save to database regardless of window state
+                            await this.askRepository.addAiMessage({ 
+                                sessionId, 
+                                role: 'assistant', 
+                                content: agentResponse.response
+                            });
+                            
+                            logger.info('[AskService] Backend agent execution completed successfully');
+                            
+                            // Consommer le quota après une requête réussie
+                            const requestQuotaService = require('../../common/services/requestQuotaService');
+                            await requestQuotaService.consumeRequest();
+                            
+                            return { success: true, response: agentResponse.response };
+                        } else {
+                            logger.error('[AskService] Backend agent execution failed - Invalid response:', {
+                                agentId: this.selectedAgentId,
+                                success: agentResponse?.success,
+                                hasResponse: !!agentResponse?.response,
+                                error: agentResponse?.error,
+                                agentResponse: agentResponse
+                            });
+                            throw new Error(`Backend agent execution failed: ${agentResponse?.error || 'Invalid response'}`);
+                        }
+                    } catch (backendError) {
+                        logger.error('[AskService] Backend agent execution failed:', {
+                            agentId: this.selectedAgentId,
+                            error: backendError.message || backendError,
+                            stack: backendError.stack
+                        });
+                        throw backendError; // Re-throw instead of falling back to local AI
                     }
-                } catch (backendError) {
-                    logger.error('[AskService] Backend agent execution failed:', {
-                        agentId: this.selectedAgentId,
-                        error: backendError.message || backendError,
-                        stack: backendError.stack
-                    });
-                    throw backendError; // Re-throw instead of falling back to local AI
                 }
             }
-
+            
             // Only create local LLM if not using backend agent execution
+            // This code should only run if we haven't returned yet (shouldn't happen for premium users)
             
             // Determine optimal provider for this request
-            selectedProvider = this.determineOptimalProvider(userPrompt, screenshotResult);
+            let selectedProvider = this.determineOptimalProvider(userPrompt, screenshotResult);
             if (selectedProvider) {
                 logger.info('Selected optimal provider:', selectedProvider);
                 this.state.currentProvider = selectedProvider;
