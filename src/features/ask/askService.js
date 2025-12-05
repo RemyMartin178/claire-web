@@ -837,73 +837,181 @@ class AskService {
             
             // Check user subscription plan
             const subscription = await subscriptionService.getUserSubscription();
-            const isPremium = subscription.isPremium; // 'plus' or 'enterprise'
+            const plan = subscription.plan; // 'free', 'plus', 'enterprise'
+            const isPremium = subscription.isPremium;
+            const isActive = subscription.isActive;
             
             logger.info('[AskService] User subscription plan:', {
-                plan: subscription.plan,
+                plan: plan,
                 isPremium: isPremium,
-                isActive: subscription.isActive
+                isActive: isActive
             });
             
             // Use local API for premium users (faster response), Railway for free users
-            if (isPremium) {
+            if (isPremium && isActive) {
                 logger.info('[AskService] Premium user detected - using local API for fast response');
                 
-                // Get API key directly from modelStateService (even if no model is selected)
-                const openaiApiKey = modelStateService.getApiKey('openai');
+                // Import model subscription mapper
+                const modelMapper = require('../../common/services/modelSubscriptionMapper');
                 
-                // If no API key in modelStateService, try process.env directly as fallback
-                const apiKey = openaiApiKey || process.env.OPENAI_API_KEY;
+                // Try providers in order of preference: OpenAI > Anthropic > Gemini
+                const providers = ['openai', 'anthropic', 'gemini'];
+                let selectedProvider = null;
+                let selectedApiKey = null;
+                let selectedModel = null;
                 
-                if (!apiKey || apiKey === 'local' || apiKey.trim() === '') {
-                    logger.error('[AskService] Premium user but no API key configured, falling back to Railway');
-                    logger.debug('[AskService] API key check:', { 
-                        fromModelState: !!openaiApiKey, 
-                        fromEnv: !!process.env.OPENAI_API_KEY,
-                        value: apiKey ? '***' : null
+                // Find first available provider with API key
+                for (const provider of providers) {
+                    const apiKey = modelStateService.getApiKey(provider) || process.env[`${provider.toUpperCase()}_API_KEY`];
+                    
+                    if (apiKey && apiKey !== 'local' && apiKey.trim() !== '') {
+                        // Get best model for this plan
+                        const bestModel = modelMapper.getBestModelForPlan(provider, plan);
+                        
+                        if (bestModel) {
+                            selectedProvider = provider;
+                            selectedApiKey = apiKey;
+                            selectedModel = bestModel.id;
+                            logger.info(`[AskService] Selected ${provider} with model ${selectedModel} for plan ${plan}`);
+                            break;
+                        }
+                    }
+                }
+                
+                if (!selectedProvider || !selectedApiKey || !selectedModel) {
+                    logger.error('[AskService] Premium user but no valid API key/model configured for plan', {
+                        plan: plan,
+                        checkedProviders: providers,
+                        openaiKey: !!modelStateService.getApiKey('openai'),
+                        anthropicKey: !!modelStateService.getApiKey('anthropic'),
+                        geminiKey: !!modelStateService.getApiKey('gemini')
                     });
                     // Fall through to Railway backend
                 } else {
                     try {
-                        // Use OpenAI API directly for premium users
-                        const OpenAI = require('openai');
-                        const client = new OpenAI({ apiKey: apiKey });
+                        // Use selected provider API directly for premium users
+                        logger.info(`[AskService] Calling ${selectedProvider} API directly with model: ${selectedModel}`);
                         
-                        // Use gpt-4-turbo by default for premium users, or gpt-4o if available
-                        const modelToUse = 'gpt-4-turbo';
-                        logger.info('[AskService] Calling OpenAI API directly with model:', modelToUse);
+                        let aiResponse = null;
                         
-                        // Format messages for OpenAI API
-                        // OpenAI expects: string for text-only, or array for multimodal
-                        const openaiMessages = messages.map(msg => {
-                            if (msg.role === 'system') {
-                                return { role: 'system', content: msg.content };
-                            }
-                            // For user messages, if content is array with images, keep it
-                            // Otherwise, convert to string
-                            if (Array.isArray(msg.content) && msg.content.length === 1 && msg.content[0].type === 'text') {
-                                return { role: 'user', content: msg.content[0].text };
-                            }
-                            return msg; // Keep array format for multimodal
-                        });
-                        
-                        // Call OpenAI API with messages (supports text + images)
-                        const response = await client.chat.completions.create({
-                            model: modelToUse,
-                            messages: openaiMessages,
-                            temperature: 0.7,
-                            max_tokens: 4096
-                        });
-                        
-                        const aiResponse = response.choices[0]?.message?.content?.trim() || '';
-                        
-                        if (!aiResponse) {
-                            throw new Error('Empty response from OpenAI API');
+                        if (selectedProvider === 'openai') {
+                            const OpenAI = require('openai');
+                            const client = new OpenAI({ apiKey: selectedApiKey });
+                            
+                            // Format messages for OpenAI API
+                            const openaiMessages = messages.map(msg => {
+                                if (msg.role === 'system') {
+                                    return { role: 'system', content: msg.content };
+                                }
+                                if (Array.isArray(msg.content) && msg.content.length === 1 && msg.content[0].type === 'text') {
+                                    return { role: 'user', content: msg.content[0].text };
+                                }
+                                return msg;
+                            });
+                            
+                            const response = await client.chat.completions.create({
+                                model: selectedModel,
+                                messages: openaiMessages,
+                                temperature: 0.7,
+                                max_tokens: 4096
+                            });
+                            
+                            aiResponse = response.choices[0]?.message?.content?.trim() || '';
+                        } else if (selectedProvider === 'anthropic') {
+                            const Anthropic = require('@anthropic-ai/sdk');
+                            const client = new Anthropic({ apiKey: selectedApiKey });
+                            
+                            // Format messages for Anthropic API
+                            const anthropicMessages = messages
+                                .filter(msg => msg.role !== 'system')
+                                .map(msg => {
+                                    if (Array.isArray(msg.content)) {
+                                        // Handle multimodal content
+                                        const textParts = msg.content.filter(p => p.type === 'text');
+                                        const imageParts = msg.content.filter(p => p.type === 'image_url');
+                                        
+                                        if (imageParts.length > 0) {
+                                            // Anthropic supports images
+                                            return {
+                                                role: msg.role,
+                                                content: msg.content.map(part => {
+                                                    if (part.type === 'text') {
+                                                        return { type: 'text', text: part.text };
+                                                    } else if (part.type === 'image_url') {
+                                                        return {
+                                                            type: 'image',
+                                                            source: {
+                                                                type: 'base64',
+                                                                media_type: 'image/jpeg',
+                                                                data: part.image_url.url.replace('data:image/jpeg;base64,', '')
+                                                            }
+                                                        };
+                                                    }
+                                                    return part;
+                                                })
+                                            };
+                                        }
+                                        return { role: msg.role, content: textParts[0]?.text || '' };
+                                    }
+                                    return { role: msg.role, content: msg.content };
+                                });
+                            
+                            const systemMessage = messages.find(msg => msg.role === 'system');
+                            
+                            const response = await client.messages.create({
+                                model: selectedModel,
+                                max_tokens: 4096,
+                                system: systemMessage?.content || '',
+                                messages: anthropicMessages
+                            });
+                            
+                            aiResponse = response.content[0]?.text || '';
+                        } else if (selectedProvider === 'gemini') {
+                            const { GoogleGenerativeAI } = require('@google/generative-ai');
+                            const client = new GoogleGenerativeAI(selectedApiKey);
+                            const model = client.getGenerativeModel({ model: selectedModel });
+                            
+                            // Format messages for Gemini API
+                            const geminiContent = messages
+                                .filter(msg => msg.role !== 'system')
+                                .map(msg => {
+                                    if (Array.isArray(msg.content)) {
+                                        const parts = msg.content.map(part => {
+                                            if (part.type === 'text') {
+                                                return { text: part.text };
+                                            } else if (part.type === 'image_url') {
+                                                return {
+                                                    inlineData: {
+                                                        data: part.image_url.url.replace('data:image/jpeg;base64,', ''),
+                                                        mimeType: 'image/jpeg'
+                                                    }
+                                                };
+                                            }
+                                            return part;
+                                        });
+                                        return { role: msg.role === 'user' ? 'user' : 'model', parts };
+                                    }
+                                    return { role: msg.role === 'user' ? 'user' : 'model', parts: [{ text: msg.content }] };
+                                });
+                            
+                            const systemInstruction = messages.find(msg => msg.role === 'system')?.content || '';
+                            
+                            const result = await model.generateContent({
+                                contents: geminiContent,
+                                systemInstruction: systemInstruction
+                            });
+                            
+                            aiResponse = result.response.text();
                         }
                         
-                        logger.info('[AskService] Local API response received:', {
+                        if (!aiResponse || aiResponse.trim() === '') {
+                            throw new Error(`Empty response from ${selectedProvider} API`);
+                        }
+                        
+                        logger.info(`[AskService] ${selectedProvider} API response received:`, {
                             responseLength: aiResponse.length,
-                            responsePreview: aiResponse.substring(0, 100)
+                            responsePreview: aiResponse.substring(0, 100),
+                            model: selectedModel
                         });
                         
                         // Update UI
@@ -930,20 +1038,27 @@ class AskService {
                             content: aiResponse
                         });
                         
-                        logger.info('[AskService] Local API execution completed successfully');
+                        logger.info(`[AskService] ${selectedProvider} API execution completed successfully with model ${selectedModel}`);
                         return { success: true, response: aiResponse };
                     } catch (localApiError) {
-                        logger.error('[AskService] Local API execution failed, falling back to Railway:', {
+                        logger.error(`[AskService] ${selectedProvider} API execution failed:`, {
+                            provider: selectedProvider,
+                            model: selectedModel,
                             error: localApiError.message || localApiError,
                             stack: localApiError.stack
                         });
-                        // Fall through to Railway backend as fallback
+                        // Ne pas fallback vers Railway - lancer l'erreur pour que l'utilisateur sache
+                        throw new Error(`API ${selectedProvider} failed: ${localApiError.message}`);
                     }
+                } else {
+                    // Premium user but no API key - erreur claire
+                    throw new Error('Premium user but no valid API key configured. Please add an API key in settings.');
                 }
             }
             
-            // Use Railway backend for free users or as fallback for premium users
-            logger.info('[AskService] Using Railway backend (free plan or fallback)');
+            // Use Railway backend ONLY for free users (no fallback for premium users)
+            if (!isPremium || !isActive) {
+                logger.info('[AskService] Using Railway backend (free plan)');
             const agentIdToUse = this.selectedAgentId || 1;
             
             if (agentIdToUse) {
