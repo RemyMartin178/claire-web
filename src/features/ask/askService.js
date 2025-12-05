@@ -919,13 +919,15 @@ class AskService {
                         anthropicKey: !!modelStateService.getApiKey('anthropic'),
                         geminiKey: !!modelStateService.getApiKey('gemini')
                     });
-                    // Fall through to Railway backend
-                } else {
-                    try {
-                        // Use selected provider API directly for premium users
-                        logger.info(`[AskService] Calling ${selectedProvider} API directly with model: ${selectedModel}`);
-                        
-                        let aiResponse = null;
+                    // Premium user but no API key - erreur claire
+                    throw new Error('Premium user but no valid API key configured. Please add an API key in settings.');
+                }
+                
+                // Use selected provider API directly for premium users
+                try {
+                    logger.info(`[AskService] Calling ${selectedProvider} API directly with model: ${selectedModel}`);
+                    
+                    let aiResponse = null;
                         
                         if (selectedProvider === 'openai') {
                             const OpenAI = require('openai');
@@ -1071,21 +1073,22 @@ class AskService {
                             content: aiResponse
                         });
                         
-                        logger.info(`[AskService] ${selectedProvider} API execution completed successfully with model ${selectedModel}`);
-                        return { success: true, response: aiResponse };
-                    } catch (localApiError) {
-                        logger.error(`[AskService] ${selectedProvider} API execution failed:`, {
-                            provider: selectedProvider,
-                            model: selectedModel,
-                            error: localApiError.message || localApiError,
-                            stack: localApiError.stack
-                        });
-                        // Ne pas fallback vers Railway - lancer l'erreur pour que l'utilisateur sache
-                        throw new Error(`API ${selectedProvider} failed: ${localApiError.message}`);
-                    }
-                } else {
-                    // Premium user but no API key - erreur claire
-                    throw new Error('Premium user but no valid API key configured. Please add an API key in settings.');
+                    logger.info(`[AskService] ${selectedProvider} API execution completed successfully with model ${selectedModel}`);
+                    
+                    // Consommer le quota après une requête réussie
+                    const requestQuotaService = require('../../common/services/requestQuotaService');
+                    await requestQuotaService.consumeRequest();
+                    
+                    return { success: true, response: aiResponse };
+                } catch (localApiError) {
+                    logger.error(`[AskService] ${selectedProvider} API execution failed:`, {
+                        provider: selectedProvider,
+                        model: selectedModel,
+                        error: localApiError.message || localApiError,
+                        stack: localApiError.stack
+                    });
+                    // Ne pas fallback vers Railway - lancer l'erreur pour que l'utilisateur sache
+                    throw new Error(`API ${selectedProvider} failed: ${localApiError.message}`);
                 }
             }
             
