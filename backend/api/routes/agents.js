@@ -169,6 +169,19 @@ router.post('/:id/execute', requireGuestPermission('agents:chat'), asyncHandler(
   const { id } = req.params;
   const { input, context } = req.body;
 
+  // DEBUG: Log full request payload
+  console.log('[RAILWAY DEBUG] /agents/:id/execute called:', {
+    agentId: id,
+    hasInput: !!input,
+    inputLength: input?.length || 0,
+    inputPreview: input ? input.substring(0, 50) : 'NO INPUT',
+    hasContext: !!context,
+    contextKeys: context ? Object.keys(context) : [],
+    contextImage: !!context?.image,
+    contextScreenshot: !!context?.screenshot,
+    fullBody: JSON.stringify(req.body, null, 2)
+  });
+
   if (!input || input.trim() === '') {
     throw new ValidationError('Input is required', { field: 'input' });
   }
@@ -189,6 +202,17 @@ router.post('/:id/execute', requireGuestPermission('agents:chat'), asyncHandler(
   };
 
   const result = await agentService.executeAgent(id, input, contextWithUserId);
+  
+  // DEBUG: Log result before sending to client
+  console.log('[RAILWAY DEBUG] executeAgent result:', {
+    success: result?.success,
+    hasResponse: !!result?.response,
+    responseType: typeof result?.response,
+    responseLength: result?.response?.length || 0,
+    responsePreview: result?.response ? result.response.substring(0, 100) : 'NO RESPONSE',
+    metadata: result?.metadata,
+    allKeys: result ? Object.keys(result) : []
+  });
   
   res.json(result);
 }));

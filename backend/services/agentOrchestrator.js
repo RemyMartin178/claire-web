@@ -279,6 +279,16 @@ class AgentOrchestrator {
       const individualResults = await Promise.all(individualPromises);
       console.log(`[FAST] [PERFORMANCE] Individual analyses completed in ${Date.now() - analysisStartTime}ms`);
       
+      // DEBUG: Log individual promises status
+      console.log('[RAILWAY DEBUG] Individual analysis status:', {
+        promisesCount: individualPromises.length,
+        resultsCount: individualResults.length,
+        useScreenshot: useScreenshot,
+        hasKnowledge: hasKnowledge,
+        hasScreenshotContext: hasScreenshot,
+        hasRAGResults: ragResults.length > 0
+      });
+      
       console.log('🏁 [INDIVIDUAL ANALYSIS RESULTS] ==========================================');
       individualResults.forEach(result => {
         const optimizationNote = result.preAnalyzed ? ' [PRE-ANALYZED [FAST]]' : '';
@@ -316,6 +326,16 @@ class AgentOrchestrator {
 
       // Step 4: Select best response based on content quality and context relevance
       console.log('[TARGET] [FINAL SELECTION] ==========================================');
+      
+      // DEBUG: Log analysis results before selection
+      console.log('[RAILWAY DEBUG] Analysis results before selection:', {
+        resultsCount: analysisResults.length,
+        types: analysisResults.map(r => r.type),
+        hasScreenshotResult: analysisResults.some(r => r.type === 'screenshot'),
+        hasKnowledgeResult: analysisResults.some(r => r.type === 'knowledge'),
+        hasCombinedResult: analysisResults.some(r => r.type === 'combined')
+      });
+      
       analysisResults.forEach(result => {
         const quality = this.assessContentQuality(result.response);
         console.log(`[DATA] ${result.type.toUpperCase()}: Quality ${(quality * 100).toFixed(0)}% (${result.response.length} chars)`);
