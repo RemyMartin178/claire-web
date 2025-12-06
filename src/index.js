@@ -29,45 +29,34 @@ const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } =
 const path = require('path');
 const fs = require('fs');
 
-// Always load .env file if it exists (for both development and production)
-try {
-    const envPath = app.isPackaged 
-        ? path.join(process.resourcesPath, 'app.asar.unpacked', '.env')
-        : path.join(__dirname, '..', '.env');
-    
-    // Try multiple locations for .env file
-    const possiblePaths = [
-        envPath,
-        path.join(__dirname, '..', '.env'), // Development
-        path.join(process.cwd(), '.env'), // Current directory
-        path.join(app.getAppPath(), '.env'), // App path
-        path.join(process.resourcesPath, '.env'), // Resources folder
-        path.join(__dirname, '.env') // Current source directory
-    ];
-    
-    let loaded = false;
-    for (const tryPath of possiblePaths) {
-        if (fs.existsSync(tryPath)) {
-            require('dotenv').config({ path: tryPath });
-            console.log('[STARTUP] 📝 Loaded .env file from:', tryPath);
-            
-            // Log loaded environment variables (without showing actual values)
-            if (process.env.OPENAI_API_KEY) console.log('[STARTUP] ✅ OPENAI_API_KEY detected');
-            if (process.env.ANTHROPIC_API_KEY) console.log('[STARTUP] ✅ ANTHROPIC_API_KEY detected');
-            if (process.env.GEMINI_API_KEY) console.log('[STARTUP] ✅ GEMINI_API_KEY detected');
-            
-            loaded = true;
-            break;
-        }
+// Load .env file BEFORE anything else (CRITICAL for API keys)
+const dotenv = require('dotenv');
+const isDev = !app.isPackaged;
+
+if (isDev) {
+    // In dev, load .env from root
+    dotenv.config({ path: path.join(__dirname, '..', '.env') });
+    console.log('[STARTUP] 📝 Dev mode: loaded .env from root');
+} else {
+    // In prod, .env is in resources folder (via extraResources in electron-builder.yml)
+    const envPath = path.join(process.resourcesPath, '.env');
+    if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath });
+        console.log('[STARTUP] 📝 Prod mode: loaded .env from', envPath);
+    } else {
+        console.warn('[STARTUP] ⚠️ .env not found at', envPath);
     }
-    
-    if (!loaded) {
-        console.log('[STARTUP] ⚠️ No .env file found in any location, using system environment variables');
-        console.log('[STARTUP] Searched paths:', possiblePaths);
-    }
-} catch (error) {
-    console.log('[STARTUP] ⚠️ Error loading .env file:', error.message);
 }
+
+// Log detected API keys (for debugging)
+console.log('[STARTUP] Detected API keys:', {
+    openai: !!process.env.OPENAI_API_KEY,
+    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    gemini: !!process.env.GEMINI_API_KEY,
+    openaiKeyLength: process.env.OPENAI_API_KEY?.length || 0,
+    anthropicKeyLength: process.env.ANTHROPIC_API_KEY?.length || 0,
+    geminiKeyLength: process.env.GEMINI_API_KEY?.length || 0
+});
 
 const { createWindows } = require('./window/windowManager.js');
 

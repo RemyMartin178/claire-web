@@ -38,6 +38,10 @@ extraResources:
       to: out
     - from: src/common/config/production-config.js
       to: config/production-config.js
+    - from: .env
+      to: .env
+      filter:
+        - "**/*"
 
 asarUnpack:
     - "src/ui/assets/SystemAudioDump"
