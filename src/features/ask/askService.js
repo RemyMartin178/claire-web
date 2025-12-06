@@ -880,6 +880,11 @@ class AskService {
                 isActive: isActive
             });
             
+            // Declare selectedProvider outside the if block so it can be used in fallback check
+            let selectedProvider = null;
+            let selectedApiKey = null;
+            let selectedModel = null;
+            
             // Use local API for premium users (faster response), Railway for free users
             if (isPremium && isActive) {
                 logger.info('[AskService] Premium user detected - using local API for fast response');
@@ -889,9 +894,7 @@ class AskService {
                 
                 // Try providers in order of preference: OpenAI > Anthropic > Gemini
                 const providers = ['openai', 'anthropic', 'gemini'];
-                let selectedProvider = null;
-                let selectedApiKey = null;
-                let selectedModel = null;
+                // Variables already declared above
                 
                 // Find first available provider with API key
                 for (const provider of providers) {
