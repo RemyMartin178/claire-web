@@ -95,6 +95,19 @@ class AuthService {
                     // No 'await' here, so it runs in the background without blocking startup.
                     migrationService.checkAndRunMigration(user);
 
+                    // ** Preload user subscription in the background **
+                    // This ensures the first Ask request doesn't have to wait 3-4 seconds
+                    try {
+                        const subscriptionService = require('./subscriptionService');
+                        subscriptionService.getUserSubscription().then(() => {
+                            logger.info('[AuthService] Subscription preloaded successfully');
+                        }).catch(err => {
+                            logger.warn('[AuthService] Subscription preload failed (non-critical):', err.message);
+                        });
+                    } catch (subError) {
+                        logger.warn('[AuthService] Subscription service not available:', subError.message);
+                    }
+
                 } else {
                     // User signed OUT
                     logger.info('No Firebase user.');

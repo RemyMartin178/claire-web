@@ -1123,6 +1123,18 @@ class AskService {
                             success: agentResponse?.success
                         });
                         
+                        // DEBUG: Log full agent response to debug "No analysis results available"
+                        logger.info('[AskService] [RAILWAY DEBUG] Full agent response:', {
+                            success: agentResponse?.success,
+                            responseExists: !!agentResponse?.response,
+                            responseType: typeof agentResponse?.response,
+                            responseLength: agentResponse?.response?.length || 0,
+                            responsePreview: agentResponse?.response ? agentResponse.response.substring(0, 100) : 'NO RESPONSE',
+                            metadata: agentResponse?.metadata,
+                            error: agentResponse?.error,
+                            allKeys: agentResponse ? Object.keys(agentResponse) : []
+                        });
+                        
                         // Check if we have a valid response
                         if (agentResponse && agentResponse.success && agentResponse.response) {
                             const askWin = getWindowPool()?.get('ask');
