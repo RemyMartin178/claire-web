@@ -1199,7 +1199,7 @@ class AskService {
             // This code should only run if we haven't returned yet (shouldn't happen for premium users)
             
             // Determine optimal provider for this request
-            let selectedProvider = this.determineOptimalProvider(userPrompt, screenshotResult);
+            selectedProvider = this.determineOptimalProvider(userPrompt, screenshotResult);
             if (selectedProvider) {
                 logger.info('Selected optimal provider:', selectedProvider);
                 this.state.currentProvider = selectedProvider;
