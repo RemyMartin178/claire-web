@@ -38,10 +38,10 @@ extraResources:
       to: out
     - from: src/common/config/production-config.js
       to: config/production-config.js
-    - from: .env
-      to: .env
-      filter:
-        - "**/*"
+    # .env is now copied by afterPack hook to preserve line endings
+
+# Hook to copy .env with proper line endings (prevents dotenv parsing issues)
+afterPack: "./copy-env-prod.js"
 
 asarUnpack:
     - "src/ui/assets/SystemAudioDump"

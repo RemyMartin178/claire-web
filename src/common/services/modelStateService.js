@@ -64,20 +64,21 @@ class ModelStateService extends EventEmitter {
             if (type === 'stt' && currentModelId && !forceReselection) {
                 const currentProvider = this.getProviderForModel(type, currentModelId);
                 
-                // Check if Deepgram is available and we're not using it
+                // Check if Deepgram is available and we're not using it - force Deepgram (meilleur)
                 const deepgramKey = this.getApiKey('deepgram');
                 if (deepgramKey && currentProvider !== 'deepgram') {
-                    logger.info('[STT Auto-Selection] Forcing reselection to prefer Deepgram for ultra-low latency');
+                    logger.info('[STT Auto-Selection] ⭐ Forcer Deepgram (ultra-faible latence, meilleur pour FR/EN)');
                     isCurrentModelValid = false; // Force reselection
                 }
-                // If no Deepgram but using Whisper and OpenAI is available
-                else if (currentProvider === 'whisper') {
-                    const openaiKey = this.getApiKey('openai');
-                    if (openaiKey && openaiKey !== 'local') {
-                        logger.info('[STT Auto-Selection] Forcing reselection from Whisper to prefer OpenAI');
+                // Check if Gemini is available and we're using worse provider
+                else if (currentProvider !== 'deepgram' && currentProvider !== 'gemini') {
+                    const geminiKey = this.getApiKey('gemini');
+                    if (geminiKey) {
+                        logger.info('[STT Auto-Selection] ⭐ Forcer Gemini Live (meilleur que Whisper/OpenAI)');
                         isCurrentModelValid = false; // Force reselection
                     }
                 }
+                // CODE LEGACY SUPPRIMÉ: Ne plus forcer OpenAI, Whisper est mieux !
             }
 
             if (currentModelId && !forceReselection && isCurrentModelValid === false) {
@@ -95,28 +96,36 @@ class ModelStateService extends EventEmitter {
                 logger.info(`No valid ${type} model selected or re-selection forced. Finding an alternative...`);
                 const availableModels = this.getAvailableModels(type);
                 if (availableModels.length > 0) {
-                    // Prefer API providers over local providers for auto-selection
-                    // For STT: Prefer Deepgram > OpenAI > others for best latency
+                    // PRIORITÉ STT: Deepgram (meilleur) > Gemini Live > Whisper local > OpenAI (dernier recours)
                     let apiModel = null;
                     if (type === 'stt') {
-                        // First try Deepgram for ultra-low latency
+                        // 1️⃣ Deepgram (ultra-faible latence, meilleure précision FR/EN)
                         apiModel = availableModels.find(model => {
                             const provider = this.getProviderForModel(type, model.id);
                             return provider === 'deepgram' && this.getApiKey(provider);
                         });
-                        // Then try OpenAI if Deepgram not available
+                        
+                        // 2️⃣ Gemini Live (très bon pour STT multilingue)
+                        if (!apiModel) {
+                            apiModel = availableModels.find(model => {
+                                const provider = this.getProviderForModel(type, model.id);
+                                return provider === 'gemini' && this.getApiKey(provider);
+                            });
+                        }
+                        
+                        // 3️⃣ Whisper local (gratuit, précis mais plus lent)
+                        if (!apiModel) {
+                            apiModel = availableModels.find(model => {
+                                const provider = this.getProviderForModel(type, model.id);
+                                return provider === 'whisper';
+                            });
+                        }
+                        
+                        // 4️⃣ OpenAI en dernier (pas terrible pour STT temps réel)
                         if (!apiModel) {
                             apiModel = availableModels.find(model => {
                                 const provider = this.getProviderForModel(type, model.id);
                                 return provider === 'openai' && this.getApiKey(provider);
-                            });
-                        }
-                        // Finally try other API providers
-                        if (!apiModel) {
-                            apiModel = availableModels.find(model => {
-                                const provider = this.getProviderForModel(type, model.id);
-                                const hasApiKey = this.getApiKey(provider);
-                                return provider && provider !== 'ollama' && provider !== 'whisper' && hasApiKey;
                             });
                         }
                     } else {

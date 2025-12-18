@@ -774,7 +774,7 @@ class ListenService {
         }
     }
 
-    async initializeSession(language = 'en') {
+    async initializeSession(language = 'auto') {
         if (this.isInitializingSession) {
             logger.info('Session initialization already in progress.');
             return false;

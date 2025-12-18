@@ -38,16 +38,16 @@ class OpenAIProvider {
 
 
 /**
- * Creates an OpenAI STT session
+ * Creates an OpenAI STT session with French/English support
  * @param {object} opts - Configuration options
  * @param {string} opts.apiKey - OpenAI API key
- * @param {string} [opts.language='en'] - Language code
+ * @param {string} [opts.language='fr'] - Language code (auto/multi = fr, null = auto-detect)
  * @param {object} [opts.callbacks] - Event callbacks
  * @param {boolean} [opts.usePortkey=false] - Whether to use Portkey
  * @param {string} [opts.portkeyVirtualKey] - Portkey virtual key
  * @returns {Promise<object>} STT session
  */
-async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey = false, portkeyVirtualKey, ...config }) {
+async function createSTT({ apiKey, language = null, callbacks = {}, usePortkey = false, portkeyVirtualKey, ...config }) {
   const keyType = usePortkey ? 'vKey' : 'apiKey';
   const key = usePortkey ? (portkeyVirtualKey || apiKey) : apiKey;
 
@@ -86,6 +86,9 @@ async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey =
     ws.onopen = () => {
       logger.info("WebSocket session opened.");
 
+      // OpenAI auto-détecte la langue si null, sinon utilise la langue spécifiée
+      const finalLanguage = (language === 'auto' || language === 'multi') ? null : (language || null);
+      
       const sessionConfig = {
         type: 'transcription_session.update',
         session: {
@@ -93,7 +96,8 @@ async function createSTT({ apiKey, language = 'en', callbacks = {}, usePortkey =
           input_audio_transcription: {
             model: 'gpt-4o-mini-transcribe',
             prompt: config.prompt || '',
-            language: language || 'en'
+            // null = auto-détection FR/EN par OpenAI
+            ...(finalLanguage && { language: finalLanguage })
           },
           turn_detection: {
             type: 'server_vad',

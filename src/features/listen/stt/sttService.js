@@ -117,7 +117,7 @@ class SttService {
         this.myCurrentUtterance = '';
         
         if (this.onStatusUpdate) {
-            this.onStatusUpdate('Listening...');
+            this.onStatusUpdate('Écoute en cours...');
         }
     }
 
@@ -159,7 +159,7 @@ class SttService {
         this.theirCurrentUtterance = '';
         
         if (this.onStatusUpdate) {
-            this.onStatusUpdate('Listening...');
+            this.onStatusUpdate('Écoute en cours...');
         }
     }
 
@@ -185,11 +185,14 @@ class SttService {
         this.theirCompletionTimer = setTimeout(() => this.flushTheirCompletion(), COMPLETION_DEBOUNCE_MS);
     }
 
-    async initializeSttSessions(language = 'en') {
-        const effectiveLanguage = process.env.OPENAI_TRANSCRIBE_LANG || language || 'en';
+    async initializeSttSessions(language = 'auto') {
+        // Auto-detect French and English by default
+        // For Deepgram: use 'multi' for multilanguage support
+        // For OpenAI/Whisper: null/undefined for auto-detection
+        const effectiveLanguage = process.env.OPENAI_TRANSCRIBE_LANG || language || 'auto';
 
         const modelInfo = modelStateService.getCurrentModelInfo('stt');
-        logger.info('[SttService] Retrieved STT model info:', {
+        logger.info('[STT] Configuration récupérée:', {
             hasModelInfo: !!modelInfo,
             provider: modelInfo?.provider,
             model: modelInfo?.model,
@@ -198,15 +201,15 @@ class SttService {
         });
         
         if (!modelInfo || !modelInfo.apiKey) {
-            logger.error('[SttService] STT configuration error:', {
+            logger.error('[STT] ERREUR: Configuration manquante:', {
                 hasModelInfo: !!modelInfo,
                 hasApiKey: !!modelInfo?.apiKey,
                 provider: modelInfo?.provider
             });
-            throw new Error('AI model or API key is not configured.');
+            throw new Error('Modèle IA ou clé API non configuré.');
         }
         this.modelInfo = modelInfo;
-        logger.info(`Initializing STT for ${modelInfo.provider} using model ${modelInfo.model}`);
+        logger.info(`[STT] Initialisation ${modelInfo.provider} avec le modèle ${modelInfo.model}`);
 
         const handleMyMessage = message => {
             if (this.microphonePaused) {
@@ -543,9 +546,21 @@ class SttService {
         };
         
         // Provider-specific options to avoid parameter conflicts
+        // Handle auto-detection: Deepgram uses 'multi', others use null for auto
+        let finalLanguage = effectiveLanguage;
+        if (effectiveLanguage === 'auto') {
+            if (this.modelInfo.provider === 'deepgram') {
+                finalLanguage = 'multi'; // Deepgram's multilanguage mode (French + English)
+            } else if (this.modelInfo.provider === 'whisper' || this.modelInfo.provider === 'openai' || this.modelInfo.provider === 'openai-glass') {
+                finalLanguage = null; // OpenAI/Whisper auto-detects when language is null
+            } else {
+                finalLanguage = 'fr'; // Default to French for other providers
+            }
+        }
+        
         let sttOptions = {
             apiKey: this.modelInfo.apiKey,
-            language: effectiveLanguage,
+            language: finalLanguage,
         };
         
         // Add provider-specific parameters
@@ -556,8 +571,14 @@ class SttService {
             // Whisper-specific options
             sttOptions.sessionType = 'whisper'; // Will be overridden per session
         } else if (this.modelInfo.provider === 'deepgram') {
-            // Deepgram-specific options
+            // Deepgram-specific options for best French/English recognition
             sttOptions.sampleRate = 24000;
+            sttOptions.model = 'nova-3'; // Nova-3 = meilleure précision que Nova-2
+            sttOptions.smart_format = true; // Auto-formatting for better readability
+            sttOptions.punctuate = true; // Ponctuation automatique
+            sttOptions.filler_words = false; // Supprimer "euh", "hum"
+            sttOptions.utterance_end_ms = 1500; // 1.5s pour fin d'énoncé
+            sttOptions.endpointing = 300; // 300ms pour meilleure détection pauses
         }
 
         // Add sessionType for Whisper to distinguish between My and Their sessions
@@ -572,9 +593,12 @@ class SttService {
             sessionType: this.modelInfo.provider === 'whisper' ? 'their' : undefined 
         };
 
-        logger.info('[LOADING] Creating STT sessions...', {
+        logger.info('[STT] Création des sessions de transcription...', {
             provider: this.modelInfo.provider,
-            language: effectiveLanguage
+            model: sttOptions.model,
+            langue: finalLanguage,
+            autoDetect: effectiveLanguage === 'auto',
+            multilangue: finalLanguage === 'multi'
         });
 
         // [TOOL] Add timeout to prevent hanging on first initialization
@@ -595,10 +619,12 @@ class SttService {
             createWithTimeout(this.modelInfo.provider, theirOptions, 'Their'),
         ]);
 
-        logger.info('[OK] Both STT sessions initialized successfully:', {
-            mySttSession: !!this.mySttSession,
-            theirSttSession: !!this.theirSttSession,
-            provider: this.modelInfo.provider
+        logger.info('[STT] ✅ Sessions de transcription créées avec succès:', {
+            sessionMicrophone: !!this.mySttSession,
+            sessionSysteme: !!this.theirSttSession,
+            provider: this.modelInfo.provider,
+            model: this.modelInfo.model,
+            langue: finalLanguage
         });
 
         // ── Setup keep-alive heart-beats ────────────────────────────────────────
@@ -643,7 +669,7 @@ class SttService {
      * Gracefully tears down then recreates the STT sessions. Should be invoked
      * on a timer to avoid provider-side hard timeouts.
      */
-    async renewSessions(language = 'en') {
+    async renewSessions(language = 'auto') {
         if (!this.isSessionActive()) {
             logger.warn('[SttService] renewSessions called but no active session.');
             return;

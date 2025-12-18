@@ -94,7 +94,8 @@ class NotificationManager {
     showSTTComplete(speaker, text, options = {}) {
         if (!this.enabled || !this.settings.showSTTComplete) return;
 
-        const title = `Speech Transcribed - ${speaker}`;
+        const speakerName = speaker === 'Me' ? 'Vous' : speaker === 'Them' ? 'Système' : speaker;
+        const title = `Transcription - ${speakerName}`;
         const body = text.length > 100 ? text.substring(0, 100) + '...' : text;
         
         const notificationOptions = {

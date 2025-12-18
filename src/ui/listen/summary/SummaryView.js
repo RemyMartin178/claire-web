@@ -89,10 +89,10 @@ export class SummaryView extends ThemeMixin(LitElement) {
             min-height: 150px;
             max-height: 600px;
             flex: 1;
-            background: var(--surface-elevated, #ffffff);
+            background: transparent; /* Même style que AskView - transparent pour cohérence */
             border-radius: 12px;
-            border: 1px solid var(--border-light, #e5e7eb);
-            box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+            border: none;
+            box-shadow: none;
             opacity: var(--window-opacity, 1.0);
         }
 
@@ -102,42 +102,42 @@ export class SummaryView extends ThemeMixin(LitElement) {
             width: 6px;
         }
         .insights-container::-webkit-scrollbar-track {
-            background: var(--background-secondary, #f8f9fa);
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 3px;
         }
         .insights-container::-webkit-scrollbar-thumb {
-            background: var(--border-medium, #d1d5db);
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 3px;
         }
         .insights-container::-webkit-scrollbar-thumb:hover {
-            background: var(--border-strong, #9ca3af);
+            background: rgba(255, 255, 255, 0.3);
         }
 
         insights-title {
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
             font-size: 16px;
             font-weight: 600;
             font-family: 'Helvetica Neue', sans-serif;
             margin: 16px 0 12px 0;
             display: block;
-            border-bottom: 2px solid var(--interactive-primary, #2563eb);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
             padding-bottom: 4px;
         }
 
         .insights-container h4 {
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
             font-size: 14px;
             font-weight: 600;
             margin: 16px 0 10px 0;
             padding: 6px 12px;
             border-radius: 6px;
-            background: var(--background-secondary, #f8f9fa);
+            background: transparent;
             cursor: default;
-            border-left: 3px solid var(--interactive-primary, #2563eb);
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
         }
 
         .insights-container h4:hover {
-            background: var(--background-tertiary, #f1f3f4);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .insights-container h4:first-child {
@@ -145,38 +145,37 @@ export class SummaryView extends ThemeMixin(LitElement) {
         }
 
         .outline-item {
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
             font-size: 13px;
             line-height: 1.5;
             margin: 6px 0;
             padding: 8px 12px;
             border-radius: 6px;
-            background: var(--background-secondary, #f8f9fa);
+            background: transparent;
             transition: all 0.15s ease;
             cursor: pointer;
             word-wrap: break-word;
-            border: 1px solid var(--border-light, #e5e7eb);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .outline-item:hover {
-            background: var(--background-tertiary, #f1f3f4);
-            border-color: var(--border-medium, #d1d5db);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
             transform: translateX(2px);
-            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
         }
 
         .request-item {
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
             font-size: 13px;
             line-height: 1.4;
             margin: 6px 0;
             padding: 8px 12px;
             border-radius: 6px;
-            background: var(--background-secondary, #f8f9fa);
+            background: transparent;
             cursor: default;
             word-wrap: break-word;
             transition: all 0.15s ease;
-            border: 1px solid var(--border-light, #e5e7eb);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .request-item.clickable {
@@ -184,37 +183,35 @@ export class SummaryView extends ThemeMixin(LitElement) {
             transition: all 0.15s ease;
         }
         .request-item.clickable:hover {
-            background: var(--background-tertiary, #f1f3f4);
-            border-color: var(--border-medium, #d1d5db);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
             transform: translateX(2px);
-            box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
         }
 
-        /* [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] */
+        /* Markdown content styling - white text on transparent */
         .markdown-content {
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
             font-size: 13px;
             line-height: 1.6;
             margin: 6px 0;
             padding: 10px 14px;
             border-radius: 8px;
-            background: var(--background-secondary, #f8f9fa);
+            background: transparent;
             cursor: pointer;
             word-wrap: break-word;
             transition: all 0.15s ease;
-            border: 1px solid var(--border-light, #e5e7eb);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .markdown-content:hover {
-            background: var(--background-tertiary, #f1f3f4);
-            border-color: var(--interactive-primary, #2563eb);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
             transform: translateX(3px);
-            box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
         }
 
         .markdown-content p {
             margin: 6px 0;
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
         }
 
         .markdown-content ul,
@@ -225,28 +222,28 @@ export class SummaryView extends ThemeMixin(LitElement) {
 
         .markdown-content li {
             margin: 4px 0;
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
         }
 
         .markdown-content a {
-            color: var(--interactive-primary, #2563eb);
+            color: rgba(147, 197, 253, 1);
             text-decoration: none;
             font-weight: 500;
         }
 
         .markdown-content a:hover {
             text-decoration: underline;
-            color: var(--interactive-primary-hover, #1d4ed8);
+            color: rgba(191, 219, 254, 1);
         }
 
         .markdown-content strong {
             font-weight: 600;
-            color: var(--text-primary, #1f2937);
+            color: #FFFFFF;
         }
 
         .markdown-content em {
             font-style: italic;
-            color: var(--text-secondary, #6b7280);
+            color: rgba(255, 255, 255, 0.7);
         }
 
         .empty-state {
@@ -255,12 +252,12 @@ export class SummaryView extends ThemeMixin(LitElement) {
             justify-content: center;
             flex: 1;
             min-height: 200px;
-            color: var(--text-tertiary, #9ca3af);
+            color: rgba(255, 255, 255, 0.5);
             font-size: 14px;
             font-style: italic;
-            background: var(--background-secondary, #f8f9fa);
+            background: transparent;
             border-radius: 8px;
-            border: 2px dashed var(--border-light, #e5e7eb);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
         }
     `;
 
@@ -509,9 +506,9 @@ export class SummaryView extends ThemeMixin(LitElement) {
         return html`
             <div class="insights-container">
                 ${!hasAnyContent
-                    ? html`<div class="empty-state">No insights yet...</div>`
+                    ? html`<div class="empty-state">Aucune analyse pour l'instant...</div>`
                     : html`
-                        <insights-title>Current Summary</insights-title>
+                        <insights-title>Résumé actuel</insights-title>
                         ${data.summary.length > 0
                             ? data.summary
                                   .slice(0, 5)

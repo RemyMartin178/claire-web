@@ -30,18 +30,25 @@ class GeminiProvider {
 
 
 /**
- * Creates a Gemini STT session
+ * Creates a Gemini STT session with multilingual support (FR/EN)
  * @param {object} opts - Configuration options
  * @param {string} opts.apiKey - Gemini API key
- * @param {string} [opts.language='en-US'] - Language code
+ * @param {string} [opts.language='fr-FR'] - Language code (auto, multi, fr-FR, en-US)
  * @param {object} [opts.callbacks] - Event callbacks
  * @returns {Promise<object>} STT session
  */
-async function createSTT({ apiKey, language = "en-US", callbacks = {}, ...config }) {
+async function createSTT({ apiKey, language = "fr-FR", callbacks = {}, ...config }) {
   const liveClient = new GoogleGenAI({ vertexai: false, apiKey })
 
-  // Language code BCP-47 conversion
-  const lang = language.includes("-") ? language : `${language}-US`
+  // Gemini Live supporte le français nativement
+  // Si 'auto' ou 'multi', utiliser français par défaut (Gemini détecte automatiquement)
+  let lang = language;
+  if (language === 'auto' || language === 'multi' || !language) {
+    lang = 'fr-FR'; // Français par défaut, Gemini détecte l'anglais si nécessaire
+  } else if (!language.includes("-")) {
+    // Conversion simple: 'fr' -> 'fr-FR', 'en' -> 'en-US'
+    lang = language === 'fr' ? 'fr-FR' : `${language}-US`;
+  }
 
   const session = await liveClient.live.connect({
 

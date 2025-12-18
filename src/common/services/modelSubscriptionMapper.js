@@ -16,43 +16,46 @@ const logger = createLogger('ModelSubscriptionMapper');
 const MODEL_MAPPING = {
     openai: {
         free: [
-            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', cost: 'low' }
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: 'low' } // Rapide et économique pour free
         ],
         plus: [
-            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', cost: 'medium' },
-            { id: 'gpt-4o', name: 'GPT-4o', cost: 'medium' },
-            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: 'low' }
+            { id: 'gpt-4o', name: 'GPT-4o (Le plus récent)', cost: 'medium' }, // Le meilleur modèle API actuellement - Très rapide
+            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', cost: 'medium' }, // Alternative puissante
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', cost: 'low' } // Fallback économique
         ],
         enterprise: [
-            { id: 'gpt-5', name: 'GPT-5 (Ultime)', cost: 'high' },
-            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', cost: 'medium' },
-            { id: 'gpt-4o', name: 'GPT-4o', cost: 'medium' }
+            { id: 'o1', name: 'O1 (Raisonnement avancé)', cost: 'high' }, // Modèle de raisonnement complexe
+            { id: 'gpt-4o', name: 'GPT-4o', cost: 'medium' }, // Très rapide et performant
+            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', cost: 'medium' }, // Alternative stable
+            { id: 'gpt-4', name: 'GPT-4', cost: 'high' } // Modèle classique puissant
         ]
     },
     anthropic: {
         free: [
-            { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', cost: 'low' }
+            { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', cost: 'low' } // Rapide et économique
         ],
         plus: [
-            { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', cost: 'medium' },
-            { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', cost: 'high' }
+            { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', cost: 'medium' }, // Excellent équilibre vitesse/qualité
+            { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', cost: 'low' } // Fallback rapide
         ],
         enterprise: [
-            { id: 'claude-3-5-opus-20241022', name: 'Claude 3.5 Opus (Ultime)', cost: 'high' },
-            { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', cost: 'medium' }
+            { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet (Dernière version)', cost: 'high' }, // Le plus récent d'Anthropic
+            { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', cost: 'medium' }, // Très performant
+            { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', cost: 'high' } // Pour tâches complexes
         ]
     },
     gemini: {
         free: [
-            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', cost: 'low' }
+            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', cost: 'low' } // Très rapide et gratuit
         ],
         plus: [
-            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', cost: 'medium' },
-            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', cost: 'medium' }
+            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', cost: 'low' }, // Ultra rapide
+            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', cost: 'medium' } // Plus puissant
         ],
         enterprise: [
-            { id: 'gemini-2.5-ultra', name: 'Gemini 2.5 Ultra (Ultime)', cost: 'high' },
-            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', cost: 'medium' }
+            { id: 'gemini-2.5-pro-exp', name: 'Gemini 2.5 Pro (Expérimental)', cost: 'high' }, // Le plus avancé
+            { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', cost: 'low' }, // Très rapide
+            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', cost: 'medium' } // Alternative stable
         ]
     }
 };

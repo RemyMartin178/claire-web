@@ -41,33 +41,36 @@ class DeepgramProvider {
 
 function createSTT({
     apiKey,
-    language = 'en-US',
+    language = 'multi',
     sampleRate = 24000,
     callbacks = {},
+    model = 'nova-3',
   }) {
     // [SEARCH] DEBUG: Log API key details at createSTT call
-    logger.info('[SEARCH] DEBUG: createSTT called with:', {
+    logger.info('[STT] Deepgram: Initialisation avec:', {
         hasApiKey: !!apiKey,
-        apiKeyType: typeof apiKey,
         apiKeyLength: apiKey?.length,
-        apiKeyPreview: apiKey ? apiKey.substring(0, 8) + '...' : 'none',
         language,
-        sampleRate
+        sampleRate,
+        model
     });
     
-    // Validated Deepgram parameters for real-time streaming
+    // Optimized Deepgram parameters for best French/English transcription
     const qs = new URLSearchParams({
-      model: 'nova-2',
+      model: model || 'nova-3', // Nova-3 = meilleure précision que Nova-2
       encoding: 'linear16',
       sample_rate: sampleRate.toString(),
-      language,
-      smart_format: 'true',
-      interim_results: 'true',
+      language: language === 'auto' ? 'multi' : language, // 'multi' pour détection FR/EN automatique
+      smart_format: 'true', // Auto-ponctuation et formatage
+      interim_results: 'true', // Résultats intermédiaires pour réactivité
       channels: '1',
-      // Core real-time parameters (validated with Deepgram API)
-      endpointing: '100',
-      vad_events: 'true',
-      punctuate: 'false'
+      // Core real-time parameters optimized for French/English
+      endpointing: '300', // 300ms pour meilleure détection des pauses
+      vad_events: 'true', // Voice Activity Detection
+      punctuate: 'true', // Ponctuation automatique pour meilleure lisibilité
+      diarize: 'false', // Pas besoin de diarisation
+      filler_words: 'false', // Supprimer "euh", "hum", etc.
+      utterance_end_ms: '1500', // 1.5s de silence pour fin d'énoncé
     });
   
     const url = `wss://api.deepgram.com/v1/listen?${qs}`;
@@ -87,7 +90,7 @@ function createSTT({
   
       ws.on('open', () => {
         clearTimeout(to);
-        logger.info('Deepgram WebSocket connected for ultra-low latency STT');
+        logger.info('[STT] Deepgram: Connexion WebSocket établie - transcription en temps réel activée');
         resolve({
           sendRealtimeInput: (buf) => {
             if (ws.readyState === WebSocket.OPEN) {

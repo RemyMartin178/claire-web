@@ -21,7 +21,7 @@ export class SttView extends ThemeMixin(LitElement) {
             position: relative;
             z-index: 1;
             flex: 1;
-            background: var(--surface-elevated, #ffffff);
+            background: transparent; /* Transparent comme le reste de l'interface */
         }
 
         /* Visibility handled by parent component */
@@ -56,36 +56,36 @@ export class SttView extends ThemeMixin(LitElement) {
         }
 
         .stt-message.them {
-            background: var(--background-secondary, #f8f9fa);
-            color: var(--text-primary, #1f2937);
+            background: rgba(255, 255, 255, 0.1);
+            color: #FFFFFF;
             align-self: flex-start;
             border-bottom-left-radius: 6px;
             margin-right: auto;
-            border-color: var(--border-light, #e5e7eb);
+            border-color: rgba(255, 255, 255, 0.2);
         }
 
         .stt-message.me {
-            background: var(--interactive-primary, #2563eb);
-            color: var(--text-inverse, #ffffff);
+            background: rgba(37, 99, 235, 0.6);
+            color: #FFFFFF;
             align-self: flex-end;
             border-bottom-right-radius: 6px;
             margin-left: auto;
-            border-color: var(--interactive-primary, #2563eb);
+            border-color: rgba(37, 99, 235, 0.8);
         }
 
         .stt-message.agent {
-            background: rgba(139, 92, 246, 0.15); /* Simple purple background */
-            color: var(--text-primary, #1f2937);
+            background: rgba(139, 92, 246, 0.2);
+            color: #FFFFFF;
             align-self: flex-start;
             border-bottom-left-radius: 6px;
             margin-right: auto;
-            border-left: 3px solid #8b5cf6; /* Purple left border for distinction */
+            border-left: 3px solid rgba(139, 92, 246, 0.8);
         }
 
         .agent-label {
             font-size: 11px;
             font-weight: 600;
-            color: #8b5cf6;
+            color: rgba(139, 92, 246, 1);
             margin-bottom: 4px;
             margin-left: 4px;
             text-transform: uppercase;
@@ -98,12 +98,12 @@ export class SttView extends ThemeMixin(LitElement) {
             justify-content: center;
             flex: 1;
             min-height: 200px;
-            color: var(--text-tertiary, #9ca3af);
+            color: rgba(255, 255, 255, 0.5);
             font-size: 14px;
             font-style: italic;
-            background: var(--background-secondary, #f8f9fa);
+            background: transparent;
             border-radius: 8px;
-            border: 2px dashed var(--border-light, #e5e7eb);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
         }
     `;
 
@@ -267,7 +267,7 @@ export class SttView extends ThemeMixin(LitElement) {
         return html`
             <div class="transcription-container">
                 ${this.sttMessages.length === 0
-                    ? html`<div class="empty-state">Waiting for speech...</div>`
+                    ? html`<div class="empty-state">En attente de parole...</div>`
                     : this.sttMessages.map((msg, index) => html`
                         <div>
                             ${this.shouldShowAgentLabel(msg, index) 
