@@ -14,6 +14,7 @@ export class AskView extends LitElement {
         headerText: { type: String },
         headerAnimating: { type: Boolean },
         isStreaming: { type: Boolean },
+        conversationHistory: { type: Array }, // Historique des conversations
     };
 
     static styles = css`
@@ -378,6 +379,46 @@ export class AskView extends LitElement {
             color: inherit !important; /* All children inherit white color */
         }
 
+        /* Historique des conversations */
+        .history-container {
+            margin-bottom: 24px;
+        }
+
+        .conversation-item {
+            margin-bottom: 16px;
+        }
+
+        .question-block {
+            background: rgba(59, 130, 246, 0.15);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid rgba(59, 130, 246, 0.6);
+        }
+
+        .question-block strong {
+            color: rgba(59, 130, 246, 1);
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .response-block {
+            background: rgba(16, 185, 129, 0.1);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border-left: 3px solid rgba(16, 185, 129, 0.5);
+        }
+
+        .conversation-divider {
+            margin: 20px 0;
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .streaming-container {
+            min-height: 40px;
+        }
+
         .response-container.hidden {
             display: none;
         }
@@ -739,6 +780,10 @@ export class AskView extends LitElement {
         this.smdContainer = null;
         this.lastProcessedLength = 0;
 
+        // Follow-up conversation system
+        this.conversationHistory = []; // Historique des Q&R
+        this.autoScrollEnabled = true; // Auto-scroll activé par défaut
+
         this.handleSendText = this.handleSendText.bind(this);
         this.handleTextKeydown = this.handleTextKeydown.bind(this);
         this.handleCopy = this.handleCopy.bind(this);
@@ -794,6 +839,16 @@ export class AskView extends LitElement {
             window.api.askView.onScrollResponseUp(() => this.handleScroll('up'));
             window.api.askView.onScrollResponseDown(() => this.handleScroll('down'));
             window.api.askView.onAskStateUpdate((event, newState) => {
+                // Si c'est une nouvelle question et qu'on a déjà du contenu, ajouter à l'historique
+                if (newState.currentQuestion && this.currentResponse && 
+                    newState.currentQuestion !== this.currentQuestion) {
+                    this.conversationHistory.push({
+                        question: this.currentQuestion,
+                        response: this.currentResponse,
+                        timestamp: Date.now()
+                    });
+                }
+
                 this.currentResponse = newState.currentResponse;
                 this.currentQuestion = newState.currentQuestion;
                 this.isLoading       = newState.isLoading;
@@ -804,10 +859,19 @@ export class AskView extends LitElement {
               
                 if (newState.showTextInput) {
                   if (wasHidden) {
-                    this.updateComplete.then(() => this.focusTextInput());
+                    this.updateComplete.then(() => {
+                        this.focusTextInput();
+                        this.scrollToBottom(); // Auto-scroll vers le bas
+                    });
                   } else {
                     this.focusTextInput();
+                    this.scrollToBottom(); // Auto-scroll vers le bas
                   }
+                }
+                
+                // Auto-scroll pendant le streaming
+                if (this.isStreaming && this.autoScrollEnabled) {
+                    this.updateComplete.then(() => this.scrollToBottom());
                 }
               });
             console.log('AskView: IPC 이벤트 리스너 등록 완료');
@@ -921,6 +985,15 @@ export class AskView extends LitElement {
     }
 
     clearResponseContent() {
+        // Ne plus effacer automatiquement, au lieu de ça, ajouter à l'historique si besoin
+        if (this.currentResponse && this.currentQuestion) {
+            this.conversationHistory.push({
+                question: this.currentQuestion,
+                response: this.currentResponse,
+                timestamp: Date.now()
+            });
+        }
+        
         this.currentResponse = '';
         this.currentQuestion = '';
         this.isLoading = false;
@@ -930,6 +1003,13 @@ export class AskView extends LitElement {
         this.lastProcessedLength = 0;
         this.smdParser = null;
         this.smdContainer = null;
+    }
+
+    scrollToBottom() {
+        const container = this.shadowRoot.querySelector('#responseContainer');
+        if (container && this.autoScrollEnabled) {
+            container.scrollTop = container.scrollHeight;
+        }
     }
 
     handleInputFocus() {
@@ -1035,33 +1115,67 @@ export class AskView extends LitElement {
 
     renderStreamingMarkdown(responseContainer) {
         try {
-            // 파서가 없거나 컨테이너가 변경되었으면 새로 생성
+            // Rendre d'abord l'historique des conversations
+            if (this.conversationHistory.length > 0) {
+                let historyHTML = '';
+                this.conversationHistory.forEach((item, index) => {
+                    historyHTML += `
+                        <div class="conversation-item" data-index="${index}">
+                            <div class="question-block">
+                                <strong>Question:</strong> ${this.escapeHtml(item.question)}
+                            </div>
+                            <div class="response-block">
+                                ${this.parseMarkdownSimple(item.response)}
+                            </div>
+                            <hr class="conversation-divider">
+                        </div>
+                    `;
+                });
+                
+                // Créer un container pour l'historique
+                let historyContainer = responseContainer.querySelector('.history-container');
+                if (!historyContainer) {
+                    historyContainer = document.createElement('div');
+                    historyContainer.className = 'history-container';
+                    responseContainer.insertBefore(historyContainer, responseContainer.firstChild);
+                }
+                historyContainer.innerHTML = historyHTML;
+            }
+
+            // Parser pour la réponse actuelle (streaming)
             if (!this.smdParser || this.smdContainer !== responseContainer) {
-                this.smdContainer = responseContainer;
+                // Créer ou récupérer le container de streaming
+                let streamingContainer = responseContainer.querySelector('.streaming-container');
+                if (!streamingContainer) {
+                    streamingContainer = document.createElement('div');
+                    streamingContainer.className = 'streaming-container';
+                    responseContainer.appendChild(streamingContainer);
+                }
+                
+                this.smdContainer = streamingContainer;
                 this.smdContainer.innerHTML = '';
                 
-                // smd.js의 default_renderer 사용
+                // smd.js default_renderer
                 const renderer = default_renderer(this.smdContainer);
                 this.smdParser = parser(renderer);
                 this.lastProcessedLength = 0;
             }
 
-            // 새로운 텍스트만 처리 (스트리밍 최적화)
+            // Traiter uniquement le nouveau texte (optimisation streaming)
             const currentText = this.currentResponse;
             const newText = currentText.slice(this.lastProcessedLength);
             
             if (newText.length > 0) {
-                // 새로운 텍스트 청크를 파서에 전달
                 parser_write(this.smdParser, newText);
                 this.lastProcessedLength = currentText.length;
             }
 
-            // 스트리밍이 완료되면 파서 종료
+            // Terminer le parser quand le streaming est fini
             if (!this.isStreaming && !this.isLoading) {
                 parser_end(this.smdParser);
             }
 
-            // 코드 하이라이팅 적용
+            // Appliquer le code highlighting
             if (this.hljs) {
                 responseContainer.querySelectorAll('pre code').forEach(block => {
                     if (!block.hasAttribute('data-highlighted')) {
@@ -1071,14 +1185,36 @@ export class AskView extends LitElement {
                 });
             }
 
-            // 스크롤을 맨 아래로
-            responseContainer.scrollTop = responseContainer.scrollHeight;
+            // Auto-scroll vers le bas
+            if (this.autoScrollEnabled) {
+                requestAnimationFrame(() => {
+                    responseContainer.scrollTop = responseContainer.scrollHeight;
+                });
+            }
             
         } catch (error) {
             console.error('Error rendering streaming markdown:', error);
-            // 에러 발생 시 기본 텍스트 렌더링으로 폴백
             this.renderFallbackContent(responseContainer);
         }
+    }
+
+    parseMarkdownSimple(text) {
+        if (!text) return '';
+        if (this.isLibrariesLoaded && this.marked) {
+            try {
+                return this.marked.parse(text);
+            } catch (error) {
+                console.error('Markdown parsing error:', error);
+                return this.escapeHtml(text);
+            }
+        }
+        return this.escapeHtml(text).replace(/\n/g, '<br>');
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     renderFallbackContent(responseContainer) {
