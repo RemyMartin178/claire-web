@@ -815,7 +815,7 @@ class AskService {
                 // Fallback to default system prompt using new prompt manager (lazy import)
                 const { promptManager } = require('../../domains/agents');
                 systemPrompt = promptManager.buildSystemPrompt({
-                    profile: 'xerus_analysis',
+                    profile: 'claire_analysis',
                     customPrompt: conversationHistory,
                     googleSearchEnabled: false
                 });

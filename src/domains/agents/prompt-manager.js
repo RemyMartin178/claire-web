@@ -28,8 +28,8 @@ class PromptManager extends EventEmitter {
             enableContextualPrompts: true,
             enableMultiLanguage: false,
             enablePromptOptimization: true,
-            defaultProfile: 'xerus',
-            maxPromptLength: 12000, // Increased to accommodate xerus_analysis template
+            defaultProfile: 'claire',
+            maxPromptLength: 12000, // Increased to accommodate claire_analysis template
             templateCacheSize: 100,
             validationLevel: 'lenient' // Changed to allow placeholders during initialization
         };
@@ -168,7 +168,7 @@ class PromptManager extends EventEmitter {
             },
             {
                 id: 'analytical',
-                prompts: ['xerus_analysis'],
+                prompts: ['claire_analysis'],
                 adaptations: {
                     tone: 'analytical',
                     verbosity: 'detailed',
@@ -744,7 +744,7 @@ class PromptManager extends EventEmitter {
             'meeting': 'Meeting Assistant',
             'presentation': 'Presentation Coach',
             'negotiation': 'Negotiation Assistant',
-            'xerus_analysis': 'Xerus Analysis Agent'
+            'claire_analysis': 'Claire Analysis Agent'
         };
         return names[profileId] || profileId;
     }
@@ -760,7 +760,7 @@ class PromptManager extends EventEmitter {
             'meeting': 'meetings',
             'presentation': 'business',
             'negotiation': 'business',
-            'xerus_analysis': 'analysis'
+            'claire_analysis': 'analysis'
         };
         return categories[profileId] || 'general';
     }
@@ -776,7 +776,7 @@ class PromptManager extends EventEmitter {
             'meeting': 'Professional meeting assistant for business discussions',
             'presentation': 'Presentation coach for public speaking',
             'negotiation': 'Business negotiation assistant',
-            'xerus_analysis': 'Advanced analysis agent with decision hierarchy'
+            'claire_analysis': 'Advanced analysis agent with decision hierarchy'
         };
         return descriptions[profileId] || 'AI assistant profile';
     }
@@ -792,7 +792,7 @@ class PromptManager extends EventEmitter {
             'meeting': ['meeting', 'professional', 'business'],
             'presentation': ['presentation', 'public-speaking', 'business'],
             'negotiation': ['negotiation', 'business', 'deals'],
-            'xerus_analysis': ['analysis', 'advanced', 'decision-making']
+            'claire_analysis': ['analysis', 'advanced', 'decision-making']
         };
         return tags[profileId] || ['general'];
     }

@@ -37,6 +37,10 @@
     "author": {
         "name": "Claire Team"
     },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/your-username/glass-clean.git"
+    },
     "license": "GPL-3.0",
     "dependencies": {
         "@anthropic-ai/sdk": "^0.56.0",

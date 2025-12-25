@@ -247,13 +247,13 @@ There are 2 approaches to respond:
   getMasterContextInstructions() {
     return `
 
-${profilePrompts.xerus_analysis.intro}
+${profilePrompts.claire_analysis.intro}
 
 ## Context Integration Strategy
 
-${profilePrompts.xerus_analysis.formatRequirements.split('<screen_problem_solving_priority>')[0]}
+${profilePrompts.claire_analysis.formatRequirements.split('<screen_problem_solving_priority>')[0]}
 
-You have been provided with context sources that an intelligent system determined would be helpful for this query. Execute the Xerus priority hierarchy for optimal response generation.`;
+You have been provided with context sources that an intelligent system determined would be helpful for this query. Execute the Claire priority hierarchy for optimal response generation.`;
   }
 
   /**
@@ -334,10 +334,10 @@ You have been provided with context sources that an intelligent system determine
   }
 
   /**
-   * Build Visual content for structured tags using Xerus screen analysis guidelines
+   * Build Visual content for structured tags using Claire screen analysis guidelines
    */
   buildVisualContent(context) {
-    const screenGuidelines = profilePrompts.xerus_analysis.formatRequirements
+    const screenGuidelines = profilePrompts.claire_analysis.formatRequirements
       .split('<screen_problem_solving_priority>')[1]
       ?.split('</screen_problem_solving_priority>')[0] || '';
     

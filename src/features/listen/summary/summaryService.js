@@ -98,7 +98,7 @@ Please build upon this context while analyzing the new conversation segments.
 `;
         }
 
-        const systemPrompt = getSystemPrompt('xerus_analysis', contextualPrompt, false)
+        const systemPrompt = getSystemPrompt('claire_analysis', contextualPrompt, false)
             .replace('{{CONVERSATION_HISTORY}}', recentConversation);
 
         try {
