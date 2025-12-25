@@ -1833,18 +1833,19 @@ class AskService {
             'ce qui est', 'what is', 'cet écran', 'this screen',
             'cette page', 'this page', 'ce site', 'this site',
             'corrige', 'fix', 'erreur', 'error', 'bug',
-            'code', 'fichier', 'file', 'document'
+            'code', 'fichier', 'file', 'document',
+            'ya quoi', 'y a quoi', 'il y a quoi', "qu'est-ce qu'il y a" // ✅ Ajout détection "ya quoi sur lecran"
         ];
         
         // Keywords that indicate text-only query (no screenshot needed)
         const textOnlyKeywords = [
-            'c\'est quoi', 'what is', 'qui est', 'who is',
+            'c\'est quoi', 'qui est', 'who is',
             'comment faire', 'how to', 'how do',
             'pourquoi', 'why', 'quand', 'when',
             'définition', 'definition', 'explique-moi', 'explain',
             'calcule', 'calculate', 'combien', 'how much',
             'traduis', 'translate', 'écris', 'write',
-            'code', 'programme', 'program', 'script'
+            'programme', 'program', 'script'
         ];
         
         // Check for screenshot keywords

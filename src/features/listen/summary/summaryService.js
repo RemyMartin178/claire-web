@@ -316,20 +316,26 @@ Keep all points concise and build upon previous analysis if provided.`,
     }
 
     /**
-     * Triggers analysis more frequently for better live insights experience.
-     * Now triggers at 3, 6, 10, 15, 20, etc. turns for more responsive insights.
+     * Triggers analysis immediately on first message and when questions are detected.
+     * Also triggers at regular intervals for continuous insights.
      */
     async triggerAnalysisIfNeeded() {
         const length = this.conversationHistory.length;
         
+        // Check if last message contains a question - if so, trigger immediately
+        const lastMessage = this.conversationHistory[this.conversationHistory.length - 1];
+        const hasQuestion = lastMessage && /\?|comment|pourquoi|quand|où|qui|quoi|quel|quelle/i.test(lastMessage);
+        
         // Trigger analysis at strategic intervals for responsive insights
         const shouldTrigger = 
-            length === 5 ||  // First insights after 5 turns
-            length === 10 ||  // Second update
-            (length >= 15 && length % 5 === 0);  // Then every 5 turns
+            length === 1 ||  // INSTANT: First message triggers analysis immediately
+            hasQuestion ||   // INSTANT: Question detected triggers analysis immediately
+            length === 2 ||  // Second update after 2 messages ✅
+            length === 4 ||  // Third update
+            (length >= 8 && length % 5 === 0);  // Then every 5 turns
         
         if (shouldTrigger) {
-            logger.info(`Triggering analysis - ${length} conversation texts accumulated`);
+            logger.info(`Triggering analysis - ${length} conversation texts accumulated${hasQuestion ? ' (question detected)' : ''}`);
 
             const data = await this.makeOutlineAndRequests(this.conversationHistory);
             
