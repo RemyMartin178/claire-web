@@ -102,7 +102,8 @@ Please build upon this context while analyzing the new conversation segments.
             .replace('{{CONVERSATION_HISTORY}}', recentConversation);
 
         try {
-            if (this.currentSessionId) {
+            // ✅ Skip Firestore touch for temporary sessions
+            if (this.currentSessionId && !this.currentSessionId.startsWith('temp_session_')) {
                 await sessionRepository.touch(this.currentSessionId);
             }
 
@@ -168,7 +169,8 @@ Keep all points concise and build upon previous analysis if provided.`,
             logger.info(`[OK] Analysis response received: ${responseText}`);
             const structuredData = this.parseResponseText(responseText, this.previousAnalysisResult);
 
-            if (this.currentSessionId) {
+            // ✅ Skip Firestore save for temporary sessions
+            if (this.currentSessionId && !this.currentSessionId.startsWith('temp_session_')) {
                 try {
                     summaryRepository.saveSummary({
                         sessionId: this.currentSessionId,

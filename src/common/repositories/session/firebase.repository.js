@@ -104,10 +104,11 @@ async function touch(uid, id) {
 }
 
 async function getOrCreateActive(uid, requestedType = 'ask') {
+    // ✅ Removed orderBy to avoid needing composite index in Firestore
+    // Simply find any active session (endedAt == null)
     const findQuery = query(
         sessionsCol(uid),
         where('endedAt', '==', null),
-        orderBy('sessionType', 'desc'),
         limit(1)
     );
 

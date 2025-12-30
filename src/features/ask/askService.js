@@ -520,9 +520,12 @@ class AskService {
      * @param {string} userPrompt
      * @returns {Promise<{success: boolean, response?: string, error?: string}>}
      */
-    async sendMessage(userPrompt, conversationHistoryRaw=[]) {
+    async sendMessage(userPrompt, conversationHistoryRaw=[], options={}) {
         const startTime = Date.now();
         const requestId = this.generateRequestId();
+        
+        // ✅ Extract original prompt for screenshot detection (to avoid false positives from enriched context)
+        const promptForScreenshotDetection = options.originalPrompt || userPrompt;
         
         // Vérifier le quota avant de traiter la requête
         const requestQuotaService = require('../../common/services/requestQuotaService');
@@ -605,7 +608,8 @@ class AskService {
             logger.info('[AskService] Using backend Railway API - API keys managed server-side');
 
             // SMART OPTIMIZATION: Analyze prompt to decide if screenshot is needed
-            const needsScreenshot = this._promptNeedsScreenshot(userPrompt.trim());
+            // ✅ Use original prompt (not enriched context) to avoid false positives
+            const needsScreenshot = this._promptNeedsScreenshot(promptForScreenshotDetection.trim());
             
             let screenshotResult;
             let screenshotBase64 = null;

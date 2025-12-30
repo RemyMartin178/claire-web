@@ -136,7 +136,8 @@ module.exports = {
                 historyLength: conversationHistory.length
             });
             
-            return await askService.sendMessage(enrichedPrompt);
+            // ✅ Pass original prompt for screenshot detection (not enriched context)
+            return await askService.sendMessage(enrichedPrompt, [], { originalPrompt: userPrompt });
         }
         
         // Sinon, envoyer sans contexte (question standalone)
@@ -175,7 +176,8 @@ module.exports = {
             hasAnalysis: !!analysisData.summary
         });
         
-        return await askService.sendMessage(enrichedPrompt);
+        // ✅ Pass original prompt for screenshot detection (not enriched context)
+        return await askService.sendMessage(enrichedPrompt, [], { originalPrompt: userPrompt });
     });
     ipcMain.handle('ask:toggleAskButton', async () => await askService.toggleAskButton());
     ipcMain.handle('ask:closeAskWindow',  async () => await askService.closeAskWindow());

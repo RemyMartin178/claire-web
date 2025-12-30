@@ -252,7 +252,8 @@ class ListenService {
                             historyLength: conversationHistory.length
                         });
                         
-                        await askService.sendMessage(enrichedQuestion);
+                        // ✅ Pass original question for screenshot detection (not enriched context)
+                        await askService.sendMessage(enrichedQuestion, [], { originalPrompt: action.question });
                     }
                     break;
                     
@@ -755,6 +756,12 @@ class ListenService {
             return;
         }
         if (transcription.trim() === '') return;
+
+        // ✅ Skip Firestore operations for temporary sessions
+        if (this.currentSessionId.startsWith('temp_session_')) {
+            logger.warn('[ListenService] Skipping Firestore save for temporary session');
+            return;
+        }
 
         try {
             await sessionRepository.touch(this.currentSessionId);
