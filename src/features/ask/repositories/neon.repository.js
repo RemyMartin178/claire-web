@@ -14,11 +14,11 @@ async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }
     return firebaseRepository.addAiMessage({ uid, sessionId, role, content, model });
 }
 
-async function getAllAiMessagesBySessionId(sessionId) {
+async function getAllAiMessagesBySessionId(uid, sessionId) {
     console.log('[SEARCH] [DEBUG] Neon repository redirecting to Firebase (backend API not yet ready)');
     
     // For now, just use Firebase repository directly
-    return firebaseRepository.getAllAiMessagesBySessionId(sessionId);
+    return firebaseRepository.getAllAiMessagesBySessionId(uid, sessionId);
 }
 
 module.exports = {

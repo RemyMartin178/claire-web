@@ -37,7 +37,7 @@ function SessionDetailsContent() {
 
   useEffect(() => {
     if (!loading && !userInfo) {
-      router.push('/login');
+      router.push('/auth/login');
     }
   }, [userInfo, loading, router]);
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);

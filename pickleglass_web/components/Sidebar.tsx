@@ -292,7 +292,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
         try {
             await logout();
             // Rediriger vers la page de connexion
-            window.location.href = '/login';
+            window.location.href = '/auth/login';
         } catch (error) {
             console.error('An error occurred during logout:', error);
         }

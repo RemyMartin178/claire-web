@@ -227,9 +227,32 @@ class ListenService {
                             this.updatePersonalityContextForVoice(action.question);
                         }
                         
-                        // Forward to ask service
+                        // Forward to ask service with full conversation context
                         const askService = require('../ask/askService');
-                        await askService.sendMessage(action.question);
+                        const sessionData = this.getCurrentSessionData();
+                        const conversationHistory = sessionData?.conversationHistory || [];
+                        const analysisData = sessionData?.analysisData || {};
+                        
+                        // ✅ Enrichir avec le contexte de la session d'écoute
+                        let enrichedQuestion = `${action.question}\n\n`;
+                        
+                        if (conversationHistory.length > 0) {
+                            enrichedQuestion += `**Contexte de la conversation récente :**\n`;
+                            const recentHistory = conversationHistory.slice(-20);
+                            enrichedQuestion += recentHistory.join('\n') + '\n\n';
+                        }
+                        
+                        if (analysisData.summary && analysisData.summary.length > 0) {
+                            enrichedQuestion += `**Résumé de la conversation :**\n`;
+                            enrichedQuestion += analysisData.summary.join('\n') + '\n\n';
+                        }
+                        
+                        logger.info('[ListenService] Forwarding AI-suggested question with context', {
+                            question: action.question,
+                            historyLength: conversationHistory.length
+                        });
+                        
+                        await askService.sendMessage(enrichedQuestion);
                     }
                     break;
                     

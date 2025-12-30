@@ -11,11 +11,14 @@ function getBaseRepository() {
     return firebaseRepository;
 }
 
-// The adapter layer that injects the UID
+// The adapter layer that injects the UID into all repository methods
 const sessionRepositoryAdapter = {
     setAuthService, // Expose the setter
 
-    getById: (id) => getBaseRepository().getById(id),
+    getById: (id) => {
+        const uid = authService.getCurrentUserId();
+        return getBaseRepository().getById(uid, id);
+    },
     
     create: (type = 'ask') => {
         const uid = authService.getCurrentUserId();
@@ -27,15 +30,30 @@ const sessionRepositoryAdapter = {
         return getBaseRepository().getAllByUserId(uid);
     },
 
-    updateTitle: (id, title) => getBaseRepository().updateTitle(id, title),
+    updateTitle: (id, title) => {
+        const uid = authService.getCurrentUserId();
+        return getBaseRepository().updateTitle(uid, id, title);
+    },
     
-    deleteWithRelatedData: (id) => getBaseRepository().deleteWithRelatedData(id),
+    deleteWithRelatedData: (id) => {
+        const uid = authService.getCurrentUserId();
+        return getBaseRepository().deleteWithRelatedData(uid, id);
+    },
 
-    end: (id) => getBaseRepository().end(id),
+    end: (id) => {
+        const uid = authService.getCurrentUserId();
+        return getBaseRepository().end(uid, id);
+    },
 
-    updateType: (id, type) => getBaseRepository().updateType(id, type),
+    updateType: (id, type) => {
+        const uid = authService.getCurrentUserId();
+        return getBaseRepository().updateType(uid, id, type);
+    },
 
-    touch: (id) => getBaseRepository().touch(id),
+    touch: (id) => {
+        const uid = authService.getCurrentUserId();
+        return getBaseRepository().touch(uid, id);
+    },
 
     getOrCreateActive: (requestedType = 'ask') => {
         const uid = authService.getCurrentUserId();

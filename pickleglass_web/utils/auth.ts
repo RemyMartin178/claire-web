@@ -188,7 +188,7 @@ export const signOut = async () => {
     await firebaseSignOut(auth)
     
     // Rediriger vers la page de connexion au lieu de la landing page
-    window.location.href = '/login'
+    window.location.href = '/auth/login'
   } catch (error) {
     console.error("Error signing out:", error)
     throw FirebaseErrorHandler.wrapError(error)

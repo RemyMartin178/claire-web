@@ -8,15 +8,16 @@ const logger = createLogger('Firebase.repository');
 
 const sessionConverter = createEncryptedConverter(['title']);
 
-function sessionsCol() {
+// ✅ Changed to match web app structure: /users/{uid}/sessions
+function sessionsCol(uid) {
     const db = getFirestoreInstance();
-    return collection(db, 'sessions').withConverter(sessionConverter);
+    return collection(db, 'users', uid, 'sessions').withConverter(sessionConverter);
 }
 
-// Sub-collection references are now built from the top-level
-function subCollections(sessionId) {
+// Sub-collection references now use user-scoped path
+function subCollections(uid, sessionId) {
     const db = getFirestoreInstance();
-    const sessionPath = `sessions/${sessionId}`;
+    const sessionPath = `users/${uid}/sessions/${sessionId}`;
     return {
         transcripts: collection(db, `${sessionPath}/transcripts`),
         ai_messages: collection(db, `${sessionPath}/ai_messages`),
@@ -24,48 +25,49 @@ function subCollections(sessionId) {
     }
 }
 
-async function getById(id) {
-    const docRef = doc(sessionsCol(), id);
+async function getById(uid, id) {
+    const docRef = doc(sessionsCol(uid), id);
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? docSnap.data() : null;
+    if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() };
+    }
+    return null;
 }
 
 async function create(uid, type = 'ask') {
     const now = Timestamp.now();
     const newSession = {
-        uid: uid,
-        members: [uid], // For future sharing functionality
         title: `Session @ ${new Date().toLocaleTimeString()}`,
-        session_type: type,
-        started_at: now,
-        updated_at: now,
-        ended_at: null,
+        sessionType: type, // Match web app field naming
+        startedAt: now, // Match web app field naming (camelCase)
+        updatedAt: now,
+        endedAt: null,
     };
-    const docRef = await addDoc(sessionsCol(), newSession);
-    logger.info(`Firebase: Created session ${docRef.id} for user ${uid}`);
+    const docRef = await addDoc(sessionsCol(uid), newSession);
+    logger.info(`Firebase: Created session ${docRef.id} for user ${uid} in /users/${uid}/sessions/`);
     return docRef.id;
 }
 
 async function getAllByUserId(uid) {
-    const q = query(sessionsCol(), where('members', 'array-contains', uid), orderBy('started_at', 'desc'));
+    const q = query(sessionsCol(uid), orderBy('startedAt', 'desc'));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data());
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
-async function updateTitle(id, title) {
-    const docRef = doc(sessionsCol(), id);
+async function updateTitle(uid, id, title) {
+    const docRef = doc(sessionsCol(uid), id);
     await updateDoc(docRef, {
         title: encryptionService.encrypt(title),
-        updated_at: Timestamp.now()
+        updatedAt: Timestamp.now()
     });
     return { changes: 1 };
 }
 
-async function deleteWithRelatedData(id) {
+async function deleteWithRelatedData(uid, id) {
     const db = getFirestoreInstance();
     const batch = writeBatch(db);
 
-    const { transcripts, ai_messages, summary } = subCollections(id);
+    const { transcripts, ai_messages, summary } = subCollections(uid, id);
     const [transcriptsSnap, aiMessagesSnap, summarySnap] = await Promise.all([
         getDocs(query(transcripts)),
         getDocs(query(ai_messages)),
@@ -76,37 +78,36 @@ async function deleteWithRelatedData(id) {
     aiMessagesSnap.forEach(d => batch.delete(d.ref));
     summarySnap.forEach(d => batch.delete(d.ref));
 
-    const sessionRef = doc(sessionsCol(), id);
+    const sessionRef = doc(sessionsCol(uid), id);
     batch.delete(sessionRef);
 
     await batch.commit();
     return { success: true };
 }
 
-async function end(id) {
-    const docRef = doc(sessionsCol(), id);
-    await updateDoc(docRef, { ended_at: Timestamp.now() });
+async function end(uid, id) {
+    const docRef = doc(sessionsCol(uid), id);
+    await updateDoc(docRef, { endedAt: Timestamp.now() });
     return { changes: 1 };
 }
 
-async function updateType(id, type) {
-    const docRef = doc(sessionsCol(), id);
-    await updateDoc(docRef, { session_type: type });
+async function updateType(uid, id, type) {
+    const docRef = doc(sessionsCol(uid), id);
+    await updateDoc(docRef, { sessionType: type });
     return { changes: 1 };
 }
 
-async function touch(id) {
-    const docRef = doc(sessionsCol(), id);
-    await updateDoc(docRef, { updated_at: Timestamp.now() });
+async function touch(uid, id) {
+    const docRef = doc(sessionsCol(uid), id);
+    await updateDoc(docRef, { updatedAt: Timestamp.now() });
     return { changes: 1 };
 }
 
 async function getOrCreateActive(uid, requestedType = 'ask') {
     const findQuery = query(
-        sessionsCol(),
-        where('uid', '==', uid),
-        where('ended_at', '==', null),
-        orderBy('session_type', 'desc'),
+        sessionsCol(uid),
+        where('endedAt', '==', null),
+        orderBy('sessionType', 'desc'),
         limit(1)
     );
 
@@ -114,27 +115,27 @@ async function getOrCreateActive(uid, requestedType = 'ask') {
     
     if (!activeSessionSnap.empty) {
         const activeSessionDoc = activeSessionSnap.docs[0];
-        const sessionRef = doc(sessionsCol(), activeSessionDoc.id);
+        const sessionRef = doc(sessionsCol(uid), activeSessionDoc.id);
         const activeSession = activeSessionDoc.data();
 
         logger.info('Found active Firebase session');
         
-        const updates = { updated_at: Timestamp.now() };
-        if (activeSession.session_type === 'ask' && requestedType === 'listen') {
-            updates.session_type = 'listen';
-            logger.info(`Promoted Firebase session ${activeSession.id} to 'listen' type.`);
+        const updates = { updatedAt: Timestamp.now() };
+        if (activeSession.sessionType === 'ask' && requestedType === 'listen') {
+            updates.sessionType = 'listen';
+            logger.info(`Promoted Firebase session ${activeSessionDoc.id} to 'listen' type.`);
         }
         
         await updateDoc(sessionRef, updates);
         return activeSessionDoc.id;
     } else {
-        logger.info('No active Firebase session for user . Creating new.');
+        logger.info('No active Firebase session for user. Creating new.');
         return create(uid, requestedType);
     }
 }
 
 async function endAllActiveSessions(uid) {
-    const q = query(sessionsCol(), where('uid', '==', uid), where('ended_at', '==', null));
+    const q = query(sessionsCol(uid), where('endedAt', '==', null));
     const snapshot = await getDocs(q);
 
     if (snapshot.empty) return { changes: 0 };
@@ -142,11 +143,11 @@ async function endAllActiveSessions(uid) {
     const batch = writeBatch(getFirestoreInstance());
     const now = Timestamp.now();
     snapshot.forEach(d => {
-        batch.update(d.ref, { ended_at: now });
+        batch.update(d.ref, { endedAt: now });
     });
     await batch.commit();
 
-    logger.info('Ended  active session(s) for user .');
+    logger.info(`Ended ${snapshot.size} active session(s) for user.`);
     return { changes: snapshot.size };
 }
 

@@ -4,10 +4,12 @@ const { createEncryptedConverter } = require('../../../common/repositories/fires
 
 const aiMessageConverter = createEncryptedConverter(['content']);
 
-function aiMessagesCol(sessionId) {
+// ✅ Updated to match web app structure: /users/{uid}/sessions/{sessionId}/ai_messages
+function aiMessagesCol(uid, sessionId) {
+    if (!uid) throw new Error("User ID is required to access AI messages.");
     if (!sessionId) throw new Error("Session ID is required to access AI messages.");
     const db = getFirestoreInstance();
-    return collection(db, `sessions/${sessionId}/ai_messages`).withConverter(aiMessageConverter);
+    return collection(db, `users/${uid}/sessions/${sessionId}/ai_messages`).withConverter(aiMessageConverter);
 }
 
 async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }) {
@@ -21,19 +23,17 @@ async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }
 
     const now = Timestamp.now();
     const newMessage = {
-        uid, // To identify the author of the message
-        session_id: sessionId,
-        sent_at: now,
+        sentAt: now, // Match web app camelCase naming
         role,
         content,
         model,
-        created_at: now,
+        createdAt: now,
     };
     
     console.log('[SEARCH] [DEBUG] Attempting to save message to Firebase with uid:', uid);
     
     try {
-        const docRef = await addDoc(aiMessagesCol(sessionId), newMessage);
+        const docRef = await addDoc(aiMessagesCol(uid, sessionId), newMessage);
         console.log('[OK] [DEBUG] Successfully saved message to Firebase with ID:', docRef.id);
         return { id: docRef.id };
     } catch (error) {
@@ -58,10 +58,10 @@ async function addAiMessage({ uid, sessionId, role, content, model = 'unknown' }
     }
 }
 
-async function getAllAiMessagesBySessionId(sessionId) {
-    const q = query(aiMessagesCol(sessionId), orderBy('sent_at', 'asc'));
+async function getAllAiMessagesBySessionId(uid, sessionId) {
+    const q = query(aiMessagesCol(uid, sessionId), orderBy('sentAt', 'asc'));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data());
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 module.exports = {

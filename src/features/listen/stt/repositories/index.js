@@ -13,7 +13,8 @@ const sttRepositoryAdapter = {
         return getBaseRepository().addTranscript({ uid, sessionId, speaker, text });
     },
     getAllTranscriptsBySessionId: (sessionId) => {
-        return getBaseRepository().getAllTranscriptsBySessionId(sessionId);
+        const uid = authService.getCurrentUserId();
+        return getBaseRepository().getAllTranscriptsBySessionId(uid, sessionId);
     }
 };
 

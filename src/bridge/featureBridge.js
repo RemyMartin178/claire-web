@@ -120,8 +120,63 @@ module.exports = {
     ipcMain.handle('ollama:shutdown', async (event, force = false) => await ollamaService.handleShutdown(force));
 
     // Ask - Core handlers
-    ipcMain.handle('ask:sendQuestionFromAsk', async (event, userPrompt) => await askService.sendMessage(userPrompt));
-    ipcMain.handle('ask:sendQuestionFromSummary', async (event, userPrompt) => await askService.sendMessage(userPrompt));
+    ipcMain.handle('ask:sendQuestionFromAsk', async (event, userPrompt) => {
+        // ✅ Récupère le contexte de la session d'écoute active si disponible
+        const sessionData = listenService.getCurrentSessionData();
+        const conversationHistory = sessionData?.conversationHistory || [];
+        
+        // Si une session d'écoute est active, enrichir avec le contexte
+        if (conversationHistory.length > 0) {
+            let enrichedPrompt = `${userPrompt}\n\n**Contexte de la conversation récente :**\n`;
+            const recentHistory = conversationHistory.slice(-20);
+            enrichedPrompt += recentHistory.join('\n');
+            
+            logger.info('[FeatureBridge] Question from AskView with listen context', {
+                originalPrompt: userPrompt,
+                historyLength: conversationHistory.length
+            });
+            
+            return await askService.sendMessage(enrichedPrompt);
+        }
+        
+        // Sinon, envoyer sans contexte (question standalone)
+        return await askService.sendMessage(userPrompt);
+    });
+    ipcMain.handle('ask:sendQuestionFromSummary', async (event, userPrompt) => {
+        // ✅ Récupère le contexte de la session d'écoute active
+        const sessionData = listenService.getCurrentSessionData();
+        const conversationHistory = sessionData?.conversationHistory || [];
+        const analysisData = sessionData?.analysisData || {};
+        
+        // Construire un prompt enrichi avec le contexte
+        let enrichedPrompt = `${userPrompt}\n\n`;
+        
+        // Ajouter la transcription si disponible
+        if (conversationHistory.length > 0) {
+            enrichedPrompt += `**Contexte de la conversation récente :**\n`;
+            // Limiter aux 20 dernières phrases pour ne pas surcharger
+            const recentHistory = conversationHistory.slice(-20);
+            enrichedPrompt += recentHistory.join('\n') + '\n\n';
+        }
+        
+        // Ajouter le résumé/analyse si disponible
+        if (analysisData.summary && analysisData.summary.length > 0) {
+            enrichedPrompt += `**Résumé de la conversation :**\n`;
+            enrichedPrompt += analysisData.summary.join('\n') + '\n\n';
+        }
+        
+        if (analysisData.topic) {
+            enrichedPrompt += `**Sujet principal :** ${analysisData.topic.header}\n\n`;
+        }
+        
+        logger.info('[FeatureBridge] Sending question with context', {
+            originalPrompt: userPrompt,
+            historyLength: conversationHistory.length,
+            hasAnalysis: !!analysisData.summary
+        });
+        
+        return await askService.sendMessage(enrichedPrompt);
+    });
     ipcMain.handle('ask:toggleAskButton', async () => await askService.toggleAskButton());
     ipcMain.handle('ask:closeAskWindow',  async () => await askService.closeAskWindow());
     

@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     if (!loading && !isAuthenticated) {
       sessionStorage.removeItem('authChecked')
       sessionStorage.removeItem('authUserId')
-      window.location.replace('/login')
+      window.location.replace('/auth/login')
       return
     }
 

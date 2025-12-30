@@ -303,7 +303,7 @@ export default function SettingsPage() {
       
       // Rediriger après un court délai pour que l'utilisateur voie la notification
       setTimeout(() => {
-        window.location.href = '/login'
+        window.location.href = '/auth/login'
       }, 2000)
     } catch (error: any) {
       console.error("Failed to delete account:", error)
@@ -337,7 +337,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Settings: Error during logout:', error)
       // En cas d'erreur, rediriger quand même
-      window.location.replace('/login')
+      window.location.replace('/auth/login')
     }
   }
 

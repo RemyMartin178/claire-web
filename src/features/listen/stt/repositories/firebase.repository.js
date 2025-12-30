@@ -4,30 +4,30 @@ const { createEncryptedConverter } = require('../../../../common/repositories/fi
 
 const transcriptConverter = createEncryptedConverter(['text']);
 
-function transcriptsCol(sessionId) {
+// ✅ Updated to match web app structure: /users/{uid}/sessions/{sessionId}/transcripts
+function transcriptsCol(uid, sessionId) {
+    if (!uid) throw new Error("User ID is required to access transcripts.");
     if (!sessionId) throw new Error("Session ID is required to access transcripts.");
     const db = getFirestoreInstance();
-    return collection(db, `sessions/${sessionId}/transcripts`).withConverter(transcriptConverter);
+    return collection(db, `users/${uid}/sessions/${sessionId}/transcripts`).withConverter(transcriptConverter);
 }
 
 async function addTranscript({ uid, sessionId, speaker, text }) {
     const now = Timestamp.now();
     const newTranscript = {
-        uid, // To identify the author/source of the transcript
-        session_id: sessionId,
-        start_at: now,
+        startAt: now, // Match web app camelCase naming
         speaker,
         text,
-        created_at: now,
+        createdAt: now,
     };
-    const docRef = await addDoc(transcriptsCol(sessionId), newTranscript);
+    const docRef = await addDoc(transcriptsCol(uid, sessionId), newTranscript);
     return { id: docRef.id };
 }
 
-async function getAllTranscriptsBySessionId(sessionId) {
-    const q = query(transcriptsCol(sessionId), orderBy('start_at', 'asc'));
+async function getAllTranscriptsBySessionId(uid, sessionId) {
+    const q = query(transcriptsCol(uid, sessionId), orderBy('startAt', 'asc'));
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => doc.data());
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
 module.exports = {
