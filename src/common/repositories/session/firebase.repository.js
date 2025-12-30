@@ -1,17 +1,20 @@
 const { doc, getDoc, collection, addDoc, query, where, getDocs, writeBatch, orderBy, limit, updateDoc, Timestamp } = require('firebase/firestore');
 const { getFirestoreInstance } = require('../../services/firebaseClient');
-const { createEncryptedConverter } = require('../firestoreConverter');
-const encryptionService = require('../../services/encryptionService');
+// ❌ Removed: encryption not needed for session titles (must be readable on web)
+// const { createEncryptedConverter } = require('../firestoreConverter');
+// const encryptionService = require('../../services/encryptionService');
 const { createLogger } = require('../../services/logger.js');
 
 const logger = createLogger('Firebase.repository');
 
-const sessionConverter = createEncryptedConverter(['title']);
+// ❌ Encryption removed: titles must be readable on web app
+// Titles are not sensitive data (just "Session @ 14:30")
+// const sessionConverter = createEncryptedConverter(['title']);
 
 // ✅ Changed to match web app structure: /users/{uid}/sessions
 function sessionsCol(uid) {
     const db = getFirestoreInstance();
-    return collection(db, 'users', uid, 'sessions').withConverter(sessionConverter);
+    return collection(db, 'users', uid, 'sessions'); // No converter = no encryption
 }
 
 // Sub-collection references now use user-scoped path
@@ -57,7 +60,7 @@ async function getAllByUserId(uid) {
 async function updateTitle(uid, id, title) {
     const docRef = doc(sessionsCol(uid), id);
     await updateDoc(docRef, {
-        title: encryptionService.encrypt(title),
+        title: title, // ✅ No encryption - web app needs to read this
         updatedAt: Timestamp.now()
     });
     return { changes: 1 };
