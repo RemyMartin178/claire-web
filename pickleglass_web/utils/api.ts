@@ -100,11 +100,11 @@ const convertFirestoreSession = (session: { id: string } & any, uid: string): Se
     id: session.id,
     uid,
     title: session.title,
-    session_type: session.session_type,
-    started_at: timestampToUnix(session.startedAt),
-    ended_at: session.endedAt ? timestampToUnix(session.endedAt) : undefined,
+    session_type: session.sessionType || session.session_type, // ✅ Support both camelCase (new) and snake_case (old)
+    started_at: timestampToUnix(session.startedAt || session.started_at), // ✅ Support both formats
+    ended_at: (session.endedAt || session.ended_at) ? timestampToUnix(session.endedAt || session.ended_at) : undefined,
     sync_state: 'clean',
-    updated_at: timestampToUnix(session.startedAt)
+    updated_at: timestampToUnix(session.updatedAt || session.startedAt || session.started_at)
   };
 };
 
