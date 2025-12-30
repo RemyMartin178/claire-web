@@ -1827,51 +1827,38 @@ class AskService {
     _promptNeedsScreenshot(prompt) {
         const lowerPrompt = prompt.toLowerCase();
         
-        // Keywords that indicate screenshot is needed
+        // ✅ STRICT: Only keywords that EXPLICITLY refer to screen/display
         const screenshotKeywords = [
-            'écran', 'screen', 'affich', 'voir', 'see', 'show', 'look',
-            'montre', 'regarde', 'observe', 'analyse', 'analyze', 
-            'image', 'photo', 'capture', 'visual',
-            'que vois-tu', 'what do you see', 'what\'s on',
-            'décris', 'describe', 'explique ce que', 'explain what',
-            'ce qui est', 'what is', 'cet écran', 'this screen',
-            'cette page', 'this page', 'ce site', 'this site',
-            'corrige', 'fix', 'erreur', 'error', 'bug',
-            'code', 'fichier', 'file', 'document',
-            'ya quoi', 'y a quoi', 'il y a quoi', "qu'est-ce qu'il y a" // ✅ Ajout détection "ya quoi sur lecran"
-        ];
-        
-        // Keywords that indicate text-only query (no screenshot needed)
-        const textOnlyKeywords = [
-            'c\'est quoi', 'qui est', 'who is',
-            'comment faire', 'how to', 'how do',
-            'pourquoi', 'why', 'quand', 'when',
-            'définition', 'definition', 'explique-moi', 'explain',
-            'calcule', 'calculate', 'combien', 'how much',
-            'traduis', 'translate', 'écris', 'write',
-            'programme', 'program', 'script'
+            // Direct screen references
+            'écran', 'screen', 
+            'affich', 'display',
+            
+            // Visual analysis of screen
+            'que vois-tu', 'what do you see', "what's on",
+            'ya quoi', 'y a quoi', 'il y a quoi',
+            'montre moi', 'show me',
+            
+            // Screen-specific actions
+            'cet écran', 'this screen',
+            'cette page', 'this page',
+            'ce site', 'this site',
+            
+            // Explicit screen questions
+            'sur l\'écran', 'on the screen', 'on screen',
+            'à l\'écran', 'at the screen',
+            'dans l\'écran', 'in the screen'
         ];
         
         // Check for screenshot keywords
         const hasScreenshotKeyword = screenshotKeywords.some(keyword => lowerPrompt.includes(keyword));
         
-        // Check for text-only keywords
-        const hasTextOnlyKeyword = textOnlyKeywords.some(keyword => lowerPrompt.includes(keyword));
-        
-        // If screenshot keyword found, definitely need screenshot
         if (hasScreenshotKeyword) {
-            logger.info('[AskService] Screenshot required - detected keyword in prompt');
+            logger.info('[AskService] Screenshot required - explicit screen keyword detected');
             return true;
         }
         
-        // If text-only keyword found and no screenshot keyword, skip screenshot
-        if (hasTextOnlyKeyword && !hasScreenshotKeyword) {
-            logger.info('[AskService] Text-only query detected - no screenshot needed');
-            return false;
-        }
-        
-        // Default: NO screenshot (faster by default, user can request it explicitly)
-        logger.info('[AskService] Default: no screenshot (text-only mode for speed)');
+        // Default: NO screenshot (text-only mode for speed)
+        logger.info('[AskService] Text-only query - no screenshot needed');
         return false;
     }
 
