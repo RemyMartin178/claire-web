@@ -244,9 +244,53 @@ export async function POST(request: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice
         console.log('💰 Payment succeeded for invoice:', invoice.id)
         
-        // Handle successful recurring payments
-        const subscriptionId = (invoice as any).subscription
-        console.log('✅ Recurring payment successful for subscription:', subscriptionId)
+        // Handle successful recurring payments: sync latest subscription status into Firestore
+        const customerId = invoice.customer as string
+        const subscriptionId = (invoice as any).subscription as string | null | undefined
+
+        try {
+          const userDoc = await findUserDocByCustomerId(customerId)
+          if (!userDoc) {
+            console.log('⚠️ Aucun utilisateur trouvé pour ce customer ID:', customerId)
+            break
+          }
+
+          let subStatus: string | undefined
+          let plan: 'free' | 'plus' | 'enterprise' | undefined
+          let cancelAtPeriodEnd: boolean | undefined
+          let currentPeriodStart: Date | undefined
+          let currentPeriodEnd: Date | undefined
+
+          if (subscriptionId) {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId)
+            subStatus = sub.status
+            plan = inferPlanFromSubscription(sub)
+            cancelAtPeriodEnd = (sub as any).cancel_at_period_end || false
+            currentPeriodStart = safeDateFromStripeSeconds((sub as any).current_period_start)
+            currentPeriodEnd = safeDateFromStripeSeconds((sub as any).current_period_end)
+          } else {
+            // Fallback: invoice without subscription id (rare)
+            subStatus = 'active'
+            plan = 'plus'
+          }
+
+          await userDoc.ref.update({
+            'subscription.stripeCustomerId': customerId,
+            ...(subscriptionId ? { 'subscription.stripeSubscriptionId': subscriptionId } : {}),
+            ...(currentPeriodStart ? { 'subscription.currentPeriodStart': currentPeriodStart } : {}),
+            ...(currentPeriodEnd ? { 'subscription.currentPeriodEnd': currentPeriodEnd } : {}),
+            ...(subStatus ? { 'subscription.status': subStatus } : {}),
+            ...(plan ? { 'subscription.plan': plan } : {}),
+            ...(typeof cancelAtPeriodEnd === 'boolean'
+              ? { 'subscription.cancelAtPeriodEnd': cancelAtPeriodEnd }
+              : {}),
+            'subscription.updatedAt': FieldValue.serverTimestamp(),
+          })
+
+          console.log('✅ Recurring payment succeeded → Firestore updated for user:', userDoc.id)
+        } catch (e) {
+          console.error('❌ invoice.payment_succeeded sync failed:', e)
+        }
         break
       }
 
@@ -254,9 +298,49 @@ export async function POST(request: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice
         console.log('❌ Payment failed for invoice:', invoice.id)
         
-        // Handle failed payments
-        const subscriptionId = (invoice as any).subscription
-        console.log('⚠️ Payment failed for subscription:', subscriptionId)
+        // Handle failed payments: mark user as non-active (past_due/unpaid) via latest Stripe subscription status
+        const customerId = invoice.customer as string
+        const subscriptionId = (invoice as any).subscription as string | null | undefined
+
+        try {
+          const userDoc = await findUserDocByCustomerId(customerId)
+          if (!userDoc) {
+            console.log('⚠️ Aucun utilisateur trouvé pour ce customer ID:', customerId)
+            break
+          }
+
+          let subStatus: string = 'past_due'
+          let plan: 'free' | 'plus' | 'enterprise' | undefined
+          let cancelAtPeriodEnd: boolean | undefined
+          let currentPeriodStart: Date | undefined
+          let currentPeriodEnd: Date | undefined
+
+          if (subscriptionId) {
+            const sub = await stripe.subscriptions.retrieve(subscriptionId)
+            subStatus = sub.status || 'past_due'
+            plan = inferPlanFromSubscription(sub)
+            cancelAtPeriodEnd = (sub as any).cancel_at_period_end || false
+            currentPeriodStart = safeDateFromStripeSeconds((sub as any).current_period_start)
+            currentPeriodEnd = safeDateFromStripeSeconds((sub as any).current_period_end)
+          }
+
+          await userDoc.ref.update({
+            'subscription.stripeCustomerId': customerId,
+            ...(subscriptionId ? { 'subscription.stripeSubscriptionId': subscriptionId } : {}),
+            ...(currentPeriodStart ? { 'subscription.currentPeriodStart': currentPeriodStart } : {}),
+            ...(currentPeriodEnd ? { 'subscription.currentPeriodEnd': currentPeriodEnd } : {}),
+            'subscription.status': subStatus,
+            ...(plan ? { 'subscription.plan': plan } : {}),
+            ...(typeof cancelAtPeriodEnd === 'boolean'
+              ? { 'subscription.cancelAtPeriodEnd': cancelAtPeriodEnd }
+              : {}),
+            'subscription.updatedAt': FieldValue.serverTimestamp(),
+          })
+
+          console.log('✅ Payment failed → Firestore updated (non-active) for user:', userDoc.id)
+        } catch (e) {
+          console.error('❌ invoice.payment_failed sync failed:', e)
+        }
         break
       }
 
