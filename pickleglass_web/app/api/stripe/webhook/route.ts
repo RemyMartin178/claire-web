@@ -4,6 +4,24 @@ import { headers } from 'next/headers'
 import { StripeAdminService } from '@/utils/stripeAdmin'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
+const safeDateFromStripeSeconds = (seconds: any): Date | undefined => {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) return undefined
+  const d = new Date(seconds * 1000)
+  if (Number.isNaN(d.getTime())) return undefined
+  return d
+}
+
+const safeIso = (d?: Date) => {
+  if (!d) return null
+  const t = d.getTime()
+  if (Number.isNaN(t)) return null
+  try {
+    return d.toISOString()
+  } catch {
+    return null
+  }
+}
+
 const buildCustomerSnapshot = (c: Stripe.Customer) => ({
   id: c.id,
   email: c.email,
@@ -111,12 +129,12 @@ export async function POST(request: NextRequest) {
         
         // Récupérer les vraies dates depuis l'abonnement Stripe
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-        const currentPeriodStart = new Date((subscription as any).current_period_start * 1000)
-        const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
+        const currentPeriodStart = safeDateFromStripeSeconds((subscription as any).current_period_start)
+        const currentPeriodEnd = safeDateFromStripeSeconds((subscription as any).current_period_end)
         
         console.log('Stripe subscription dates:', {
-          currentPeriodStart: currentPeriodStart.toISOString(),
-          currentPeriodEnd: currentPeriodEnd.toISOString(),
+          currentPeriodStart: safeIso(currentPeriodStart),
+          currentPeriodEnd: safeIso(currentPeriodEnd),
           status: subscription.status
         })
         
@@ -127,8 +145,8 @@ export async function POST(request: NextRequest) {
           stripeCustomerId: customerId,
           ...(customerSnapshot ? { stripeCustomer: customerSnapshot } : {}),
           stripeSubscriptionId: subscriptionId,
-          currentPeriodStart: currentPeriodStart,
-          currentPeriodEnd: currentPeriodEnd,
+          ...(currentPeriodStart ? { currentPeriodStart } : {}),
+          ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
           cancelAtPeriodEnd: (subscription as any).cancel_at_period_end || false
         })
         
@@ -141,12 +159,12 @@ export async function POST(request: NextRequest) {
         console.log('📝 Subscription updated:', subscription.id)
         
         // Récupérer les vraies dates depuis l'abonnement Stripe
-        const currentPeriodStart = new Date((subscription as any).current_period_start * 1000)
-        const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
+        const currentPeriodStart = safeDateFromStripeSeconds((subscription as any).current_period_start)
+        const currentPeriodEnd = safeDateFromStripeSeconds((subscription as any).current_period_end)
         
         console.log('Updated subscription dates:', {
-          currentPeriodStart: currentPeriodStart.toISOString(),
-          currentPeriodEnd: currentPeriodEnd.toISOString(),
+          currentPeriodStart: safeIso(currentPeriodStart),
+          currentPeriodEnd: safeIso(currentPeriodEnd),
           status: subscription.status
         })
         
@@ -170,8 +188,8 @@ export async function POST(request: NextRequest) {
             
             // Mettre à jour avec les vraies dates Stripe
             await userDoc.ref.update({
-              'subscription.currentPeriodStart': currentPeriodStart,
-              'subscription.currentPeriodEnd': currentPeriodEnd,
+              ...(currentPeriodStart ? { 'subscription.currentPeriodStart': currentPeriodStart } : {}),
+              ...(currentPeriodEnd ? { 'subscription.currentPeriodEnd': currentPeriodEnd } : {}),
               'subscription.status': subscription.status,
               'subscription.plan': plan,
               'subscription.cancelAtPeriodEnd': subscription.cancel_at_period_end || false,
