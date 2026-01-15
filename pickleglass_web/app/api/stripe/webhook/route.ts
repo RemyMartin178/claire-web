@@ -17,6 +17,21 @@ const buildCustomerSnapshot = (c: Stripe.Customer) => ({
   metadata: c.metadata,
 })
 
+const inferPlanFromSubscription = (sub: Stripe.Subscription): 'free' | 'plus' | 'enterprise' => {
+  const priceId = sub.items?.data?.[0]?.price?.id
+  const monthlyId = process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID
+  const annualId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
+  const enterpriseId = process.env.STRIPE_ENTERPRISE_PRICE_ID
+
+  // Claire Plus: monthly or yearly price
+  if (priceId && (priceId === monthlyId || priceId === annualId)) return 'plus'
+  if (priceId && enterpriseId && priceId === enterpriseId) return 'enterprise'
+
+  // Fallback: if active/trialing and we can't map, keep as plus (safer than locking paid users out)
+  if (sub.status === 'active' || sub.status === 'trialing') return 'plus'
+  return 'free'
+}
+
 const findUserDocByCustomerId = async (customerId: string) => {
   const db = getFirestore()
   const snap1 = await db.collection('users').where('subscription.stripeCustomerId', '==', customerId).get()
@@ -150,12 +165,15 @@ export async function POST(request: NextRequest) {
               const c = await stripe.customers.retrieve(customerId)
               if (!(c as any).deleted) customerSnapshot = buildCustomerSnapshot(c as Stripe.Customer)
             } catch {}
+
+            const plan = inferPlanFromSubscription(subscription)
             
             // Mettre à jour avec les vraies dates Stripe
             await userDoc.ref.update({
               'subscription.currentPeriodStart': currentPeriodStart,
               'subscription.currentPeriodEnd': currentPeriodEnd,
               'subscription.status': subscription.status,
+              'subscription.plan': plan,
               'subscription.cancelAtPeriodEnd': subscription.cancel_at_period_end || false,
               ...(customerSnapshot ? { 'subscription.stripeCustomer': customerSnapshot } : {}),
               'subscription.updatedAt': FieldValue.serverTimestamp()
