@@ -52,9 +52,14 @@ export class StripeAdminService {
         }
       });
 
-      await userRef.update({
-        subscription: firestoreData
-      });
+      // Use set(merge) so this works even if the user doc doesn't exist yet
+      // (important for first-time users who pay before profile creation completes).
+      await userRef.set(
+        {
+          subscription: firestoreData,
+        },
+        { merge: true }
+      );
 
       console.log('StripeAdminService: Subscription updated successfully for user:', userId);
     } catch (error: any) {

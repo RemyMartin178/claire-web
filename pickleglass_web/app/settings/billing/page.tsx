@@ -13,6 +13,15 @@ import { useSubscription } from '@/hooks/useSubscription'
 import { loadStripe } from '@stripe/stripe-js'
 import { auth } from '@/utils/firebase'
 
+const waitForFirebaseUser = async (timeoutMs = 4000) => {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    if (auth?.currentUser) return auth.currentUser
+    await new Promise(r => setTimeout(r, 150))
+  }
+  return null
+}
+
 export default function BillingPage() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
@@ -77,10 +86,12 @@ export default function BillingPage() {
       } catch {}
 
       const sessionId = searchParams.get('session_id')
-      if (sessionId && auth?.currentUser) {
+      if (sessionId) {
         ;(async () => {
           try {
-            const token = await auth.currentUser!.getIdToken()
+            const u = await waitForFirebaseUser()
+            if (!u) return
+            const token = await u.getIdToken()
             await fetch('/api/stripe/sync-checkout-session', {
               method: 'POST',
               headers: {
@@ -97,10 +108,12 @@ export default function BillingPage() {
 
       // Fallback manual sync (when we only have a Stripe customer id)
       const customerId = searchParams.get('customer_id')
-      if (!sessionId && customerId && auth?.currentUser) {
+      if (!sessionId && customerId) {
         ;(async () => {
           try {
-            const token = await auth.currentUser!.getIdToken()
+            const u = await waitForFirebaseUser()
+            if (!u) return
+            const token = await u.getIdToken()
             await fetch('/api/stripe/sync-customer', {
               method: 'POST',
               headers: {
