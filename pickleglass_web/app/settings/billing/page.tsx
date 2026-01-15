@@ -94,11 +94,32 @@ export default function BillingPage() {
           }
         })()
       }
+
+      // Fallback manual sync (when we only have a Stripe customer id)
+      const customerId = searchParams.get('customer_id')
+      if (!sessionId && customerId && auth?.currentUser) {
+        ;(async () => {
+          try {
+            const token = await auth.currentUser!.getIdToken()
+            await fetch('/api/stripe/sync-customer', {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ customerId }),
+            })
+          } catch (e) {
+            console.warn('Stripe sync-customer failed:', e)
+          }
+        })()
+      }
       
       // Nettoyer l'URL
       const url = new URL(window.location.href)
       url.searchParams.delete('success')
       url.searchParams.delete('session_id')
+      url.searchParams.delete('customer_id')
       window.history.replaceState({}, '', url.toString())
       
       // Recharger la page après 3 secondes pour récupérer le nouveau statut
