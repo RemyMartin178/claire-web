@@ -72,8 +72,10 @@ export default function SettingsPage() {
       
       if (response.ok) {
         setShowCancelModal(false)
-        // Notification de succès
-        alert('Votre abonnement a été annulé. Vous continuerez à bénéficier des avantages jusqu\'à la fin de la période de facturation.')
+        addNotification(
+          "Votre abonnement a été annulé. Vous conservez les avantages jusqu'à la fin de la période de facturation.",
+          'success'
+        )
         // Recharger la page pour mettre à jour l'état
         setTimeout(() => window.location.reload(), 2000)
       } else {
@@ -81,7 +83,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Erreur annulation:', error)
-      alert('Erreur lors de l\'annulation de l\'abonnement. Veuillez réessayer.')
+      addNotification("Erreur lors de l'annulation de l'abonnement. Veuillez réessayer.", 'error')
     }
   }
 
