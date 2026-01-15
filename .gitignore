@@ -105,6 +105,10 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# Environment files
+.env
+pickleglass_web/.env
+
 # Database
 data/*.db
 data/*.db-journal

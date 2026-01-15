@@ -22,7 +22,11 @@ const logger = createLogger('AgentsApiClient');
 
 class AgentsApiClient {
     constructor(options = {}) {
-        this.baseUrl = options.baseUrl || process.env.pickleglass_API_URL || 'http://localhost:3001';
+        // Si l'URL pointe sur le frontend (claire-web-production), basculer sur le backend API
+        const envBase = options.baseUrl || process.env.pickleglass_API_URL || 'http://localhost:3001';
+        this.baseUrl = envBase.includes('claire-web-production')
+            ? envBase.replace('claire-web-production.up.railway.app', 'backend-production-ba2c.up.railway.app')
+            : envBase;
         this.apiVersion = options.apiVersion || 'v1';
         this.timeout = options.timeout || 30000;
         

@@ -622,6 +622,9 @@ export class MainHeader extends ThemeMixin(LitElement) {
             initialWindowX: initialPosition.x,
             initialWindowY: initialPosition.y,
             moved: false,
+            rafId: null,  // ✅ Request Animation Frame ID pour smooth drag
+            lastX: initialPosition.x,
+            lastY: initialPosition.y,
         };
 
         window.addEventListener('mousemove', this.handleMouseMove, { capture: true });
@@ -631,28 +634,64 @@ export class MainHeader extends ThemeMixin(LitElement) {
     handleMouseMove(e) {
         if (!this.dragState) return;
 
+        // ✅ Seuil augmenté de 3px à 5px pour éviter les clics parasites
         const deltaX = Math.abs(e.screenX - this.dragState.initialMouseX);
         const deltaY = Math.abs(e.screenY - this.dragState.initialMouseY);
         
-        if (deltaX > 3 || deltaY > 3) {
+        if (deltaX > 5 || deltaY > 5) {
             this.dragState.moved = true;
         }
 
-        const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
-        const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
+        // ✅ Annuler le RAF précédent si en cours
+        if (this.dragState.rafId) {
+            cancelAnimationFrame(this.dragState.rafId);
+        }
 
-        window.api.mainHeader.moveHeaderTo(newWindowX, newWindowY);
+        // ✅ Utiliser requestAnimationFrame pour smooth drag à 60 FPS
+        this.dragState.rafId = requestAnimationFrame(() => {
+            if (!this.dragState) return;
+
+            const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
+            const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
+
+            // ✅ Contraintes de bord d'écran (empêcher de sortir)
+            const screenWidth = window.screen.width;
+            const screenHeight = window.screen.height;
+            const headerWidth = 580;  // Largeur approximative du header
+            const headerHeight = 60;  // Hauteur approximative du header
+
+            const constrainedX = Math.max(0, Math.min(newWindowX, screenWidth - headerWidth));
+            const constrainedY = Math.max(0, Math.min(newWindowY, screenHeight - headerHeight));
+
+            // ✅ Ne déplacer que si la position a changé (éviter appels inutiles)
+            if (constrainedX !== this.dragState.lastX || constrainedY !== this.dragState.lastY) {
+                // ✅ FIX: Passer skipLayoutUpdate=true pendant le drag pour éviter les resizes
+                window.api.mainHeader.moveHeaderTo(constrainedX, constrainedY, true);
+                this.dragState.lastX = constrainedX;
+                this.dragState.lastY = constrainedY;
+            }
+
+            this.dragState.rafId = null;
+        });
     }
 
     handleMouseUp(e) {
         if (!this.dragState) return;
 
         const wasDragged = this.dragState.moved;
+        const finalX = this.dragState.lastX;
+        const finalY = this.dragState.lastY;
 
+        // ✅ Cleanup complet des listeners et RAF
         window.removeEventListener('mousemove', this.handleMouseMove, { capture: true });
+        if (this.dragState.rafId) {
+            cancelAnimationFrame(this.dragState.rafId);
+        }
         this.dragState = null;
 
-        if (wasDragged) {
+        // ✅ FIX: Appeler updateLayout() seulement au mouseup
+        if (wasDragged && finalX !== undefined && finalY !== undefined) {
+            window.api.mainHeader.moveHeaderTo(finalX, finalY, false);
             this.wasJustDragged = true;
             setTimeout(() => {
                 this.wasJustDragged = false;

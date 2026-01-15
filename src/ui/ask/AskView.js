@@ -802,7 +802,7 @@ export class AskView extends LitElement {
                 this.currentQuestion = newState.currentQuestion;
                 this.isLoading       = newState.isLoading;
                 this.isStreaming     = newState.isStreaming;
-              
+
                 const wasHidden = !this.showTextInput;
                 this.showTextInput = newState.showTextInput;
               
@@ -855,6 +855,8 @@ export class AskView extends LitElement {
             console.log('✅ AskView: IPC 이벤트 리스너 제거 필요');
         }
     }
+
+    // Toast désactivé (UI inline)
 
 
     async loadLibraries() {
@@ -1096,7 +1098,7 @@ export class AskView extends LitElement {
             // Auto-scroll vers le bas
             if (this.autoScrollEnabled) {
                 requestAnimationFrame(() => {
-                    responseContainer.scrollTop = responseContainer.scrollHeight;
+            responseContainer.scrollTop = responseContainer.scrollHeight;
                 });
             }
             

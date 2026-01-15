@@ -135,12 +135,37 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription
         console.log('❌ Subscription canceled:', subscription.id)
         
-        // Find user by customer ID and cancel their subscription
+        // ✅ FIX: Mettre à jour Firestore quand l'abonnement est annulé
         const customerId = subscription.customer as string
         
-        // Note: In a real app, you'd need to store customer->userId mapping
-        // For now, this will be handled when user accesses their account
-        console.log('⚠️ Subscription canceled for customer:', customerId)
+        try {
+          const db = getFirestore()
+          const usersSnapshot = await db.collection('users')
+            .where('subscription.stripeCustomerId', '==', customerId)
+            .get()
+          
+          if (!usersSnapshot.empty) {
+            const userDoc = usersSnapshot.docs[0]
+            const userId = userDoc.id
+            
+            console.log(`🔄 Annulation de l'abonnement pour l'utilisateur ${userId}`)
+            
+            // Mettre à jour le statut de l'abonnement à canceled
+            await userDoc.ref.update({
+              'subscription.status': 'canceled',
+              'subscription.plan': 'free',
+              'subscription.cancelAtPeriodEnd': false,
+              'subscription.currentPeriodEnd': null,
+              'subscription.updatedAt': FieldValue.serverTimestamp()
+            })
+            
+            console.log('✅ Abonnement annulé dans Firestore pour l\'utilisateur:', userId)
+          } else {
+            console.log('⚠️ Aucun utilisateur trouvé pour ce customer ID:', customerId)
+          }
+        } catch (error) {
+          console.error('❌ Erreur lors de l\'annulation:', error)
+        }
         break
       }
 

@@ -751,7 +751,7 @@ async function handleMobileAuthCallback(params) {
         const backendUrl = isProduction 
             ? 'https://backend-production-ba2c.up.railway.app'
             : 'http://localhost:3001';
-        const exchangeUrl = `${backendUrl}/auth/mobile-auth/exchange`;
+        const exchangeUrl = `${backendUrl}/api/v1/auth/mobile-auth/exchange`;  // ✅ FIX: Ajout de /api/v1 dans le path
         
         console.log('📡 Backend URL:', backendUrl);
         console.log('📡 Calling exchange API:', exchangeUrl);

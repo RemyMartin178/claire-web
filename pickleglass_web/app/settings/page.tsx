@@ -89,6 +89,12 @@ export default function SettingsPage() {
       return
     }
 
+    // ✅ FIX: Vérifier d'abord si l'utilisateur a un abonnement actif
+    if (subscription.plan === 'free' || !subscription.isActive || !subscription.stripeSubscriptionId) {
+      addNotification('Aucun abonnement actif. Souscrivez à un plan pour gérer vos paiements.', 'info')
+      return
+    }
+
     setIsManagingSubscription(true)
 
     try {
@@ -111,23 +117,7 @@ export default function SettingsPage() {
       } else {
         // Si l'API échoue, utiliser les données du hook useSubscription
         console.warn('API failed, using hook data:', subscription)
-        if (subscription.plan === 'free' || !subscription.stripeSubscriptionId) {
-          addNotification('Souscrivez d\'abord à un plan pour gérer vos paiements.', 'info')
-          setIsManagingSubscription(false)
-          setShowSubscriptionMenu(false)
-          return
-        }
-        // Essayer d'ouvrir le portail avec les données locales
-        // Note: On aura besoin du stripeCustomerId qui n'est pas dans le hook
         addNotification('Impossible d\'accéder au portail de paiement pour le moment.', 'error')
-        setIsManagingSubscription(false)
-        setShowSubscriptionMenu(false)
-        return
-      }
-
-      // Vérifier si l'utilisateur a un plan gratuit
-      if (subData.plan === 'free') {
-        addNotification('Souscrivez d\'abord à un plan pour gérer vos paiements.', 'info')
         setIsManagingSubscription(false)
         setShowSubscriptionMenu(false)
         return
@@ -499,12 +489,15 @@ export default function SettingsPage() {
                        showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
                      }`}>
                        <div className="py-1">
-                        <button
-                          onClick={handleCancelSubscription}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                        >
-                          Annuler l'abonnement
-                        </button>
+                        {/* ✅ FIX: Afficher "Annuler l'abonnement" uniquement si l'utilisateur a un abonnement actif */}
+                        {subscription.plan !== 'free' && subscription.isActive && subscription.stripeSubscriptionId && (
+                          <button
+                            onClick={handleCancelSubscription}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                          >
+                            Annuler l'abonnement
+                          </button>
+                        )}
                          <button
                            onClick={handleUpgradeSubscription}
                            className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"

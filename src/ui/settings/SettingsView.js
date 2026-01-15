@@ -1393,6 +1393,8 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
     handleFirebaseLogout() {
         console.log('Firebase Logout clicked');
+        // ✅ FIX: Marquer la déconnexion manuelle pour éviter l'onboarding
+        localStorage.setItem('manuallyLoggedOut', 'true');
         window.api.settingsView.firebaseLogout();
     }
 

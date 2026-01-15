@@ -40,6 +40,22 @@ const { aiProviderManager } = require('../../domains/ai');
 const { performanceMonitor } = require('../../domains/system');
 const { createLogger } = require('../../common/services/logger.js');
 
+// Helper pour sécuriser l'ajout de contexte sans crash
+function safeAddContext(payload) {
+    try {
+        if (!payload || !payload.type || !payload.sessionId) {
+            throw new Error('Invalid context payload');
+        }
+        if (payload.type === 'USER_MESSAGE' && !payload.content) {
+            throw new Error('Empty content');
+        }
+        fastContextManager.addContext(payload);
+    } catch (err) {
+        // Ne pas bloquer la requête si le format est mauvais
+        logger.warn('[AskService] FastContextManager addContext skipped', { error: err.message || err });
+    }
+}
+
 // Lazy import personality manager to avoid circular dependency
 
 const logger = createLogger('AskService');
@@ -694,8 +710,8 @@ class AskService {
             }
             } // END needsScreenshot
 
-            // Add user message to context manager
-            fastContextManager.addContext({
+            // Add user message to context manager (non bloquant)
+            safeAddContext({
                 type: 'USER_MESSAGE',
                 content: userPrompt,
                 sessionId,
@@ -1201,6 +1217,26 @@ class AskService {
                             throw new Error(`Backend agent execution failed: ${agentResponse?.error || 'Invalid response'}`);
                         }
                     } catch (backendError) {
+                        // Détecter quota dépassé et fournir un message clair à l’UI
+                        const errMsg = backendError?.message || '';
+                        if (errMsg.includes('Limite de requêtes atteinte') || errMsg.includes('quota') || errMsg.includes('Quota')) {
+                            const friendlyMsg = "Limite de requêtes atteinte. Vous avez utilisé 5/5 requêtes aujourd'hui. Réessayez demain ou passez à Claire Plus pour lever la limite.";
+                            logger.warn('[AskService] Quota exceeded - returning friendly message to UI');
+                            this.state.isLoading = false;
+                            this.state.isStreaming = false;
+                            this.state.currentResponse = friendlyMsg;
+                            this.state.showTextInput = true;
+                            this._broadcastState();
+                            const askWin = getWindowPool()?.get('ask');
+                            if (askWin && !askWin.isDestroyed()) {
+                                askWin.webContents.send('ask:responseComplete', {
+                                    response: friendlyMsg,
+                                    sessionId
+                                });
+                            }
+                            return { success: true, response: friendlyMsg };
+                        }
+
                         logger.error('[AskService] Backend agent execution failed:', {
                             agentId: this.selectedAgentId,
                             error: backendError.message || backendError,

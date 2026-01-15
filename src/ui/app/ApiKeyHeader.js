@@ -491,6 +491,9 @@ export class ApiKeyHeader extends ThemeMixin(LitElement) {
             initialWindowX: initialPosition.x,
             initialWindowY: initialPosition.y,
             moved: false,
+            rafId: null,  // ✅ Request Animation Frame ID
+            lastX: initialPosition.x,
+            lastY: initialPosition.y,
         };
 
         window.addEventListener('mousemove', this.handleMouseMove);
@@ -500,30 +503,65 @@ export class ApiKeyHeader extends ThemeMixin(LitElement) {
     handleMouseMove(e) {
         if (!this.dragState) return;
 
+        // ✅ Seuil augmenté de 3px à 5px
         const deltaX = Math.abs(e.screenX - this.dragState.initialMouseX);
         const deltaY = Math.abs(e.screenY - this.dragState.initialMouseY);
 
-        if (deltaX > 3 || deltaY > 3) {
+        if (deltaX > 5 || deltaY > 5) {
             this.dragState.moved = true;
         }
 
-        const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
-        const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
-
-        if (window.api?.apiKeyHeader) {
-            window.api.apiKeyHeader.moveHeaderTo(newWindowX, newWindowY);
+        // ✅ Annuler le RAF précédent
+        if (this.dragState.rafId) {
+            cancelAnimationFrame(this.dragState.rafId);
         }
+
+        // ✅ Smooth drag avec RAF
+        this.dragState.rafId = requestAnimationFrame(() => {
+            if (!this.dragState) return;
+
+            const newWindowX = this.dragState.initialWindowX + (e.screenX - this.dragState.initialMouseX);
+            const newWindowY = this.dragState.initialWindowY + (e.screenY - this.dragState.initialMouseY);
+
+            // ✅ Contraintes de bord
+            const screenWidth = window.screen.width;
+            const screenHeight = window.screen.height;
+            const headerWidth = 280;
+            const headerHeight = 400;
+
+            const constrainedX = Math.max(0, Math.min(newWindowX, screenWidth - headerWidth));
+            const constrainedY = Math.max(0, Math.min(newWindowY, screenHeight - headerHeight));
+
+            if (constrainedX !== this.dragState.lastX || constrainedY !== this.dragState.lastY) {
+                if (window.api?.apiKeyHeader) {
+                    // ✅ FIX: skipLayoutUpdate=true pendant le drag
+                    window.api.apiKeyHeader.moveHeaderTo(constrainedX, constrainedY, true);
+                    this.dragState.lastX = constrainedX;
+                    this.dragState.lastY = constrainedY;
+                }
+            }
+
+            this.dragState.rafId = null;
+        });
     }
 
     handleMouseUp(e) {
         if (!this.dragState) return;
 
         const wasDragged = this.dragState.moved;
+        const finalX = this.dragState.lastX;
+        const finalY = this.dragState.lastY;
 
+        // ✅ Cleanup complet
         window.removeEventListener('mousemove', this.handleMouseMove);
+        if (this.dragState.rafId) {
+            cancelAnimationFrame(this.dragState.rafId);
+        }
         this.dragState = null;
 
-        if (wasDragged) {
+        // ✅ FIX: Appeler updateLayout() au mouseup
+        if (wasDragged && finalX !== undefined && finalY !== undefined && window.api?.apiKeyHeader) {
+            window.api.apiKeyHeader.moveHeaderTo(finalX, finalY, false);
             this.wasJustDragged = true;
             setTimeout(() => {
                 this.wasJustDragged = false;

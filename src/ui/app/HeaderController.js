@@ -129,6 +129,15 @@ class HeaderTransitionManager {
         
         logger.info('[HeaderController] handleStateUpdate: Proceeding to main interface, isLoggedIn:', isLoggedIn);
         
+        // ✅ FIX: Ne pas montrer l'onboarding après une déconnexion manuelle
+        const manuallyLoggedOut = localStorage.getItem('manuallyLoggedOut') === 'true';
+        if (manuallyLoggedOut && !isLoggedIn) {
+            logger.info('[HeaderController] User logged out manually - skipping onboarding, showing welcome');
+            localStorage.removeItem('manuallyLoggedOut'); // Reset flag
+            this.transitionToWelcomeHeader();
+            return;
+        }
+        
         // Check if onboarding should be shown first (but skip for authenticated users)
         const shouldShowOnb = this.shouldShowOnboarding();
         logger.info('[HeaderController] shouldShowOnboarding returned:', shouldShowOnb);
@@ -269,6 +278,13 @@ class HeaderTransitionManager {
 
     shouldShowOnboarding() {
         logger.info('[HeaderController] Checking if onboarding should be shown');
+        
+        // ✅ FIX: Si l'utilisateur vient de se déconnecter manuellement, ne pas montrer l'onboarding
+        const manuallyLoggedOut = localStorage.getItem('manuallyLoggedOut') === 'true';
+        if (manuallyLoggedOut) {
+            logger.info('[HeaderController] [SKIP] User manually logged out - skipping onboarding');
+            return false;
+        }
         
         const forceOnboarding = localStorage.getItem('forceOnboarding');
         const onboardingCompleted = localStorage.getItem('onboardingCompleted');

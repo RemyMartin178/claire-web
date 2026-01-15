@@ -15,6 +15,9 @@ const { createLogger } = require('../common/services/logger.js');
 
 const logger = createLogger('WindowManager');
 
+// ✅ FIX: Flag global pour désactiver updateLayout pendant le drag
+let isDraggingHeader = false;
+
 let liquidGlass;
 let shouldUseLiquidGlass = platformManager.capabilities.liquidGlass;
 
@@ -139,9 +142,25 @@ let agentSelectorHideTimer = null;
 
 
 let layoutManager = null;
+// ✅ Garde-fous de layout
+let layoutLock = false;
+let layoutFrozen = false; // gèle tout recalcul pendant un drag
 function updateLayout() {
+    if (layoutFrozen) {
+        logger.debug('[WindowManager] updateLayout blocked - layout frozen');
+        return;
+    }
+    if (layoutLock) {
+        logger.debug('[WindowManager] updateLayout blocked - already in progress');
+        return;
+    }
     if (layoutManager) {
-        layoutManager.updateLayout();
+        layoutLock = true;
+        try {
+            layoutManager.updateLayout();
+        } finally {
+            layoutLock = false;
+        }
     }
 }
 let movementManager = null;
@@ -945,7 +964,12 @@ function createWindows() {
         });
     }
     windowPool.set('header', header);
-    header.on('moved', updateLayout);
+    // ✅ FIX: Ne pas appeler updateLayout si on est en train de dragger ou layout gelé
+    header.on('moved', () => {
+        if (!isDraggingHeader && !layoutFrozen) {
+            updateLayout();
+        }
+    });
     // Apply current theme to the header window
     applyThemeToNewWindow(header, 'header');
     layoutManager = new WindowLayoutManager(windowPool);
@@ -987,9 +1011,12 @@ function createWindows() {
         }
     });
 
+    // ✅ FIX: Bloquer resize events pendant drag
     header.on('resize', () => {
-        logger.info('[WindowManager] Header resize event triggered');
-        updateLayout();
+        if (!isDraggingHeader && !layoutFrozen) {
+            logger.info('[WindowManager] Header resize event triggered');
+            updateLayout();
+        }
     });
 
     return windowPool;
@@ -1059,7 +1086,7 @@ const moveHeader = (newX, newY) => {
     }
 };
 
-const moveHeaderTo = (newX, newY) => {
+const moveHeaderTo = (newX, newY, skipLayoutUpdate = false) => {
     const header = windowPool.get('header');
     if (header) {
         const targetDisplay = screen.getDisplayNearestPoint({ x: newX, y: newY });
@@ -1081,8 +1108,20 @@ const moveHeaderTo = (newX, newY) => {
             clampedY = workAreaY + height - headerBounds.height;
         }
 
+        // ✅ FIX: Setter le flag isDragging pendant le drag et geler le layout
+        if (skipLayoutUpdate) {
+            isDraggingHeader = true;
+            layoutFrozen = true;
+        }
+
         header.setPosition(clampedX, clampedY, false);
-        updateLayout();
+        
+        // ✅ FIX: Appeler updateLayout() seulement si pas en train de dragger
+        if (!skipLayoutUpdate) {
+            isDraggingHeader = false;
+            layoutFrozen = false;
+            updateLayout();
+        }
     }
 };
 
@@ -1198,12 +1237,17 @@ const toggleClickThrough = () => {
     clickThroughEnabled = !clickThroughEnabled;
     logger.info(`[WindowManager] Click-through ${clickThroughEnabled ? 'enabled' : 'disabled'}`);
     
-    // Apply click-through to all windows
-    const windowNames = ['header', 'settings', 'ask', 'listen'];
+    // ✅ FIX: Ne JAMAIS mettre settings en click-through (sinon le toggle ne marche plus!)
+    const windowNames = ['header', 'ask', 'listen'];
     windowNames.forEach(windowName => {
         const window = windowPool.get(windowName);
         if (window && !window.isDestroyed()) {
-            window.setIgnoreMouseEvents(clickThroughEnabled);
+            if (clickThroughEnabled) {
+                // Forward les clics aux fenêtres en dessous, sauf sur la fenêtre elle-même
+                window.setIgnoreMouseEvents(true, { forward: true });
+            } else {
+                window.setIgnoreMouseEvents(false);
+            }
             logger.info(`[WindowManager] Set click-through for ${windowName}: ${clickThroughEnabled}`);
         }
     });
@@ -1227,6 +1271,30 @@ const getClickThroughStatus = () => {
         enabled: clickThroughEnabled
     };
 };
+
+// ✅ FIX: Ajouter globalShortcut pour toggle click-through (au cas où l'UI est cassée)
+// Note: globalShortcut déjà importé en haut du fichier
+const registerClickThroughShortcut = () => {
+    try {
+        const ret = globalShortcut.register('CommandOrControl+Alt+C', () => {
+            logger.info('[WindowManager] Global shortcut Ctrl+Alt+C triggered - toggling click-through');
+            toggleClickThrough();
+        });
+        
+        if (ret) {
+            logger.info('[WindowManager] ✅ Click-through emergency shortcut registered: Ctrl+Alt+C');
+        } else {
+            logger.warn('[WindowManager] ⚠️ Failed to register click-through shortcut');
+        }
+    } catch (error) {
+        logger.error('[WindowManager] ❌ Error registering click-through shortcut:', error);
+    }
+};
+
+// Appeler au démarrage
+if (process.type !== 'renderer') {
+    registerClickThroughShortcut();
+}
 
 /* ────────────────[ WINDOW OPACITY MANAGEMENT ]─────────────── */
 const setWindowOpacity = (opacity) => {

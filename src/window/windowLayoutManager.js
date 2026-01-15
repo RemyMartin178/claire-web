@@ -222,13 +222,15 @@ class WindowLayoutManager {
                 const windowBottomAbs = headerBounds.y - PAD;
                 const askY = windowBottomAbs - askBounds.height;
                 const listenY = windowBottomAbs - listenBounds.height;
-                ask.setBounds({ x: Math.round(askXRel + workAreaX), y: Math.round(askY), width: askBounds.width, height: askBounds.height });
-                listen.setBounds({ x: Math.round(listenXRel + workAreaX), y: Math.round(listenY), width: listenBounds.width, height: listenBounds.height });
+                // ✅ FIX: Utiliser setPosition uniquement (pas setBounds) pour éviter resize accidentel
+                ask.setPosition(Math.round(askXRel + workAreaX), Math.round(askY), false);
+                listen.setPosition(Math.round(listenXRel + workAreaX), Math.round(listenY), false);
             } else { // 'below'
                 const yPos = headerBottomRel + PAD;
                 const yAbs = yPos + workAreaY;
-                ask.setBounds({ x: Math.round(askXRel + workAreaX), y: Math.round(yAbs), width: askBounds.width, height: askBounds.height });
-                listen.setBounds({ x: Math.round(listenXRel + workAreaX), y: Math.round(yAbs), width: listenBounds.width, height: listenBounds.height });
+                // ✅ FIX: Utiliser setPosition uniquement (pas setBounds) pour éviter resize accidentel
+                ask.setPosition(Math.round(askXRel + workAreaX), Math.round(yAbs), false);
+                listen.setPosition(Math.round(listenXRel + workAreaX), Math.round(yAbs), false);
             }
         
         } else { // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] ([Korean comment translated] [Korean comment translated] Confirm)
@@ -246,7 +248,8 @@ class WindowLayoutManager {
             }
             const yAbs = yPos + workAreaY;
 
-            win.setBounds({ x: Math.round(xRel + workAreaX), y: Math.round(yAbs), width: winBounds.width, height: winBounds.height });
+            // ✅ FIX: Utiliser setPosition uniquement (pas setBounds) pour éviter resize accidentel
+            win.setPosition(Math.round(xRel + workAreaX), Math.round(yAbs), false);
         }
     }
 

@@ -35,7 +35,7 @@ module.exports = {
     ipcMain.removeHandler('move-header');
     ipcMain.handle('move-header', (event, newX, newY) => windowManager.moveHeader(newX, newY));
     ipcMain.removeHandler('move-header-to');
-    ipcMain.handle('move-header-to', (event, newX, newY) => windowManager.moveHeaderTo(newX, newY));
+    ipcMain.handle('move-header-to', (event, newX, newY, skipLayoutUpdate) => windowManager.moveHeaderTo(newX, newY, skipLayoutUpdate));
     ipcMain.removeHandler('adjust-window-height');
     ipcMain.handle('adjust-window-height', (event, targetHeight) => windowManager.adjustWindowHeight(event.sender, targetHeight));
     ipcMain.removeHandler('set-window-opacity');

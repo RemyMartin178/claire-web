@@ -355,7 +355,7 @@ class AuthService {
             this.currentUserMode = 'local';
             this.isFirebaseClientReady = false;
             
-            // Broadcast the state change
+            // Broadcast the state change (will trigger HeaderController)
             this.broadcastUserState();
             logger.info('[AuthService] ✅ User state broadcast after sign out');
             
