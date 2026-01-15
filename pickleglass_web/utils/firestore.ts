@@ -86,6 +86,13 @@ export class FirestoreUserService {
   static createUser = async (uid: string, profile: Omit<FirestoreUserProfile, 'createdAt'>): Promise<void> => {
     console.log('FirestoreUserService: Creating user with uid:', uid, 'profile:', profile);
     const userRef = doc(firestore, 'users', uid);
+
+    const defaultSubscription = {
+      status: 'active',
+      plan: 'free',
+      cancelAtPeriodEnd: false,
+      updatedAt: serverTimestamp(),
+    };
     
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
@@ -96,21 +103,27 @@ export class FirestoreUserService {
         const existingDoc = await getDoc(userRef);
         if (existingDoc.exists()) {
           console.log('FirestoreUserService: User document already exists, updating profile');
+          const existingData = existingDoc.data() as any;
+          const needsSubscriptionBackfill = !existingData?.subscription;
+
           await updateDoc(userRef, {
             displayName: profile.displayName,
-            email: profile.email
+            email: profile.email,
+            ...(needsSubscriptionBackfill ? { subscription: defaultSubscription } : {}),
           });
           return;
         }
 
         console.log(`FirestoreUserService: Attempt ${attempt} - Creating new document with data:`, {
           ...profile,
-          createdAt: 'serverTimestamp()'
+          createdAt: 'serverTimestamp()',
+          subscription: defaultSubscription
         });
         
         await setDoc(userRef, {
           ...profile,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          subscription: defaultSubscription
         });
         
         console.log('FirestoreUserService: User created successfully on attempt', attempt);
