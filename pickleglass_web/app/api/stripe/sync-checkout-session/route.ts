@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const customer = await stripe.customers.retrieve(customerId)
+    const customerObj = (customer as any).deleted ? null : (customer as Stripe.Customer)
+
     const subscription = await stripe.subscriptions.retrieve(subscriptionId)
     const currentPeriodStart = new Date((subscription as any).current_period_start * 1000)
     const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
@@ -66,6 +69,22 @@ export async function POST(request: NextRequest) {
       status: (subscription.status as any) || 'active',
       plan: 'plus',
       stripeCustomerId: customerId,
+      ...(customerObj
+        ? {
+            stripeCustomer: {
+              id: customerObj.id,
+              email: customerObj.email,
+              name: customerObj.name,
+              livemode: customerObj.livemode,
+              created: customerObj.created,
+              currency: (customerObj as any).currency,
+              invoice_prefix: (customerObj as any).invoice_prefix,
+              invoice_settings: (customerObj as any).invoice_settings,
+              preferred_locales: customerObj.preferred_locales,
+              metadata: customerObj.metadata,
+            },
+          }
+        : {}),
       stripeSubscriptionId: subscriptionId,
       currentPeriodStart,
       currentPeriodEnd,

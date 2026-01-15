@@ -4,6 +4,31 @@ import { headers } from 'next/headers'
 import { StripeAdminService } from '@/utils/stripeAdmin'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 
+const buildCustomerSnapshot = (c: Stripe.Customer) => ({
+  id: c.id,
+  email: c.email,
+  name: c.name,
+  livemode: c.livemode,
+  created: c.created,
+  currency: (c as any).currency,
+  invoice_prefix: (c as any).invoice_prefix,
+  invoice_settings: (c as any).invoice_settings,
+  preferred_locales: c.preferred_locales,
+  metadata: c.metadata,
+})
+
+const findUserDocByCustomerId = async (customerId: string) => {
+  const db = getFirestore()
+  const snap1 = await db.collection('users').where('subscription.stripeCustomerId', '==', customerId).get()
+  if (!snap1.empty) return snap1.docs[0]
+
+  // Backward compat: older docs stored stripeCustomerId as an object { id: 'cus_...' }
+  const snap2 = await db.collection('users').where('subscription.stripeCustomerId.id', '==', customerId).get()
+  if (!snap2.empty) return snap2.docs[0]
+
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Initialize Stripe only when needed (not during build)
@@ -57,6 +82,17 @@ export async function POST(request: NextRequest) {
         }
 
         console.log('User subscribed:', { userId, customerId, subscriptionId })
+
+        // Optionnel: snapshot customer pour debug/UX parity
+        let customerSnapshot: Record<string, any> | undefined
+        try {
+          const c = await stripe.customers.retrieve(customerId)
+          if (!(c as any).deleted) {
+            customerSnapshot = buildCustomerSnapshot(c as Stripe.Customer)
+          }
+        } catch (e) {
+          console.warn('Could not retrieve Stripe customer for snapshot:', e)
+        }
         
         // Récupérer les vraies dates depuis l'abonnement Stripe
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
@@ -74,6 +110,7 @@ export async function POST(request: NextRequest) {
           status: 'active',
           plan: 'plus', // Claire Plus subscription
           stripeCustomerId: customerId,
+          ...(customerSnapshot ? { stripeCustomer: customerSnapshot } : {}),
           stripeSubscriptionId: subscriptionId,
           currentPeriodStart: currentPeriodStart,
           currentPeriodEnd: currentPeriodEnd,
@@ -101,16 +138,18 @@ export async function POST(request: NextRequest) {
         // Trouver l'utilisateur par customer ID
         const customerId = subscription.customer as string
         try {
-          const db = getFirestore()
-          const usersSnapshot = await db.collection('users')
-            .where('subscription.stripeCustomerId', '==', customerId)
-            .get()
-          
-          if (!usersSnapshot.empty) {
-            const userDoc = usersSnapshot.docs[0]
+          const userDoc = await findUserDocByCustomerId(customerId)
+          if (userDoc) {
             const userId = userDoc.id
             
             console.log(`🔄 Mise à jour automatique de l'utilisateur ${userId}`)
+
+            // Best-effort snapshot customer
+            let customerSnapshot: Record<string, any> | undefined
+            try {
+              const c = await stripe.customers.retrieve(customerId)
+              if (!(c as any).deleted) customerSnapshot = buildCustomerSnapshot(c as Stripe.Customer)
+            } catch {}
             
             // Mettre à jour avec les vraies dates Stripe
             await userDoc.ref.update({
@@ -118,6 +157,7 @@ export async function POST(request: NextRequest) {
               'subscription.currentPeriodEnd': currentPeriodEnd,
               'subscription.status': subscription.status,
               'subscription.cancelAtPeriodEnd': subscription.cancel_at_period_end || false,
+              ...(customerSnapshot ? { 'subscription.stripeCustomer': customerSnapshot } : {}),
               'subscription.updatedAt': FieldValue.serverTimestamp()
             })
             
@@ -139,13 +179,8 @@ export async function POST(request: NextRequest) {
         const customerId = subscription.customer as string
         
         try {
-          const db = getFirestore()
-          const usersSnapshot = await db.collection('users')
-            .where('subscription.stripeCustomerId', '==', customerId)
-            .get()
-          
-          if (!usersSnapshot.empty) {
-            const userDoc = usersSnapshot.docs[0]
+          const userDoc = await findUserDocByCustomerId(customerId)
+          if (userDoc) {
             const userId = userDoc.id
             
             console.log(`🔄 Annulation de l'abonnement pour l'utilisateur ${userId}`)

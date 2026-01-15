@@ -30,8 +30,12 @@ export async function POST(request: NextRequest) {
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-    const customer = (await stripe.customers.retrieve(customerId)) as Stripe.Customer
-    const customerEmail = (customer.email || undefined)?.toLowerCase()
+    const customer = await stripe.customers.retrieve(customerId)
+    if ((customer as any).deleted) {
+      return NextResponse.json({ error: 'Stripe customer deleted' }, { status: 404 })
+    }
+    const customerObj = customer as Stripe.Customer
+    const customerEmail = (customerObj.email || undefined)?.toLowerCase()
 
     // Ownership check: only allow syncing if Stripe customer email matches Firebase token email
     if (!tokenEmail || !customerEmail || customerEmail !== tokenEmail.toLowerCase()) {
@@ -63,6 +67,18 @@ export async function POST(request: NextRequest) {
       status: (candidate.status as any) || 'active',
       plan,
       stripeCustomerId: customerId,
+      stripeCustomer: {
+        id: customerObj.id,
+        email: customerObj.email,
+        name: customerObj.name,
+        livemode: customerObj.livemode,
+        created: customerObj.created,
+        currency: (customerObj as any).currency,
+        invoice_prefix: (customerObj as any).invoice_prefix,
+        invoice_settings: (customerObj as any).invoice_settings,
+        preferred_locales: customerObj.preferred_locales,
+        metadata: customerObj.metadata,
+      },
       stripeSubscriptionId: candidate.id,
       currentPeriodStart,
       currentPeriodEnd,

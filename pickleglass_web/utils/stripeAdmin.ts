@@ -5,7 +5,10 @@ import { getApps } from 'firebase-admin/app';
 export interface StripeSubscriptionData {
   status: 'active' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'past_due' | 'trialing' | 'unpaid';
   plan: 'free' | 'plus' | 'enterprise';
+  // Keep a simple string id for reliable Firestore queries / indexes
   stripeCustomerId?: string;
+  // Optional snapshot of Stripe customer (for debug/UX parity with older docs)
+  stripeCustomer?: Record<string, any>;
   stripeSubscriptionId?: string;
   currentPeriodStart?: Date;
   currentPeriodEnd?: Date;
