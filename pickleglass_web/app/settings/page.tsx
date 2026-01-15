@@ -57,15 +57,17 @@ export default function SettingsPage() {
 
   const confirmCancelSubscription = async () => {
     try {
+      const token = await auth.currentUser?.getIdToken()
+      if (!token) throw new Error('Impossible de récupérer le token')
+
       // Appeler l'API pour annuler l'abonnement
       const response = await fetch('/api/stripe/cancel-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          userId: userInfo?.uid
-        })
+        body: JSON.stringify({}),
       })
       
       if (response.ok) {

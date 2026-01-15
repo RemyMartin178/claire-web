@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getFirestore, FieldValue } from 'firebase-admin/firestore'
 import { getApps } from 'firebase-admin/app'
 import Stripe from 'stripe'
+import { ensureFirebaseAdminInitialized } from '@/utils/firebaseAdmin'
+import { getAuth } from 'firebase-admin/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +15,9 @@ export async function POST(request: NextRequest) {
     }
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+
+    // Ensure Firebase Admin is initialized
+    ensureFirebaseAdminInitialized()
 
     if (getApps().length === 0) {
       return NextResponse.json(
@@ -31,22 +36,20 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1]
-    
-    // Ici tu devrais vérifier le token Firebase, mais pour simplifier on va chercher l'utilisateur actuel
-    // En production, tu devrais utiliser Firebase Admin Auth pour vérifier le token
-    
-    const db = getFirestore()
-    
-    // Pour l'instant, on va chercher l'utilisateur par son email ou ID
-    // Tu peux adapter cette logique selon ton système d'auth
-    const { userId } = await request.json()
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID required' },
-        { status: 400 }
-      )
+
+    // Verify Firebase token (required)
+    let decoded: any
+    try {
+      const adminAuth = getAuth()
+      decoded = await adminAuth.verifyIdToken(token)
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
+
+    const db = getFirestore()
+
+    // Use token uid as source of truth (ignore userId from client)
+    const userId = decoded.uid
 
     // Récupérer l'abonnement de l'utilisateur
     const userRef = db.collection('users').doc(userId)
@@ -82,11 +85,13 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Subscription canceled at period end:', subscriptionId)
 
+    const end = new Date((subscription as any).current_period_end * 1000)
+
     return NextResponse.json({
       success: true,
       message: 'Subscription will be canceled at the end of the current period',
       cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
-      currentPeriodEnd: new Date((subscription as any).current_period_end * 1000).toISOString()
+      currentPeriodEnd: Number.isNaN(end.getTime()) ? null : end.toISOString()
     })
 
   } catch (error: any) {

@@ -134,11 +134,9 @@ export class StripeAdminService {
         return false;
       }
 
-      // Check if subscription is active and not canceled
-      const isActive = subscription.status === 'active' || subscription.status === 'trialing';
-      const isNotCanceled = !subscription.cancelAtPeriodEnd;
-      
-      return isActive && isNotCanceled;
+      // ✅ Important: if user cancels "at period end", they should KEEP access until the end.
+      // Stripe keeps the subscription `active` until it actually ends.
+      return subscription.status === 'active' || subscription.status === 'trialing';
     } catch (error: any) {
       console.error('StripeAdminService: Error checking subscription:', error);
       return false;
