@@ -9,14 +9,26 @@ export async function POST(req: Request) {
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-    const { customerId, subscriptionId, annualPriceId } = await req.json();
+    const { customerId, subscriptionId, annualPriceId: annualPriceIdFromClient } = await req.json();
+    const annualPriceId = annualPriceIdFromClient || process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID;
 
-    if (!customerId || !subscriptionId || !annualPriceId) {
+    if (!customerId || !subscriptionId) {
       return NextResponse.json({ error: "missing params" }, { status: 400 });
+    }
+
+    if (!annualPriceId) {
+      return NextResponse.json({ error: "annual price not configured" }, { status: 500 });
     }
 
     // Fetch current subscription to get details
     const sub = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["items.data.price"] });
+
+    // Ownership guard: avoid upgrading a subscription that isn't attached to the customer
+    const subCustomerId = typeof sub.customer === 'string' ? sub.customer : (sub.customer as any)?.id;
+    if (subCustomerId && subCustomerId !== customerId) {
+      return NextResponse.json({ error: "customer mismatch" }, { status: 403 });
+    }
+
     const currentItem = sub.items.data[0];
     const quantity = currentItem.quantity ?? 1;
 

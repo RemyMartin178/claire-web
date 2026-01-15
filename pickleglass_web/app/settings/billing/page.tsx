@@ -248,8 +248,6 @@ export default function BillingPage() {
     try {
       const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
       const subscriptionId = subscription.stripeSubscriptionId
-      const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
-
       // Récupérer le preview de proration
       const previewRes = await fetch('/api/billing/preview-upgrade', {
         method: 'POST',
@@ -257,7 +255,6 @@ export default function BillingPage() {
         body: JSON.stringify({
           customerId,
           subscriptionId,
-          annualPriceId,
         }),
       })
       
@@ -295,15 +292,12 @@ export default function BillingPage() {
     try {
       const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
       const subscriptionId = subscription.stripeSubscriptionId
-      const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
-
       const res = await fetch('/api/billing/confirm-upgrade', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           customerId,
           subscriptionId,
-          annualPriceId,
         }),
       })
       
@@ -341,15 +335,12 @@ export default function BillingPage() {
     try {
       const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
       const subscriptionId = subscription.stripeSubscriptionId
-      const annualPriceId = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
-
       const res = await fetch('/api/billing/confirm-upgrade', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           customerId,
           subscriptionId,
-          annualPriceId,
         }),
       })
       
