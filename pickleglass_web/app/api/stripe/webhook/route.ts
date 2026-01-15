@@ -267,8 +267,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ received: true })
   } catch (error: any) {
     console.error('Webhook error:', error)
+
+    // Safe diagnostics for Stripe dashboard (no secrets)
+    const message = error?.message || 'Webhook handler failed'
+    const diagnostics = {
+      appsCount: (() => {
+        try {
+          // lazy require to avoid edge bundling issues
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { getApps } = require('firebase-admin/app')
+          return getApps().length
+        } catch {
+          return 'unknown'
+        }
+      })(),
+      hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
+      hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      privateKeyHasBegin: (process.env.FIREBASE_PRIVATE_KEY || '').includes('BEGIN PRIVATE KEY'),
+      privateKeyLen: (process.env.FIREBASE_PRIVATE_KEY || '').length,
+    }
+
     return NextResponse.json(
-      { error: error.message || 'Webhook handler failed' },
+      { error: message, diagnostics },
       { status: 500 }
     )
   }

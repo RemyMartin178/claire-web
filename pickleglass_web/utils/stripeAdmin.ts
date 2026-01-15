@@ -1,5 +1,5 @@
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { auth } from './firebaseAdmin';
+import { ensureFirebaseAdminInitialized } from './firebaseAdmin';
 import { getApps } from 'firebase-admin/app';
 
 export interface StripeSubscriptionData {
@@ -18,6 +18,8 @@ export interface StripeSubscriptionData {
 
 export class StripeAdminService {
   private static get db() {
+    // Ensure Firebase Admin is initialized in serverless environments
+    ensureFirebaseAdminInitialized();
     if (getApps().length === 0) {
       throw new Error('Firebase Admin not initialized');
     }

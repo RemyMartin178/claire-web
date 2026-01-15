@@ -4,7 +4,13 @@ import { getAuth } from 'firebase-admin/auth';
 // Initialize Firebase Admin SDK only if credentials are available
 let adminAuth: ReturnType<typeof getAuth> | null = null;
 
-if (!getApps().length) {
+const initFirebaseAdminIfNeeded = () => {
+  if (getApps().length) {
+    adminAuth = getAuth();
+    auth = adminAuth as ReturnType<typeof getAuth>;
+    return;
+  }
+
   const serviceAccount = {
     type: "service_account",
     project_id: process.env.FIREBASE_PROJECT_ID || "dedale-database",
@@ -28,22 +34,41 @@ if (!getApps().length) {
     hasKey,
     hasEmail,
     hasProject,
+    appsCount: getApps().length,
+    projectId: serviceAccount.project_id,
     keyLen: serviceAccount.private_key?.length || 0,
     emailDomainOk: hasEmail ? serviceAccount.client_email!.endsWith('@dedale-database.iam.gserviceaccount.com') : false
   });
 
-  if (hasKey && hasEmail && hasProject) {
+  if (!hasKey || !hasEmail || !hasProject) {
+    console.error('Firebase Admin credentials missing/invalid');
+    adminAuth = null;
+    auth = adminAuth as any;
+    return;
+  }
+
+  try {
     initializeApp({
       credential: cert(serviceAccount as any),
       projectId: serviceAccount.project_id,
     });
     adminAuth = getAuth();
+    auth = adminAuth as ReturnType<typeof getAuth>;
     console.log('Firebase Admin initialized successfully');
-  } else {
-    console.error('Firebase Admin credentials missing/invalid');
+  } catch (e) {
+    console.error('Firebase Admin init failed:', e);
+    adminAuth = null;
+    auth = adminAuth as any;
   }
-} else {
-  adminAuth = getAuth();
 }
 
-export const auth = adminAuth as ReturnType<typeof getAuth>;
+// Export a live binding so late init updates are visible to importers
+export let auth: ReturnType<typeof getAuth> | null = adminAuth;
+
+export const ensureFirebaseAdminInitialized = () => {
+  initFirebaseAdminIfNeeded();
+  return auth;
+}
+
+// Best-effort init on module load
+initFirebaseAdminIfNeeded();
