@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useSubscription } from '@/hooks/useSubscription'
 import { loadStripe } from '@stripe/stripe-js'
+import { auth } from '@/utils/firebase'
 
 export default function BillingPage() {
   const { user } = useAuth()
@@ -68,10 +69,36 @@ export default function BillingPage() {
 
     if (searchParams.get('success') === 'true') {
       setShowSuccess(true)
+
+      // Important: subscription status can be cached for up to 5 minutes.
+      // On a Stripe success redirect we must invalidate cache and (if possible) sync immediately.
+      try {
+        localStorage.removeItem('subscription_cache')
+      } catch {}
+
+      const sessionId = searchParams.get('session_id')
+      if (sessionId && auth?.currentUser) {
+        ;(async () => {
+          try {
+            const token = await auth.currentUser!.getIdToken()
+            await fetch('/api/stripe/sync-checkout-session', {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ sessionId }),
+            })
+          } catch (e) {
+            console.warn('Stripe sync-checkout-session failed:', e)
+          }
+        })()
+      }
       
       // Nettoyer l'URL
       const url = new URL(window.location.href)
       url.searchParams.delete('success')
+      url.searchParams.delete('session_id')
       window.history.replaceState({}, '', url.toString())
       
       // Recharger la page après 3 secondes pour récupérer le nouveau statut
