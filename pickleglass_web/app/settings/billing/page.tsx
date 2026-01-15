@@ -154,47 +154,50 @@ export default function BillingPage() {
 
   // Fonction pour gérer les clics dans la section mensuelle
   const handleMonthlyClick = () => {
-    if (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd) {
-      if (subscription.billingCycle === 'monthly') {
-        // Utilisateur sur plan mensuel actif - bouton non cliquable
-        return
-      } else if (subscription.billingCycle === 'yearly') {
-        // Utilisateur sur plan annuel - peut souscrire au mensuel
-        setMonthlyLoading(true)
-        handleSubscribe('plus').finally(() => setMonthlyLoading(false))
-      }
-    } else {
-      // Utilisateur sans abonnement ou abonnement inactif
-      setMonthlyLoading(true)
-      handleSubscribe('plus').finally(() => setMonthlyLoading(false))
-    }
+    const isPlusActive =
+      subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
+
+    // Si Plus est actif (mensuel OU annuel), on ne déclenche pas une 2e souscription
+    if (isPlusActive) return
+
+    // Utilisateur sans abonnement ou abonnement inactif
+    setMonthlyLoading(true)
+    handleSubscribe('plus').finally(() => setMonthlyLoading(false))
   }
 
   // Fonction pour gérer les clics dans la section annuelle
   const handleYearlyClick = () => {
-    if (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd) {
+    const isPlusActive =
+      subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
+
+    if (isPlusActive) {
       if (subscription.billingCycle === 'yearly') {
         // Utilisateur sur plan annuel actif - bouton non cliquable
         return
-      } else if (subscription.billingCycle === 'monthly') {
+      }
+
+      if (subscription.billingCycle === 'monthly') {
         // Utilisateur sur plan mensuel - upgrade vers annuel
         setYearlyLoading(true)
         handleUpgradeToAnnual().finally(() => setYearlyLoading(false))
+        return
       }
-    } else {
-      // Utilisateur sans abonnement ou abonnement inactif
-      setYearlyLoading(true)
-      handleSubscribe('plus').finally(() => setYearlyLoading(false))
     }
+
+    // Utilisateur sans abonnement ou abonnement inactif
+    setYearlyLoading(true)
+    handleSubscribe('plus').finally(() => setYearlyLoading(false))
   }
 
   // Fonction pour déterminer le texte du bouton mensuel
   const getMonthlyButtonText = () => {
     if (subscription.isLoading) return 'Vérification...'
-    if (subscription.plan === 'plus') {
-      if (subscription.cancelAtPeriodEnd) return '✓ Plan actuel (annulé)'
-      if (subscription.billingCycle === 'monthly') return '✓ Plan actuel'
-      if (subscription.billingCycle === 'yearly') return 'Souscrire à Plus'
+    const isPlusActive =
+      subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
+
+    if (isPlusActive) {
+      // Si on a déjà Plus actif (mensuel OU annuel), on verrouille le bouton mensuel
+      return '✓ Plan actuel'
     }
     return monthlyLoading ? 'Chargement...' : 'Souscrire à Plus'
   }
@@ -202,24 +205,34 @@ export default function BillingPage() {
   // Fonction pour déterminer le texte du bouton annuel
   const getYearlyButtonText = () => {
     if (subscription.isLoading) return 'Vérification...'
-    if (subscription.plan === 'plus') {
-      if (subscription.cancelAtPeriodEnd) return '✓ Plan actuel (annulé)'
-      if (subscription.billingCycle === 'yearly') return '✓ Plan actuel'
-      if (subscription.billingCycle === 'monthly') return 'Passer au plan supérieur'
-    }
+    const isPlusActive =
+      subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
+
+    // Si l'utilisateur est déjà en Plus annuel actif, c'est le plan actuel
+    if (isPlusActive && subscription.billingCycle === 'yearly') return '✓ Plan actuel'
+
+    // Si l'utilisateur est en Plus mensuel actif, on propose de "Souscrire" à l'annuel
+    // (cela déclenche l'upgrade mensuel -> annuel)
+    if (isPlusActive && subscription.billingCycle === 'monthly') return 'Souscrire à Plus'
+
     return yearlyLoading ? 'Chargement...' : 'Souscrire à Plus'
   }
 
   // Fonction pour déterminer si le bouton mensuel est désactivé
   const isMonthlyButtonDisabled = () => {
-    return monthlyLoading || subscription.isLoading || upgradeLoading || 
-           (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd && subscription.billingCycle === 'monthly')
+    const isPlusActive =
+      subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
+
+    return monthlyLoading || subscription.isLoading || upgradeLoading || isPlusActive
   }
 
   // Fonction pour déterminer si le bouton annuel est désactivé
   const isYearlyButtonDisabled = () => {
-    return yearlyLoading || subscription.isLoading || upgradeLoading || 
-           (subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd && subscription.billingCycle === 'yearly')
+    const isPlusActive =
+      subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
+    const isPlusYearly = isPlusActive && subscription.billingCycle === 'yearly'
+
+    return yearlyLoading || subscription.isLoading || upgradeLoading || isPlusYearly
   }
 
   // Fonction pour gérer l'upgrade vers annuel
