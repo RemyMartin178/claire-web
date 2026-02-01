@@ -241,17 +241,22 @@ class ModelStateService extends EventEmitter {
                 deepgram: !!process.env.DEEPGRAM_API_KEY
             });
             
+            // ✅ FIX: Prioriser les clés API de la base de données sur .env
+            // Les clés entrées par l'utilisateur doivent être prioritaires
             for (const [provider, envKey] of Object.entries(envMapping)) {
+                // Si l'utilisateur a déjà une clé API sauvegardée, l'utiliser (priorité)
+                if (apiKeys[provider] && apiKeys[provider].trim() !== '') {
+                    logger.info(`[ModelStateService] ✅ Using ${provider} API key from database (user-entered)`);
+                    continue;
+                }
+                
+                // Sinon, utiliser .env si disponible et non vide
                 if (envKey && envKey.trim() !== '') {
-                    // Always use .env value if it exists and is not empty
                     apiKeys[provider] = envKey;
                     logger.info(`[ModelStateService] ✅ Loaded ${provider} API key from environment (length: ${envKey.length})`);
-                } else if (!apiKeys[provider] || apiKeys[provider] === '' || apiKeys[provider] === null) {
-                    // Keep existing value only if .env doesn't have it
-                    // If DB has empty/null, keep it as null
-                    if (apiKeys[provider] === '' || apiKeys[provider] === null) {
-                        apiKeys[provider] = null;
-                    }
+                } else {
+                    // Pas de clé dans .env ni en DB
+                    apiKeys[provider] = null;
                     logger.debug(`[ModelStateService] ⚠️ No ${provider} API key in environment or database`);
                 }
             }
