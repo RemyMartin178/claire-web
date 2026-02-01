@@ -72,14 +72,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Vérifier si l'abonnement est déjà annulé
+    if (userData?.subscription?.cancelAtPeriodEnd === true) {
+      return NextResponse.json(
+        { error: 'L\'abonnement a déjà été annulé' },
+        { status: 400 }
+      )
+    }
+
+    // Récupérer l'abonnement Stripe pour vérifier son état
+    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId)
+    
+    // Vérifier si l'abonnement Stripe est déjà annulé
+    if (stripeSubscription.cancel_at_period_end === true) {
+      return NextResponse.json(
+        { error: 'L\'abonnement a déjà été annulé' },
+        { status: 400 }
+      )
+    }
+
     // Annuler l'abonnement sur Stripe (à la fin de la période)
     const subscription = await stripe.subscriptions.update(subscriptionId, {
       cancel_at_period_end: true
     })
 
-    // Mettre à jour Firestore
+    // Récupérer les dates de période depuis Stripe pour éviter toute confusion
+    const currentPeriodStart = new Date((subscription as any).current_period_start * 1000)
+    const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000)
+
+    // Mettre à jour Firestore avec les dates correctes depuis Stripe
     await userRef.update({
       'subscription.cancelAtPeriodEnd': true,
+      'subscription.currentPeriodStart': currentPeriodStart,
+      'subscription.currentPeriodEnd': currentPeriodEnd,
       'subscription.updatedAt': FieldValue.serverTimestamp()
     })
 

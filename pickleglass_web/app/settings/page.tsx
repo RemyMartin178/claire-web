@@ -57,6 +57,16 @@ export default function SettingsPage() {
 
   const confirmCancelSubscription = async () => {
     try {
+      // Vérifier si l'abonnement est déjà annulé
+      if (subscription.cancelAtPeriodEnd) {
+        setShowCancelModal(false)
+        addNotification(
+          "Votre abonnement a déjà été annulé. Il prendra fin à la fin de la période de facturation.",
+          'info'
+        )
+        return
+      }
+
       const token = await auth.currentUser?.getIdToken()
       if (!token) throw new Error('Impossible de récupérer le token')
 
@@ -79,11 +89,17 @@ export default function SettingsPage() {
         // Recharger la page pour mettre à jour l'état
         setTimeout(() => window.location.reload(), 2000)
       } else {
-        throw new Error('Erreur lors de l\'annulation')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erreur lors de l\'annulation')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur annulation:', error)
-      addNotification("Erreur lors de l'annulation de l'abonnement. Veuillez réessayer.", 'error')
+      addNotification(
+        error.message?.includes('déjà annulé') 
+          ? error.message 
+          : "Erreur lors de l'annulation de l'abonnement. Veuillez réessayer.",
+        'error'
+      )
     }
   }
 
@@ -450,19 +466,40 @@ export default function SettingsPage() {
                      <>
                        <Crown className="h-4 w-4 text-primary" />
                        <span>
-                         Votre abonnement sera automatiquement renouvelé
-                         {subscription.renewalDate ? (
-                           <span className="font-medium">
-                             {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
-                               day: 'numeric',
-                               month: 'long',
-                               year: 'numeric'
-                             })}
-                           </span>
+                         {subscription.cancelAtPeriodEnd ? (
+                           <>
+                             Votre abonnement prendra fin
+                             {subscription.renewalDate ? (
+                               <span className="font-medium">
+                                 {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
+                                   day: 'numeric',
+                                   month: 'long',
+                                   year: 'numeric'
+                                 })}
+                               </span>
+                             ) : (
+                               <span className="text-xs text-gray-500 ml-1">
+                                 (Date non disponible)
+                               </span>
+                             )}
+                           </>
                          ) : (
-                           <span className="text-xs text-gray-500 ml-1">
-                             (Date non disponible)
-                           </span>
+                           <>
+                             Votre abonnement sera automatiquement renouvelé
+                             {subscription.renewalDate ? (
+                               <span className="font-medium">
+                                 {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
+                                   day: 'numeric',
+                                   month: 'long',
+                                   year: 'numeric'
+                                 })}
+                               </span>
+                             ) : (
+                               <span className="text-xs text-gray-500 ml-1">
+                                 (Date non disponible)
+                               </span>
+                             )}
+                           </>
                          )}
                        </span>
                      </>
@@ -493,8 +530,8 @@ export default function SettingsPage() {
                        showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
                      }`}>
                        <div className="py-1">
-                        {/* ✅ FIX: Afficher "Annuler l'abonnement" uniquement si l'utilisateur a un abonnement actif */}
-                        {subscription.plan !== 'free' && subscription.isActive && subscription.stripeSubscriptionId && (
+                        {/* ✅ FIX: Afficher "Annuler l'abonnement" uniquement si l'utilisateur a un abonnement actif et non déjà annulé */}
+                        {subscription.plan !== 'free' && subscription.isActive && subscription.stripeSubscriptionId && !subscription.cancelAtPeriodEnd && (
                           <button
                             onClick={handleCancelSubscription}
                             className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
@@ -674,11 +711,11 @@ export default function SettingsPage() {
             </h3>
             
             <p className="text-sm text-gray-600 mb-6">
-              Votre abonnement à Plus a été annulé mais restera actif jusqu'à la fin de votre période de facturation le {subscription.renewalDate ? subscription.renewalDate.toLocaleDateString('fr-FR', {
+              Êtes-vous sûr de vouloir annuler votre abonnement ? Votre abonnement restera actif jusqu'à la fin de votre période de facturation le {subscription.renewalDate ? subscription.renewalDate.toLocaleDateString('fr-FR', {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric'
-              }) : 'fin de période'}.
+              }) : 'fin de période'}. Vous conserverez tous les avantages jusqu'à cette date.
             </p>
             
             <div className="flex justify-end space-x-3">
