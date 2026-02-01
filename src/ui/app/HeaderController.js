@@ -5,17 +5,16 @@ import './MainHeader.js';
 import './ApiKeyHeader.js';
 import './PermissionHeader.js';
 import './WelcomeHeader.js';
-import './OnboardingHeader.js';
+// OnboardingHeader désactivé
 
 class HeaderTransitionManager {
     constructor() {
         this.headerContainer      = document.getElementById('header-container');
-        this.currentHeaderType    = null;   // 'welcome' | 'apikey' | 'main' | 'permission' | 'onboarding'
+        this.currentHeaderType    = null;   // 'welcome' | 'apikey' | 'main' | 'permission'
         this.welcomeHeader        = null;
         this.apiKeyHeader         = null;
         this.mainHeader            = null;
         this.permissionHeader      = null;
-        this.onboardingHeader      = null;
 
         /**
          * only one header window is allowed
@@ -34,7 +33,6 @@ class HeaderTransitionManager {
             this.apiKeyHeader = null;
             this.mainHeader = null;
             this.permissionHeader = null;
-            this.onboardingHeader = null;
 
             // Create new header element
             if (type === 'welcome') {
@@ -56,12 +54,6 @@ class HeaderTransitionManager {
                 this.permissionHeader = document.createElement('permission-setup');
                 this.permissionHeader.continueCallback = () => this.transitionToMainHeader();
                 this.headerContainer.appendChild(this.permissionHeader);
-            } else if (type === 'onboarding') {
-                this.onboardingHeader = document.createElement('onboarding-header');
-                this.onboardingHeader.skipCallback = () => this.transitionToMainHeader();
-                this.onboardingHeader.completeCallback = () => this.transitionToMainHeader();
-                this.headerContainer.appendChild(this.onboardingHeader);
-                logger.info('[HeaderController] ensureHeader: Onboarding header created.');
             } else {
                 this.mainHeader = document.createElement('main-header');
                 this.headerContainer.appendChild(this.mainHeader);
@@ -132,25 +124,16 @@ class HeaderTransitionManager {
         // ✅ FIX: Ne pas montrer l'onboarding après une déconnexion manuelle
         const manuallyLoggedOut = localStorage.getItem('manuallyLoggedOut') === 'true';
         if (manuallyLoggedOut && !isLoggedIn) {
-            logger.info('[HeaderController] User logged out manually - skipping onboarding, showing welcome');
+            logger.info('[HeaderController] User logged out manually - skipping onboarding, showing main header');
             localStorage.removeItem('manuallyLoggedOut'); // Reset flag
-            this.transitionToWelcomeHeader();
+            // Aller directement au MainHeader avec bouton se connecter
+            this.transitionToMainHeader();
             return;
         }
         
-        // Check if onboarding should be shown first (but skip for authenticated users)
-        const shouldShowOnb = this.shouldShowOnboarding();
-        logger.info('[HeaderController] shouldShowOnboarding returned:', shouldShowOnb);
-        
-        if (shouldShowOnb && !isLoggedIn) {
-            logger.info('[HeaderController] Onboarding needed - showing onboarding header');
-            this.transitionToOnboardingHeader();
-            return;
-        } else if (shouldShowOnb && isLoggedIn) {
-            logger.info('[HeaderController] Skipping onboarding for authenticated user');
-        }
-        
-        logger.info('[HeaderController] Skipping onboarding - proceeding to main flow');
+        // ✅ FIX: Désactiver complètement l'onboarding/tutoriel
+        // Onboarding désactivé - aller directement au MainHeader
+        logger.info('[HeaderController] Onboarding désactivé - proceeding to main flow');
         
         if (isLoggedIn) {
             const permissionResult = await this.checkPermissions();
@@ -235,15 +218,6 @@ class HeaderTransitionManager {
         this.ensureHeader('main');
     }
 
-    async transitionToOnboardingHeader() {
-        if (this.currentHeaderType === 'onboarding') {
-            return this._resizeForOnboarding();
-        }
-
-        await this._resizeForOnboarding();
-        this.ensureHeader('onboarding');
-    }
-
     async _resizeForMain() {
         if (!window.api) return;
         logger.info('[HeaderController] _resizeForMain: Resizing window to 580x60');
@@ -269,55 +243,9 @@ class HeaderTransitionManager {
             .catch(() => {});
     }
 
-    async _resizeForOnboarding() {
-        if (!window.api) return;
-        logger.info('[HeaderController] _resizeForOnboarding: Resizing window for onboarding');
-        return window.api.headerController.resizeHeaderWindow({ width: 480, height: 420 })
-            .catch(() => {});
-    }
-
     shouldShowOnboarding() {
-        logger.info('[HeaderController] Checking if onboarding should be shown');
-        
-        // ✅ FIX: Si l'utilisateur vient de se déconnecter manuellement, ne pas montrer l'onboarding
-        const manuallyLoggedOut = localStorage.getItem('manuallyLoggedOut') === 'true';
-        if (manuallyLoggedOut) {
-            logger.info('[HeaderController] [SKIP] User manually logged out - skipping onboarding');
-            return false;
-        }
-        
-        const forceOnboarding = localStorage.getItem('forceOnboarding');
-        const onboardingCompleted = localStorage.getItem('onboardingCompleted');
-        const lastOnboardingDate = localStorage.getItem('lastOnboardingDate');
-        
-        logger.info('[HeaderController] Onboarding localStorage:', {
-            forceOnboarding,
-            onboardingCompleted,
-            lastOnboardingDate
-        });
-        
-        // Check for dev environment flag
-        if (forceOnboarding === 'true') {
-            logger.info('[HeaderController] [OK] ONBOARDING NEEDED - forceOnboarding is true');
-            return true;
-        }
-
-        // Check if onboarding was never completed
-        if (!onboardingCompleted) {
-            logger.info('[HeaderController] [OK] ONBOARDING NEEDED - never completed');
-            return true;
-        }
-
-        // Check if 15 days have passed since last onboarding
-        if (lastOnboardingDate) {
-            const daysSinceLastOnboarding = (Date.now() - new Date(lastOnboardingDate).getTime()) / (1000 * 60 * 60 * 24);
-            if (daysSinceLastOnboarding > 15) {
-                logger.info('[HeaderController] [OK] ONBOARDING NEEDED - 15+ days since last onboarding');
-                return true;
-            }
-        }
-
-        logger.info('[HeaderController] [ERROR] ONBOARDING NOT NEEDED');
+        // ✅ FIX: Onboarding/tutoriel complètement désactivé
+        logger.info('[HeaderController] Onboarding désactivé - toujours retourner false');
         return false;
     }
 
