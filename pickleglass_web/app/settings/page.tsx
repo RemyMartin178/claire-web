@@ -80,7 +80,17 @@ export default function SettingsPage() {
         body: JSON.stringify({}),
       })
       
-      if (response.ok) {
+      // Lire la réponse JSON dans tous les cas
+      let responseData: any
+      try {
+        responseData = await response.json()
+      } catch (parseError) {
+        console.error('Erreur parsing réponse:', parseError)
+        throw new Error('Erreur lors de la lecture de la réponse du serveur')
+      }
+      
+      // Vérifier si l'opération a réussi
+      if (response.ok && responseData.success !== false) {
         setShowCancelModal(false)
         addNotification(
           "Votre abonnement a été annulé. Vous conservez les avantages jusqu'à la fin de la période de facturation.",
@@ -89,17 +99,26 @@ export default function SettingsPage() {
         // Recharger la page pour mettre à jour l'état
         setTimeout(() => window.location.reload(), 2000)
       } else {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Erreur lors de l\'annulation')
+        // Gérer les erreurs spécifiques
+        const errorMessage = responseData?.error || 'Erreur lors de l\'annulation'
+        throw new Error(errorMessage)
       }
     } catch (error: any) {
       console.error('Erreur annulation:', error)
-      addNotification(
-        error.message?.includes('déjà annulé') 
-          ? error.message 
-          : "Erreur lors de l'annulation de l'abonnement. Veuillez réessayer.",
-        'error'
-      )
+      const errorMessage = error.message || "Erreur lors de l'annulation de l'abonnement. Veuillez réessayer."
+      
+      // Ne pas afficher d'erreur si l'abonnement est déjà annulé (c'est juste informatif)
+      if (errorMessage.includes('déjà annulé')) {
+        setShowCancelModal(false)
+        addNotification(
+          "Votre abonnement a déjà été annulé. Il prendra fin à la fin de la période de facturation.",
+          'info'
+        )
+        // Recharger pour mettre à jour l'état
+        setTimeout(() => window.location.reload(), 1500)
+      } else {
+        addNotification(errorMessage, 'error')
+      }
     }
   }
 
