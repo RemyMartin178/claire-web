@@ -50,7 +50,7 @@ export default function PrivacySettingsPage() {
             </div>
             <div className="flex justify-end mt-6">
               <Button
-                onClick={() => window.open('https://www.pickle.com/ko/privacy-policy', '_blank')}
+                onClick={() => window.open('https://www.clairia.app/privacy', '_blank')}
                 variant="outline"
                 className="gap-2"
               >
