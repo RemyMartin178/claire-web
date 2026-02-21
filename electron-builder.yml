@@ -48,9 +48,9 @@ asarUnpack:
     - "**/node_modules/sharp/**/*"
     - "**/node_modules/@img/**/*"
 
-# Windows configuration
+# Windows configuration (electron-builder converts PNG to .ico)
 win:
-    icon: src/ui/assets/logo.ico
+    icon: build/icon.ico
     target:
         - target: nsis
           arch: x64
@@ -73,8 +73,8 @@ nsis:
 mac:
     # The application category type
     category: public.app-category.utilities
-    # Path to the .icns icon file
-    icon: src/ui/assets/logo.icns
+    # Path to icon (electron-builder converts PNG to .icns)
+    icon: build/icon.png
     # Minimum macOS version (supports both Intel and Apple Silicon)
     minimumSystemVersion: '11.0'
     hardenedRuntime: true
