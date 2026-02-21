@@ -802,7 +802,7 @@ export class AskView extends LitElement {
                 this.currentQuestion = newState.currentQuestion;
                 this.isLoading       = newState.isLoading;
                 this.isStreaming     = newState.isStreaming;
-
+              
                 const wasHidden = !this.showTextInput;
                 this.showTextInput = newState.showTextInput;
               

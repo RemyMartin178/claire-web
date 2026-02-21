@@ -622,26 +622,46 @@ class AskService {
             // Backend Railway mode: Skip local API key check
             // The backend has the API keys configured in Railway environment variables
             logger.info('[AskService] Using backend Railway API - API keys managed server-side');
-
+            
             // SMART OPTIMIZATION: Analyze prompt to decide if screenshot is needed
             // ✅ Use original prompt (not enriched context) to avoid false positives
-            const needsScreenshot = this._promptNeedsScreenshot(promptForScreenshotDetection.trim());
+            let needsScreenshot = this._promptNeedsScreenshot(promptForScreenshotDetection.trim());
             
             let screenshotResult;
             let screenshotBase64 = null;
             let screenshotContext = 'full screen';
             const SCREENSHOT_QUALITY = 50; // Reduced from 75 to 50 for faster upload
             
+            // Try to detect if user has selected a persistent area from the floating bar
+            try {
+                const { enhancedScreenCapture } = require('../../main/enhanced-screen-capture');
+                const status = enhancedScreenCapture.getStatus();
+                
+                logger.info('[AskService] Checking for persistent area before deciding screenshot:', {
+                    hasSelectedArea: status?.hasSelectedArea,
+                    hasPersistentArea: status?.hasPersistentArea,
+                    selectedArea: status?.selectedArea
+                });
+                
+                if (status && (status.hasSelectedArea || status.hasPersistentArea)) {
+                    // 🚨 Force screenshot when user explicitly selected an area,
+                    // even if the prompt doesn't mention "écran"/"screen"
+                    needsScreenshot = true;
+                    logger.info('[AskService] Forcing screenshot because a persistent area is selected');
+                }
+            } catch (statusError) {
+                logger.warn('[AskService] Could not read persistent area status (non-blocking):', statusError.message);
+            }
+            
             if (!needsScreenshot) {
                 logger.info('[AskService] OPTIMIZATION: Text-only query detected, skipping screenshot (10x faster)');
             } else {
-                logger.info('[AskService] Screenshot required based on prompt analysis');
+                logger.info('[AskService] Screenshot required based on prompt analysis or persistent area selection');
             }
             
             if (needsScreenshot) {
             try {
                 // Try to get persistent area capture first
-                const { ipcMain } = require('electron');
                 const { enhancedScreenCapture } = require('../../main/enhanced-screen-capture');
                 
                 // First check if there's a persistent area selected
