@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { signInWithGoogle, signInWithEmail, handleGoogleRedirectResult } from '@/utils/auth'
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
@@ -194,14 +195,22 @@ function LoginContent() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in bg-subtle-bg">
       <div className="w-full max-w-md mx-auto">
-        <div className="absolute top-8 left-8">
-          <h1 className="text-2xl font-bold text-[#282828]">Claire</h1>
+        <div className="absolute top-8 left-8 flex items-center gap-3">
+          <Image
+            src="/claire_logo-removebg-preview.png"
+            alt=""
+            width={160}
+            height={52}
+            className="h-12 w-auto brightness-0"
+            priority
+          />
+          <span className="text-2xl font-heading font-semibold text-[#282828]">Claire</span>
         </div>
         
         {/* Formulaire */}
         <div className="animate-scale-in w-full max-w-lg">
           <div className="text-center mb-6 animate-fade-in">
-            <h2 className="text-2xl font-bold text-[#282828] mb-2">Bienvenue sur Claire</h2>
+            <h2 className="text-2xl font-heading font-semibold text-[#282828] mb-2">Bienvenue sur Claire</h2>
           </div>
 
           {error && (

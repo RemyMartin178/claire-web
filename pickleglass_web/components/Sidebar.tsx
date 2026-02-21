@@ -436,7 +436,7 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
                                         </button>
                                     ) : (
                                         <Link
-                                            href="/login"
+                                            href="/auth/login"
                                             className={`
                                     group flex items-center rounded-lg px-[12px] py-[8px] text-[13px] gap-x-[9px] 
                                     text-[#282828] hover:text-[#282828] hover:bg-[#f7f7f7] w-full 
@@ -554,11 +554,20 @@ const SidebarComponent = ({ isCollapsed, onToggle, onSearchClick }: SidebarProps
             aria-expanded={!isCollapsed}
             suppressHydrationWarning
         >
-            <header className={`group relative h-6 flex shrink-0 items-center justify-end px-2`} suppressHydrationWarning>
+            <header className={`group relative flex shrink-0 items-center gap-2 px-2 py-3 min-h-[52px] ${isCollapsed ? 'flex-col justify-center' : 'justify-end'}`} suppressHydrationWarning>
+                <Link href="/activity" className="absolute top-3 left-2 flex items-center justify-center w-10 h-10 shrink-0 z-10" aria-label="Claire - Accueil">
+                    <Image 
+                        src="/claire_logo-removebg-preview.png" 
+                        alt="Claire" 
+                        width={40} 
+                        height={40} 
+                        className="brightness-0 object-contain w-10 h-10"
+                    />
+                </Link>
                 <button
                     onClick={toggleSidebar}
                     onKeyDown={e => handleKeyDown(e, toggleSidebar)}
-                    className="text-gray-500 hover:text-gray-800 p-1 rounded-[4px] hover:bg-[#f7f7f7] h-6 w-6 transition-colors focus:outline-none"
+                    className="text-gray-500 hover:text-gray-800 p-1 rounded-[4px] hover:bg-[#f7f7f7] h-6 w-6 transition-colors focus:outline-none shrink-0"
                     aria-label={isCollapsed ? "Open sidebar" : "Close sidebar"}
                     suppressHydrationWarning
                 >

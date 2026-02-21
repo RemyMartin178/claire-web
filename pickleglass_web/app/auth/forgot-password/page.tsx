@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useAuth } from '@/contexts/AuthContext'
 import { sendPasswordResetEmail } from '@/utils/auth'
 import { ArrowLeft } from 'lucide-react'
@@ -45,6 +46,17 @@ export default function ForgotPasswordPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-subtle-bg">
         <div className="w-full max-w-md mx-auto">
+          <div className="absolute top-8 left-8 flex items-center gap-3">
+            <Image
+              src="/claire_logo-removebg-preview.png"
+              alt=""
+              width={160}
+              height={52}
+              className="h-12 w-auto brightness-0"
+              priority
+            />
+            <span className="text-2xl font-heading font-semibold text-[#282828]">Claire</span>
+          </div>
           <div className="w-full max-w-lg">
             <div className="text-center mb-6">
               <div className="w-16 h-16 bg-green-100 border border-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -52,7 +64,7 @@ export default function ForgotPasswordPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-[#282828] mb-2">Email envoyé !</h2>
+              <h2 className="text-2xl font-heading font-semibold text-[#282828] mb-2">Email envoyé !</h2>
               <p className="text-gray-600 text-sm">
                 Nous avons envoyé un lien de réinitialisation à <strong className="text-[#282828]">{email}</strong>
               </p>
@@ -79,9 +91,20 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-subtle-bg">
       <div className="w-full max-w-md mx-auto">
+        <div className="absolute top-8 left-8 flex items-center gap-3">
+          <Image
+            src="/claire_logo-removebg-preview.png"
+            alt=""
+            width={160}
+            height={52}
+            className="h-12 w-auto brightness-0"
+            priority
+          />
+          <span className="text-2xl font-heading font-semibold text-[#282828]">Claire</span>
+        </div>
         <div className="w-full max-w-lg">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-[#282828] mb-2">Mot de passe oublié ?</h2>
+            <h2 className="text-2xl font-heading font-semibold text-[#282828] mb-2">Mot de passe oublié ?</h2>
           </div>
 
           {error && (

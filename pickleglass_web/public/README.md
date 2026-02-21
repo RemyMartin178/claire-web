@@ -2,18 +2,17 @@
 
 This folder contains static files.
 
+## Favicon (favicon.svg)
+
+Le favicon (icône de l'onglet navigateur) est un SVG généré dynamiquement par le script `scripts/generate-favicon.js`. Il embarque le logo PNG en base64, avec :
+
+- **viewBox** ajusté pour zoomer le logo dans l'onglet
+- **filter: invert(1)** pour un logo blanc lisible sur onglets sombres
+
+**Pour régénérer** après changement du logo : `npm run favicon`
+
 ## Logo Image
 
-**@symbol.svg** - Logo image for the pickleglass application
+**claire_logo-removebg-preview.png** - Logo Claire
 
-### Requirements:
-- Filename: `symbol.png`
-- Recommended size: 32x32px or 64x64px  
-- Format: PNG
-- Transparent background recommended
-
-### Usage:
-- Used as logo in sidebar header
-- Loaded optimized through Next.js Image component
-
-Currently there is a placeholder file, please replace it with the actual logo image. 
+- Utilisé dans la sidebar, les pages login/register, et pour générer le favicon 

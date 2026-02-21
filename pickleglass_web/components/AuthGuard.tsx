@@ -23,7 +23,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     // Si on n'est pas authentifié et qu'on n'est pas sur une page d'auth, rediriger vers login
     // Mais seulement si on n'est pas en cours de chargement ET pas sur une page settings
     if (!loading && !isAuthenticated && !pathname?.startsWith('/auth/') && pathname !== '/login' && pathname !== '/register' && !pathname?.startsWith('/settings/') && pathname !== '/settings') {
-      router.replace('/login')
+      router.replace('/auth/login')
       return
     }
   }, [user, loading, isAuthenticated, pathname, router])
