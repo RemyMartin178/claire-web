@@ -50,7 +50,7 @@ asarUnpack:
 
 # Windows configuration (electron-builder converts PNG to .ico)
 win:
-    icon: build/icon.ico
+    icon: build/claire-icon.ico
     target:
         - target: nsis
           arch: x64
@@ -68,6 +68,9 @@ nsis:
     createDesktopShortcut: always
     createStartMenuShortcut: true
     shortcutName: Claire
+    installerIcon: build/claire-icon.ico
+    uninstallerIcon: build/claire-icon.ico
+    installerHeaderIcon: build/claire-icon.ico
 
 # macOS specific configuration
 mac:
