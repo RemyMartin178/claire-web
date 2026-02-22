@@ -6,6 +6,10 @@ appId: com.pickle.claire
 # The user-facing application name
 productName: Claire
 
+# Build resources directory (icons, etc.)
+directories:
+    buildResources: build
+
 # Publish configuration for GitHub releases
 publish:
     provider: github
@@ -50,7 +54,8 @@ asarUnpack:
 
 # Windows configuration (electron-builder converts PNG to .ico)
 win:
-    icon: build/claire-icon.ico
+    executableName: ClaireApp
+    icon: build/icon.ico
     target:
         - target: nsis
           arch: x64
@@ -68,9 +73,9 @@ nsis:
     createDesktopShortcut: always
     createStartMenuShortcut: true
     shortcutName: Claire
-    installerIcon: build/claire-icon.ico
-    uninstallerIcon: build/claire-icon.ico
-    installerHeaderIcon: build/claire-icon.ico
+    installerIcon: build/icon.ico
+    uninstallerIcon: build/icon.ico
+    include: build/installer.nsh
 
 # macOS specific configuration
 mac:
