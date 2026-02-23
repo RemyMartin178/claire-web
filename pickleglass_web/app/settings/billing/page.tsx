@@ -12,6 +12,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useSubscription } from '@/hooks/useSubscription'
 import { loadStripe } from '@stripe/stripe-js'
 import { auth } from '@/utils/firebase'
+import {
+  trackBillingPageView,
+  trackBillingCycleChanged,
+  trackPlanClick,
+  trackCheckoutStarted,
+  trackPurchase,
+  trackCheckoutAbandoned,
+  trackManageSubscriptionClick,
+  trackEnterpriseContactClick,
+  trackUpgradeToAnnualClick,
+  trackUpgradeToAnnualSuccess,
+  trackUpgradeModalOpen,
+  trackUpgradeModalDismissed,
+} from '@/lib/gtag'
 
 const waitForFirebaseUser = async (timeoutMs = 4000) => {
   const start = Date.now()
@@ -26,7 +40,7 @@ export default function BillingPage() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState<string | null>(null)
-  
+
   // Upgrade modal state
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [upgradePreview, setUpgradePreview] = useState<any>(null)
@@ -56,12 +70,19 @@ export default function BillingPage() {
     // Par défaut, on reste sur 'yearly' (défini dans useState)
   }, [])
   const subscription = useSubscription()
-  
+
   // Log pour debug
   useEffect(() => {
     console.log('Subscription status:', subscription)
   }, [subscription])
-  
+
+  // ── GA4: track billing page view on mount ────────────────────────────────
+  useEffect(() => {
+    if (!subscription.isLoading) {
+      trackBillingPageView(subscription.plan || 'free')
+    }
+  }, [subscription.isLoading, subscription.plan])
+
   const tabs = [
     { id: 'profile', name: 'Profil personnel', href: '/settings' },
     { id: 'security', name: 'Sécurité', href: '/settings/security' },
@@ -77,17 +98,21 @@ export default function BillingPage() {
     }
 
     if (searchParams.get('success') === 'true') {
+      // GA4: track purchase
+      const cycle = new URLSearchParams(window.location.search).get('cycle') as 'monthly' | 'yearly' || 'yearly'
+      const priceEuros = cycle === 'monthly' ? 20 : 100
+      trackPurchase('plus', cycle, priceEuros)
       setShowSuccess(true)
 
       // Important: subscription status can be cached for up to 5 minutes.
       // On a Stripe success redirect we must invalidate cache and (if possible) sync immediately.
       try {
         localStorage.removeItem('subscription_cache')
-      } catch {}
+      } catch { }
 
       const sessionId = searchParams.get('session_id')
       if (sessionId) {
-        ;(async () => {
+        ; (async () => {
           try {
             const u = await waitForFirebaseUser()
             if (!u) return
@@ -109,7 +134,7 @@ export default function BillingPage() {
       // Fallback manual sync (when we only have a Stripe customer id)
       const customerId = searchParams.get('customer_id')
       if (!sessionId && customerId) {
-        ;(async () => {
+        ; (async () => {
           try {
             const u = await waitForFirebaseUser()
             if (!u) return
@@ -127,22 +152,23 @@ export default function BillingPage() {
           }
         })()
       }
-      
+
       // Nettoyer l'URL
       const url = new URL(window.location.href)
       url.searchParams.delete('success')
       url.searchParams.delete('session_id')
       url.searchParams.delete('customer_id')
       window.history.replaceState({}, '', url.toString())
-      
+
       // Recharger la page après 3 secondes pour récupérer le nouveau statut
       setTimeout(() => {
         window.location.reload()
       }, 3000)
     }
-    
+
     if (searchParams.get('canceled') === 'true') {
       console.log('Paiement annulé par l\'utilisateur')
+      trackCheckoutAbandoned('plus', billingCycle)
     }
   }, [searchParams])
 
@@ -157,10 +183,9 @@ export default function BillingPage() {
     const isPlusActive =
       subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
 
-    // Si Plus est actif (mensuel OU annuel), on ne déclenche pas une 2e souscription
     if (isPlusActive) return
 
-    // Utilisateur sans abonnement ou abonnement inactif
+    trackPlanClick('plus', 'monthly')
     setMonthlyLoading(true)
     handleSubscribe('plus').finally(() => setMonthlyLoading(false))
   }
@@ -171,20 +196,17 @@ export default function BillingPage() {
       subscription.plan === 'plus' && subscription.isActive && !subscription.cancelAtPeriodEnd
 
     if (isPlusActive) {
-      if (subscription.billingCycle === 'yearly') {
-        // Utilisateur sur plan annuel actif - bouton non cliquable
-        return
-      }
+      if (subscription.billingCycle === 'yearly') return
 
       if (subscription.billingCycle === 'monthly') {
-        // Utilisateur sur plan mensuel - upgrade vers annuel
+        trackUpgradeToAnnualClick()
         setYearlyLoading(true)
         handleUpgradeToAnnual().finally(() => setYearlyLoading(false))
         return
       }
     }
 
-    // Utilisateur sans abonnement ou abonnement inactif
+    trackPlanClick('plus', 'yearly')
     setYearlyLoading(true)
     handleSubscribe('plus').finally(() => setYearlyLoading(false))
   }
@@ -237,19 +259,18 @@ export default function BillingPage() {
 
   // Fonction pour gérer l'upgrade vers annuel
   const handleUpgradeToAnnual = async () => {
-    // Vérifier que l'utilisateur est sur le plan mensuel et actif
     if (subscription.plan !== 'plus' || !subscription.isActive || subscription.cancelAtPeriodEnd || !subscription.stripeSubscriptionId) {
       return
     }
 
-    // Vérifier que l'utilisateur est sur le plan mensuel (pas annuel)
     if (subscription.billingCycle === 'yearly') {
       alert('Vous êtes déjà sur le plan annuel')
       return
     }
 
+    trackUpgradeModalOpen('monthly')
     setPaymentModalOpen(true)
-    
+
     // Si on a déjà calculé la proration dans cette session, ne pas recalculer
     if (upgradePreview && paymentMethod) {
       return
@@ -257,7 +278,7 @@ export default function BillingPage() {
 
     setPaymentLoading(true)
     setPaymentError(null)
-    
+
     try {
       const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
       const subscriptionId = subscription.stripeSubscriptionId
@@ -270,7 +291,7 @@ export default function BillingPage() {
           subscriptionId,
         }),
       })
-      
+
       const previewJson = await previewRes.json()
       if (!previewRes.ok) throw new Error(previewJson.error || 'preview_failed')
       setUpgradePreview(previewJson)
@@ -285,10 +306,10 @@ export default function BillingPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ customerId }),
       })
-      
+
       const paymentMethodsData = await paymentMethodsRes.json()
       if (!paymentMethodsRes.ok) throw new Error(paymentMethodsData.error || 'Failed to get payment methods')
-      
+
       setPaymentMethod(paymentMethodsData.paymentMethod)
     } catch (e: any) {
       setPaymentError(e.message)
@@ -301,7 +322,7 @@ export default function BillingPage() {
   const confirmDirectPayment = async () => {
     setPaymentLoading(true)
     setPaymentError(null)
-    
+
     try {
       const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
       const subscriptionId = subscription.stripeSubscriptionId
@@ -313,7 +334,7 @@ export default function BillingPage() {
           subscriptionId,
         }),
       })
-      
+
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'upgrade_failed')
 
@@ -328,8 +349,8 @@ export default function BillingPage() {
 
       setUpgradeSuccess(true)
       setPaymentModalOpen(false)
-      
-      // Recharger la page pour mettre à jour l'état
+      trackUpgradeToAnnualSuccess()
+
       setTimeout(() => {
         window.location.reload()
       }, 2000)
@@ -344,7 +365,7 @@ export default function BillingPage() {
   const confirmUpgrade = async () => {
     setUpgradeLoading(true)
     setUpgradeError(null)
-    
+
     try {
       const customerId = typeof subscription.stripeCustomerId === 'object' ? subscription.stripeCustomerId.id : subscription.stripeCustomerId
       const subscriptionId = subscription.stripeSubscriptionId
@@ -356,7 +377,7 @@ export default function BillingPage() {
           subscriptionId,
         }),
       })
-      
+
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'upgrade_failed')
 
@@ -385,6 +406,7 @@ export default function BillingPage() {
       return
     }
 
+    trackManageSubscriptionClick()
     setIsLoading('manage')
 
     try {
@@ -401,11 +423,11 @@ export default function BillingPage() {
 
       const subscriptionData = await subscriptionResponse.json()
       console.log('Subscription data:', subscriptionData)
-      
+
       // Extraire le customer ID (peut être un objet ou une string)
       let customerId = subscriptionData.subscription?.stripeCustomerId
       console.log('Raw customerId:', customerId, 'Type:', typeof customerId)
-      
+
       // Si c'est un objet, extraire l'ID
       if (customerId && typeof customerId === 'object') {
         console.log('CustomerId is object, keys:', Object.keys(customerId))
@@ -425,7 +447,7 @@ export default function BillingPage() {
       }
 
       console.log('Final customer ID to use:', customerId, 'Type:', typeof customerId)
-      
+
       // Vérification finale avant envoi
       if (typeof customerId !== 'string') {
         console.error('Customer ID is not a string before sending:', customerId)
@@ -469,14 +491,13 @@ export default function BillingPage() {
 
     try {
       let priceId: string | undefined
-      
+
       if (plan === 'plus') {
-        // Utiliser le Price ID selon le cycle de facturation
-        priceId = billingCycle === 'monthly' 
-          ? process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID  // Plan mensuel 20€
-          : process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID  // Plan annuel 100€
+        priceId = billingCycle === 'monthly'
+          ? process.env.NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID
+          : process.env.NEXT_PUBLIC_STRIPE_ANNUAL_PRICE_ID
       } else {
-        // Plan Enterprise - redirection vers email (pas de Stripe)
+        trackEnterpriseContactClick()
         window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'
         return
       }
@@ -515,7 +536,9 @@ export default function BillingPage() {
       }
 
       if (url) {
-        // Redirect to Stripe Checkout
+        // Track checkout started before Stripe redirect
+        const priceEuros = billingCycle === 'monthly' ? 20 : 100
+        trackCheckoutStarted(plan, billingCycle, priceEuros)
         window.location.href = url
       }
     } catch (error: any) {
@@ -533,23 +556,23 @@ export default function BillingPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
           {/* Overlay */}
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-          
+
           {/* Modal */}
           <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 animate-scale-in">
             <div className="text-center">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4 success-pulse">
                 <Check className="h-8 w-8 text-green-600" />
               </div>
-              
+
               <h2 className="text-2xl font-heading font-bold text-[#282828] mb-2">
                 🎉 Paiement réussi !
               </h2>
-              
+
               <p className="text-gray-600 mb-6">
                 Votre abonnement <strong>Claire Plus</strong> est maintenant actif.
                 Profitez de toutes les fonctionnalités Premium !
               </p>
-              
+
               <div className="text-sm text-gray-500">
                 Rechargement automatique dans 3 secondes...
               </div>
@@ -561,20 +584,19 @@ export default function BillingPage() {
       <div className="mb-6">
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
         <h1 className="text-3xl font-heading font-semibold text-[#282828]">Compte</h1>
-        
+
       </div>
-      
+
       <div className="mb-8">
         <nav className="flex space-x-10 border-b border-gray-200">
           {tabs.map((tab) => (
             <Link
               key={tab.id}
               href={tab.href}
-              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                tab.id === 'billing'
-                  ? 'border-primary text-[#282828]'
-                  : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
-              }`}
+              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${tab.id === 'billing'
+                ? 'border-primary text-[#282828]'
+                : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
+                }`}
             >
               {tab.name}
             </Link>
@@ -587,31 +609,28 @@ export default function BillingPage() {
         <div className="flex justify-center">
           <div className="bg-gray-100 rounded-3xl p-1 flex relative">
             {/* Indicateur glissant */}
-            <div 
-              className={`absolute top-1 bottom-1 rounded-2xl bg-white shadow-sm transition-all duration-300 ease-out ${
-                billingCycle === 'monthly' 
-                  ? 'left-1 w-[calc(50%-4px)]' 
-                  : 'left-[calc(50%+2px)] w-[calc(50%-4px)]'
-              }`}
+            <div
+              className={`absolute top-1 bottom-1 rounded-2xl bg-white shadow-sm transition-all duration-300 ease-out ${billingCycle === 'monthly'
+                ? 'left-1 w-[calc(50%-4px)]'
+                : 'left-[calc(50%+2px)] w-[calc(50%-4px)]'
+                }`}
             />
-            
+
             <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-2xl text-sm font-medium transition-colors duration-300 relative z-10 ${
-                billingCycle === 'monthly'
-                  ? 'text-[#282828]'
-                  : 'text-gray-600 hover:text-[#282828]'
-              }`}
+              onClick={() => { setBillingCycle('monthly'); trackBillingCycleChanged('monthly') }}
+              className={`px-6 py-2 rounded-2xl text-sm font-medium transition-colors duration-300 relative z-10 ${billingCycle === 'monthly'
+                ? 'text-[#282828]'
+                : 'text-gray-600 hover:text-[#282828]'
+                }`}
             >
               Mensuel
             </button>
             <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-2 rounded-2xl text-sm font-medium transition-colors duration-300 relative z-10 ${
-                billingCycle === 'yearly'
-                  ? 'text-[#282828]'
-                  : 'text-gray-600 hover:text-[#282828]'
-              }`}
+              onClick={() => { setBillingCycle('yearly'); trackBillingCycleChanged('yearly') }}
+              className={`px-6 py-2 rounded-2xl text-sm font-medium transition-colors duration-300 relative z-10 ${billingCycle === 'yearly'
+                ? 'text-[#282828]'
+                : 'text-gray-600 hover:text-[#282828]'
+                }`}
             >
               Annuel
             </button>
@@ -629,11 +648,11 @@ export default function BillingPage() {
                 0€<span className="text-lg font-normal text-gray-600">/{billingCycle === 'monthly' ? 'mois' : 'an'}</span>
               </div>
             </div>
-            
+
             <p className="text-gray-600 mb-6">
               Goûtez à Claire avec quelques réponses gratuites pour commencer.
             </p>
-            
+
             <ul className="space-y-3 mb-6">
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
@@ -660,11 +679,11 @@ export default function BillingPage() {
                 <span className="text-sm text-gray-700">Support communautaire uniquement</span>
               </li>
             </ul>
-            
+
             <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button 
-                className="w-full" 
-                variant="outline" 
+              <Button
+                className="w-full"
+                variant="outline"
                 disabled
               >
                 {subscription.plan === 'free' ? '✓ Plan actuel' : 'Plan gratuit'}
@@ -687,11 +706,11 @@ export default function BillingPage() {
                 </div>
               </div>
             </div>
-            
+
             <p className="text-gray-600 mb-6">
               Utilisez les derniers modèles, obtenez une sortie complète et jouez avec vos propres prompts personnalisés.
-            </p>  
-            
+            </p>
+
             <ul className="space-y-3 mb-6">
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
@@ -718,10 +737,10 @@ export default function BillingPage() {
                 <span className="text-sm text-gray-700">Plus tout ce qui est inclus dans le plan gratuit</span>
               </li>
             </ul>
-            
+
             <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button 
-                className="w-full bg-primary text-white hover:bg-primary/90" 
+              <Button
+                className="w-full bg-primary text-white hover:bg-primary/90"
                 onClick={billingCycle === 'monthly' ? handleMonthlyClick : handleYearlyClick}
                 disabled={billingCycle === 'monthly' ? isMonthlyButtonDisabled() : isYearlyButtonDisabled()}
               >
@@ -738,11 +757,11 @@ export default function BillingPage() {
               <h3 className="text-xl font-heading font-semibold mb-2 text-[#282828]">Enterprise</h3>
               <div className="text-xl font-semibold text-[#282828]">Personnalisé</div>
             </div>
-            
+
             <p className="text-gray-600 mb-6">
               Spécialement conçu pour les équipes qui ont besoin d'une personnalisation complète.
             </p>
-            
+
             <ul className="space-y-3 mb-6">
               <li className="flex items-center gap-3">
                 <Check className="h-5 w-5 text-primary" />
@@ -773,10 +792,10 @@ export default function BillingPage() {
                 <span className="text-sm text-gray-700">Tableaux de bord d'analyse d'utilisation & rapports</span>
               </li>
             </ul>
-            
+
             <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button 
-                className="w-full text-[#374151] border-gray-300 hover:bg-gray-50" 
+              <Button
+                className="w-full text-[#374151] border-gray-300 hover:bg-gray-50"
                 variant="outline"
                 onClick={() => window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'}
               >
@@ -795,7 +814,7 @@ export default function BillingPage() {
         </p>
         <p className="text-sm text-gray-600">
           Contactez notre{' '}
-          <a 
+          <a
             href="mailto:contact@clairia.app?subject=Claire - Aide au choix de plan"
             className="text-primary hover:text-primary/80 underline"
           >
@@ -812,10 +831,10 @@ export default function BillingPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Confirmer l'upgrade vers l'annuel
             </h3>
-            
+
             {upgradeLoading && <p className="mt-3 text-sm opacity-70">Calcul de la proration…</p>}
             {upgradeError && <p className="mt-3 text-sm text-red-600">{upgradeError}</p>}
-            
+
             {upgradePreview && (
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between">
@@ -835,7 +854,7 @@ export default function BillingPage() {
                 </p>
               </div>
             )}
-            
+
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setUpgradeModalOpen(false)}
@@ -873,7 +892,7 @@ export default function BillingPage() {
                 </svg>
               </button>
             </div>
-            
+
             {paymentLoading ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="relative w-8 h-8 mb-3">
@@ -935,7 +954,7 @@ export default function BillingPage() {
                 )}
               </div>
             ) : null}
-            
+
             {!paymentLoading && (
               <div className="mt-5 flex justify-end gap-2">
                 <button
