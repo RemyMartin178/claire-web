@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSubscription, getSubscriptionDisplayName } from '@/hooks/useSubscription'
+import { gtagEvent } from '@/lib/gtag'
 
 type Tab = 'profile' | 'billing' | 'security' | 'privacy'
 
@@ -30,21 +31,21 @@ export default function SettingsPage() {
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [hasApiKey, setHasApiKey] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  
+
   // États pour les modals
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
-  
+
   // États pour les notifications
   const [notifications, setNotifications] = useState<Notification[]>([])
-  
+
   // États pour la gestion d'abonnement
   const [showSubscriptionMenu, setShowSubscriptionMenu] = useState(false)
   const [isManagingSubscription, setIsManagingSubscription] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
-  
+
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Détection de l'utilisateur Google vs Email/MDP
@@ -79,7 +80,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({}),
       })
-      
+
       // Lire la réponse JSON dans tous les cas
       let responseData: any
       try {
@@ -88,15 +89,19 @@ export default function SettingsPage() {
         console.error('Erreur parsing réponse:', parseError)
         throw new Error('Erreur lors de la lecture de la réponse du serveur')
       }
-      
+
       // Vérifier si l'opération a réussi
       if (response.ok && responseData.success !== false) {
+        // GA4: subscription cancelled
+        gtagEvent('subscription_cancelled', {
+          plan: subscription.plan,
+          billing_cycle: subscription.billingCycle,
+        })
         setShowCancelModal(false)
         addNotification(
           "Votre abonnement a été annulé. Vous conservez les avantages jusqu'à la fin de la période de facturation.",
           'success'
         )
-        // Recharger la page pour mettre à jour l'état
         setTimeout(() => window.location.reload(), 2000)
       } else {
         // Gérer les erreurs spécifiques
@@ -106,7 +111,7 @@ export default function SettingsPage() {
     } catch (error: any) {
       console.error('Erreur annulation:', error)
       const errorMessage = error.message || "Erreur lors de l'annulation de l'abonnement. Veuillez réessayer."
-      
+
       // Ne pas afficher d'erreur si l'abonnement est déjà annulé (c'est juste informatif)
       if (errorMessage.includes('déjà annulé')) {
         setShowCancelModal(false)
@@ -211,7 +216,7 @@ export default function SettingsPage() {
     const id = Date.now().toString()
     const newNotification: Notification = { id, message, type, progress: 100 }
     setNotifications(prev => [...prev, newNotification])
-    
+
     // Attendre que l'élément soit rendu, puis ajouter l'animation d'entrée
     setTimeout(() => {
       const notificationElement = document.querySelector(`[data-notification-id="${id}"]`) as HTMLElement;
@@ -223,21 +228,21 @@ export default function SettingsPage() {
         notificationElement.classList.add('animate-slide-in-right');
       }
     }, 50)
-    
+
     // Animation du compte à rebours
     const startTime = Date.now()
     const duration = 4000 // 4 secondes
-    
+
     const updateProgress = () => {
       const elapsed = Date.now() - startTime
       const remaining = Math.max(0, 100 - (elapsed / duration) * 100)
-      
-      setNotifications(prev => 
-        prev.map(n => 
+
+      setNotifications(prev =>
+        prev.map(n =>
           n.id === id ? { ...n, progress: remaining } : n
         )
       )
-      
+
       if (remaining > 0) {
         requestAnimationFrame(updateProgress)
       } else {
@@ -246,7 +251,7 @@ export default function SettingsPage() {
         if (notificationElement) {
           notificationElement.classList.remove('animate-slide-in-right');
           notificationElement.classList.add('animate-slide-out-right');
-          
+
           // Supprimer après l'animation
           setTimeout(() => {
             setNotifications(prev => prev.filter(n => n.id !== id));
@@ -256,7 +261,7 @@ export default function SettingsPage() {
         }
       }
     }
-    
+
     requestAnimationFrame(updateProgress)
   }
 
@@ -267,7 +272,7 @@ export default function SettingsPage() {
     if (notificationElement) {
       notificationElement.classList.remove('animate-slide-in-right');
       notificationElement.classList.add('animate-slide-out-right');
-      
+
       // Supprimer après l'animation
       setTimeout(() => {
         setNotifications(prev => prev.filter(n => n.id !== id));
@@ -312,34 +317,34 @@ export default function SettingsPage() {
       await updateUserProfile({ displayName: displayNameInput.trim() })
       addNotification('Nom affiché mis à jour avec succès !', 'success')
     } catch (error) {
-        console.error("Failed to update display name:", error);
-        addNotification('Erreur lors de la mise à jour du nom affiché', 'error')
+      console.error("Failed to update display name:", error);
+      addNotification('Erreur lors de la mise à jour du nom affiché', 'error')
     } finally {
-        setIsSaving(false);
+      setIsSaving(false);
     }
   }
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
     setDeleteError('')
-    
+
     try {
       await deleteAccount()
       setShowDeleteModal(false)
-      
+
       // Afficher la notification de succès
       addNotification('Compte supprimé avec succès. Redirection...', 'success')
-      
+
       // Rediriger après un court délai pour que l'utilisateur voie la notification
       setTimeout(() => {
         window.location.href = '/auth/login'
       }, 2000)
     } catch (error: any) {
       console.error("Failed to delete account:", error)
-      
+
       // Afficher un message d'erreur plus clair à l'utilisateur
       let errorMessage = 'Erreur lors de la suppression du compte. Veuillez réessayer.';
-      
+
       if (error.message.includes('requires-recent-login')) {
         errorMessage = 'Pour des raisons de sécurité, vous devez vous reconnecter avant de supprimer votre compte. Veuillez vous déconnecter et vous reconnecter, puis réessayer.';
       } else if (error.message.includes('network')) {
@@ -347,7 +352,7 @@ export default function SettingsPage() {
       } else if (error.message.includes('permission')) {
         errorMessage = 'Vous n\'avez pas les permissions nécessaires pour supprimer ce compte.';
       }
-      
+
       setDeleteError(errorMessage);
       addNotification(errorMessage, 'error')
     } finally {
@@ -358,10 +363,10 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     try {
       console.log('Settings: Logging out user...')
-      
+
       // Utiliser la fonction signOut qui gère tout
       await signOut()
-      
+
       // La redirection est gérée dans signOut()
     } catch (error) {
       console.error('Settings: Error during logout:', error)
@@ -377,7 +382,7 @@ export default function SettingsPage() {
         <CardContent className="p-6">
           <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Mot de passe</h3>
           <p className="text-sm text-gray-600 mb-4">
-            {isGoogleUser 
+            {isGoogleUser
               ? 'Ajoutez un mot de passe à votre compte Google pour une sécurité renforcée.'
               : 'Modifiez votre mot de passe pour sécuriser votre compte.'
             }
@@ -390,12 +395,12 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-       {/* Appareils connectés */}
-       <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
-         <CardContent className="p-6">
+      {/* Appareils connectés */}
+      <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
+        <CardContent className="p-6">
           <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Appareils connectés</h3>
           <p className="text-sm text-gray-600 mb-4">Gérez les appareils connectés à votre compte et surveillez l'activité de connexion.</p>
-          
+
           <div className="space-y-4">
             {/* Appareil actuel */}
             <div className="flex items-center justify-between p-3 bg-transparent rounded-md">
@@ -447,9 +452,9 @@ export default function SettingsPage() {
         return renderSecurityContent()
       case 'profile':
         return (
-           <div className="space-y-6">
-             <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
-               <CardContent className="p-6">
+          <div className="space-y-6">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
+              <CardContent className="p-6">
                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Nom affiché</h3>
                 <p className="text-sm text-gray-600 mb-4">Saisissez votre nom complet ou un nom d'affichage de votre choix.</p>
                 <div className="max-w-sm">
@@ -470,85 +475,84 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </CardContent>
-             </Card>
+            </Card>
 
-             {/* Section Abonnement */}
-             <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
-               <CardContent className="p-6">
-                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Abonnement</h3>
-                 <p className="text-sm text-gray-600 mb-4">
-                   {subscription.isLoading ? 'Chargement...' : getSubscriptionDisplayName(subscription.plan)}
-                 </p>
-                 
-                 <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-                   {subscription.plan === 'plus' ? (
-                     <>
-                       <Crown className="h-4 w-4 text-primary" />
-                       <span>
-                         {subscription.cancelAtPeriodEnd ? (
-                           <>
-                             Votre abonnement prendra fin
-                             {subscription.renewalDate ? (
-                               <span className="font-medium">
-                                 {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
-                                   day: 'numeric',
-                                   month: 'long',
-                                   year: 'numeric'
-                                 })}
-                               </span>
-                             ) : (
-                               <span className="text-xs text-gray-500 ml-1">
-                                 (Date non disponible)
-                               </span>
-                             )}
-                           </>
-                         ) : (
-                           <>
-                             Votre abonnement sera automatiquement renouvelé
-                             {subscription.renewalDate ? (
-                               <span className="font-medium">
-                                 {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
-                                   day: 'numeric',
-                                   month: 'long',
-                                   year: 'numeric'
-                                 })}
-                               </span>
-                             ) : (
-                               <span className="text-xs text-gray-500 ml-1">
-                                 (Date non disponible)
-                               </span>
-                             )}
-                           </>
-                         )}
-                       </span>
-                     </>
-                   ) : (
-                     <span>Profitez de toutes les fonctionnalités Premium</span>
-                   )}
-                 </div>
-                 
-                 <div className="pt-4 border-t border-gray-200 flex justify-end">
-                   <div className="relative" data-subscription-menu>
-                     <Button
-                       variant="outline"
-                       className="flex items-center gap-2"
-                       onClick={() => setShowSubscriptionMenu(!showSubscriptionMenu)}
-                       disabled={subscription.isLoading}
-                     >
-                       {subscription.isLoading ? (
-                         'Chargement...'
-                       ) : (
-                         <>
-                           Gérer
-                           <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showSubscriptionMenu ? 'rotate-180' : ''}`} />
-                         </>
-                       )}
-                     </Button>
-                     
-                     <div className={`absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 transition-all duration-200 ${
-                       showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
-                     }`}>
-                       <div className="py-1">
+            {/* Section Abonnement */}
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Abonnement</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  {subscription.isLoading ? 'Chargement...' : getSubscriptionDisplayName(subscription.plan)}
+                </p>
+
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+                  {subscription.plan === 'plus' ? (
+                    <>
+                      <Crown className="h-4 w-4 text-primary" />
+                      <span>
+                        {subscription.cancelAtPeriodEnd ? (
+                          <>
+                            Votre abonnement prendra fin
+                            {subscription.renewalDate ? (
+                              <span className="font-medium">
+                                {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-500 ml-1">
+                                (Date non disponible)
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            Votre abonnement sera automatiquement renouvelé
+                            {subscription.renewalDate ? (
+                              <span className="font-medium">
+                                {' '}le {subscription.renewalDate.toLocaleDateString('fr-FR', {
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-500 ml-1">
+                                (Date non disponible)
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </span>
+                    </>
+                  ) : (
+                    <span>Profitez de toutes les fonctionnalités Premium</span>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-gray-200 flex justify-end">
+                  <div className="relative" data-subscription-menu>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      onClick={() => setShowSubscriptionMenu(!showSubscriptionMenu)}
+                      disabled={subscription.isLoading}
+                    >
+                      {subscription.isLoading ? (
+                        'Chargement...'
+                      ) : (
+                        <>
+                          Gérer
+                          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showSubscriptionMenu ? 'rotate-180' : ''}`} />
+                        </>
+                      )}
+                    </Button>
+
+                    <div className={`absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 transition-all duration-200 ${showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
+                      }`}>
+                      <div className="py-1">
                         {/* ✅ FIX: Afficher "Annuler l'abonnement" uniquement si l'utilisateur a un abonnement actif et non déjà annulé */}
                         {subscription.plan !== 'free' && subscription.isActive && subscription.stripeSubscriptionId && !subscription.cancelAtPeriodEnd && (
                           <button
@@ -558,18 +562,18 @@ export default function SettingsPage() {
                             Annuler l'abonnement
                           </button>
                         )}
-                         <button
-                           onClick={handleUpgradeSubscription}
-                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
-                         >
-                           Passer à un plan supérieur
-                         </button>
-                       </div>
-                     </div>
-                   </div>
-                 </div>
-               </CardContent>
-             </Card>
+                        <button
+                          onClick={handleUpgradeSubscription}
+                          className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Passer à un plan supérieur
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Section Paiement */}
             <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
@@ -578,7 +582,7 @@ export default function SettingsPage() {
                 <p className="text-sm text-gray-600 mb-4">
                   Gérez vos moyens de paiement et votre historique de facturation
                 </p>
-                
+
                 <div className="pt-4 border-t border-gray-200 flex justify-end">
                   <Button
                     variant="outline"
@@ -590,7 +594,7 @@ export default function SettingsPage() {
                 </div>
               </CardContent>
             </Card>
- 
+
             <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
               <CardContent className="p-6">
                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Supprimer le compte</h3>
@@ -627,18 +631,17 @@ export default function SettingsPage() {
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
         <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
       </div>
-      
+
       <div className="mb-8">
         <nav className="flex space-x-10 border-b border-gray-200">
           {tabs.map((tab) => (
             <Link
               key={tab.id}
               href={tab.href}
-              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === tab.id
+              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
                   ? 'border-primary text-[#282828]'
                   : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
-              }`}
+                }`}
             >
               {tab.name}
             </Link>
@@ -649,23 +652,23 @@ export default function SettingsPage() {
       {renderTabContent()}
 
       {/* Modal de suppression de compte */}
-       {showDeleteModal && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-           <Card ref={modalRef} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors max-w-md w-full mx-4">
-             <CardContent className="p-6">
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card ref={modalRef} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors max-w-md w-full mx-4">
+            <CardContent className="p-6">
               <h2 className="text-xl font-heading font-semibold mb-4 text-[#282828]">
                 Supprimer le compte définitivement
               </h2>
               <p className="text-sm text-gray-600 mb-6">
                 Êtes-vous sûr de vouloir supprimer définitivement votre compte ? Cette action est irréversible et supprimera toutes vos données (sessions, presets, profil).
               </p>
-              
+
               {deleteError && (
                 <p className="text-red-600 text-xs bg-red-50 p-2 rounded-md border border-red-200 mb-4">
                   {deleteError}
                 </p>
               )}
-              
+
               <div className="flex justify-end space-x-2">
                 <Button
                   type="button"
@@ -693,26 +696,25 @@ export default function SettingsPage() {
           <div
             key={notification.id}
             data-notification-id={notification.id}
-            className={`relative overflow-hidden rounded-lg shadow-lg ${
-              notification.type === 'success'
+            className={`relative overflow-hidden rounded-lg shadow-lg ${notification.type === 'success'
                 ? 'bg-green-600'
                 : notification.type === 'error'
-                ? 'bg-red-600'
-                : 'bg-primary'
-            }`}
+                  ? 'bg-red-600'
+                  : 'bg-primary'
+              }`}
             style={{ transform: 'translateX(100%)', opacity: 0 }}
           >
             {/* Barre de progression */}
-            <div 
+            <div
               className="absolute top-0 left-0 h-1 bg-white transition-all duration-100 ease-linear"
               style={{ width: `${notification.progress}%` }}
             />
-            
+
             {/* Contenu de la notification */}
             <div className="flex items-center justify-between p-3 text-white">
               <span className="text-sm font-medium">{notification.message}</span>
-              <button 
-                onClick={() => removeNotification(notification.id)} 
+              <button
+                onClick={() => removeNotification(notification.id)}
                 className="ml-3 text-white hover:text-gray-200 transition-colors text-lg font-bold"
               >
                 ×
@@ -728,7 +730,7 @@ export default function SettingsPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Annuler l'abonnement
             </h3>
-            
+
             <p className="text-sm text-gray-600 mb-6">
               Êtes-vous sûr de vouloir annuler votre abonnement ? Votre abonnement restera actif jusqu'à la fin de votre période de facturation le {subscription.renewalDate ? subscription.renewalDate.toLocaleDateString('fr-FR', {
                 day: 'numeric',
@@ -736,7 +738,7 @@ export default function SettingsPage() {
                 year: 'numeric'
               }) : 'fin de période'}. Vous conserverez tous les avantages jusqu'à cette date.
             </p>
-            
+
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowCancelModal(false)}
