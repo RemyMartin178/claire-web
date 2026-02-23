@@ -9,7 +9,7 @@ import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff } from 'lucide-react'
 import { getApiBase } from '@/utils/apiBase'
 import { auth } from '@/utils/firebase'
- 
+
 
 function LoginContent() {
   const [showPassword, setShowPassword] = useState(false)
@@ -25,7 +25,7 @@ function LoginContent() {
   const params = useSearchParams()
   const isMobileFlow = useMemo(() => params?.get('flow') === 'mobile', [params])
   const sessionId = useMemo(() => params?.get('session_id') || '', [params])
-  
+
 
   useEffect(() => {
     if (user && !isMobileFlow) {
@@ -35,29 +35,29 @@ function LoginContent() {
 
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      try {
-        const redirectUser = await handleGoogleRedirectResult()
-        if (!mounted) return
-        if (redirectUser) {
-          if (isMobileFlow && sessionId) {
-            await associateAfterLogin(sessionId)
+      ; (async () => {
+        try {
+          const redirectUser = await handleGoogleRedirectResult()
+          if (!mounted) return
+          if (redirectUser) {
+            if (isMobileFlow && sessionId) {
+              await associateAfterLogin(sessionId)
+            }
+            sessionStorage.removeItem('manuallyLoggedOut')
+            if (isMobileFlow) {
+              router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
+            } else {
+              router.push('/activity')
+            }
           }
-          sessionStorage.removeItem('manuallyLoggedOut')
-          if (isMobileFlow) {
-            router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
-          } else {
-            router.push('/activity')
+        } catch (error: any) {
+          const errorMessage = handleFirebaseError(error)
+          setError(errorMessage)
+          if (shouldLogError(error)) {
+            console.error('Google redirect error:', error)
           }
         }
-      } catch (error: any) {
-        const errorMessage = handleFirebaseError(error)
-        setError(errorMessage)
-        if (shouldLogError(error)) {
-          console.error('Google redirect error:', error)
-        }
-      }
-    })()
+      })()
     return () => { mounted = false }
   }, [router, isMobileFlow, sessionId])
 
@@ -68,12 +68,12 @@ function LoginContent() {
 
     try {
       const user = await signInWithEmail(formData.email, formData.password, formData.rememberMe)
-      
+
       if (isMobileFlow && sessionId && user) {
         await associateAfterLogin(sessionId)
       }
       sessionStorage.removeItem('manuallyLoggedOut')
-      
+
       // Priority 1: Stripe return URL
       const stripeReturnUrl = sessionStorage.getItem('stripe_return_url')
       if (stripeReturnUrl) {
@@ -81,7 +81,7 @@ function LoginContent() {
         router.push(stripeReturnUrl)
         return
       }
-      
+
       // Priority 2: Saved redirect URL (from ConditionalLayout)
       const redirectUrl = sessionStorage.getItem('redirect_after_login')
       if (redirectUrl) {
@@ -89,19 +89,19 @@ function LoginContent() {
         router.push(redirectUrl)
         return
       }
-      
+
       // Priority 3: Mobile flow
       if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
         return
       }
-      
+
       // Default: Activity page
       router.push('/activity')
     } catch (error: any) {
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
-      
+
       if (shouldLogError(error)) {
         console.error('Login error:', error)
       }
@@ -136,13 +136,13 @@ function LoginContent() {
       setIsLoading(true)
       setError('')
       const result = await signInWithGoogle(formData.rememberMe)
-      
+
       if (isMobileFlow && sessionId) {
         await associateAfterLogin(sessionId)
       }
-      
+
       sessionStorage.removeItem('manuallyLoggedOut')
-      
+
       // Priority 1: Stripe return URL
       const stripeReturnUrl = sessionStorage.getItem('stripe_return_url')
       if (stripeReturnUrl) {
@@ -150,7 +150,7 @@ function LoginContent() {
         router.push(stripeReturnUrl)
         return
       }
-      
+
       // Priority 2: Saved redirect URL (from ConditionalLayout)
       const redirectUrl = sessionStorage.getItem('redirect_after_login')
       if (redirectUrl) {
@@ -158,30 +158,30 @@ function LoginContent() {
         router.push(redirectUrl)
         return
       }
-      
+
       // Priority 3: Mobile flow
       if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
         return
       }
-      
+
       // Default: Activity page
       router.push('/activity')
     } catch (error: any) {
-        const code = error?.code
-        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-          setError('')
-        } else {
-          const errorMessage = handleFirebaseError(error)
-          setError(errorMessage)
-        }
-        
-        if (shouldLogError(error)) {
-          console.error('Google sign in error:', error)
-        }
-      } finally {
-        setIsLoading(false)
+      const code = error?.code
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setError('')
+      } else {
+        const errorMessage = handleFirebaseError(error)
+        setError(errorMessage)
       }
+
+      if (shouldLogError(error)) {
+        console.error('Google sign in error:', error)
+      }
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,7 +206,7 @@ function LoginContent() {
           />
           <span className="text-2xl font-heading font-semibold text-[#282828]">Claire</span>
         </div>
-        
+
         {/* Formulaire */}
         <div className="animate-scale-in w-full max-w-lg">
           <div className="text-center mb-6 animate-fade-in">
@@ -308,17 +308,17 @@ function LoginContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-transparent px-4 text-gray-500">OU</span>
+                <span className="bg-background px-4 text-gray-500">OU</span>
               </div>
             </div>
 
             <div className="mt-6">
               <button
-                  onClick={handleGoogleSignIn}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-gray-300 bg-white text-[#282828] hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow group"
-                >
-                  <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-gray-300 bg-white text-[#282828] hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow group"
+              >
+                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                     fill="#4285F4"
@@ -345,15 +345,15 @@ function LoginContent() {
             <p className="text-gray-600 text-sm">
               Pas encore de compte ?{' '}
               <a href="/auth/register" className="text-primary hover:text-primary-hover font-medium transition-colors duration-200 hover:underline">
-               Créer un compte
-             </a>
+                Créer un compte
+              </a>
             </p>
           </div>
         </div>
       </div>
     </div>
   )
-} 
+}
 
 export default function LoginPage() {
   return (

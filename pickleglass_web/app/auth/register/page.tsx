@@ -36,26 +36,26 @@ function RegisterContent() {
 
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      try {
-        const redirectUser = await handleGoogleRedirectResult()
-        if (!mounted) return
-        if (redirectUser) {
-          sessionStorage.removeItem('manuallyLoggedOut')
-          if (isMobileFlow) {
-            router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
-          } else {
-            router.push('/activity')
+      ; (async () => {
+        try {
+          const redirectUser = await handleGoogleRedirectResult()
+          if (!mounted) return
+          if (redirectUser) {
+            sessionStorage.removeItem('manuallyLoggedOut')
+            if (isMobileFlow) {
+              router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
+            } else {
+              router.push('/activity')
+            }
+          }
+        } catch (error: any) {
+          const errorMessage = handleFirebaseError(error)
+          setError(errorMessage)
+          if (shouldLogError(error)) {
+            console.error('Google redirect error:', error)
           }
         }
-      } catch (error: any) {
-        const errorMessage = handleFirebaseError(error)
-        setError(errorMessage)
-        if (shouldLogError(error)) {
-          console.error('Google redirect error:', error)
-        }
-      }
-    })()
+      })()
     return () => { mounted = false }
   }, [router, isMobileFlow, sessionId])
 
@@ -97,7 +97,7 @@ function RegisterContent() {
     } catch (error: any) {
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
-      
+
       if (shouldLogError(error)) {
         console.error('Registration error:', error)
       }
@@ -133,7 +133,7 @@ function RegisterContent() {
         const errorMessage = handleFirebaseError(error)
         setError(errorMessage)
       }
-      
+
       if (shouldLogError(error)) {
         console.error('Google sign in error:', error)
       }
@@ -164,7 +164,7 @@ function RegisterContent() {
           />
           <span className="text-2xl font-heading font-semibold text-[#282828]">Claire</span>
         </div>
-        
+
         <div className="w-full max-w-lg">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-heading font-semibold text-[#282828] mb-2">Créer votre compte</h2>
@@ -234,13 +234,13 @@ function RegisterContent() {
                   placeholder=""
                 />
                 <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 flex items-center justify-center hover:text-[#282828] transition-colors hover:transform-none"
-                    style={{ transform: 'translate(-50%, -50%)' }}
-                  >
-                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                 </button>
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 flex items-center justify-center hover:text-[#282828] transition-colors hover:transform-none"
+                  style={{ transform: 'translate(-50%, -50%)' }}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -257,13 +257,13 @@ function RegisterContent() {
                   placeholder=""
                 />
                 <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 flex items-center justify-center hover:text-[#282828] transition-colors hover:transform-none"
-                    style={{ transform: 'translate(-50%, -50%)' }}
-                  >
-                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                 </button>
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 flex items-center justify-center hover:text-[#282828] transition-colors hover:transform-none"
+                  style={{ transform: 'translate(-50%, -50%)' }}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 
@@ -284,10 +284,10 @@ function RegisterContent() {
             </div>
 
             <button
-               type="submit"
-               disabled={isLoading}
-               className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border-0 bg-primary text-white hover:bg-primary-hover active:bg-primary-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition-all duration-200"
-             >
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 rounded-lg font-medium text-sm flex items-center justify-center border-0 bg-primary text-white hover:bg-primary-hover active:bg-primary-hover focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow transition-all duration-200"
+            >
               {isLoading ? 'Création du compte...' : 'Créer mon compte'}
               {!isLoading && (
                 <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,16 +303,16 @@ function RegisterContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-transparent px-3 text-gray-500">OU</span>
+                <span className="bg-background px-3 text-gray-500">OU</span>
               </div>
             </div>
 
             <div className="mt-4">
               <button
-                 onClick={handleGoogleSignIn}
-                 disabled={isLoading}
-                 className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-gray-300 bg-white text-[#282828] hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
-               >
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm border border-gray-300 bg-white text-[#282828] hover:bg-gray-50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow"
+              >
                 <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
                   <path
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -348,7 +348,7 @@ function RegisterContent() {
       </div>
     </div>
   )
-} 
+}
 
 export default function RegisterPage() {
   return (
