@@ -12,9 +12,8 @@ export default function ClientLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-  
+
 
   // tracking retiré
 
@@ -31,15 +30,15 @@ export default function ClientLayout({
   }, [])
 
   return (
-    <div className="flex h-screen">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggle={setIsSidebarCollapsed}
-        onSearchClick={() => setIsSearchOpen(true)}
-      />
-      <main className="flex-1 overflow-auto" style={{ background: '#202123' }}>
-        {children}
-      </main>
+    <div className="rounded-md flex flex-col md:flex-row bg-gray-100 dark:bg-neutral-800 w-full flex-1 mx-auto border border-neutral-200 dark:border-neutral-700 overflow-hidden h-screen">
+      <Sidebar onSearchClick={() => setIsSearchOpen(true)} />
+      <div className="flex flex-1 overflow-hidden">
+        <main className="p-2 md:p-10 rounded-tl-2xl border border-neutral-200 dark:border-neutral-700 bg-background flex flex-col flex-1 w-full h-full overflow-hidden text-neutral-900 dark:text-neutral-100 relative">
+          <div className="h-full w-full overflow-auto no-scrollbar">
+            {children}
+          </div>
+        </main>
+      </div>
       <SearchPopup
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}

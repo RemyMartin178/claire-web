@@ -40,7 +40,7 @@ export default function PrivacySettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6 flex flex-col h-full">
             <div className="flex-grow">
               <h3 className="text-lg font-heading font-semibold text-[#282828] mb-3">Politique de confidentialité</h3>
@@ -61,7 +61,7 @@ export default function PrivacySettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6 flex flex-col h-full">
             <div className="flex-grow">
               <h3 className="text-lg font-heading font-semibold text-[#282828] mb-3">Conditions d'utilisation</h3>

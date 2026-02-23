@@ -1,6 +1,17 @@
 const { screen } = require('electron');
 
 /**
+ * Snap a DIP value to the nearest device pixel to avoid sub-pixel DPI jitter.
+ * Always returns an integer (required by Electron setPosition/setBounds).
+ * @param {number} valueDip
+ * @param {number} scaleFactor
+ * @returns {number}
+ */
+function snapToDevicePixel(valueDip, scaleFactor) {
+    return Math.round(Math.round(valueDip * scaleFactor) / scaleFactor);
+}
+
+/**
  * 
  * @param {BrowserWindow} window 
  * @returns {Display}
@@ -45,42 +56,42 @@ class WindowLayoutManager {
     getTargetBoundsForFeatureWindows(visibilityOverride = {}) {
         const header = this.windowPool.get('header');
         if (!header?.getBounds) return {};
- 
+
         const headerBounds = header.getBounds();
         const display = getCurrentDisplay(header);
         const { width: screenWidth, height: screenHeight } = display.workAreaSize;
         const { x: workAreaX, y: workAreaY } = display.workArea;
- 
+
         const ask = this.windowPool.get('ask');
         const listen = this.windowPool.get('listen');
- 
+
         const askVis = visibilityOverride.ask !== undefined ?
             visibilityOverride.ask :
             (ask && ask.isVisible() && !ask.isDestroyed());
         const listenVis = visibilityOverride.listen !== undefined ?
             visibilityOverride.listen :
             (listen && listen.isVisible() && !listen.isDestroyed());
- 
+
         if (!askVis && !listenVis) return {};
- 
+
         const PAD = 8;
         const headerTopRel = headerBounds.y - workAreaY;
         const headerBottomRel = headerTopRel + headerBounds.height;
         const headerCenterXRel = headerBounds.x - workAreaX + headerBounds.width / 2;
-        
+
         const relativeX = headerCenterXRel / screenWidth;
         const relativeY = (headerBounds.y - workAreaY) / screenHeight;
         const strategy = this.determineLayoutStrategy(headerBounds, screenWidth, screenHeight, relativeX, relativeY, workAreaX, workAreaY);
- 
+
         const askB = ask ? ask.getBounds() : null;
         const listenB = listen ? listen.getBounds() : null;
- 
+
         const result = { listen: null, ask: null };
- 
+
         if (askVis && listenVis) {
             let askXRel = headerCenterXRel - (askB.width / 2);
             let listenXRel = askXRel - listenB.width - PAD;
- 
+
             if (listenXRel < PAD) {
                 listenXRel = PAD;
                 askXRel = listenXRel + listenB.width + PAD;
@@ -89,7 +100,7 @@ class WindowLayoutManager {
                 askXRel = screenWidth - PAD - askB.width;
                 listenXRel = askXRel - listenB.width - PAD;
             }
-            
+
             // [[Korean comment translated]] 'above'[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated], 'below'[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
             if (strategy.primary === 'above') {
                 const windowBottomAbs = headerBounds.y - PAD;
@@ -103,7 +114,7 @@ class WindowLayoutManager {
                 result.ask = { x: Math.round(askXRel + workAreaX), y: Math.round(yAbs) };
                 result.listen = { x: Math.round(listenXRel + workAreaX), y: Math.round(yAbs) };
             }
- 
+
         } else { // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] ([Korean comment translated] [Korean comment translated] Confirm)
             const winB = askVis ? askB : listenB;
             let xRel = headerCenterXRel - winB.width / 2;
@@ -116,7 +127,7 @@ class WindowLayoutManager {
             } else { // 'below'
                 yPos = headerBottomRel + PAD;
             }
-            
+
             const abs = { x: Math.round(xRel + workAreaX), y: Math.round(yPos + workAreaY) };
             if (askVis) result.ask = abs;
             if (listenVis) result.listen = abs;
@@ -150,7 +161,7 @@ class WindowLayoutManager {
                 settings.setBounds({ x: settingPos.x, y: settingPos.y, width, height });
             }
         }
-        
+
         const agentSelector = this.windowPool.get('agent-selector');
         if (agentSelector && !agentSelector.isDestroyed() && agentSelector.isVisible()) {
             const agentSelectorPos = this.calculateAgentSelectorWindowPosition();
@@ -200,7 +211,7 @@ class WindowLayoutManager {
         const headerTopRel = headerBounds.y - workAreaY;
         const headerBottomRel = headerTopRel + headerBounds.height;
         const headerCenterXRel = headerBounds.x - workAreaX + headerBounds.width / 2;
-        
+
         let askBounds = askVisible ? ask.getBounds() : null;
         let listenBounds = listenVisible ? listen.getBounds() : null;
 
@@ -232,7 +243,7 @@ class WindowLayoutManager {
                 ask.setPosition(Math.round(askXRel + workAreaX), Math.round(yAbs), false);
                 listen.setPosition(Math.round(listenXRel + workAreaX), Math.round(yAbs), false);
             }
-        
+
         } else { // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] ([Korean comment translated] [Korean comment translated] Confirm)
             const win = askVisible ? ask : listen;
             const winBounds = askVisible ? askBounds : listenBounds;
@@ -268,6 +279,7 @@ class WindowLayoutManager {
         const settingsBounds = settings.getBounds();
         const display = getCurrentDisplay(header);
         const { x: workAreaX, y: workAreaY, width: screenWidth, height: screenHeight } = display.workArea;
+        const sf = display.scaleFactor || 1;
 
         const PAD = 5;
         const buttonPadding = 170;
@@ -278,7 +290,11 @@ class WindowLayoutManager {
         const clampedX = Math.max(workAreaX + 10, Math.min(workAreaX + screenWidth - settingsBounds.width - 10, x));
         const clampedY = Math.max(workAreaY + 10, Math.min(workAreaY + screenHeight - settingsBounds.height - 10, y));
 
-        return { x: Math.round(clampedX), y: Math.round(clampedY) };
+        // Snap to device pixel to avoid sub-pixel DPI jitter (e.g. Windows 1.25x)
+        return {
+            x: snapToDevicePixel(clampedX, sf),
+            y: snapToDevicePixel(clampedY, sf)
+        };
     }
 
     calculateAgentSelectorWindowPosition() {
@@ -293,11 +309,10 @@ class WindowLayoutManager {
         const agentSelectorBounds = agentSelector.getBounds();
         const display = getCurrentDisplay(header);
         const { x: workAreaX, y: workAreaY, width: screenWidth, height: screenHeight } = display.workArea;
-
+        const sf = display.scaleFactor || 1;
 
         const PAD = 5;
-        // Position below the agent dropdown button area (right side of header)
-        const agentButtonPadding = 120; // Agent dropdown is on the right side
+        const agentButtonPadding = 120;
 
         const x = headerBounds.x + headerBounds.width - agentSelectorBounds.width - agentButtonPadding;
         const y = headerBounds.y + headerBounds.height + PAD;
@@ -305,9 +320,11 @@ class WindowLayoutManager {
         const clampedX = Math.max(workAreaX + 10, Math.min(workAreaX + screenWidth - agentSelectorBounds.width - 10, x));
         const clampedY = Math.max(workAreaY + 10, Math.min(workAreaY + screenHeight - agentSelectorBounds.height - 10, y));
 
-        const finalPosition = { x: Math.round(clampedX), y: Math.round(clampedY) };
-
-        return finalPosition;
+        // Snap to device pixel to avoid sub-pixel DPI jitter
+        return {
+            x: snapToDevicePixel(clampedX, sf),
+            y: snapToDevicePixel(clampedY, sf)
+        };
     }
 
     positionShortcutSettingsWindow() {
@@ -331,7 +348,7 @@ class WindowLayoutManager {
 
         shortcutSettings.setBounds({ x: newX, y: newY, width: shortcutBounds.width, height: shortcutBounds.height });
     }
-    
+
     /**
      * @param {Rectangle} bounds1
      * @param {Rectangle} bounds2

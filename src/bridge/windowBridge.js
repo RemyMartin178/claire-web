@@ -12,8 +12,22 @@ module.exports = {
     ipcMain.handle('get-content-protection-status', () => windowManager.getContentProtectionStatus());
     ipcMain.on('show-settings-window', () => windowManager.showSettingsWindow());
     ipcMain.on('hide-settings-window', () => windowManager.hideSettingsWindow());
+    ipcMain.on('toggle-settings-window', () => windowManager.toggleSettingsWindow());
     ipcMain.on('cancel-hide-settings-window', () => windowManager.cancelHideSettingsWindow());
-    
+
+    // Nouvelles API GPT : idempotentes et stables
+    ipcMain.removeHandler('wm:settingsVisible');
+    ipcMain.handle('wm:settingsVisible', (_e, { visible, reason }) => {
+      windowManager.requestSettingsVisible(!!visible, reason || 'renderer');
+    });
+    ipcMain.removeHandler('wm:headerClickThrough');
+    ipcMain.handle('wm:headerClickThrough', (_e, { enabled }) => {
+      windowManager.setHeaderClickThrough(!!enabled);
+    });
+    ipcMain.on('wm:globalPointerDown', (_e, pos) => {
+      windowManager.handleGlobalPointerDown(pos);
+    });
+
     ipcMain.on('show-agent-selector-window', () => windowManager.showAgentSelectorWindow());
     ipcMain.on('hide-agent-selector-window', () => windowManager.hideAgentSelectorWindow());
     ipcMain.on('cancel-hide-agent-selector-window', () => windowManager.cancelHideAgentSelectorWindow());

@@ -28,7 +28,7 @@ export default function ModelsPage() {
       />
 
       {/* Coming Soon Card */}
-      <Card className="bg-white">
+      <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
         <CardContent className="p-12 text-center">
           <div className="mx-auto w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
             <Settings className="h-10 w-10 text-primary" />

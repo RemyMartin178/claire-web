@@ -140,6 +140,13 @@ const windowPool = new Map();
 let settingsHideTimer = null;
 let agentSelectorHideTimer = null;
 
+// ✅ État centralisé pour la fenêtre Settings (source de vérité unique côté Main)
+const settingsState = {
+    visibleDesired: false,
+    pinned: false,             // ouvert par un clic explicite
+    suppressAutoHideUntil: 0,  // timestamp : ignore les auto-hide pendant ce délai
+};
+
 
 let layoutManager = null;
 // ✅ Garde-fous de layout
@@ -173,31 +180,31 @@ let movementManager = null;
  * @param {Function=} onComplete 
  */
 function fadeWindow(win, from, to, duration = 250, onComplete) {
-  if (!win || win.isDestroyed()) return;
+    if (!win || win.isDestroyed()) return;
 
-  const FPS   = 60;
-  const steps       = Math.max(1, Math.round(duration / (1000 / FPS)));
-  let   currentStep = 0;
+    const FPS = 60;
+    const steps = Math.max(1, Math.round(duration / (1000 / FPS)));
+    let currentStep = 0;
 
-  win.setOpacity(from);
+    win.setOpacity(from);
 
-  const timer = setInterval(() => {
-    if (win.isDestroyed()) { clearInterval(timer); return; }
+    const timer = setInterval(() => {
+        if (win.isDestroyed()) { clearInterval(timer); return; }
 
-    currentStep += 1;
-    const progress = currentStep / steps;
-    const eased    = progress < 1
-      ? 1 - Math.pow(1 - progress, 3)
-      : 1;
+        currentStep += 1;
+        const progress = currentStep / steps;
+        const eased = progress < 1
+            ? 1 - Math.pow(1 - progress, 3)
+            : 1;
 
-    win.setOpacity(from + (to - from) * eased);
+        win.setOpacity(from + (to - from) * eased);
 
-    if (currentStep >= steps) {
-      clearInterval(timer);
-      win.setOpacity(to);
-      onComplete && onComplete();
-    }
-  }, 1000 / FPS);
+        if (currentStep >= steps) {
+            clearInterval(timer);
+            win.setOpacity(to);
+            onComplete && onComplete();
+        }
+    }, 1000 / FPS);
 }
 
 const showSettingsWindow = () => {
@@ -208,9 +215,58 @@ const hideSettingsWindow = () => {
     internalBridge.emit('window:requestVisibility', { name: 'settings', visible: false });
 };
 
-const cancelHideSettingsWindow = () => {
-    internalBridge.emit('window:requestVisibility', { name: 'settings', visible: true });
+// Remplace requestSettingsVisible - plus de deadlock idempotent
+const requestSettingsVisible = (visible, reason = '') => {
+    logger.info(`[WindowManager] requestSettingsVisible: ${visible} (reason: ${reason})`);
+    internalBridge.emit('window:requestVisibility', { name: 'settings', visible });
 };
+
+// Toggle simple : lit directement isVisible() côté main  
+const toggleSettingsWindow = () => {
+    const settingsWin = windowPool.get('settings');
+    const isVisible = settingsWin && !settingsWin.isDestroyed() && settingsWin.isVisible();
+    internalBridge.emit('window:requestVisibility', { name: 'settings', visible: !isVisible });
+};
+
+const cancelHideSettingsWindow = () => {
+    // Désactivé : plus de hover
+};
+
+/**
+ * Active ou désactive le click-through du header.
+ * Par défaut: désactivé au démarrage.
+ * @param {boolean} enabled
+ */
+const setHeaderClickThrough = (enabled) => {
+    const header = windowPool.get('header');
+    if (!header || header.isDestroyed()) return;
+    header.setIgnoreMouseEvents(!!enabled, { forward: true });
+    logger.info(`[WindowManager] setHeaderClickThrough: ${enabled}`);
+};
+
+/**
+ * Gère un pointerdown global pour fermer Settings si on clique en dehors.
+ * @param {{ x: number, y: number }} pos
+ */
+const handleGlobalPointerDown = (pos) => {
+    if (!settingsState.pinned) return;
+    if (!settingsState.visibleDesired) return;
+    if (Date.now() < settingsState.suppressAutoHideUntil) return;
+
+    const header = windowPool.get('header');
+    const settings = windowPool.get('settings');
+    if (!header || !settings || settings.isDestroyed()) return;
+
+    const inside = (b) =>
+        pos.x >= b.x && pos.x <= b.x + b.width &&
+        pos.y >= b.y && pos.y <= b.y + b.height;
+
+    if (!inside(header.getBounds()) && !inside(settings.getBounds())) {
+        settingsState.pinned = false;
+        requestSettingsVisible(false, 'click-outside');
+    }
+};
+
 
 const showAgentSelectorWindow = () => {
     internalBridge.emit('window:requestVisibility', { name: 'agent-selector', visible: true });
@@ -228,7 +284,7 @@ const cancelHideAgentSelectorWindow = () => {
 function setupWindowController(windowPool, layoutManager, movementManager) {
     // Initialize theme service with window pool reference
     themeService.setWindowPool(windowPool);
-    
+
     internalBridge.on('window:requestVisibility', ({ name, visible }) => {
         handleWindowVisibilityRequest(windowPool, layoutManager, movementManager, name, visible);
     });
@@ -254,32 +310,32 @@ function changeAllWindowsVisibility(windowPool, targetVisibility) {
         header.isVisible() === targetVisibility) {
         return;
     }
-  
+
     if (header.isVisible()) {
-      lastVisibleWindows.clear();
-  
-      windowPool.forEach((win, name) => {
-        if (win && !win.isDestroyed() && win.isVisible()) {
-          lastVisibleWindows.add(name);
-        }
-      });
-  
-      lastVisibleWindows.forEach(name => {
-        if (name === 'header') return;
-        const win = windowPool.get(name);
-        if (win && !win.isDestroyed()) win.hide();
-      });
-      header.hide();
-  
-      return;
+        lastVisibleWindows.clear();
+
+        windowPool.forEach((win, name) => {
+            if (win && !win.isDestroyed() && win.isVisible()) {
+                lastVisibleWindows.add(name);
+            }
+        });
+
+        lastVisibleWindows.forEach(name => {
+            if (name === 'header') return;
+            const win = windowPool.get(name);
+            if (win && !win.isDestroyed()) win.hide();
+        });
+        header.hide();
+
+        return;
     }
-  
+
     lastVisibleWindows.forEach(name => {
-      const win = windowPool.get(name);
-      if (win && !win.isDestroyed())
-        win.show();
+        const win = windowPool.get(name);
+        if (win && !win.isDestroyed())
+            win.show();
     });
-  }
+}
 
 /**
  * 
@@ -336,34 +392,36 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
 
     if (name === 'settings') {
         if (shouldBeVisible) {
-            // Cancel any pending hide operations
             if (settingsHideTimer) {
                 clearTimeout(settingsHideTimer);
                 settingsHideTimer = null;
             }
-            const position = layoutManager.calculateSettingsWindowPosition();
-            if (position) {
-                win.setBounds(position);
-                win.__lockedByButton = true;
-                win.show();
+            if (!win.isVisible()) {
+                const position = layoutManager.calculateSettingsWindowPosition();
+                if (position) {
+                    try {
+                        // Sécurisé : vérification NaN avant setPosition
+                        const px = Number.isFinite(position.x) ? Math.round(position.x) : win.getBounds().x;
+                        const py = Number.isFinite(position.y) ? Math.round(position.y) : win.getBounds().y;
+                        win.setPosition(px, py, false);
+                    } catch (e) {
+                        logger.warn('[WindowManager] setPosition failed for settings, using current position:', e.message);
+                    }
+                }
+                win.showInactive();
                 win.moveTop();
                 win.setAlwaysOnTop(true);
-            } else {
-                logger.warn('Could not calculate settings window position.');
             }
         } else {
-            // Hide after a delay
+            // Hide immediately, since there's no more hover-to-keep-open logic
             if (settingsHideTimer) {
                 clearTimeout(settingsHideTimer);
-            }
-            settingsHideTimer = setTimeout(() => {
-                if (win && !win.isDestroyed()) {
-                    win.setAlwaysOnTop(false);
-                    win.hide();
-                }
                 settingsHideTimer = null;
-            }, 200);
-
+            }
+            if (win && !win.isDestroyed()) {
+                win.setAlwaysOnTop(false);
+                win.hide();
+            }
             win.__lockedByButton = false;
         }
         return;
@@ -387,30 +445,27 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                 // Fallback: use current bounds and just show the window
                 logger.warn('Could not calculate agent selector window position, using fallback position');
                 const currentBounds = win.getBounds();
-                
+
                 // Ensure window has minimum viable bounds
                 if (currentBounds.width < 200 || currentBounds.height < 150) {
                     win.setBounds({ x: currentBounds.x, y: currentBounds.y, width: 320, height: 280 });
                 }
-                
+
                 win.__lockedByButton = true;
                 win.show();
                 win.moveTop();
                 win.setAlwaysOnTop(true);
             }
         } else {
-            // Hide after a delay
+            // Hide immediately, since there's no more hover logic
             if (agentSelectorHideTimer) {
                 clearTimeout(agentSelectorHideTimer);
-            }
-            agentSelectorHideTimer = setTimeout(() => {
-                if (win && !win.isDestroyed()) {
-                    win.setAlwaysOnTop(false);
-                    win.hide();
-                }
                 agentSelectorHideTimer = null;
-            }, 200);
-
+            }
+            if (win && !win.isDestroyed()) {
+                win.setAlwaysOnTop(false);
+                win.hide();
+            }
             win.__lockedByButton = false;
         }
         return;
@@ -444,8 +499,8 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
         const otherWin = windowPool.get(otherName);
         const isOtherWinVisible = otherWin && !otherWin.isDestroyed() && otherWin.isVisible();
 
-        const ANIM_OFFSET_X = 100; 
-        const ANIM_OFFSET_Y = 20; 
+        const ANIM_OFFSET_X = 100;
+        const ANIM_OFFSET_Y = 20;
 
         if (shouldBeVisible) {
             win.setOpacity(0);
@@ -551,45 +606,45 @@ const toggleContentProtection = () => {
 const resizeHeaderWindow = ({ width, height }) => {
     const header = windowPool.get('header');
     if (header) {
-      logger.info('Resize request: x');
-      
-      if (movementManager && movementManager.isAnimating) {
-        logger.info('[WindowManager] Skipping resize during animation');
-        return { success: false, error: 'Cannot resize during animation' };
-      }
+        logger.info('Resize request: x');
 
-      const currentBounds = header.getBounds();
-      logger.info('Current bounds: x at (, )');
-      
-      if (currentBounds.width === width && currentBounds.height === height) {
-        logger.info('[WindowManager] Already at target size, skipping resize');
+        if (movementManager && movementManager.isAnimating) {
+            logger.info('[WindowManager] Skipping resize during animation');
+            return { success: false, error: 'Cannot resize during animation' };
+        }
+
+        const currentBounds = header.getBounds();
+        logger.info('Current bounds: x at (, )');
+
+        if (currentBounds.width === width && currentBounds.height === height) {
+            logger.info('[WindowManager] Already at target size, skipping resize');
+            return { success: true };
+        }
+
+        const wasResizable = header.isResizable();
+        if (!wasResizable) {
+            header.setResizable(true);
+        }
+
+        const centerX = currentBounds.x + currentBounds.width / 2;
+        const newX = Math.round(centerX - width / 2);
+
+        const display = getCurrentDisplay(header);
+        const { x: workAreaX, width: workAreaWidth } = display.workArea;
+
+        const clampedX = Math.max(workAreaX, Math.min(workAreaX + workAreaWidth - width, newX));
+
+        header.setBounds({ x: clampedX, y: currentBounds.y, width, height });
+
+        if (!wasResizable) {
+            header.setResizable(false);
+        }
+
+        if (updateLayout) {
+            updateLayout();
+        }
+
         return { success: true };
-      }
-
-      const wasResizable = header.isResizable();
-      if (!wasResizable) {
-        header.setResizable(true);
-      }
-
-      const centerX = currentBounds.x + currentBounds.width / 2;
-      const newX = Math.round(centerX - width / 2);
-
-      const display = getCurrentDisplay(header);
-      const { x: workAreaX, width: workAreaWidth } = display.workArea;
-      
-      const clampedX = Math.max(workAreaX, Math.min(workAreaX + workAreaWidth - width, newX));
-
-      header.setBounds({ x: clampedX, y: currentBounds.y, width, height });
-
-      if (!wasResizable) {
-        header.setResizable(false);
-      }
-      
-      if (updateLayout) {
-        updateLayout();
-      }
-      
-      return { success: true };
     }
     return { success: false, error: 'Header window not found' };
 };
@@ -598,8 +653,8 @@ const resizeHeaderWindow = ({ width, height }) => {
 const openLoginPage = () => {
     // Use production URL when packaged, localhost in dev
     const isPackaged = app.isPackaged;
-    const webUrl = isPackaged 
-        ? 'https://app.clairia.app' 
+    const webUrl = isPackaged
+        ? 'https://app.clairia.app'
         : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
     const personalizeUrl = `${webUrl}/personalize?desktop=true`;
     shell.openExternal(personalizeUrl);
@@ -635,15 +690,15 @@ function createFeatureWindows(header, namesToCreate) {
 
     const createFeatureWindow = (name) => {
         if (windowPool.has(name)) return;
-        
+
         switch (name) {
             case 'listen': {
                 const listen = new BrowserWindow({
-                    ...commonChildOptions, width:400,minWidth:400,maxWidth:900,
-                    maxHeight:900,
+                    ...commonChildOptions, width: 400, minWidth: 400, maxWidth: 900,
+                    maxHeight: 900,
                 });
                 listen.setContentProtection(isContentProtectionOn);
-                listen.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+                listen.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                 if (process.platform === 'darwin') {
                     listen.setWindowButtonVisibility(false);
                 }
@@ -674,15 +729,15 @@ function createFeatureWindows(header, namesToCreate) {
 
             // ask
             case 'ask': {
-                const ask = new BrowserWindow({ 
-                    ...commonChildOptions, 
+                const ask = new BrowserWindow({
+                    ...commonChildOptions,
                     width: 600,
                     height: 400, // Reasonable initial height - will be adjusted by renderer
                     minHeight: 200,
                     maxHeight: 900
                 });
                 ask.setContentProtection(isContentProtectionOn);
-                ask.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+                ask.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                 if (process.platform === 'darwin') {
                     ask.setWindowButtonVisibility(false);
                 }
@@ -702,7 +757,7 @@ function createFeatureWindows(header, namesToCreate) {
                         }
                     });
                 }
-                
+
                 // Open DevTools in development
                 if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
                     ask.webContents.openDevTools({ mode: 'detach' });
@@ -716,24 +771,24 @@ function createFeatureWindows(header, namesToCreate) {
             // settings
             case 'settings': {
                 // Use larger window size for liquid glass mode to accommodate horizontal layout
-                const windowOptions = shouldUseLiquidGlass 
+                const windowOptions = shouldUseLiquidGlass
                     ? { ...commonChildOptions, width: 800, height: 80, maxHeight: 120, minHeight: 60, parent: undefined }
                     : { ...commonChildOptions, width: 240, maxHeight: 400, parent: undefined };
-                
+
                 const settings = new BrowserWindow(windowOptions);
                 settings.setContentProtection(isContentProtectionOn);
-                settings.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+                settings.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                 if (process.platform === 'darwin') {
                     settings.setWindowButtonVisibility(false);
                 }
                 const settingsLoadOptions = { query: { view: 'settings' } };
                 if (!shouldUseLiquidGlass) {
-                    settings.loadFile(path.join(__dirname,'../ui/app/content.html'), settingsLoadOptions)
+                    settings.loadFile(path.join(__dirname, '../ui/app/content.html'), settingsLoadOptions)
                         .catch(console.error);
                 }
                 else {
                     settingsLoadOptions.query.glass = 'true';
-                    settings.loadFile(path.join(__dirname,'../ui/app/content.html'), settingsLoadOptions)
+                    settings.loadFile(path.join(__dirname, '../ui/app/content.html'), settingsLoadOptions)
                         .catch(console.error);
                     settings.webContents.once('did-finish-load', () => {
                         const viewId = liquidGlass.addView(settings.getNativeWindowHandle());
@@ -744,7 +799,7 @@ function createFeatureWindows(header, namesToCreate) {
                         }
                     });
                 }
-                windowPool.set('settings', settings);  
+                windowPool.set('settings', settings);
                 // Apply current theme to the settings window
                 applyThemeToNewWindow(settings, 'settings');
 
@@ -759,26 +814,26 @@ function createFeatureWindows(header, namesToCreate) {
                 // Ensure window has proper initial position near header
                 const header = windowPool.get('header');
                 let initialX = 100, initialY = 100; // Default fallback position
-                
+
                 if (header && !header.isDestroyed()) {
                     const headerBounds = header.getBounds();
                     initialX = headerBounds.x + 50;
                     initialY = headerBounds.y + headerBounds.height + 10;
                 }
-                
-                const windowOptions = shouldUseLiquidGlass 
+
+                const windowOptions = shouldUseLiquidGlass
                     ? { ...commonChildOptions, width: 400, height: 400, maxHeight: 500, minHeight: 300, parent: undefined, x: initialX, y: initialY, show: false }
                     : { ...commonChildOptions, width: 320, height: 380, maxHeight: 500, minHeight: 300, parent: undefined, x: initialX, y: initialY, show: false };
-                
+
                 const agentSelector = new BrowserWindow(windowOptions);
                 agentSelector.setContentProtection(isContentProtectionOn);
-                agentSelector.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+                agentSelector.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                 if (process.platform === 'darwin') {
                     agentSelector.setWindowButtonVisibility(false);
                 }
                 const agentSelectorLoadOptions = { query: { view: 'agent-selector' } };
                 if (!shouldUseLiquidGlass) {
-                    agentSelector.loadFile(path.join(__dirname,'../ui/app/content.html'), agentSelectorLoadOptions)
+                    agentSelector.loadFile(path.join(__dirname, '../ui/app/content.html'), agentSelectorLoadOptions)
                         .then(() => {
                         })
                         .catch((error) => {
@@ -787,7 +842,7 @@ function createFeatureWindows(header, namesToCreate) {
                 }
                 else {
                     agentSelectorLoadOptions.query.glass = 'true';
-                    agentSelector.loadFile(path.join(__dirname,'../ui/app/content.html'), agentSelectorLoadOptions)
+                    agentSelector.loadFile(path.join(__dirname, '../ui/app/content.html'), agentSelectorLoadOptions)
                         .then(() => {
                         })
                         .catch((error) => {
@@ -800,7 +855,7 @@ function createFeatureWindows(header, namesToCreate) {
                         }
                     });
                 }
-                windowPool.set('agent-selector', agentSelector);  
+                windowPool.set('agent-selector', agentSelector);
                 // Apply current theme to the agent selector window
                 applyThemeToNewWindow(agentSelector, 'agent-selector');
 
@@ -822,7 +877,7 @@ function createFeatureWindows(header, namesToCreate) {
                 });
 
                 shortcutEditor.setContentProtection(isContentProtectionOn);
-                shortcutEditor.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true});
+                shortcutEditor.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
                 if (process.platform === 'darwin') {
                     shortcutEditor.setWindowButtonVisibility(false);
                 }
@@ -865,7 +920,7 @@ function createFeatureWindows(header, namesToCreate) {
 }
 
 function destroyFeatureWindows() {
-    const featureWindows = ['listen','ask','settings','agent-selector','shortcut-settings'];
+    const featureWindows = ['listen', 'ask', 'settings', 'agent-selector', 'shortcut-settings'];
     if (settingsHideTimer) {
         clearTimeout(settingsHideTimer);
         settingsHideTimer = null;
@@ -874,7 +929,7 @@ function destroyFeatureWindows() {
         clearTimeout(agentSelectorHideTimer);
         agentSelectorHideTimer = null;
     }
-    featureWindows.forEach(name=>{
+    featureWindows.forEach(name => {
         const win = windowPool.get(name);
         if (win && !win.isDestroyed()) win.destroy();
         windowPool.delete(name);
@@ -906,7 +961,7 @@ function getDisplayById(displayId) {
 
 
 function createWindows() {
-    const HEADER_HEIGHT        = 47;
+    const HEADER_HEIGHT = 47;
     const DEFAULT_WINDOW_WIDTH = 353;
 
     const primaryDisplay = screen.getPrimaryDisplay();
@@ -915,7 +970,7 @@ function createWindows() {
     const initialX = Math.round((screenWidth - DEFAULT_WINDOW_WIDTH) / 2);
     const initialY = workAreaY + 21;
     movementManager = new SmoothMovementManager(windowPool, getDisplayById, getCurrentDisplay, updateLayout);
-    
+
     const header = new BrowserWindow({
         width: DEFAULT_WINDOW_WIDTH,
         height: HEADER_HEIGHT,
@@ -951,7 +1006,7 @@ function createWindows() {
     const headerLoadOptions = {};
     // Disable glass mode for header - use light theme only
     header.loadFile(path.join(__dirname, '../ui/app/header.html'), headerLoadOptions);
-    
+
     if (shouldUseLiquidGlass) {
         // Keep liquid glass effects but without glass UI theme
         header.webContents.once('did-finish-load', () => {
@@ -964,9 +1019,10 @@ function createWindows() {
         });
     }
     windowPool.set('header', header);
-    // ✅ FIX: Ne pas appeler updateLayout si on est en train de dragger ou layout gelé
+    // Repositionnement après drag (mise à jour finale uniquement)
+    // On N'utilise PAS l'événement 'move' pour éviter la boucle resize infinie
     header.on('moved', () => {
-        if (!isDraggingHeader && !layoutFrozen) {
+        if (!layoutFrozen) {
             updateLayout();
         }
     });
@@ -988,7 +1044,7 @@ function createWindows() {
 
     header.setContentProtection(isContentProtectionOn);
     header.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    
+
     // Open DevTools in development
     if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
         header.webContents.openDevTools({ mode: 'detach' });
@@ -1011,11 +1067,17 @@ function createWindows() {
         }
     });
 
-    // ✅ FIX: Bloquer resize events pendant drag
+    // ✅ FIX: Bloquer resize events pendant drag, et ignorer les faux resize (ex: Sub-pixel DPI shifts)
+    let lastHeaderSize = header.getSize();
     header.on('resize', () => {
         if (!isDraggingHeader && !layoutFrozen) {
-            logger.info('[WindowManager] Header resize event triggered');
-            updateLayout();
+            const newSize = header.getSize();
+            // Seulement déclencher si la différence est de plus d'1 pixel (bug OS/Electron subpixel)
+            if (Math.abs(newSize[0] - lastHeaderSize[0]) > 1 || Math.abs(newSize[1] - lastHeaderSize[1]) > 1) {
+                lastHeaderSize = newSize;
+                logger.info('[WindowManager] Header resize event triggered ' + newSize);
+                updateLayout();
+            }
         }
     });
 
@@ -1095,13 +1157,13 @@ const moveHeaderTo = (newX, newY, skipLayoutUpdate = false) => {
 
         let clampedX = newX;
         let clampedY = newY;
-        
+
         if (newX < workAreaX) {
             clampedX = workAreaX;
         } else if (newX + headerBounds.width > workAreaX + width) {
             clampedX = workAreaX + width - headerBounds.width;
         }
-        
+
         if (newY < workAreaY) {
             clampedY = workAreaY;
         } else if (newY + headerBounds.height > workAreaY + height) {
@@ -1115,7 +1177,7 @@ const moveHeaderTo = (newX, newY, skipLayoutUpdate = false) => {
         }
 
         header.setPosition(clampedX, clampedY, false);
-        
+
         // ✅ FIX: Appeler updateLayout() seulement si pas en train de dragger
         if (!skipLayoutUpdate) {
             isDraggingHeader = false;
@@ -1127,68 +1189,77 @@ const moveHeaderTo = (newX, newY, skipLayoutUpdate = false) => {
 
 const adjustWindowHeight = (sender, targetHeight) => {
     const senderWindow = BrowserWindow.fromWebContents(sender);
-    
+
     if (!senderWindow) {
         return;
     }
-    
+
     // Validate targetHeight - must be a valid number
     if (targetHeight === undefined || targetHeight === null || isNaN(targetHeight)) {
         console.warn('[WindowManager] adjustWindowHeight: Invalid targetHeight:', targetHeight);
         return;
     }
-    
+
     // Convert to number if it's a string
     targetHeight = Number(targetHeight);
     if (isNaN(targetHeight) || targetHeight <= 0) {
         console.warn('[WindowManager] adjustWindowHeight: Invalid targetHeight value:', targetHeight);
         return;
     }
-    
+
     // DPI Scaling Fix - Get display information
     const display = screen.getPrimaryDisplay();
     const scaleFactor = display.scaleFactor;
-    
+
     const currentBounds = senderWindow.getBounds();
     const currentContentBounds = senderWindow.getContentBounds();
-    
+
     // Ensure window is ready for resize
     if (senderWindow.isMinimized()) {
         senderWindow.restore();
     }
-    
+
     const wasResizable = senderWindow.isResizable();
-    
+
     if (!wasResizable) {
         senderWindow.setResizable(true);
     }
 
     const minHeight = senderWindow.getMinimumSize()[1];
     const maxHeight = senderWindow.getMaximumSize()[1];
-    
+
     let adjustedHeight;
     if (maxHeight === 0) {
         adjustedHeight = Math.max(minHeight, targetHeight);
     } else {
         adjustedHeight = Math.max(minHeight, Math.min(maxHeight, targetHeight));
     }
-    
+
+    // Avoid redundant resize to break infinite loop
+    if (Math.abs(currentContentBounds.height - adjustedHeight) <= 2) {
+        if (!wasResizable) {
+            senderWindow.setResizable(false);
+        }
+        return; // Already at the correct height
+    }
+
+    const roundedHeight = Math.round(adjustedHeight);
+
     // Try multiple resize approaches to fix DPI issues
-    // Approach 1: Use setContentSize (recommended for DPI issues)
-    senderWindow.setContentSize(currentContentBounds.width, adjustedHeight);
-    
-    // Small delay then try setSize as fallback
+    senderWindow.setContentSize(currentContentBounds.width, roundedHeight);
+
+    // Small delay for layout adaptation
     setTimeout(() => {
-        const dpiAdjustedHeight = Math.round(adjustedHeight);
+        if (senderWindow.isDestroyed()) return;
         const dpiAdjustedWidth = Math.round(currentBounds.width);
-        senderWindow.setSize(dpiAdjustedWidth, dpiAdjustedHeight, false);
-        
+        senderWindow.setSize(dpiAdjustedWidth, roundedHeight, false);
+
         if (!wasResizable) {
             senderWindow.setResizable(false);
         }
 
         updateLayout();
-    }, 100);
+    }, 50);
 };
 
 
@@ -1200,26 +1271,26 @@ const getCurrentTheme = () => {
 const setTheme = async (theme) => {
     logger.info(`[WindowManager] Setting theme to: ${theme}`);
     const result = await themeService.setTheme(theme);
-    
+
     if (result.success) {
         logger.info(`[WindowManager] Theme successfully changed to: ${theme}`);
     } else {
         logger.error(`[WindowManager] Failed to set theme: ${result.error}`);
     }
-    
+
     return result;
 };
 
 const toggleTheme = async () => {
     logger.info('[WindowManager] Toggling theme');
     const result = await themeService.toggleTheme();
-    
+
     if (result.success) {
         logger.info(`[WindowManager] Theme toggled from ${result.previousTheme} to ${result.theme}`);
     } else {
         logger.error(`[WindowManager] Failed to toggle theme: ${result.error}`);
     }
-    
+
     return result;
 };
 
@@ -1236,7 +1307,7 @@ let clickThroughEnabled = false;
 const toggleClickThrough = () => {
     clickThroughEnabled = !clickThroughEnabled;
     logger.info(`[WindowManager] Click-through ${clickThroughEnabled ? 'enabled' : 'disabled'}`);
-    
+
     // ✅ FIX: Ne JAMAIS mettre settings en click-through (sinon le toggle ne marche plus!)
     const windowNames = ['header', 'ask', 'listen'];
     windowNames.forEach(windowName => {
@@ -1251,14 +1322,14 @@ const toggleClickThrough = () => {
             logger.info(`[WindowManager] Set click-through for ${windowName}: ${clickThroughEnabled}`);
         }
     });
-    
+
     // Broadcast click-through state change to all windows
     windowPool.forEach((window) => {
         if (window && !window.isDestroyed()) {
             window.webContents.send('click-through-changed', clickThroughEnabled);
         }
     });
-    
+
     return {
         success: true,
         enabled: clickThroughEnabled
@@ -1280,7 +1351,7 @@ const registerClickThroughShortcut = () => {
             logger.info('[WindowManager] Global shortcut Ctrl+Alt+C triggered - toggling click-through');
             toggleClickThrough();
         });
-        
+
         if (ret) {
             logger.info('[WindowManager] ✅ Click-through emergency shortcut registered: Ctrl+Alt+C');
         } else {
@@ -1300,9 +1371,9 @@ if (process.type !== 'renderer') {
 const setWindowOpacity = (opacity) => {
     // Clamp opacity between 0.1 and 1.0
     const clampedOpacity = Math.max(0.1, Math.min(1.0, opacity));
-    
+
     logger.info(`[WindowManager] Setting window opacity to: ${clampedOpacity}`);
-    
+
     // Apply different opacity strategies per window type
     const windowNames = ['header', 'settings', 'ask', 'listen'];
     windowNames.forEach(windowName => {
@@ -1319,14 +1390,14 @@ const setWindowOpacity = (opacity) => {
             }
         }
     });
-    
+
     // Broadcast opacity change to all windows for CSS-based adjustments
     windowPool.forEach((window) => {
         if (window && !window.isDestroyed()) {
             window.webContents.send('window-opacity-changed', clampedOpacity);
         }
     });
-    
+
     return {
         success: true,
         opacity: clampedOpacity
@@ -1343,7 +1414,11 @@ module.exports = {
     getContentProtectionStatus,
     showSettingsWindow,
     hideSettingsWindow,
+    toggleSettingsWindow,
+    requestSettingsVisible,
     cancelHideSettingsWindow,
+    setHeaderClickThrough,
+    handleGlobalPointerDown,
     showAgentSelectorWindow,
     hideAgentSelectorWindow,
     cancelHideAgentSelectorWindow,

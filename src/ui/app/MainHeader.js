@@ -310,6 +310,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
 
         .settings-button {
             -webkit-app-region: no-drag;
+            pointer-events: auto !important;
             padding: 6px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.1);
@@ -591,9 +592,9 @@ export class MainHeader extends ThemeMixin(LitElement) {
     _getListenButtonText(status) {
         switch (status) {
             case 'beforeSession': return 'Listen';
-            case 'inSession'   : return 'Stop';
+            case 'inSession': return 'Stop';
             case 'afterSession': return 'Done';
-            default            : return 'Listen';
+            default: return 'Listen';
         }
     }
 
@@ -601,13 +602,13 @@ export class MainHeader extends ThemeMixin(LitElement) {
         if (isToggling) {
             return 'idle'; // Orange state during loading
         }
-        
+
         // Only show purple when actually in agent mode, not just when TTS is enabled
         switch (sessionStatus) {
             case 'beforeSession': return 'idle';                           // Orange - ready to start
-            case 'inSession':     return this.agentModeActive ? 'tts' : 'listening'; // Purple if in agent mode, Green if normal
-            case 'afterSession':  return 'stopping';                       // Red - ready to stop/done
-            default:              return 'idle';
+            case 'inSession': return this.agentModeActive ? 'tts' : 'listening'; // Purple if in agent mode, Green if normal
+            case 'afterSession': return 'stopping';                       // Red - ready to stop/done
+            default: return 'idle';
         }
     }
 
@@ -637,7 +638,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
         // ✅ Seuil augmenté de 3px à 5px pour éviter les clics parasites
         const deltaX = Math.abs(e.screenX - this.dragState.initialMouseX);
         const deltaY = Math.abs(e.screenY - this.dragState.initialMouseY);
-        
+
         if (deltaX > 5 || deltaY > 5) {
             this.dragState.moved = true;
         }
@@ -704,14 +705,14 @@ export class MainHeader extends ThemeMixin(LitElement) {
             console.log('[MainHeader] Animation already in progress, ignoring toggle');
             return;
         }
-        
+
         if (this.animationEndTimer) {
             clearTimeout(this.animationEndTimer);
             this.animationEndTimer = null;
         }
-        
+
         this.isAnimating = true;
-        
+
         if (this.isVisible) {
             this.hide();
         } else {
@@ -723,17 +724,17 @@ export class MainHeader extends ThemeMixin(LitElement) {
         this.classList.remove('showing');
         this.classList.add('hiding');
     }
-    
+
     show() {
         this.classList.remove('hiding', 'hidden');
         this.classList.add('showing');
     }
-    
+
     handleAnimationEnd(e) {
         if (e.target !== this) return;
-    
+
         this.isAnimating = false;
-    
+
         if (this.classList.contains('hiding')) {
             this.classList.add('hidden');
             if (window.api) {
@@ -761,15 +762,15 @@ export class MainHeader extends ThemeMixin(LitElement) {
                 console.log('[MainHeader] ✅ User state changed event received:', userState);
                 console.log('[MainHeader] Current isUserLoggedIn:', this.isUserLoggedIn);
                 console.log('[MainHeader] New isLoggedIn:', userState.isLoggedIn);
-                
+
                 const wasLoggedOut = !this.isUserLoggedIn;
                 const wasLoggedIn = this.isUserLoggedIn;
                 this.isUserLoggedIn = userState.isLoggedIn;
                 this.isAuthenticating = false; // Reset authenticating state
-                
+
                 console.log('[MainHeader] Updated isUserLoggedIn to:', this.isUserLoggedIn);
                 console.log('[MainHeader] Updated isAuthenticating to:', this.isAuthenticating);
-                
+
                 // Trigger animation when transitioning from logged out to logged in
                 if (wasLoggedOut && this.isUserLoggedIn) {
                     console.log('[MainHeader] 🎉 User just logged in - triggering animation');
@@ -782,7 +783,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
                     this.requestUpdate();
                 }
             };
-            
+
             console.log('[MainHeader] Setting up user state listener...');
             if (window.api.common && window.api.common.onUserStateChanged) {
                 window.api.common.onUserStateChanged(this._userStateListener);
@@ -790,7 +791,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
             } else {
                 console.error('[MainHeader] ❌ window.api.common.onUserStateChanged not available!');
             }
-            
+
             // Check initial user state
             console.log('[MainHeader] Checking initial user state...');
             if (window.api.common && window.api.common.getCurrentUser) {
@@ -814,7 +815,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
                         inSession: 'afterSession',
                         afterSession: 'beforeSession',
                     })[this.listenSessionStatus] || 'beforeSession';
-                    
+
                     // Reset agent mode when session ends (afterSession -> beforeSession)
                     if (oldStatus === 'afterSession' && this.listenSessionStatus === 'beforeSession') {
                         this.agentModeActive = false;
@@ -848,7 +849,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
                 console.log('[MainHeader] Persistent area set:', data);
                 this.hasPersistentArea = true;
             };
-            
+
             this._persistentAreaClearedListener = (event) => {
                 console.log('[MainHeader] Persistent area cleared');
                 this.hasPersistentArea = false;
@@ -873,6 +874,13 @@ export class MainHeader extends ThemeMixin(LitElement) {
 
         // Add document click listener for dropdown
         document.addEventListener('click', this.handleDocumentClick);
+
+        // Listener global pour fermer Settings si on clique en dehors (GPT recommendation)
+        window.addEventListener('pointerdown', (e) => {
+            if (window.api && window.api.mainHeader && window.api.mainHeader.notifyGlobalPointerDown) {
+                window.api.mainHeader.notifyGlobalPointerDown({ x: e.screenX, y: e.screenY });
+            }
+        }, true);
     }
 
     async loadPersonalities() {
@@ -881,23 +889,23 @@ export class MainHeader extends ThemeMixin(LitElement) {
             console.log('[MainHeader] window.api available:', !!window.api);
             console.log('[MainHeader] window.api.askView available:', !!(window.api && window.api.askView));
             console.log('[MainHeader] getPersonalities method available:', !!(window.api && window.api.askView && window.api.askView.getPersonalities));
-            
+
             if (window.api && window.api.askView && window.api.askView.getPersonalities) {
                 console.log('[MainHeader] Calling getPersonalities...');
                 const personalities = await window.api.askView.getPersonalities();
                 console.log('[MainHeader] Raw personalities response:', personalities);
-                
+
                 this.personalities = Array.isArray(personalities) ? personalities : [];
                 console.log('[MainHeader] Processed personalities array:', this.personalities);
-                
+
                 // Set default selected personality if none selected
                 if (this.personalities.length > 0 && !this.selectedPersonality) {
                     this.selectedPersonality = this.personalities[0];
                     console.log('[MainHeader] Set default personality:', this.selectedPersonality);
                 }
-                
+
                 console.log('[MainHeader] Final state - personalities count:', this.personalities.length);
-                
+
                 // Trigger a re-render after loading
                 this.requestUpdate();
             } else {
@@ -935,10 +943,10 @@ export class MainHeader extends ThemeMixin(LitElement) {
             console.log('[MainHeader] Blocking agent selector due to drag');
             return;
         }
-        
+
         console.log('[MainHeader] Opening agent selector window');
         this.showAgentSelectorWindow();
-        
+
         // Reset wasJustDragged after a short delay
         setTimeout(() => {
             this.wasJustDragged = false;
@@ -952,15 +960,15 @@ export class MainHeader extends ThemeMixin(LitElement) {
     disconnectedCallback() {
         super.disconnectedCallback();
         this.removeEventListener('animationend', this.handleAnimationEnd);
-        
+
         // Remove document click listener
         document.removeEventListener('click', this.handleDocumentClick);
-        
+
         if (this.animationEndTimer) {
             clearTimeout(this.animationEndTimer);
             this.animationEndTimer = null;
         }
-        
+
         if (window.api) {
             if (this._userStateListener && window.api.common && window.api.common.removeOnUserStateChanged) {
                 console.log('[MainHeader] Removing user state listener');
@@ -980,12 +988,31 @@ export class MainHeader extends ThemeMixin(LitElement) {
         }
     }
 
-    showSettingsWindow(element) {
+    onSettingsPointerDown(e) {
         if (this.wasJustDragged) return;
-        if (window.api) {
-            console.log(`[MainHeader] showSettingsWindow called at ${Date.now()}`);
-            window.api.mainHeader.showSettingsWindow();
+        e.preventDefault();
+        e.stopPropagation();
 
+        // Anti-rebond : évite les toggles multiples en moins de 400ms
+        const now = Date.now();
+        if (this._lastSettingsToggle && now - this._lastSettingsToggle < 400) return;
+        this._lastSettingsToggle = now;
+
+        // ✅ Simple et direct : même approche qu'Ask/Listen
+        // Le Main process est la seule source de vérité sur l'état visible
+        console.log(`[MainHeader] toggle settings at ${now}`);
+        if (window.api?.mainHeader?.toggleSettingsWindow) {
+            window.api.mainHeader.toggleSettingsWindow();
+        }
+    }
+
+    toggleSettingsWindow() {
+        if (this.wasJustDragged) return;
+        if (window.api && window.api.mainHeader && window.api.mainHeader.toggleSettingsWindow) {
+            console.log(`[MainHeader] toggleSettingsWindow (legacy) called at ${Date.now()}`);
+            window.api.mainHeader.toggleSettingsWindow();
+        } else if (window.api && window.api.mainHeader) {
+            window.api.mainHeader.showSettingsWindow();
         }
     }
 
@@ -1011,9 +1038,9 @@ export class MainHeader extends ThemeMixin(LitElement) {
                 // The listen service will handle API key validation internally
                 const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
                 console.log('[MainHeader] Sending listen button click:', listenButtonText);
-                
+
                 await window.api.mainHeader.sendListenButtonClick(listenButtonText);
-                
+
                 // Reset flag after a short delay to allow the operation to complete
                 setTimeout(() => {
                     this.isTogglingSession = false;
@@ -1025,7 +1052,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
         } catch (error) {
             console.error('[MainHeader] IPC invoke for session change failed:', error);
             this.isTogglingSession = false;
-            
+
             // Show user-friendly error message
             if (window.api && window.api.mainHeader) {
                 // Try to show error in UI if possible
@@ -1043,7 +1070,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
         try {
             if (window.api) {
                 const hasProviders = await window.api.apiKeyHeader.hasConfiguredProviders();
-                
+
                 if (!hasProviders) {
                     // Show helpful message about API keys but don't force login
                     console.log('[MainHeader] API keys not configured, showing settings hint');
@@ -1052,7 +1079,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
                     window.api.mainHeader.showSettingsWindow();
                     return;
                 }
-                
+
                 console.log('MainHeader: Opening Ask window');
                 // Proceed with ask functionality
                 await window.api.mainHeader.sendAskButtonClick();
@@ -1137,10 +1164,10 @@ export class MainHeader extends ThemeMixin(LitElement) {
     handleMarbleTTSToggle(event) {
         const { ttsEnabled, originalState } = event.detail;
         console.log(`[MainHeader] Marble TTS toggle received: ${ttsEnabled}, originalState: ${originalState}`);
-        
+
         // Update TTS enabled state
         this.ttsEnabled = ttsEnabled;
-        
+
         // IMMEDIATE agent mode activation for double-click from idle (fixes color lag)
         if (ttsEnabled && originalState === 'idle') {
             this.agentModeActive = true;
@@ -1169,12 +1196,12 @@ export class MainHeader extends ThemeMixin(LitElement) {
                 window.api.mainHeader.setAgentMode(false);
             }
         }
-        
+
         // Notify other components about TTS state change
         if (window.api && window.api.emit) {
             window.api.emit('tts-state-changed', { ttsEnabled, agentModeActive: this.agentModeActive });
         }
-        
+
         // Request update to reflect new marble state
         this.requestUpdate();
     }
@@ -1205,7 +1232,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
 
     render() {
         const listenButtonText = this._getListenButtonText(this.listenSessionStatus);
-    
+
         const buttonClasses = {
             active: listenButtonText === 'Stop',
             done: listenButtonText === 'Done',
@@ -1271,14 +1298,14 @@ export class MainHeader extends ThemeMixin(LitElement) {
                               <div class="action-text-content">${this.hasPersistentArea ? 'Clear Area' : 'Area'}</div>
                           </div>
                           <div class="icon-container">
-                              ${this.hasPersistentArea 
-                                  ? html`
+                              ${this.hasPersistentArea
+                ? html`
                                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                           <path d="M18 6L6 18"/>
                                           <path d="M6 6l12 12"/>
                                       </svg>
                                   `
-                                  : html`
+                : html`
                                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                           <path d="M9 9h6v6h-6z"/>
                                           <path d="M21 15v4a2 2 0 0 1-2 2h-4"/>
@@ -1287,7 +1314,7 @@ export class MainHeader extends ThemeMixin(LitElement) {
                                           <path d="M3 15v4a2 2 0 0 0 2 2h4"/>
                                       </svg>
                                   `
-                              }
+            }
                           </div>
                       </div>
 
@@ -1309,11 +1336,10 @@ export class MainHeader extends ThemeMixin(LitElement) {
                            </svg>
                        </div>
 
-                      <button 
-                          class="settings-button"
-                          @mouseenter=${(e) => this.showSettingsWindow(e.currentTarget)}
-                          @mouseleave=${() => this.hideSettingsWindow()}
-                      >
+                       <button 
+                           class="settings-button"
+                           @pointerdown=${(e) => this.onSettingsPointerDown(e)}
+                       >
                           <div class="settings-icon">
                               <img src="../assets/settings.svg" width="16" height="16" alt="Settings" />
                           </div>

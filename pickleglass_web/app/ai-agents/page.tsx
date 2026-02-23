@@ -133,7 +133,7 @@ export default function AIAgentsPage() {
 
         <main>
           {error && (
-            <Card className="bg-white border border-orange-200 mb-6">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border border-orange-200 mb-6">
               <CardContent className="p-4">
                 <div className="flex items-start space-x-3">
                   <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
@@ -149,7 +149,7 @@ export default function AIAgentsPage() {
           )}
 
           {filteredAssistants.length === 0 && !error ? (
-            <Card className="bg-white">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
               <CardContent className="text-center py-20">
                 <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                   <Sparkles className="h-12 w-12 text-primary" />
@@ -172,7 +172,7 @@ export default function AIAgentsPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredAssistants.map((agent) => (
-                <Card key={agent.id} className="bg-white border border-gray-200 rounded-xl hover:shadow-lg transition-shadow">
+                <Card key={agent.id} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border border-gray-200 rounded-xl hover:shadow-lg transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center space-x-3">

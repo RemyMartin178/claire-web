@@ -133,7 +133,7 @@ function SessionDetailsContent() {
           </Link>
         </div>
 
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-8">
             <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
               <div>
@@ -164,7 +164,7 @@ function SessionDetailsContent() {
 
             {sessionDetails.summary && (
               <Section title="Résumé">
-                <Card className="bg-primary/5 border-primary/20">
+                <Card className="bg-transparent shadow-none border-primary/20 transition-colors border-primary/20">
                   <CardContent className="p-4">
                     <p className="text-lg italic text-gray-700">
                       "{sessionDetails.summary.tldr}"
@@ -173,7 +173,7 @@ function SessionDetailsContent() {
                 </Card>
                 
                 {sessionDetails.summary.bullet_json && JSON.parse(sessionDetails.summary.bullet_json).length > 0 && (
-                  <Card className="bg-white mt-6">
+                  <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors mt-6">
                     <CardContent className="p-4">
                       <h3 className="font-heading font-semibold mb-3 text-[#282828]">
                         Points clés :
@@ -191,7 +191,7 @@ function SessionDetailsContent() {
                 )}
 
                 {sessionDetails.summary.action_json && JSON.parse(sessionDetails.summary.action_json).length > 0 && (
-                  <Card className="bg-white mt-6">
+                  <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors mt-6">
                     <CardContent className="p-4">
                       <h3 className="font-heading font-semibold mb-3 text-[#282828]">
                         Actions à suivre :
@@ -214,7 +214,7 @@ function SessionDetailsContent() {
               <Section title="Écouter: Transcription">
                 <div className="space-y-4">
                   {sessionDetails.transcripts.map((item) => (
-                    <Card key={item.id} className="bg-white">
+                    <Card key={item.id} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
                       <CardContent className="p-4">
                         <span className="font-semibold capitalize block mb-2 text-[#282828]">
                           {item.speaker}:

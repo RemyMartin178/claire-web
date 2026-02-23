@@ -525,7 +525,7 @@ export default function ToolsPage() {
           </div>
 
           {error && (
-            <Card className="bg-white border border-orange-200 p-6 mb-6">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border border-orange-200 p-6 mb-6">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
                 <div>
@@ -540,7 +540,7 @@ export default function ToolsPage() {
 
           {/* Tools Grid */}
           {filteredTools.length === 0 ? (
-            <Card className="bg-white p-12 text-center">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors p-12 text-center">
               <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6">
                 <Wrench className="h-12 w-12 text-primary" />
               </div>
@@ -557,7 +557,7 @@ export default function ToolsPage() {
               {filteredTools.map((tool) => {
                 const IconComponent = getToolIcon(tool.icon)
                 return (
-                  <Card key={tool.id} className="bg-white border border-gray-200 rounded-xl p-4 h-[240px] flex flex-col">
+                  <Card key={tool.id} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border border-gray-200 rounded-xl p-4 h-[240px] flex flex-col">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-1 overflow-hidden border border-blue-100">

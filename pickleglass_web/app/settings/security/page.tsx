@@ -207,7 +207,7 @@ export default function SecurityPage() {
 
       <div className="space-y-6">
         {/* Mot de passe */}
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6">
             <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Mot de passe</h3>
             <p className="text-sm text-gray-600 mb-4">
@@ -226,14 +226,14 @@ export default function SecurityPage() {
         </Card>
 
         {/* Appareils connectés */}
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6">
             <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Appareils connectés</h3>
             <p className="text-sm text-gray-600 mb-4">Gérez les appareils connectés à votre compte et surveillez l'activité de connexion.</p>
             
             <div className="space-y-4">
               {devices.map((device) => (
-                <div key={device.id} className="flex items-center justify-between p-3 bg-subtle-bg rounded-md">
+                <div key={device.id} className="flex items-center justify-between p-3 bg-transparent rounded-md">
                   <div className="flex items-center gap-3">
                     <div className={`w-3 h-3 rounded-full ${device.isCurrent ? 'bg-green-500' : 'bg-gray-500'}`}></div>
                     <div>

@@ -24,7 +24,7 @@ export default function DownloadPage() {
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <Card className="bg-white hover:shadow-lg transition-shadow">
+          <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors hover:shadow-lg transition-shadow">
             <CardContent className="p-8 text-center">
               <Monitor className="h-16 w-16 text-primary mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Desktop</h3>
@@ -36,7 +36,7 @@ export default function DownloadPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white hover:shadow-lg transition-shadow">
+          <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors hover:shadow-lg transition-shadow">
             <CardContent className="p-8 text-center">
               <Smartphone className="h-16 w-16 text-secondary mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Mobile</h3>
@@ -52,7 +52,7 @@ export default function DownloadPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white hover:shadow-lg transition-shadow">
+          <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors hover:shadow-lg transition-shadow">
             <CardContent className="p-8 text-center">
               <Tablet className="h-16 w-16 text-secondary mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Tablet</h3>
@@ -65,7 +65,7 @@ export default function DownloadPage() {
           </Card>
         </div>
 
-        <Card className="mt-12 bg-subtle-bg">
+        <Card className="mt-12 bg-transparent">
           <CardContent className="p-6">
             <h3 className="text-lg font-heading font-semibold text-[#282828] mb-4">Configuration requise</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">

@@ -193,7 +193,7 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in bg-subtle-bg">
+    <div className="min-h-screen flex items-center justify-center p-4 animate-fade-in bg-transparent">
       <div className="w-full max-w-md mx-auto">
         <div className="absolute top-8 left-8 flex items-center gap-3">
           <Image
@@ -308,7 +308,7 @@ function LoginContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className="bg-subtle-bg px-4 text-gray-500">OU</span>
+                <span className="bg-transparent px-4 text-gray-500">OU</span>
               </div>
             </div>
 

@@ -16,7 +16,11 @@ export class SettingsView extends ThemeMixin(LitElement) {
         :host {
             display: block;
             width: 100%;
-            height: 100%;
+            height: 100vh;
+            max-height: 100vh;
+            overflow: hidden;
+            /* Empêche le DOM de pousser la fenêtre native à se redimensionner */
+            contain: layout paint size;
             color: var(--text-primary, #1f2937);
             font-family: inherit;
             font-size: inherit;
@@ -71,7 +75,10 @@ export class SettingsView extends ThemeMixin(LitElement) {
             outline: none;
             box-sizing: border-box;
             position: relative;
+            /* Scroll interne uniquement — le conteneur ne grossit pas de lui-même */
             overflow-y: auto;
+            overflow-x: hidden;
+            contain: layout paint;
             padding: 16px;
             z-index: 1;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -862,9 +869,9 @@ export class SettingsView extends ThemeMixin(LitElement) {
                 window.api.settingsView.getOllamaStatus(),
                 window.api.settingsView.getWhisperInstalledModels()
             ]);
-            
+
             if (userState && userState.isLoggedIn) this.firebaseUser = userState;
-            
+
             if (modelSettings.success) {
                 const { config, storedKeys, availableLlm, availableStt, selectedModels } = modelSettings.data;
                 this.providerConfig = config;
@@ -911,11 +918,11 @@ export class SettingsView extends ThemeMixin(LitElement) {
         const input = this.shadowRoot.querySelector(`#key-input-${provider}`);
         if (!input) return;
         const key = input.value;
-        
+
         // For Ollama, we need to ensure it's ready first
         if (provider === 'ollama') {
-        this.saving = true;
-            
+            this.saving = true;
+
             // First ensure Ollama is installed and running
             const ensureResult = await window.api.settingsView.ensureOllamaReady();
             if (!ensureResult.success) {
@@ -923,10 +930,10 @@ export class SettingsView extends ThemeMixin(LitElement) {
                 this.saving = false;
                 return;
             }
-            
+
             // Now validate (which will check if service is running)
             const result = await window.api.settingsView.validateKey({ provider, key: 'local' });
-            
+
             if (result.success) {
                 await this.refreshModelData();
                 await this.refreshOllamaStatus();
@@ -936,12 +943,12 @@ export class SettingsView extends ThemeMixin(LitElement) {
             this.saving = false;
             return;
         }
-        
+
         // For Whisper, just enable it
         if (provider === 'whisper') {
             this.saving = true;
             const result = await window.api.settingsView.validateKey({ provider, key: 'local' });
-            
+
             if (result.success) {
                 await this.refreshModelData();
             } else {
@@ -950,11 +957,11 @@ export class SettingsView extends ThemeMixin(LitElement) {
             this.saving = false;
             return;
         }
-        
+
         // For other providers, use the normal flow
         this.saving = true;
         const result = await window.api.settingsView.validateKey({ provider, key });
-        
+
         if (result.success) {
             await this.refreshModelData();
         } else {
@@ -963,7 +970,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
         }
         this.saving = false;
     }
-    
+
     async handleClearKey(provider) {
         console.log(`[SettingsView] handleClearKey: ${provider}`);
         this.saving = true;
@@ -987,14 +994,14 @@ export class SettingsView extends ThemeMixin(LitElement) {
         this.apiKeys = storedKeys;
         this.requestUpdate();
     }
-    
+
     async toggleModelList(type) {
         const visibilityProp = type === 'llm' ? 'isLlmListVisible' : 'isSttListVisible';
 
         if (!this[visibilityProp]) {
             this.saving = true;
             this.requestUpdate();
-            
+
             await this.refreshModelData();
 
             this.saving = false;
@@ -1004,7 +1011,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
         this[visibilityProp] = !this[visibilityProp];
         this.requestUpdate();
     }
-    
+
     async selectModel(type, modelId) {
         // Check if this is an Ollama model that needs to be installed
         const provider = this.getProviderForModel(type, modelId);
@@ -1016,18 +1023,18 @@ export class SettingsView extends ThemeMixin(LitElement) {
                 return;
             }
         }
-        
+
         // Check if this is a Whisper model that needs to be downloaded
         if (provider === 'whisper' && type === 'stt') {
             const isInstalling = this.installingModels[modelId] !== undefined;
             const whisperModelInfo = this.providerConfig.whisper.sttModels.find(m => m.id === modelId);
-            
+
             if (whisperModelInfo && !whisperModelInfo.installed && !isInstalling) {
                 await this.downloadWhisperModel(modelId);
                 return;
             }
         }
-        
+
         this.saving = true;
         await window.api.settingsView.setSelectedModel({ type, modelId });
         if (type === 'llm') this.selectedLlm = modelId;
@@ -1037,7 +1044,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
         this.saving = false;
         this.requestUpdate();
     }
-    
+
     async refreshOllamaStatus() {
         const ollamaStatus = await window.api.settingsView.getOllamaStatus();
         if (ollamaStatus?.success) {
@@ -1045,7 +1052,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
             this.ollamaModels = ollamaStatus.models || [];
         }
     }
-    
+
     async installOllamaModel(modelName) {
         try {
             // Ollama Model [Korean comment translated] Start
@@ -1065,12 +1072,12 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
             try {
                 const result = await window.api.settingsView.pullOllamaModel(modelName);
-                
+
                 if (result.success) {
                     console.log(`[SettingsView] Model ${modelName} installed successfully`);
                     delete this.installingModels[modelName];
                     this.requestUpdate();
-                    
+
                     // Status [Korean comment translated]
                     await this.refreshOllamaStatus();
                     await this.refreshModelData();
@@ -1087,12 +1094,12 @@ export class SettingsView extends ThemeMixin(LitElement) {
             this.requestUpdate();
         }
     }
-    
+
     async downloadWhisperModel(modelId) {
         // Mark as installing
         this.installingModels = { ...this.installingModels, [modelId]: 0 };
         this.requestUpdate();
-        
+
         try {
             // Set up progress listener
             const progressHandler = (event, { modelId: id, progress }) => {
@@ -1101,19 +1108,19 @@ export class SettingsView extends ThemeMixin(LitElement) {
                     this.requestUpdate();
                 }
             };
-            
+
             window.api.settingsView.onWhisperDownloadProgress(progressHandler);
-            
+
             // Start download
             const result = await window.api.settingsView.downloadWhisperModel(modelId);
-            
+
             if (result.success) {
                 // Auto-select the model after download
                 await this.selectModel('stt', modelId);
             } else {
                 alert(`Failed to download Whisper model: ${result.error}`);
             }
-            
+
             // Cleanup
             window.api.settingsView.removeOnWhisperDownloadProgress(progressHandler);
         } catch (error) {
@@ -1124,7 +1131,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
             this.requestUpdate();
         }
     }
-    
+
     getProviderForModel(type, modelId) {
         for (const [providerId, config] of Object.entries(this.providerConfig)) {
             const models = type === 'llm' ? config.llmModels : config.sttModels;
@@ -1137,7 +1144,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
     async handleWhisperModelSelect(modelId) {
         if (!modelId) return;
-        
+
         // Select the model (will trigger download if needed)
         await this.selectModel('stt', modelId);
     }
@@ -1145,7 +1152,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
     handleUsePicklesKey(e) {
         e.preventDefault()
         if (this.wasJustDragged) return
-    
+
         console.log("Requesting Firebase authentication from main process...")
         window.api.settingsView.startFirebaseAuth();
     }
@@ -1157,9 +1164,9 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
     connectedCallback() {
         super.connectedCallback();
-        
+
         // Theme initialization is now handled by ThemeMixin
-        
+
         this.setupEventListeners();
         this.setupIpcListeners();
         this.setupWindowResize();
@@ -1171,7 +1178,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
         this.cleanupEventListeners();
         this.cleanupIpcListeners();
         this.cleanupWindowResize();
-        
+
         // Cancel any ongoing Ollama installations when component is destroyed
         const installingModels = Object.keys(this.installingModels);
         if (installingModels.length > 0) {
@@ -1193,7 +1200,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
     setupIpcListeners() {
         if (!window.api) return;
-        
+
         this._userStateListener = (event, userState) => {
             console.log('[SettingsView] Received user-state-changed:', userState);
             if (userState && userState.isLoggedIn) {
@@ -1204,7 +1211,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
             this.loadAutoUpdateSetting();
             this.requestUpdate();
         };
-        
+
         this._settingsUpdatedListener = (event, settings) => {
             console.log('[SettingsView] Received settings-updated');
             this.settings = settings;
@@ -1217,13 +1224,13 @@ export class SettingsView extends ThemeMixin(LitElement) {
             try {
                 const presets = await window.api.settingsView.getPresets();
                 this.presets = presets || [];
-                
+
                 // [Korean comment translated] [Korean comment translated] [Korean comment translated] Delete[Korean comment translated] Confirm (User [Korean comment translated] [Korean comment translated])
                 const userPresets = this.presets.filter(p => p.is_default === 0);
                 if (this.selectedPreset && !userPresets.find(p => p.id === this.selectedPreset.id)) {
                     this.selectedPreset = userPresets.length > 0 ? userPresets[0] : null;
                 }
-                
+
                 this.requestUpdate();
             } catch (error) {
                 console.error('[SettingsView] Failed to refresh presets:', error);
@@ -1233,12 +1240,12 @@ export class SettingsView extends ThemeMixin(LitElement) {
             console.log('[SettingsView] Received updated shortcuts:', keybinds);
             this.shortcuts = keybinds;
         };
-        
+
         this._clickThroughListener = (event, enabled) => {
             console.log('[SettingsView] Received click-through-changed:', enabled);
             this.clickThroughEnabled = enabled;
         };
-        
+
         window.api.settingsView.onUserStateChanged(this._userStateListener);
         window.api.settingsView.onSettingsUpdated(this._settingsUpdatedListener);
         window.api.settingsView.onPresetsUpdated(this._presetsUpdatedListener);
@@ -1248,7 +1255,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
     cleanupIpcListeners() {
         if (!window.api) return;
-        
+
         if (this._userStateListener) {
             window.api.settingsView.removeOnUserStateChanged(this._userStateListener);
         }
@@ -1267,40 +1274,25 @@ export class SettingsView extends ThemeMixin(LitElement) {
     }
 
     setupWindowResize() {
-        this.resizeHandler = () => {
-            this.requestUpdate();
-            this.updateScrollHeight();
-        };
-        window.addEventListener('resize', this.resizeHandler);
-        
-        // Initial setup
-        setTimeout(() => this.updateScrollHeight(), 100);
+        // Supprimé : le resize listener causait une boucle infinie Main↔Renderer
+        // La hauteur est gérée par CSS (height:100vh + contain) — aucun JS nécessaire
     }
 
     cleanupWindowResize() {
-        if (this.resizeHandler) {
-            window.removeEventListener('resize', this.resizeHandler);
-        }
+        // Supprimé : voir setupWindowResize
     }
 
     updateScrollHeight() {
-        const windowHeight = window.innerHeight;
-        const maxHeight = windowHeight;
-        
-        this.style.maxHeight = `${maxHeight}px`;
-        
-        const container = this.shadowRoot?.querySelector('.settings-container');
-        if (container) {
-            container.style.maxHeight = `${maxHeight}px`;
-        }
+        // Supprimé : this.style.maxHeight = window.innerHeight provoquait
+        // un push DOM → resize natif Electron → updateLayout → setBounds → resize... en boucle
     }
 
     handleMouseEnter = () => {
-        window.api.settingsView.cancelHideSettingsWindow();
+        // Désactivé : la gestion du hover est supprimée pour éviter la boucle Settings
     }
 
     handleMouseLeave = () => {
-        window.api.settingsView.hideSettingsWindow();
+        // Désactivé : la gestion du hover est supprimée pour éviter la boucle Settings
     }
 
 
@@ -1315,7 +1307,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
     renderShortcutKeys(accelerator) {
         if (!accelerator) return html`N/A`;
-        
+
         const keyMap = {
             'Cmd': '⌘', 'Command': '⌘', 'Ctrl': '⌃', 'Alt': '⌥', 'Shift': '⇧', 'Enter': '↵',
             'Up': '↑', 'Down': '↓', 'Left': '←', 'Right': '→'
@@ -1323,9 +1315,9 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
         // scrollDown/scrollUp[Korean comment translated] [Korean comment translated] Process
         if (accelerator.includes('↕')) {
-            const keys = accelerator.replace('↕','').split('+');
+            const keys = accelerator.replace('↕', '').split('+');
             keys.push('↕');
-             return html`${keys.map(key => html`<span class="shortcut-key">${keyMap[key] || key}</span>`)}`;
+            return html`${keys.map(key => html`<span class="shortcut-key">${keyMap[key] || key}</span>`)}`;
         }
 
         const keys = accelerator.split('+');
@@ -1379,9 +1371,9 @@ export class SettingsView extends ThemeMixin(LitElement) {
                 this.apiKey = newApiKey;
                 this.requestUpdate();
             } else {
-                 console.error('Failed to save API Key via IPC:', result.error);
+                console.error('Failed to save API Key via IPC:', result.error);
             }
-        } catch(e) {
+        } catch (e) {
             console.error('Error invoking save-api-key IPC:', e);
         }
     }
@@ -1423,16 +1415,16 @@ export class SettingsView extends ThemeMixin(LitElement) {
 
     async handleOllamaShutdown() {
         console.log('[SettingsView] Shutting down Ollama service...');
-        
+
         if (!window.api) return;
-        
+
         try {
             // Show loading state
             this.ollamaStatus = { ...this.ollamaStatus, running: false };
             this.requestUpdate();
-            
+
             const result = await window.api.settingsView.shutdownOllama(false); // Graceful shutdown
-            
+
             if (result.success) {
                 console.log('[SettingsView] Ollama shut down successfully');
                 // Refresh status to reflect the change
@@ -1464,7 +1456,7 @@ export class SettingsView extends ThemeMixin(LitElement) {
             console.warn('[SettingsView] Window opacity API not available');
             return;
         }
-        
+
         try {
             const result = await window.api.settingsView.setWindowOpacity(opacity);
             if (result && result.success) {
@@ -1482,10 +1474,10 @@ export class SettingsView extends ThemeMixin(LitElement) {
     async toggleTheme() {
         // Use the centralized theme system instead of local logic
         console.log(`[SettingsView] Toggling theme from ${this.currentTheme}`);
-        
+
         try {
             const result = await super.toggleTheme(); // Call ThemeMixin method
-            
+
             if (result.success) {
                 console.log(`[SettingsView] Theme successfully toggled to ${result.theme}`);
             } else {
@@ -1540,9 +1532,9 @@ export class SettingsView extends ThemeMixin(LitElement) {
                         </div>
                         <div class="account-info">
                             ${this.firebaseUser
-                                ? html`Account: ${this.firebaseUser.email || 'Logged In'}`
-                                : `Account: Not Logged In`
-                            }
+                ? html`Account: ${this.firebaseUser.email || 'Logged In'}`
+                : `Account: Not Logged In`
+            }
                         </div>
                     </div>
                     <div class="invisibility-icon ${!this.isContentProtectionOn ? 'visible' : ''}" title="Content Protection is Off">
@@ -1624,17 +1616,17 @@ export class SettingsView extends ThemeMixin(LitElement) {
                 <div class="buttons-section">
                     <div class="bottom-buttons">
                         ${this.firebaseUser
-                            ? html`
+                ? html`
                                 <button class="settings-button half-width danger" @click=${this.handleFirebaseLogout}>
                                     <span>Se déconnecter</span>
                                 </button>
                                 `
-                            : html`
+                : html`
                                 <button class="settings-button half-width" @click=${this.handleUsePicklesKey}>
                                     <span>Se connecter</span>
                                 </button>
                                 `
-                        }
+            }
                         <button class="settings-button half-width danger" @click=${this.handleQuit}>
                             <span>Quit</span>
                         </button>

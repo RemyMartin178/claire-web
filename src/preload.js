@@ -9,12 +9,12 @@ contextBridge.exposeInMainWorld('api', {
     isWindows: process.platform === 'win32',
     platform: process.platform
   },
-  
+
   // Generic IPC methods for overlay windows
   send: (channel, data) => ipcRenderer.send(channel, data),
   invoke: (channel, data) => ipcRenderer.invoke(channel, data),
   on: (channel, callback) => ipcRenderer.on(channel, callback),
-  
+
   // Common utilities used across multiple components
   common: {
     // User & Auth
@@ -46,7 +46,7 @@ contextBridge.exposeInMainWorld('api', {
         throw error;
       }
     },
-    
+
     // 3-Component Sync Service
     performFullSync: () => ipcRenderer.invoke('sync:perform-full-sync'),
     syncAgent: (agentId) => ipcRenderer.invoke('sync:sync-agent', agentId),
@@ -54,53 +54,53 @@ contextBridge.exposeInMainWorld('api', {
     getSyncStatus: () => ipcRenderer.invoke('sync:get-status'),
     startAutoSync: () => ipcRenderer.invoke('sync:start-auto-sync'),
     stopAutoSync: () => ipcRenderer.invoke('sync:stop-auto-sync'),
-    
+
     // App Control
-      quitApplication: () => ipcRenderer.invoke('quit-application'),
-      openExternal: (url) => ipcRenderer.invoke('open-external', url),
-      getPlatformInfo: () => ipcRenderer.invoke('get-platform-info'),
-      getWebUrl: () => ipcRenderer.invoke('get-web-url'),
+    quitApplication: () => ipcRenderer.invoke('quit-application'),
+    openExternal: (url) => ipcRenderer.invoke('open-external', url),
+    getPlatformInfo: () => ipcRenderer.invoke('get-platform-info'),
+    getWebUrl: () => ipcRenderer.invoke('get-web-url'),
 
     // User state listener (used by multiple components)
-      onUserStateChanged: (callback) => ipcRenderer.on('user-state-changed', callback),
-      removeOnUserStateChanged: (callback) => ipcRenderer.removeListener('user-state-changed', callback),
-      
+    onUserStateChanged: (callback) => ipcRenderer.on('user-state-changed', callback),
+    removeOnUserStateChanged: (callback) => ipcRenderer.removeListener('user-state-changed', callback),
+
     // Area selection & screen capture
-      startAreaSelection: () => ipcRenderer.invoke('start-area-selection'),
-      cancelAreaSelection: () => ipcRenderer.invoke('cancel-area-selection'),
-      captureSelectedArea: () => ipcRenderer.invoke('capture-selected-area'),
-      captureFullScreen: () => ipcRenderer.invoke('capture-full-screen'),
-      toggleContentProtection: (enabled) => ipcRenderer.invoke('toggle-content-protection', enabled),
-      onAreaSelected: (callback) => ipcRenderer.on('area-selected', callback),
-      onSelectionCancelled: (callback) => ipcRenderer.on('selection-cancelled', callback),
-      
-      // Persistent area management
-      capturePersistentArea: () => ipcRenderer.invoke('capture-persistent-area'),
-      clearPersistentArea: () => ipcRenderer.invoke('clear-persistent-area'),
-      getPersistentAreaStatus: () => ipcRenderer.invoke('get-persistent-area-status'),
-      onPersistentAreaSet: (callback) => ipcRenderer.on('persistent-area-set', callback),
-      onPersistentAreaCleared: (callback) => ipcRenderer.on('persistent-area-cleared', callback),
-      removeOnPersistentAreaSet: (callback) => ipcRenderer.removeListener('persistent-area-set', callback),
-      removeOnPersistentAreaCleared: (callback) => ipcRenderer.removeListener('persistent-area-cleared', callback),
-      
-      // Theme events
-      onThemeChanged: (callback) => ipcRenderer.on('theme-changed', callback),
-      removeOnThemeChanged: (callback) => ipcRenderer.removeListener('theme-changed', callback),
-      onThemeInitialize: (callback) => ipcRenderer.on('theme-initialize', callback),
-      removeOnThemeInitialize: (callback) => ipcRenderer.removeListener('theme-initialize', callback),
-      
-      // Window opacity events
-      onWindowOpacityChanged: (callback) => ipcRenderer.on('window-opacity-changed', callback),
-      removeOnWindowOpacityChanged: (callback) => ipcRenderer.removeListener('window-opacity-changed', callback),
-      
-      // Theme management
-      getCurrentTheme: () => ipcRenderer.invoke('get-current-theme'),
-      setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
-      toggleTheme: () => ipcRenderer.invoke('toggle-theme'),
-      onThemeChanged: (callback) => ipcRenderer.on('theme-changed', callback),
-      onThemeInitialize: (callback) => ipcRenderer.on('theme-initialize', callback),
-      removeOnThemeChanged: (callback) => ipcRenderer.removeListener('theme-changed', callback),
-      removeOnThemeInitialize: (callback) => ipcRenderer.removeListener('theme-initialize', callback),
+    startAreaSelection: () => ipcRenderer.invoke('start-area-selection'),
+    cancelAreaSelection: () => ipcRenderer.invoke('cancel-area-selection'),
+    captureSelectedArea: () => ipcRenderer.invoke('capture-selected-area'),
+    captureFullScreen: () => ipcRenderer.invoke('capture-full-screen'),
+    toggleContentProtection: (enabled) => ipcRenderer.invoke('toggle-content-protection', enabled),
+    onAreaSelected: (callback) => ipcRenderer.on('area-selected', callback),
+    onSelectionCancelled: (callback) => ipcRenderer.on('selection-cancelled', callback),
+
+    // Persistent area management
+    capturePersistentArea: () => ipcRenderer.invoke('capture-persistent-area'),
+    clearPersistentArea: () => ipcRenderer.invoke('clear-persistent-area'),
+    getPersistentAreaStatus: () => ipcRenderer.invoke('get-persistent-area-status'),
+    onPersistentAreaSet: (callback) => ipcRenderer.on('persistent-area-set', callback),
+    onPersistentAreaCleared: (callback) => ipcRenderer.on('persistent-area-cleared', callback),
+    removeOnPersistentAreaSet: (callback) => ipcRenderer.removeListener('persistent-area-set', callback),
+    removeOnPersistentAreaCleared: (callback) => ipcRenderer.removeListener('persistent-area-cleared', callback),
+
+    // Theme events
+    onThemeChanged: (callback) => ipcRenderer.on('theme-changed', callback),
+    removeOnThemeChanged: (callback) => ipcRenderer.removeListener('theme-changed', callback),
+    onThemeInitialize: (callback) => ipcRenderer.on('theme-initialize', callback),
+    removeOnThemeInitialize: (callback) => ipcRenderer.removeListener('theme-initialize', callback),
+
+    // Window opacity events
+    onWindowOpacityChanged: (callback) => ipcRenderer.on('window-opacity-changed', callback),
+    removeOnWindowOpacityChanged: (callback) => ipcRenderer.removeListener('window-opacity-changed', callback),
+
+    // Theme management
+    getCurrentTheme: () => ipcRenderer.invoke('get-current-theme'),
+    setTheme: (theme) => ipcRenderer.invoke('set-theme', theme),
+    toggleTheme: () => ipcRenderer.invoke('toggle-theme'),
+    onThemeChanged: (callback) => ipcRenderer.on('theme-changed', callback),
+    onThemeInitialize: (callback) => ipcRenderer.on('theme-initialize', callback),
+    removeOnThemeChanged: (callback) => ipcRenderer.removeListener('theme-changed', callback),
+    removeOnThemeInitialize: (callback) => ipcRenderer.removeListener('theme-initialize', callback),
   },
 
   // UI Component specific namespaces
@@ -119,11 +119,11 @@ contextBridge.exposeInMainWorld('api', {
     setSelectedModel: (data) => ipcRenderer.invoke('model:set-selected-model', data),
     areProvidersConfigured: () => ipcRenderer.invoke('model:are-providers-configured'),
     hasConfiguredProviders: () => ipcRenderer.invoke('model:has-configured-providers'),
-    
+
     // Window Management
     getHeaderPosition: () => ipcRenderer.invoke('get-header-position'),
     moveHeaderTo: (x, y) => ipcRenderer.invoke('move-header-to', x, y),
-    
+
     // Listeners
     onOllamaInstallProgress: (callback) => ipcRenderer.on('ollama:install-progress', callback),
     removeOnOllamaInstallProgress: (callback) => ipcRenderer.removeListener('ollama:install-progress', callback),
@@ -147,14 +147,14 @@ contextBridge.exposeInMainWorld('api', {
   headerController: {
     // State Management
     sendHeaderStateChanged: (state) => ipcRenderer.send('header-state-changed', state),
-    
+
     // Window Management
     resizeHeaderWindow: (dimensions) => ipcRenderer.invoke('resize-header-window', dimensions),
-    
+
     // Permissions
     checkSystemPermissions: () => ipcRenderer.invoke('check-system-permissions'),
     checkPermissionsCompleted: () => ipcRenderer.invoke('check-permissions-completed'),
-    
+
     // Listeners
     onUserStateChanged: (callback) => ipcRenderer.on('user-state-changed', callback),
     removeOnUserStateChanged: (callback) => ipcRenderer.removeListener('user-state-changed', callback),
@@ -175,21 +175,27 @@ contextBridge.exposeInMainWorld('api', {
     cancelHideSettingsWindow: () => ipcRenderer.send('cancel-hide-settings-window'),
     showSettingsWindow: () => ipcRenderer.send('show-settings-window'),
     hideSettingsWindow: () => ipcRenderer.send('hide-settings-window'),
-    
+    toggleSettingsWindow: () => ipcRenderer.send('toggle-settings-window'),
+
+    // Nouvelles API stables (GPT recommendations)
+    requestSettingsVisible: (visible, reason) => ipcRenderer.invoke('wm:settingsVisible', { visible, reason }),
+    setHeaderClickThrough: (enabled) => ipcRenderer.invoke('wm:headerClickThrough', { enabled }),
+    notifyGlobalPointerDown: (pos) => ipcRenderer.send('wm:globalPointerDown', pos),
+
     // Agent Selector Window Management
     showAgentSelectorWindow: () => ipcRenderer.send('show-agent-selector-window'),
     hideAgentSelectorWindow: () => ipcRenderer.send('hide-agent-selector-window'),
     cancelHideAgentSelectorWindow: () => ipcRenderer.send('cancel-hide-agent-selector-window'),
-    
+
     // Generic invoke (for dynamic channel names)
     // invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     sendListenButtonClick: (listenButtonText) => ipcRenderer.invoke('listen:changeSession', listenButtonText),
     sendAskButtonClick: () => ipcRenderer.invoke('ask:toggleAskButton'),
     sendToggleAllWindowsVisibility: () => ipcRenderer.invoke('shortcut:toggleAllWindowsVisibility'),
-    
+
     // Agent Mode Communication
     setAgentMode: (agentModeActive) => ipcRenderer.invoke('listen:set-agent-mode', agentModeActive),
-    
+
     // Listeners
     onListenChangeSessionResult: (callback) => ipcRenderer.on('listen:changeSessionResult', callback),
     removeOnListenChangeSessionResult: (callback) => ipcRenderer.removeListener('listen:changeSessionResult', callback),
@@ -219,17 +225,17 @@ contextBridge.exposeInMainWorld('api', {
     // Window Management
     closeAskWindow: () => ipcRenderer.invoke('ask:closeAskWindow'),
     adjustWindowHeight: (height) => ipcRenderer.invoke('adjust-window-height', height),
-    
+
     // Message Handling
     sendMessage: (text) => ipcRenderer.invoke('ask:sendQuestionFromAsk', text),
-    
-    
+
+
     // Personality Management
     getPersonalities: () => ipcRenderer.invoke('ask:getPersonalities'),
     setPersonality: (personalityId) => ipcRenderer.invoke('ask:setPersonality', personalityId),
     getPersonalityRecommendations: (taskType, userLevel) => ipcRenderer.invoke('ask:getPersonalityRecommendations', taskType, userLevel),
     toggleAdaptivePersonality: (enabled) => ipcRenderer.invoke('ask:toggleAdaptivePersonality', enabled),
-    
+
     // Tutorial Management
     tutorialNext: () => ipcRenderer.invoke('ask:tutorialNext'),
     tutorialSkip: () => ipcRenderer.invoke('ask:tutorialSkip'),
@@ -245,12 +251,12 @@ contextBridge.exposeInMainWorld('api', {
     // Listeners
     onShowTextInput: (callback) => ipcRenderer.on('ask:showTextInput', callback),
     removeOnShowTextInput: (callback) => ipcRenderer.removeListener('ask:showTextInput', callback),
-    
+
     onScrollResponseUp: (callback) => ipcRenderer.on('aks:scrollResponseUp', callback),
     removeOnScrollResponseUp: (callback) => ipcRenderer.removeListener('aks:scrollResponseUp', callback),
     onScrollResponseDown: (callback) => ipcRenderer.on('aks:scrollResponseDown', callback),
     removeOnScrollResponseDown: (callback) => ipcRenderer.removeListener('aks:scrollResponseDown', callback),
-    
+
     // Tutorial Events
     onTutorialEvent: (callback) => ipcRenderer.on('ask:tutorialEvent', callback),
     removeOnTutorialEvent: (callback) => ipcRenderer.removeListener('ask:tutorialEvent', callback)
@@ -260,10 +266,10 @@ contextBridge.exposeInMainWorld('api', {
   listenView: {
     // Window Management
     adjustWindowHeight: (height) => ipcRenderer.invoke('adjust-window-height', height),
-    
+
     // Debug/Testing
     forceAnalysis: () => ipcRenderer.invoke('listen:force-analysis'),
-    
+
     // Listeners
     onSessionStateChanged: (callback) => ipcRenderer.on('session-state-changed', callback),
     removeOnSessionStateChanged: (callback) => ipcRenderer.removeListener('session-state-changed', callback)
@@ -280,7 +286,7 @@ contextBridge.exposeInMainWorld('api', {
   summaryView: {
     // Message Handling
     sendQuestionFromSummary: (text) => ipcRenderer.invoke('ask:sendQuestionFromSummary', text),
-    
+
     // Listeners
     onSummaryUpdate: (callback) => ipcRenderer.on('summary-update', callback),
     removeOnSummaryUpdate: (callback) => ipcRenderer.removeListener('summary-update', callback),
@@ -305,16 +311,16 @@ contextBridge.exposeInMainWorld('api', {
     saveApiKey: (key) => ipcRenderer.invoke('model:save-api-key', key),
     removeApiKey: (provider) => ipcRenderer.invoke('model:remove-api-key', provider),
     setSelectedModel: (data) => ipcRenderer.invoke('model:set-selected-model', data),
-    
+
     // Ollama Management
     getOllamaStatus: () => ipcRenderer.invoke('ollama:get-status'),
     ensureOllamaReady: () => ipcRenderer.invoke('ollama:ensure-ready'),
     shutdownOllama: (graceful) => ipcRenderer.invoke('ollama:shutdown', graceful),
-    
+
     // Whisper Management
     getWhisperInstalledModels: () => ipcRenderer.invoke('whisper:get-installed-models'),
     downloadWhisperModel: (modelId) => ipcRenderer.invoke('whisper:download-model', modelId),
-    
+
     // Settings Management
     getPresets: () => ipcRenderer.invoke('settings:getPresets'),
     getAutoUpdate: () => ipcRenderer.invoke('settings:get-auto-update'),
@@ -323,7 +329,7 @@ contextBridge.exposeInMainWorld('api', {
     toggleContentProtection: () => ipcRenderer.invoke('toggle-content-protection'),
     getCurrentShortcuts: () => ipcRenderer.invoke('settings:getCurrentShortcuts'),
     openShortcutSettingsWindow: () => ipcRenderer.invoke('shortcut:openShortcutSettingsWindow'),
-    
+
     // Window Management
     moveWindowStep: (direction) => ipcRenderer.invoke('move-window-step', direction),
     cancelHideSettingsWindow: () => ipcRenderer.send('cancel-hide-settings-window'),
@@ -331,13 +337,13 @@ contextBridge.exposeInMainWorld('api', {
     setWindowOpacity: (opacity) => ipcRenderer.invoke('set-window-opacity', opacity),
     toggleClickThrough: () => ipcRenderer.invoke('toggle-click-through'),
     getClickThroughStatus: () => ipcRenderer.invoke('get-click-through-status'),
-    
+
     // App Control
     quitApplication: () => ipcRenderer.invoke('quit-application'),
-    
+
     // Progress Tracking
     pullOllamaModel: (modelName) => ipcRenderer.invoke('ollama:pull-model', modelName),
-    
+
     // Listeners
     onUserStateChanged: (callback) => ipcRenderer.on('user-state-changed', callback),
     removeOnUserStateChanged: (callback) => ipcRenderer.removeListener('user-state-changed', callback),
@@ -361,7 +367,7 @@ contextBridge.exposeInMainWorld('api', {
     saveShortcuts: (shortcuts) => ipcRenderer.invoke('shortcut:saveShortcuts', shortcuts),
     getDefaultShortcuts: () => ipcRenderer.invoke('shortcut:getDefaultShortcuts'),
     closeShortcutSettingsWindow: () => ipcRenderer.invoke('shortcut:closeShortcutSettingsWindow'),
-    
+
     // Listeners
     onLoadShortcuts: (callback) => ipcRenderer.on('shortcut:loadShortcuts', callback),
     removeOnLoadShortcuts: (callback) => ipcRenderer.removeListener('shortcut:loadShortcuts', callback)
@@ -371,7 +377,7 @@ contextBridge.exposeInMainWorld('api', {
   content: {
     // Listeners
     onSettingsWindowHideAnimation: (callback) => ipcRenderer.on('settings-window-hide-animation', callback),
-    removeOnSettingsWindowHideAnimation: (callback) => ipcRenderer.removeListener('settings-window-hide-animation', callback),    
+    removeOnSettingsWindowHideAnimation: (callback) => ipcRenderer.removeListener('settings-window-hide-animation', callback),
   },
 
   // src/ui/listen/audioCore/listenCapture.js
@@ -381,14 +387,14 @@ contextBridge.exposeInMainWorld('api', {
     sendSystemAudioContent: (data) => ipcRenderer.invoke('listen:sendSystemAudio', data),
     startMacosSystemAudio: () => ipcRenderer.invoke('listen:startMacosSystemAudio'),
     stopMacosSystemAudio: () => ipcRenderer.invoke('listen:stopMacosSystemAudio'),
-    
+
     // Speaker Control for Hardware Acoustic Coupling Prevention
     muteSpeakers: () => ipcRenderer.invoke('listen:muteSpeakers'),
     unmuteSpeakers: (originalVolume) => ipcRenderer.invoke('listen:unmuteSpeakers', originalVolume),
-    
+
     // Session Management
     isSessionActive: () => ipcRenderer.invoke('is-session-active'),
-    
+
     // Listeners
     onSystemAudioData: (callback) => ipcRenderer.on('system-audio-data', callback),
     removeOnSystemAudioData: (callback) => ipcRenderer.removeListener('system-audio-data', callback)
@@ -409,7 +415,7 @@ contextBridge.exposeInMainWorld('api', {
     setVariant: (viewId, variant) => ipcRenderer.invoke('liquid-glass:set-variant', viewId, variant),
     setScrim: (viewId, scrim) => ipcRenderer.invoke('liquid-glass:set-scrim', viewId, scrim),
     setSubdued: (viewId, subdued) => ipcRenderer.invoke('liquid-glass:set-subdued', viewId, subdued),
-    
+
     // Platform Detection
     getPlatformInfo: () => ipcRenderer.invoke('get-platform-info')
   }

@@ -356,7 +356,7 @@ export default function KnowledgeBasePage() {
 
         <main className="space-y-8 sm:space-y-12">
           {error && (
-            <Card className="bg-white border border-orange-200 p-6">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border border-orange-200 p-6">
               <div className="flex items-start space-x-3">
                 <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
                 <div>
@@ -520,7 +520,7 @@ export default function KnowledgeBasePage() {
         {/* New Folder Dialog */}
         {showNewFolderDialog && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <Card className="bg-white rounded-xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors rounded-xl p-4 sm:p-6 w-full max-w-sm sm:max-w-md">
               <div className="space-y-4">
                 <div>
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">Créer un nouveau dossier</h3>

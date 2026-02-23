@@ -373,7 +373,7 @@ export default function SettingsPage() {
   const renderSecurityContent = () => (
     <div className="space-y-6">
       {/* Mot de passe */}
-      <Card className="bg-white">
+      <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
         <CardContent className="p-6">
           <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Mot de passe</h3>
           <p className="text-sm text-gray-600 mb-4">
@@ -391,14 +391,14 @@ export default function SettingsPage() {
       </Card>
 
        {/* Appareils connectés */}
-       <Card className="bg-white">
+       <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
          <CardContent className="p-6">
           <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Appareils connectés</h3>
           <p className="text-sm text-gray-600 mb-4">Gérez les appareils connectés à votre compte et surveillez l'activité de connexion.</p>
           
           <div className="space-y-4">
             {/* Appareil actuel */}
-            <div className="flex items-center justify-between p-3 bg-subtle-bg rounded-md">
+            <div className="flex items-center justify-between p-3 bg-transparent rounded-md">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <div>
@@ -423,7 +423,7 @@ export default function SettingsPage() {
 
   const renderBillingContent = () => (
     <div className="space-y-6">
-      <Card className="bg-primary/5 border-primary/20">
+      <Card className="bg-transparent shadow-none border-primary/20 transition-colors border-primary/20">
         <CardContent className="p-6">
           <div className="flex items-center gap-3">
             <Check className="h-6 w-6 text-primary" />
@@ -448,7 +448,7 @@ export default function SettingsPage() {
       case 'profile':
         return (
            <div className="space-y-6">
-             <Card className="bg-white">
+             <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
                <CardContent className="p-6">
                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Nom affiché</h3>
                 <p className="text-sm text-gray-600 mb-4">Saisissez votre nom complet ou un nom d'affichage de votre choix.</p>
@@ -473,7 +473,7 @@ export default function SettingsPage() {
              </Card>
 
              {/* Section Abonnement */}
-             <Card className="bg-white">
+             <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
                <CardContent className="p-6">
                  <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Abonnement</h3>
                  <p className="text-sm text-gray-600 mb-4">
@@ -572,7 +572,7 @@ export default function SettingsPage() {
              </Card>
 
             {/* Section Paiement */}
-            <Card className="bg-white">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
               <CardContent className="p-6">
                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Paiement</h3>
                 <p className="text-sm text-gray-600 mb-4">
@@ -591,7 +591,7 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
  
-            <Card className="bg-white">
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
               <CardContent className="p-6">
                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Supprimer le compte</h3>
                 <p className="text-sm text-gray-600 mb-4">Supprimez définitivement votre compte personnel et tout le contenu de la plateforme Claire. Cette action est irréversible, veuillez procéder avec précaution.</p>
@@ -651,7 +651,7 @@ export default function SettingsPage() {
       {/* Modal de suppression de compte */}
        {showDeleteModal && (
          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-           <Card ref={modalRef} className="bg-white max-w-md w-full mx-4">
+           <Card ref={modalRef} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors max-w-md w-full mx-4">
              <CardContent className="p-6">
               <h2 className="text-xl font-heading font-semibold mb-4 text-[#282828]">
                 Supprimer le compte définitivement

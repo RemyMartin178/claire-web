@@ -20,7 +20,7 @@ export default function HelpPage() {
       <h1 className="text-3xl font-heading font-semibold text-[#282828] mb-8">Centre d'aide</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6">
             <div className="flex items-center mb-4">
               <Book className="h-6 w-6 text-primary mr-3" />
@@ -36,7 +36,7 @@ export default function HelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6">
             <div className="flex items-center mb-4">
               <HelpCircle className="h-6 w-6 text-secondary mr-3" />
@@ -58,7 +58,7 @@ export default function HelpPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6">
             <div className="flex items-center mb-4">
               <MessageCircle className="h-6 w-6 text-secondary mr-3" />
@@ -69,7 +69,7 @@ export default function HelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
           <CardContent className="p-6">
             <div className="flex items-center mb-4">
               <Mail className="h-6 w-6 text-primary mr-3" />
@@ -81,7 +81,7 @@ export default function HelpPage() {
         </Card>
       </div>
 
-      <Card className="bg-primary/5 border-primary/20">
+      <Card className="bg-transparent shadow-none border-primary/20 transition-colors border-primary/20">
         <CardContent className="p-6">
           <h3 className="text-lg font-heading font-semibold text-[#282828] mb-2">💡 Astuce</h3>
           <p className="text-gray-700">Chaque contexte est optimisé pour différentes situations. Choisissez le préréglage adapté à votre environnement de travail ou créez votre propre contexte personnalisé !</p>

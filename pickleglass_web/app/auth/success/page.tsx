@@ -35,8 +35,8 @@ function SuccessContent() {
   if (flow !== 'mobile') return null
 
   return (
-    <main className="min-h-screen bg-subtle-bg flex items-center justify-center px-6 py-12">
-      <Card className="bg-white w-full max-w-md">
+    <main className="min-h-screen bg-transparent flex items-center justify-center px-6 py-12">
+      <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors w-full max-w-md">
         <CardContent className="p-8 text-center space-y-6">
           <div className="space-y-4">
             <h1 className="text-2xl font-heading font-semibold text-[#282828]">

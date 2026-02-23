@@ -770,7 +770,7 @@ export class AskView extends LitElement {
                 const needed = entry.contentRect.height;
                 const current = window.innerHeight;
 
-                if (needed > current - 4) {
+                if (Math.abs(needed - current) > 4) {
                     this.requestWindowResize(Math.ceil(needed));
                 }
             }
@@ -790,9 +790,9 @@ export class AskView extends LitElement {
                 if (!this.showTextInput) {
                     this.showTextInput = true;
                     this.updateComplete.then(() => this.focusTextInput());
-                  } else {
+                } else {
                     this.focusTextInput();
-                  }
+                }
             });
 
             window.api.askView.onScrollResponseUp(() => this.handleScroll('up'));
@@ -800,27 +800,27 @@ export class AskView extends LitElement {
             window.api.askView.onAskStateUpdate((event, newState) => {
                 this.currentResponse = newState.currentResponse;
                 this.currentQuestion = newState.currentQuestion;
-                this.isLoading       = newState.isLoading;
-                this.isStreaming     = newState.isStreaming;
-              
+                this.isLoading = newState.isLoading;
+                this.isStreaming = newState.isStreaming;
+
                 const wasHidden = !this.showTextInput;
                 this.showTextInput = newState.showTextInput;
-              
+
                 if (newState.showTextInput) {
-                  if (wasHidden) {
-                    this.updateComplete.then(() => {
+                    if (wasHidden) {
+                        this.updateComplete.then(() => {
+                            this.focusTextInput();
+                        });
+                    } else {
                         this.focusTextInput();
-                    });
-                  } else {
-                    this.focusTextInput();
-                  }
+                    }
                 }
-                
+
                 // Auto-scroll pendant le streaming
                 if (this.isStreaming && this.autoScrollEnabled) {
                     this.updateComplete.then(() => this.scrollToBottom());
                 }
-              });
+            });
             console.log('AskView: IPC 이벤트 리스너 등록 완료');
         }
     }
@@ -1020,7 +1020,7 @@ export class AskView extends LitElement {
     renderContent() {
         const responseContainer = this.shadowRoot.getElementById('responseContainer');
         if (!responseContainer) return;
-    
+
         // Check loading state
         if (this.isLoading) {
             responseContainer.innerHTML = `
@@ -1032,14 +1032,14 @@ export class AskView extends LitElement {
             this.resetStreamingParser();
             return;
         }
-        
+
         // If there is no response, show empty state
         if (!this.currentResponse) {
             responseContainer.innerHTML = `<div class="empty-state">...</div>`;
             this.resetStreamingParser();
             return;
         }
-        
+
         // Set streaming markdown parser
         this.renderStreamingMarkdown(responseContainer);
 
@@ -1062,9 +1062,9 @@ export class AskView extends LitElement {
                 const streamingContainer = document.createElement('div');
                 streamingContainer.className = 'streaming-container';
                 responseContainer.appendChild(streamingContainer);
-                
+
                 this.smdContainer = streamingContainer;
-                
+
                 // smd.js default_renderer
                 const renderer = default_renderer(this.smdContainer);
                 this.smdParser = parser(renderer);
@@ -1074,7 +1074,7 @@ export class AskView extends LitElement {
             // Traiter uniquement le nouveau texte (optimisation streaming)
             const currentText = this.currentResponse;
             const newText = currentText.slice(this.lastProcessedLength);
-            
+
             if (newText.length > 0) {
                 parser_write(this.smdParser, newText);
                 this.lastProcessedLength = currentText.length;
@@ -1098,10 +1098,10 @@ export class AskView extends LitElement {
             // Auto-scroll vers le bas
             if (this.autoScrollEnabled) {
                 requestAnimationFrame(() => {
-            responseContainer.scrollTop = responseContainer.scrollHeight;
+                    responseContainer.scrollTop = responseContainer.scrollHeight;
                 });
             }
-            
+
         } catch (error) {
             console.error('Error rendering streaming markdown:', error);
             this.renderFallbackContent(responseContainer);
@@ -1129,7 +1129,7 @@ export class AskView extends LitElement {
 
     renderFallbackContent(responseContainer) {
         const textToRender = this.currentResponse || '';
-        
+
         if (this.isLibrariesLoaded && this.marked && this.DOMPurify) {
             try {
                 // 마크다운 파싱
@@ -1353,16 +1353,16 @@ export class AskView extends LitElement {
 
     updated(changedProperties) {
         super.updated(changedProperties);
-    
+
         // ✨ isLoading 또는 currentResponse가 변경될 때마다 뷰를 다시 그립니다.
         if (changedProperties.has('isLoading') || changedProperties.has('currentResponse')) {
             this.renderContent();
         }
-    
+
         if (changedProperties.has('showTextInput') || changedProperties.has('isLoading') || changedProperties.has('currentResponse')) {
             this.adjustWindowHeightThrottled();
         }
-    
+
         if (changedProperties.has('showTextInput') && this.showTextInput) {
             this.focusTextInput();
         }

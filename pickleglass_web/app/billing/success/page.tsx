@@ -47,7 +47,7 @@ export default function BillingSuccessPage() {
     <Page>
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8">
-          <Card className="bg-white shadow-xl">
+          <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors shadow-xl">
             <CardContent className="p-8 text-center">
               {/* Success Icon */}
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6 animate-pulse">

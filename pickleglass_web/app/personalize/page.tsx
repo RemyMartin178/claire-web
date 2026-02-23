@@ -306,7 +306,7 @@ function PersonalizeContent() {
       />
 
       {/* Section des préréglages */}
-      <Card className="bg-white mb-6">
+      <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors mb-6">
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-heading font-semibold text-[#282828]">Préréglages</h2>
@@ -355,7 +355,7 @@ function PersonalizeContent() {
       </Card>
 
       {/* Éditeur de préréglage */}
-      <Card className="bg-white">
+      <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors">
         <CardContent className="p-6">
           {selectedPreset?.is_default === 1 && (
             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">

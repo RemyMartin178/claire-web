@@ -621,7 +621,7 @@ export default function BillingPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Plan Gratuit */}
-        <Card className="bg-white flex flex-col">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors flex flex-col">
           <CardContent className="p-6 flex flex-col flex-1">
             <div className="mb-6">
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Gratuit</h3>
@@ -674,7 +674,7 @@ export default function BillingPage() {
         </Card>
 
         {/* Plan Pro */}
-        <Card className="bg-white border-primary border-2 flex flex-col">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border-primary border-2 flex flex-col">
           <CardContent className="p-6 flex flex-col flex-1">
             <div className="mb-6 flex items-center justify-between">
               <div>
@@ -732,7 +732,7 @@ export default function BillingPage() {
         </Card>
 
         {/* Plan Enterprise */}
-        <Card className="bg-white border-gray-300 flex flex-col">
+        <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border-gray-300 flex flex-col">
           <CardContent className="p-6 flex flex-col flex-1">
             <div className="mb-6">
               <h3 className="text-xl font-heading font-semibold mb-2 text-[#282828]">Enterprise</h3>
