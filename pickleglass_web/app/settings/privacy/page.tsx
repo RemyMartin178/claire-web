@@ -20,18 +20,17 @@ export default function PrivacySettingsPage() {
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
         <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
       </div>
-      
+
       <div className="mb-8">
         <nav className="flex space-x-10 border-b border-gray-200">
           {tabs.map((tab) => (
             <Link
               key={tab.id}
               href={tab.href}
-              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                tab.id === 'privacy'
+              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${tab.id === 'privacy'
                   ? 'border-primary text-[#282828]'
                   : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
-              }`}
+                }`}
             >
               {tab.name}
             </Link>
@@ -71,7 +70,7 @@ export default function PrivacySettingsPage() {
             </div>
             <div className="flex justify-end mt-6">
               <Button
-                onClick={() => window.open('https://www.pickle.com/ko/terms-of-service', '_blank')}
+                onClick={() => window.open('https://www.clairia.app/terms', '_blank')}
                 variant="outline"
                 className="gap-2"
               >
