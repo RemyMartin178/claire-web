@@ -79,3 +79,55 @@ export const trackUpgradeModalOpen = (fromCycle: string) =>
 /** User closes / cancels the upgrade modal */
 export const trackUpgradeModalDismissed = () =>
     gtagEvent('upgrade_modal_dismissed')
+
+// ─── Auth events ──────────────────────────────────────────────────────────────
+
+/** User successfully created an account */
+export const trackSignUp = (method: 'email' | 'google') =>
+    gtagEvent('sign_up', { method })
+
+/** User successfully signed in */
+export const trackLogin = (method: 'email' | 'google') =>
+    gtagEvent('login', { method })
+
+/** User signed out */
+export const trackLogout = () =>
+    gtagEvent('logout')
+
+/** Login attempt failed */
+export const trackLoginFailed = (reason: string) =>
+    gtagEvent('login_failed', { reason })
+
+/** Account creation failed */
+export const trackSignUpFailed = (reason: string) =>
+    gtagEvent('sign_up_failed', { reason })
+
+// ─── Activity / Engagement events ────────────────────────────────────────────
+
+/** User lands on the activity page */
+export const trackActivityPageView = (sessionCount: number) =>
+    gtagEvent('activity_page_view', { session_count: sessionCount })
+
+/** User opens a session detail */
+export const trackSessionViewed = (sessionId: string) =>
+    gtagEvent('session_viewed', { session_id: sessionId })
+
+/** User uploads a file to knowledge base */
+export const trackKnowledgeBaseUpload = (fileType?: string) =>
+    gtagEvent('knowledge_base_upload', { file_type: fileType })
+
+/** User toggles a tool on or off */
+export const trackToolToggled = (toolName: string, enabled: boolean) =>
+    gtagEvent('tool_toggled', { tool_name: toolName, enabled })
+
+/** User creates an AI agent */
+export const trackAgentCreated = () =>
+    gtagEvent('agent_created')
+
+/** User opens the search popup */
+export const trackSearchOpened = () =>
+    gtagEvent('search_opened')
+
+/** User performs a search query */
+export const trackSearchQuery = (query: string) =>
+    gtagEvent('search_query', { query_length: query.length })

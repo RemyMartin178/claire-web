@@ -9,6 +9,7 @@ import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff } from 'lucide-react'
 import { getApiBase } from '@/utils/apiBase'
 import { auth } from '@/utils/firebase'
+import { trackLogin, trackLoginFailed } from '@/lib/gtag'
 
 
 function LoginContent() {
@@ -53,6 +54,7 @@ function LoginContent() {
         } catch (error: any) {
           const errorMessage = handleFirebaseError(error)
           setError(errorMessage)
+          trackLoginFailed(errorMessage)
           if (shouldLogError(error)) {
             console.error('Google redirect error:', error)
           }
@@ -73,6 +75,7 @@ function LoginContent() {
         await associateAfterLogin(sessionId)
       }
       sessionStorage.removeItem('manuallyLoggedOut')
+      trackLogin('email')
 
       // Priority 1: Stripe return URL
       const stripeReturnUrl = sessionStorage.getItem('stripe_return_url')
@@ -101,6 +104,7 @@ function LoginContent() {
     } catch (error: any) {
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
+      trackLoginFailed(errorMessage) // Track failed email login
 
       if (shouldLogError(error)) {
         console.error('Login error:', error)

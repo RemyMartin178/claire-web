@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 
 export default function ActivityPage() {
   const router = useRouter();
@@ -25,6 +26,8 @@ export default function ActivityPage() {
     try {
       const fetchedSessions = await getSessions();
       setSessions(fetchedSessions);
+      // GA4: track activity page view with session count
+      trackActivityPageView(fetchedSessions.length)
     } catch (error) {
       console.error('Impossible de récupérer les conversations :', error)
     } finally {
@@ -94,6 +97,7 @@ export default function ActivityPage() {
                     <div className="flex-1">
                       <Link
                         href={`/activity/details?sessionId=${session.id}`}
+                        onClick={() => trackSessionViewed(session.id)}
                         className="text-lg font-medium text-[#282828] hover:text-primary transition-colors"
                       >
                         {session.title || `Conversation - ${new Date(session.started_at * 1000).toLocaleDateString()}`}

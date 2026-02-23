@@ -12,6 +12,7 @@ import { useSubscription, getSubscriptionDisplayName } from '@/hooks/useSubscrip
 import { logout } from '@/utils/api';
 import Avatar from '@/components/Avatar';
 import { usePathname } from "next/navigation";
+import { trackLogout, trackSearchOpened } from '@/lib/gtag';
 
 export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     const pathname = usePathname();
@@ -23,6 +24,7 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
 
     const handleLogout = useCallback(async () => {
         try {
+            trackLogout()
             await logout();
             window.location.href = '/auth/login';
         } catch (error) {

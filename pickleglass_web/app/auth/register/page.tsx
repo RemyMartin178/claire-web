@@ -8,6 +8,7 @@ import { createUserWithEmail, signInWithGoogle, handleGoogleRedirectResult } fro
 import { handleFirebaseError, shouldLogError } from '@/utils/errorHandler'
 import { Eye, EyeOff } from 'lucide-react'
 import { getApiBase } from '@/utils/http'
+import { trackSignUp, trackSignUpFailed } from '@/lib/gtag'
 
 function RegisterContent() {
   const [showPassword, setShowPassword] = useState(false)
@@ -89,6 +90,7 @@ function RegisterContent() {
         })
       }
       sessionStorage.removeItem('manuallyLoggedOut')
+      trackSignUp('email')
       if (isMobileFlow) {
         router.push(`/auth/success?flow=mobile&session_id=${encodeURIComponent(sessionId)}`)
       } else {
@@ -97,6 +99,7 @@ function RegisterContent() {
     } catch (error: any) {
       const errorMessage = handleFirebaseError(error)
       setError(errorMessage)
+      trackSignUpFailed(errorMessage)
 
       if (shouldLogError(error)) {
         console.error('Registration error:', error)
@@ -112,6 +115,7 @@ function RegisterContent() {
       setError('')
       const user = await signInWithGoogle(true)
       sessionStorage.removeItem('manuallyLoggedOut')
+      trackSignUp('google')
       if (isMobileFlow && user) {
         const idToken = await user.getIdToken(true)
         const refreshToken = user.refreshToken
