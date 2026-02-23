@@ -13,11 +13,11 @@ export default function ConditionalLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { loading, isAuthenticated } = useAuth()
-  
+
   // Check if current path is an auth page
   const isAuthPage = pathname?.startsWith('/auth/') || pathname === '/login' || pathname === '/register'
   const isDebugPage = pathname === '/fettywapdebug'
-  
+
   // Rediriger vers le login si pas authentifié et pas sur une page d'auth
   useEffect(() => {
     if (isDebugPage) return
@@ -34,14 +34,14 @@ export default function ConditionalLayout({
           router.replace('/auth/login')
         }
       }, 500) // Délai de 500ms pour laisser Firebase Auth se réinitialiser
-      
+
       return () => clearTimeout(timer)
     }
   }, [loading, isAuthenticated, isAuthPage, isDebugPage, router])
-  
+
   if (isAuthPage) {
     return (
-      <div className="min-h-screen" style={{ background: '#202123' }}>
+      <div className="min-h-screen bg-background">
         {children}
       </div>
     )
@@ -52,12 +52,12 @@ export default function ConditionalLayout({
     if (loading) return null
     return <ClientLayout>{children}</ClientLayout>
   }
-  
+
   // Si on n'est pas authentifié OU en cours de chargement, ne rien afficher (redirection en cours)
   if (!isAuthenticated || loading) {
     return null
   }
-  
+
   // For all other pages, use the full ClientLayout with sidebar
   return <ClientLayout>{children}</ClientLayout>
 }
