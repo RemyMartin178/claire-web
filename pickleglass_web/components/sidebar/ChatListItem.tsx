@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { MessageSquare, Edit3, Pin, Trash2, MoreHorizontal } from 'lucide-react'
 import * as ContextMenu from '@radix-ui/react-context-menu'
 import { useChatStore, Chat } from '@/stores/chatStore'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import clsx from 'clsx'
 
 interface ChatListItemProps {
@@ -18,6 +19,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
   const [isRenaming, setIsRenaming] = useState(false)
   const [newTitle, setNewTitle] = useState(chat.title)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
 
   const handleRename = () => {
     if (newTitle.trim() && newTitle !== chat.title) {
@@ -44,9 +46,12 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
   }
 
   const handleDelete = () => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette conversation ?')) {
-      removeChat(chat.id)
-    }
+    setIsConfirmDeleteOpen(true)
+  }
+
+  const confirmDelete = () => {
+    removeChat(chat.id)
+    setIsConfirmDeleteOpen(false)
   }
 
   useEffect(() => {
@@ -71,7 +76,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
           onMouseLeave={() => setShowActions(false)}
         >
           <MessageSquare className="w-4 h-4 mr-3 flex-shrink-0" />
-          
+
           <div className="flex-1 min-w-0">
             {isRenaming ? (
               <input
@@ -87,7 +92,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
             ) : (
               <div className="text-sm font-medium truncate">{chat.title}</div>
             )}
-            
+
             {chat.preview && (
               <div className="text-xs text-gray-400 truncate mt-1">
                 {chat.preview}
@@ -137,7 +142,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
       </ContextMenu.Trigger>
 
       <ContextMenu.Portal>
-          <ContextMenu.Content className="min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg p-1 shadow-lg">
+        <ContextMenu.Content className="min-w-[200px] bg-gray-800 border border-gray-700 rounded-lg p-1 shadow-lg">
           <ContextMenu.Item
             className="flex items-center px-3 py-2 text-sm text-white hover:bg-white/10 rounded cursor-pointer"
             onClick={() => onSelect(chat.id)}
@@ -145,7 +150,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
             <MessageSquare className="w-4 h-4 mr-2" />
             Ouvrir
           </ContextMenu.Item>
-          
+
           <ContextMenu.Item
             className="flex items-center px-3 py-2 text-sm text-white hover:bg-white/10 rounded cursor-pointer"
             onClick={() => setIsRenaming(true)}
@@ -153,7 +158,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
             <Edit3 className="w-4 h-4 mr-2" />
             Renommer
           </ContextMenu.Item>
-          
+
           <ContextMenu.Item
             className="flex items-center px-3 py-2 text-sm text-white hover:bg-white/10 rounded cursor-pointer"
             onClick={() => pinToggle(chat.id)}
@@ -161,9 +166,9 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
             <Pin className="w-4 h-4 mr-2" />
             {chat.pinned ? 'Désépingler' : 'Épingler'}
           </ContextMenu.Item>
-          
+
           <ContextMenu.Separator className="h-px bg-gray-700 my-1" />
-          
+
           <ContextMenu.Item
             className="flex items-center px-3 py-2 text-sm text-white hover:bg-white/10 rounded cursor-pointer"
             onClick={() => archive(chat.id)}
@@ -171,7 +176,7 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
             <MoreHorizontal className="w-4 h-4 mr-2" />
             Archiver
           </ContextMenu.Item>
-          
+
           <ContextMenu.Item
             className="flex items-center px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded cursor-pointer"
             onClick={handleDelete}
@@ -181,6 +186,15 @@ export function ChatListItem({ chat, isSelected, onSelect }: ChatListItemProps) 
           </ContextMenu.Item>
         </ContextMenu.Content>
       </ContextMenu.Portal>
+
+      <ConfirmationModal
+        isOpen={isConfirmDeleteOpen}
+        title="Supprimer la conversation"
+        message="Êtes-vous sûr de vouloir supprimer cette conversation ?"
+        confirmText="Supprimer"
+        onConfirm={confirmDelete}
+        onCancel={() => setIsConfirmDeleteOpen(false)}
+      />
     </ContextMenu.Root>
   )
 }

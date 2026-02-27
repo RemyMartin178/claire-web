@@ -14,8 +14,10 @@ import {
 } from '@/utils/api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Mail, Share2, Play, ArrowUpRight } from 'lucide-react'
+import { ArrowLeft, Mail, Share2, Play, ArrowUpRight, Trash2 } from 'lucide-react'
+import { trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import React from 'react'
 
 // Util function to format seconds to m:ss
@@ -103,11 +105,12 @@ function SessionDetailsContent() {
   }, [userInfo, loading, router]);
 
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (userInfo && sessionId) {
@@ -116,6 +119,7 @@ function SessionDetailsContent() {
         try {
           const details = await getSessionDetails(sessionId as string);
           setSessionDetails(details);
+          trackSessionViewed(sessionId);
         } catch (error) {
           console.error('Failed to load session details:', error);
         } finally {
@@ -126,18 +130,23 @@ function SessionDetailsContent() {
     }
   }, [userInfo, sessionId]);
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
+    setConfirmDeleteId(true);
+  }
+
+  const handleConfirmDelete = async () => {
     if (!sessionId) return;
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette activité ? Cette action est irréversible.')) return;
-    setDeleting(true);
+    setIsDeleting(true);
     try {
       await deleteSession(sessionId);
       toast.success('Session supprimée');
       router.push('/activity');
     } catch (error) {
       toast.error('Échec de la suppression de l\'activité.');
-      setDeleting(false);
       console.error(error);
+      setIsDeleting(false);
+    } finally {
+      setConfirmDeleteId(false);
     }
   };
 
@@ -221,90 +230,28 @@ function SessionDetailsContent() {
     displayTitle = `Discussion avec Claire`; // Fallback translation
   }
 
-  return (
-    <div className="min-h-screen bg-[#f8f7f4] text-[#282828] font-body selection:bg-primary/30">
-      <div className="max-w-4xl mx-auto px-6 py-12 pb-32">
-        {/* Back Link */}
-        <div className="mb-8 flex justify-between items-center">
-          <Link
-            href="/activity"
-            className="inline-flex items-center text-sm text-gray-500 hover:text-black transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Retour à l'activité
-          </Link>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="bg-neutral-100 border-neutral-200 text-neutral-600 hover:bg-neutral-200 hover:text-black h-8 text-xs font-medium">
-              <Mail className="w-3.5 h-3.5 mr-2" />
-              E-mail de suivi
-            </Button>
-            <Button variant="outline" size="sm" className="bg-neutral-100 border-neutral-200 text-neutral-600 hover:bg-neutral-200 hover:text-black h-8 text-xs font-medium">
-              <Share2 className="w-3.5 h-3.5 mr-2" />
-              Partager
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-transparent border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 h-8 text-xs font-medium ml-2"
-            >
-              {deleting ? '...' : 'Supprimer'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Header Title */}
-        <div className="mb-8">
-          <div className="text-gray-500 text-sm mb-2">{displayDate}</div>
-          <h1 className="text-3xl sm:text-4xl font-sans font-semibold text-black tracking-tight leading-tight">
-            {displayTitle}
-          </h1>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-1 bg-neutral-50 p-1 rounded-full w-fit mb-10 border border-neutral-200">
-          <button
-            onClick={() => setActiveTab('summary')}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${activeTab === 'summary' ? 'bg-white text-[#282828] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Résumé
-          </button>
-          <button
-            onClick={() => setActiveTab('transcript')}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${activeTab === 'transcript' ? 'bg-white text-[#282828] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Transcription
-          </button>
-          <button
-            onClick={() => setActiveTab('usage')}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${activeTab === 'usage' ? 'bg-white text-[#282828] shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Utilisation
-          </button>
-        </div>
-
-        {/* Tab Content: SUMMARY */}
-        {activeTab === 'summary' && (
-          <div className="space-y-10 animate-fade-in">
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'summary':
+        return (
+          <div className="max-w-3xl animate-in fade-in duration-500">
             {sessionDetails.summary?.text ? (
-              <div className="max-w-3xl">
+              <>
                 <SectionHeader title="Résumé" onAction={handleCopySummary} actionText="Copier le résumé complet" />
                 <div className="prose prose-neutral max-w-none text-[#282828] leading-relaxed">
                   {parseMarkdown(sessionDetails.summary.text)}
                 </div>
-              </div>
+              </>
             ) : (
               <div className="text-gray-400 py-12 text-center border border-dashed border-neutral-200 rounded-lg bg-neutral-50/50">
                 Aucun résumé disponible pour cette session.
               </div>
             )}
           </div>
-        )}
-
-        {/* Tab Content: TRANSCRIPT */}
-        {activeTab === 'transcript' && (
-          <div className="animate-fade-in max-w-2xl mx-auto ml-0">
+        )
+      case 'transcript':
+        return (
+          <div className="animate-in fade-in duration-500 max-w-2xl">
             <div className="flex justify-end mb-6">
               <button onClick={handleCopyTranscript} className="text-sm text-gray-500 hover:text-black flex items-center gap-1 transition-colors">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2v0m-4.3 0H12" /></svg>
@@ -318,14 +265,10 @@ function SessionDetailsContent() {
                   const speakerName = isUser ? userInfo.display_name : 'Autre';
                   const speakerColor = isUser ? 'text-primary' : 'text-neutral-500';
 
-                  // Mocking timestamp conceptually, ideally we use t.start_at offset from session.started_at
-                  // If start_at is unix, we subtract session start. 
                   let offsetText = "0:00";
                   if (t.start_at && sessionDetails.session.started_at) {
                     const offsetSec = Math.floor((t.start_at - sessionDetails.session.started_at) / 1000);
-                    if (offsetSec >= 0) {
-                      offsetText = formatTime(offsetSec);
-                    }
+                    if (offsetSec >= 0) offsetText = formatTime(offsetSec);
                   }
 
                   return (
@@ -347,13 +290,11 @@ function SessionDetailsContent() {
               </div>
             )}
           </div>
-        )}
-
-        {/* Tab Content: USAGE */}
-        {activeTab === 'usage' && (
-          <div className="animate-fade-in max-w-3xl">
+        )
+      case 'usage':
+        return (
+          <div className="animate-in fade-in duration-500 max-w-3xl">
             <SectionHeader title="Utilisation de l'IA" />
-
             <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-5 shadow-sm">
                 <div className="text-neutral-500 text-sm mb-1">Requêtes effectuées</div>
@@ -373,9 +314,7 @@ function SessionDetailsContent() {
                 <div className="border-l border-neutral-200 ml-3 space-y-8 pl-6">
                   {askMessages.map((msg, idx) => (
                     <div key={msg.id || idx} className="relative">
-                      {/* Timeline dot */}
                       <div className={`absolute -left-[29px] w-3 h-3 rounded-full border-2 border-white ${msg.role === 'user' ? 'bg-primary' : 'bg-neutral-300'} top-1.5`}></div>
-
                       <span className={`text-xs font-semibold uppercase tracking-wider ${msg.role === 'user' ? 'text-primary' : 'text-neutral-500'} mb-2 block`}>
                         {msg.role === 'user' ? 'Vous (Question)' : 'Claire IA (Réponse)'}
                       </span>
@@ -394,9 +333,67 @@ function SessionDetailsContent() {
               </div>
             )}
           </div>
-        )}
+        )
+      default:
+        return null;
+    }
+  }
 
+  return (
+    <div className="min-h-screen bg-[#f8f7f4] text-[#282828] font-body selection:bg-primary/30">
+      <div className="max-w-4xl mx-auto px-6 py-12 pb-32">
+        {/* Header and Controls */}
+        <div className="mb-8 flex justify-between items-center flex-wrap gap-4">
+          <Link href="/activity" className="inline-flex items-center text-sm text-gray-500 hover:text-black transition-colors">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour à l'activité
+          </Link>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleDeleteClick}
+              disabled={isDeleting}
+              variant="outline"
+              className="px-6 rounded-xl border-[#e0e0e0] text-[#666666] hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Supprimer
+            </Button>
+          </div>
+        </div>
+
+        <div className="mb-8 font-heading">
+          <div className="text-gray-500 text-sm mb-2">{displayDate}</div>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-black tracking-tight leading-tight">
+            {displayTitle}
+          </h1>
+        </div>
+
+        <div className="flex bg-white/50 p-1 rounded-2xl w-fit mb-10 border border-black/5">
+          {(['summary', 'transcript', 'usage'] as TabType[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-8 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === tab
+                  ? 'bg-black text-white shadow-lg'
+                  : 'text-zinc-500 hover:text-black hover:bg-white/80'
+                }`}
+            >
+              {tab === 'summary' ? 'Résumé' : tab === 'transcript' ? 'Transcription' : 'Utilisation'}
+            </button>
+          ))}
+        </div>
+
+        {renderTabContent()}
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmDeleteId}
+        title="Supprimer l'activité"
+        message="Êtes-vous sûr de vouloir supprimer cette activité ? Cette action est irréversible."
+        confirmText="Supprimer"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDeleteId(false)}
+      />
 
       {/* Floating Action Bar */}
       <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-[600px] px-4 pointer-events-none z-50">
@@ -409,7 +406,7 @@ function SessionDetailsContent() {
           <div className="relative flex-1">
             <input
               type="text"
-              placeholder="Poser une question sur cette réunion..."
+              placeholder="Poser une question..."
               className="w-full bg-transparent border-none text-[#282828] text-sm focus:outline-none placeholder-gray-400 px-3 py-2"
             />
             <div className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-neutral-100 p-1 rounded-md text-neutral-500">
@@ -418,8 +415,7 @@ function SessionDetailsContent() {
           </div>
         </div>
       </div>
-
-    </div >
+    </div>
   );
 }
 

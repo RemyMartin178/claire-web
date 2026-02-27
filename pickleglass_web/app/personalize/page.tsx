@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth'
 import { auth } from '@/utils/firebase'
 import { toast } from 'react-hot-toast'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 function PersonalizeContent() {
   const searchParams = useSearchParams()
@@ -27,6 +28,7 @@ function PersonalizeContent() {
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [pendingChangePreset, setPendingChangePreset] = useState<PromptPreset | null>(null);
 
   // Handle desktop mode authentication
   useEffect(() => {
@@ -112,13 +114,22 @@ function PersonalizeContent() {
   }, []);
 
   const handlePresetClick = (preset: PromptPreset) => {
-    if (isDirty && !window.confirm("Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir changer ?")) {
+    if (isDirty) {
+      setPendingChangePreset(preset);
       return;
     }
     setSelectedPreset(preset);
     setEditorContent(preset.prompt);
     setIsDirty(false);
   };
+
+  const confirmSwitchPreset = () => {
+    if (!pendingChangePreset) return;
+    setSelectedPreset(pendingChangePreset);
+    setEditorContent(pendingChangePreset.prompt);
+    setIsDirty(false);
+    setPendingChangePreset(null);
+  }
 
   const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setEditorContent(e.target.value);
@@ -378,6 +389,15 @@ function PersonalizeContent() {
           />
         </CardContent>
       </Card>
+
+      <ConfirmationModal
+        isOpen={!!pendingChangePreset}
+        title="Modifications non enregistrées"
+        message="Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir changer de préréglage ?"
+        confirmText="Changer quand même"
+        onConfirm={confirmSwitchPreset}
+        onCancel={() => setPendingChangePreset(null)}
+      />
     </Page>
   );
 }

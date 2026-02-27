@@ -23,7 +23,7 @@ class ConfigManager {
         this.defaults = new Map();
         this.validators = new Map();
         this.listeners = new Map();
-        
+
         this.setupDefaults();
         this.loadConfiguration();
     }
@@ -49,7 +49,7 @@ class ConfigManager {
         this.setDefault('CONTENT_PROTECTION', false);
         this.setDefault('MICROPHONE_ENABLED', true);
         this.setDefault('SECURE_STORAGE', true);
-        this.setDefault('ENCRYPTION_ENABLED', true);
+        this.setDefault('ENCRYPTION_ENABLED', false);
 
         // Capture Settings
         this.setDefault('DEFAULT_CAPTURE_FORMAT', 'png');
@@ -133,13 +133,13 @@ class ConfigManager {
         try {
             // Load from environment variables
             this.loadFromEnvironment();
-            
+
             // Load from .env file if exists
             this.loadFromEnvFile();
-            
+
             // Load from user preferences
             this.loadFromUserPreferences();
-            
+
             logger.info('[ConfigManager] Configuration loaded successfully');
         } catch (error) {
             logger.error('Failed to load configuration:', { error });
@@ -162,7 +162,7 @@ class ConfigManager {
      */
     loadFromEnvFile() {
         const envPath = path.join(app.getAppPath(), '.env');
-        
+
         if (fs.existsSync(envPath)) {
             try {
                 const envContent = fs.readFileSync(envPath, 'utf8');
@@ -178,21 +178,21 @@ class ConfigManager {
      */
     parseEnvContent(content) {
         const lines = content.split('\n');
-        
+
         for (const line of lines) {
             const trimmed = line.trim();
-            
+
             // Skip comments and empty lines
             if (trimmed.startsWith('#') || trimmed === '') {
                 continue;
             }
-            
+
             // Parse key=value pairs
             const equalIndex = trimmed.indexOf('=');
             if (equalIndex > 0) {
                 const key = trimmed.substring(0, equalIndex).trim();
                 const value = trimmed.substring(equalIndex + 1).trim();
-                
+
                 if (this.defaults.has(key)) {
                     this.set(key, value);
                 }
@@ -207,10 +207,10 @@ class ConfigManager {
         try {
             const userDataPath = app.getPath('userData');
             const configPath = path.join(userDataPath, 'config.json');
-            
+
             if (fs.existsSync(configPath)) {
                 const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                
+
                 for (const [key, value] of Object.entries(configData)) {
                     if (this.defaults.has(key)) {
                         this.set(key, value);
@@ -229,16 +229,16 @@ class ConfigManager {
         try {
             const userDataPath = app.getPath('userData');
             const configPath = path.join(userDataPath, 'config.json');
-            
+
             // Create directory if it doesn't exist
             await fs.promises.mkdir(userDataPath, { recursive: true });
-            
+
             // Convert Map to Object for JSON serialization
             const configObject = Object.fromEntries(this.config);
-            
+
             // Save to file
             await fs.promises.writeFile(configPath, JSON.stringify(configObject, null, 2));
-            
+
             logger.info('[ConfigManager] Configuration saved to user preferences');
         } catch (error) {
             logger.error('Failed to save user preferences:', { error });
@@ -251,7 +251,7 @@ class ConfigManager {
     set(key, value) {
         // Convert string values to appropriate types
         const convertedValue = this.convertValue(key, value);
-        
+
         // Validate value if validator exists
         if (this.validators.has(key)) {
             const validator = this.validators.get(key);
@@ -259,10 +259,10 @@ class ConfigManager {
                 throw new Error(`Invalid value for ${key}: ${convertedValue}`);
             }
         }
-        
+
         // Set value
         this.config.set(key, convertedValue);
-        
+
         // Notify listeners
         this.notifyListeners(key, convertedValue);
     }
@@ -274,11 +274,11 @@ class ConfigManager {
         if (this.config.has(key)) {
             return this.config.get(key);
         }
-        
+
         if (this.defaults.has(key)) {
             return this.defaults.get(key);
         }
-        
+
         return undefined;
     }
 
@@ -317,16 +317,16 @@ class ConfigManager {
         if (typeof value !== 'string') {
             return value;
         }
-        
+
         // Boolean conversion
         if (value.toLowerCase() === 'true') return true;
         if (value.toLowerCase() === 'false') return false;
-        
+
         // Number conversion
         if (!isNaN(value) && !isNaN(parseFloat(value))) {
             return parseFloat(value);
         }
-        
+
         // JSON conversion
         if (value.startsWith('{') || value.startsWith('[')) {
             try {
@@ -335,7 +335,7 @@ class ConfigManager {
                 // Keep as string if JSON parsing fails
             }
         }
-        
+
         return value;
     }
 
@@ -351,15 +351,15 @@ class ConfigManager {
      */
     keys() {
         const allKeys = new Set();
-        
+
         for (const key of this.defaults.keys()) {
             allKeys.add(key);
         }
-        
+
         for (const key of this.config.keys()) {
             allKeys.add(key);
         }
-        
+
         return Array.from(allKeys);
     }
 
@@ -368,11 +368,11 @@ class ConfigManager {
      */
     getAll() {
         const result = {};
-        
+
         for (const key of this.keys()) {
             result[key] = this.get(key);
         }
-        
+
         return result;
     }
 
@@ -383,7 +383,7 @@ class ConfigManager {
         if (!this.listeners.has(key)) {
             this.listeners.set(key, []);
         }
-        
+
         this.listeners.get(key).push(listener);
     }
 
@@ -394,7 +394,7 @@ class ConfigManager {
         if (this.listeners.has(key)) {
             const listeners = this.listeners.get(key);
             const index = listeners.indexOf(listener);
-            
+
             if (index > -1) {
                 listeners.splice(index, 1);
             }
@@ -407,7 +407,7 @@ class ConfigManager {
     notifyListeners(key, value) {
         if (this.listeners.has(key)) {
             const listeners = this.listeners.get(key);
-            
+
             for (const listener of listeners) {
                 try {
                     listener(key, value);
@@ -423,15 +423,15 @@ class ConfigManager {
      */
     validate() {
         const errors = [];
-        
+
         for (const [key, validator] of this.validators) {
             const value = this.get(key);
-            
+
             if (!validator(value)) {
                 errors.push(`Invalid value for ${key}: ${value}`);
             }
         }
-        
+
         return errors;
     }
 
@@ -449,14 +449,14 @@ class ConfigManager {
     getFeatureConfig(feature) {
         const result = {};
         const prefix = feature.toUpperCase() + '_';
-        
+
         for (const key of this.keys()) {
             if (key.startsWith(prefix)) {
                 const featureKey = key.substring(prefix.length);
                 result[featureKey] = this.get(key);
             }
         }
-        
+
         return result;
     }
 
@@ -466,7 +466,7 @@ class ConfigManager {
     getPlatformConfig() {
         const platform = process.platform;
         const result = {};
-        
+
         if (platform === 'darwin') {
             result.liquidGlass = this.getBoolean('MACOS_LIQUID_GLASS');
             result.screenCapture = this.getString('MACOS_SCREEN_CAPTURE');
@@ -476,7 +476,7 @@ class ConfigManager {
             result.audioCapture = this.getString('WINDOWS_AUDIO_CAPTURE');
             result.glassEffects = this.getBoolean('WINDOWS_GLASS_EFFECTS');
         }
-        
+
         return result;
     }
 
@@ -519,7 +519,7 @@ class ConfigManager {
             mcpServers: this.getMCPConfig(),
             performance: this.getPerformanceConfig()
         };
-        
+
         return summary;
     }
 }

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 export default function ActivityPage() {
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function ActivityPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const fetchSessions = async () => {
     try {
@@ -57,8 +59,13 @@ export default function ActivityPage() {
     return 'Bonsoir';
   };
 
-  const handleDelete = async (sessionId: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette activité ? Cette action est irréversible.')) return;
+  const handleDeleteClick = (sessionId: string) => {
+    setConfirmDeleteId(sessionId);
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    const sessionId = confirmDeleteId;
     setDeletingId(sessionId);
     try {
       await deleteSession(sessionId);
@@ -69,6 +76,7 @@ export default function ActivityPage() {
       console.error(error);
     } finally {
       setDeletingId(null);
+      setConfirmDeleteId(null);
     }
   }
 
@@ -86,8 +94,22 @@ export default function ActivityPage() {
 
   // Sort dates descending
   const sortedDates = Object.keys(groupedSessions).sort((a, b) => {
-    // Small hack to parse the French dates back for sorting if needed, but since we pushed them from sorted timestamps initially, 
+    // Small hack to parse the French dates back for sorting if needed, but since we pushed them from sorted timestamps initially,
     // it's safer to sort by picking the timestamp of the first item in the group.
+    // # Decryption & Encryption Deactivation
+    // - [x] Disable global encryption in `config-manager.js`
+    // - [/] Fix race condition in `index.js` for migration startup
+    // - [/] Improve `decrypt_firestore.js` to handle all possible fields and multiple users
+    // - [x] Verify data is plaintext in Firestore after migration
+
+    // # UI Improvements
+    // - [x] Replace all browser-native `confirm()` and `alert()` pop-ups with custom modals (React & Electron)
+    // - [x] Ensure notifications appear in the bottom-right via `react-hot-toast`
+
+    // # Notification Standardization
+    // - [ ] Remove custom notification system in `SettingsPage` and use `react-hot-toast`
+    // - [ ] Remove custom notification system in `PasswordModal` and use `react-hot-toast`
+    // - [ ] Audit and ensure global dark branding for all toasts in `RootLayout`
     return groupedSessions[b][0].started_at - groupedSessions[a][0].started_at;
   });
 
@@ -106,9 +128,6 @@ export default function ActivityPage() {
 
         {sessions.length === 0 && !isLoading && (
           <div className="text-center mb-12">
-            <h2 className="text-2xl font-heading font-medium text-black mb-8 text-center">
-              Votre activité passée
-            </h2>
           </div>
         )}
 
@@ -160,7 +179,7 @@ export default function ActivityPage() {
                             {timeStr}
                           </div>
                           <Button
-                            onClick={() => handleDelete(session.id)}
+                            onClick={() => handleDeleteClick(session.id)}
                             disabled={deletingId === session.id}
                             variant="ghost"
                             size="icon"
@@ -190,6 +209,15 @@ export default function ActivityPage() {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={!!confirmDeleteId}
+        title="Supprimer l'activité"
+        message="Êtes-vous sûr de vouloir supprimer cette activité ? Cette action est irréversible."
+        confirmText="Supprimer"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
     </div>
   );
 }

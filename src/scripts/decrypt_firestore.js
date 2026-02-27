@@ -8,9 +8,9 @@ function logItem(msg) {
     console.log(msg);
 }
 
-const transcriptConverter = createEncryptedConverter(['text']);
-const aiMessageConverter = createEncryptedConverter(['content']);
-const summaryConverter = createEncryptedConverter(['tldr', 'bulletPoints', 'actionItems', 'prompt', 'text']);
+const transcriptConverter = createEncryptedConverter(['text', 'content']);
+const aiMessageConverter = createEncryptedConverter(['content', 'text']);
+const summaryConverter = createEncryptedConverter(['tldr', 'text', 'bulletPoints', 'actionItems', 'bullet_json', 'action_json', 'bullet_points', 'action_items']);
 const sessionConverter = createEncryptedConverter(['title']);
 
 async function decryptUserData(uid) {
@@ -45,18 +45,20 @@ async function decryptUserData(uid) {
                 await setDoc(msgDoc.ref, msgDoc.data());
             }
 
-            // 3b. AI Messages (camelCase fallback)
-            const aiMessagesLegacyRef = collection(db, `users/${uid}/sessions/${sessionId}/aiMessages`).withConverter(aiMessageConverter);
-            const aiMessagesLegacySnap = await getDocs(aiMessagesLegacyRef);
-            for (const msgDoc of aiMessagesLegacySnap.docs) {
-                await setDoc(msgDoc.ref, msgDoc.data());
-            }
-
             // 4. Summary
             const summaryRef = collection(db, `users/${uid}/sessions/${sessionId}/summary`).withConverter(summaryConverter);
             const summarySnap = await getDocs(summaryRef);
             for (const sumDoc of summarySnap.docs) {
-                await setDoc(sumDoc.ref, sumDoc.data());
+                let data = sumDoc.data();
+
+                // Special mapping: if we found bullet_json (encrypted), we save it back as bulletPoints (plaintext)
+                // This ensures the web app finds the data where it expects it.
+                if (data.bullet_json && !data.bulletPoints) data.bulletPoints = data.bullet_json;
+                if (data.action_json && !data.actionItems) data.actionItems = data.action_json;
+                if (data.bullet_points && !data.bulletPoints) data.bulletPoints = data.bullet_points;
+                if (data.action_items && !data.actionItems) data.actionItems = data.action_items;
+
+                await setDoc(sumDoc.ref, data);
             }
         }
 

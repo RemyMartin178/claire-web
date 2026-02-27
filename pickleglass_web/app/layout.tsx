@@ -52,12 +52,31 @@ export default function RootLayout({
                 <Analytics />
                 {children}
                 <Toaster position="bottom-right" toastOptions={{
+                  duration: 3000,
+                  className: 'dark-toast',
                   style: {
-                    background: '#282828',
+                    background: 'rgba(40, 40, 40, 0.85)',
                     color: '#fff',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }
+                    borderRadius: '14px',
+                    fontSize: '14px',
+                    padding: '12px 20px',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+                    fontWeight: '500',
+                  },
+                  success: {
+                    iconTheme: {
+                      primary: '#fff',
+                      secondary: '#282828',
+                    },
+                  },
+                  error: {
+                    iconTheme: {
+                      primary: '#fff',
+                      secondary: '#ef4444',
+                    },
+                  },
                 }} />
               </ConditionalLayout>
             </PasswordModalProvider>

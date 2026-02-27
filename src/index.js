@@ -334,13 +334,32 @@ app.whenReady().then(async () => {
             logger.info('[Index] DEBUG: authService.initialize() completed');
 
             // --- DECRYPTION MIGRATION INJECTION ---
-            const uid = authService.getCurrentUserId ? authService.getCurrentUserId() : (authService.getCurrentUser()?.uid);
+            const waitForUserReady = async (maxAttempts = 20) => {
+                for (let i = 0; i < maxAttempts; i++) {
+                    const id = authService.getCurrentUserId ? authService.getCurrentUserId() : (authService.getCurrentUser()?.uid);
+                    if (id) {
+                        // Ensure encryption key is also initialized
+                        const encryptionService = require('./common/services/encryptionService');
+                        try {
+                            await encryptionService.initializeKey(id);
+                            return id;
+                        } catch (e) {
+                            logger.warn(`[Index] Encryption key not ready yet (attempt ${i + 1}): ${e.message}`);
+                        }
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                return null;
+            };
+
+            const uid = await waitForUserReady();
             if (uid) {
-                logger.info(`[Index] DEBUG: Running decryption migration for UID: ${uid}`);
+                console.log(`[Migration] 🏃 Starting decryption migration for user: ${uid}`);
                 const { decryptUserData } = require('./scripts/decrypt_firestore');
                 await decryptUserData(uid);
+                console.log(`[Migration] ✅ Decryption migration attempt finished for user: ${uid}`);
             } else {
-                logger.info('[Index] DEBUG: Auth user not found yet, skipping decryption migration.');
+                console.log('[Migration] ⚠️ Skipped migration: No user or key ready.');
             }
             // --------------------------------------
 
