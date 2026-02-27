@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Loader2, AlertCircle, X } from 'lucide-react'
-import { 
+import {
   Search,
   Calculator,
   Clock,
@@ -30,6 +30,7 @@ import {
   Wrench
 } from 'lucide-react'
 import { getApiHeaders } from '@/utils/api'
+import { toast } from 'react-hot-toast'
 import { Page, PageHeader } from '@/components/Page'
 import { PremiumGate } from '@/components/PremiumGate'
 import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth'
@@ -129,21 +130,21 @@ export default function ToolsPage() {
         console.log('Rate limiting: Skipping fetch, too recent')
         return
       }
-      
+
       sessionStorage.setItem('last_tools_fetch', now.toString())
       setLoading(true)
-      
+
       try {
         const response = await fetch('/api/v1/tools', {
           headers: await getApiHeaders()
         })
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch tools')
         }
-        
+
         const toolsData = await response.json()
-        
+
         const mappedTools = toolsData.map((tool: any) => ({
           id: tool.id?.toString() || tool.tool_name,
           name: tool.name || tool.display_name || tool.tool_name || 'Unnamed Tool',
@@ -182,20 +183,20 @@ export default function ToolsPage() {
           token_info: null,
           auth_status_checked: false
         }))
-        
+
         setTools(mappedTools)
       } catch (err) {
         console.warn('Failed to fetch via proxy, trying direct backend...')
-        
+
         const apiUrl = await getApiUrl()
         const directResponse = await fetch(`${apiUrl}/tools`, {
           headers: await getApiHeaders()
         })
-        
+
         if (!directResponse.ok) {
           throw new Error('Failed to fetch tools')
         }
-        
+
         const toolsData = await directResponse.json()
         const mappedTools = toolsData.map((tool: any) => ({
           id: tool.id?.toString() || tool.tool_name,
@@ -235,10 +236,10 @@ export default function ToolsPage() {
           token_info: null,
           auth_status_checked: false
         }))
-        
+
         setTools(mappedTools)
       }
-      
+
       setLoading(false)
       setError(null)
     } catch (err) {
@@ -251,20 +252,20 @@ export default function ToolsPage() {
 
   const handleToolToggle = async (toolId: string, enabled: boolean) => {
     setOperatingTools(prev => new Set(Array.from(prev).concat([toolId])))
-    
+
     try {
       const toolName = tools.find(t => t.id === toolId)?.tool_name || toolId
-      
+
       try {
         const response = await fetch(`/api/v1/tools/${toolName}`, {
           method: 'PUT',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             ...(await getApiHeaders())
           },
           body: JSON.stringify({ is_enabled: enabled })
         })
-        
+
         if (!response.ok) {
           throw new Error('Failed to toggle tool')
         }
@@ -272,20 +273,20 @@ export default function ToolsPage() {
         const apiUrl = await getApiUrl()
         const directResponse = await fetch(`${apiUrl}/tools/${toolName}`, {
           method: 'PUT',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             ...(await getApiHeaders())
           },
           body: JSON.stringify({ is_enabled: enabled })
         })
-        
+
         if (!directResponse.ok) {
           throw new Error('Failed to toggle tool')
         }
       }
-      
-      setTools(prevTools => 
-        prevTools.map(tool => 
+
+      setTools(prevTools =>
+        prevTools.map(tool =>
           tool.id === toolId ? { ...tool, is_enabled: enabled, status: enabled ? 'active' : 'inactive' } : tool
         )
       )
@@ -304,21 +305,21 @@ export default function ToolsPage() {
   const handleAuthConfigure = async (tool: Tool) => {
     try {
       setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
-      
+
       // Get user ID from auth context
       const { auth } = await import('@/utils/firebase')
       const currentUser = auth.currentUser
       const userId = currentUser?.uid
-      
+
       if (!userId) {
         throw new Error('User not authenticated')
       }
-      
+
       await openOAuthPopup({
         toolName: tool.tool_name || tool.name,
         provider: tool.provider
       }, userId)
-      
+
       // Refresh auth status after a short delay
       setTimeout(() => {
         checkAuthStatus(tool.tool_name || tool.name, userId).then(status => {
@@ -326,10 +327,10 @@ export default function ToolsPage() {
             prevTools.map(t =>
               t.id === tool.id
                 ? {
-                    ...t,
-                    is_configured: status.authenticated,
-                    authentication_status: status.authenticated ? 'authenticated' : 'not_configured'
-                  }
+                  ...t,
+                  is_configured: status.authenticated,
+                  authentication_status: status.authenticated ? 'authenticated' : 'not_configured'
+                }
                 : t
             )
           )
@@ -350,31 +351,31 @@ export default function ToolsPage() {
   const handleAuthRevoke = async (tool: Tool) => {
     try {
       setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
-      
+
       // Get user ID from auth context
       const { auth } = await import('@/utils/firebase')
       const currentUser = auth.currentUser
       const userId = currentUser?.uid
-      
+
       if (!userId) {
         throw new Error('User not authenticated')
       }
-      
+
       await revokeAuth(tool.tool_name || tool.name, userId)
-      
+
       // Update tool state
       setTools(prevTools =>
         prevTools.map(t =>
           t.id === tool.id
             ? {
-                ...t,
-                is_configured: false,
-                authentication_status: 'not_configured'
-              }
+              ...t,
+              is_configured: false,
+              authentication_status: 'not_configured'
+            }
             : t
         )
       )
-      
+
       toast.success('Authentication revoked successfully')
     } catch (error) {
       console.error('Failed to revoke auth:', error)
@@ -390,7 +391,7 @@ export default function ToolsPage() {
 
   const executeToolTest = async (toolName: string) => {
     setOperatingTools(prev => new Set(Array.from(prev).concat([`${toolName}_test`])))
-    
+
     try {
       toast.error('Tool execution not yet fully implemented. This is a demo.')
     } catch (err) {
@@ -430,9 +431,9 @@ export default function ToolsPage() {
   const filteredTools = tools.filter(tool => {
     const toolName = tool.name || tool.tool_name || ''
     const toolDescription = tool.description || ''
-    
+
     const matchesSearch = toolName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         toolDescription.toLowerCase().includes(searchQuery.toLowerCase())
+      toolDescription.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = selectedCategory === 'all' || tool.category === selectedCategory
     return matchesSearch && matchesCategory
   })
@@ -453,7 +454,7 @@ export default function ToolsPage() {
     return (
       <Page>
         <PageHeader title="Outils & Intégrations" description="Gérez et configurez les outils Claire" />
-        
+
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -475,7 +476,7 @@ export default function ToolsPage() {
     <Page>
       <PageHeader title="Outils & Intégrations" description="Gérez et configurez les outils Claire" />
 
-      <PremiumGate 
+      <PremiumGate
         feature="Intégrations avec des outils externes"
         plan="plus"
         className="mb-6"
@@ -484,8 +485,8 @@ export default function ToolsPage() {
         <div className="mb-8">
           <div className="relative max-w-md">
             <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <Input 
-              placeholder="Rechercher des outils..." 
+            <Input
+              placeholder="Rechercher des outils..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg w-full text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
@@ -512,11 +513,10 @@ export default function ToolsPage() {
                   variant={selectedCategory === category ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
-                  className={`capitalize font-medium transition-colors ${
-                    selectedCategory === category 
-                      ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] shadow-sm' 
+                  className={`capitalize font-medium transition-colors ${selectedCategory === category
+                      ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] shadow-sm'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900'
-                  }`}
+                    }`}
                 >
                   {category.replace('_', ' ')}
                 </Button>
@@ -562,9 +562,9 @@ export default function ToolsPage() {
                       <div className="flex items-center space-x-3">
                         <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-1 overflow-hidden border border-blue-100">
                           {tool.icon_url ? (
-                            <img 
-                              src={tool.icon_url} 
-                              alt={tool.name} 
+                            <img
+                              src={tool.icon_url}
+                              alt={tool.name}
                               className="w-10 h-10 object-contain"
                               onError={(e) => {
                                 // Fallback to emoji if image fails
@@ -589,7 +589,7 @@ export default function ToolsPage() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Switch 
+                        <Switch
                           checked={tool.is_enabled}
                           onCheckedChange={(enabled) => handleToolToggle(tool.id, enabled)}
                           disabled={operatingTools.has(tool.id)}
@@ -600,7 +600,7 @@ export default function ToolsPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <p className="text-sm text-gray-600 mb-3 flex-1 overflow-hidden" style={{
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
@@ -629,8 +629,8 @@ export default function ToolsPage() {
                     </div>
 
                     <div className="flex space-x-2 mt-auto flex-shrink-0">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         onClick={() => executeToolTest(tool.id || tool.tool_name || tool.name)}
                         disabled={!tool.is_enabled || operatingTools.has(`${tool.id || tool.tool_name || tool.name}_test`)}
                         className="flex-1 bg-[#3b82f6] text-white hover:bg-[#2563eb]"
@@ -644,9 +644,9 @@ export default function ToolsPage() {
                       </Button>
                       {tool.auth_type === 'oauth' && (
                         tool.is_configured && tool.authentication_status === 'authenticated' ? (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleAuthRevoke(tool)}
                             disabled={operatingTools.has(tool.id)}
                             className="px-3 text-red-600 border-red-300 hover:bg-red-50"
@@ -658,9 +658,9 @@ export default function ToolsPage() {
                             )}
                           </Button>
                         ) : (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleAuthConfigure(tool)}
                             disabled={operatingTools.has(tool.id)}
                             className="px-3 text-green-600 border-green-300 hover:bg-green-50"
@@ -673,9 +673,9 @@ export default function ToolsPage() {
                           </Button>
                         )
                       )}
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="px-3 text-[#374151] border-gray-300 hover:bg-gray-50"
                       >
                         <Settings className="w-4 h-4" />

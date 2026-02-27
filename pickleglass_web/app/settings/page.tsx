@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useSubscription, getSubscriptionDisplayName } from '@/hooks/useSubscription'
 import { gtagEvent } from '@/lib/gtag'
+import { toast } from 'react-hot-toast'
 
 type Tab = 'profile' | 'billing' | 'security' | 'privacy'
 
@@ -639,8 +640,8 @@ export default function SettingsPage() {
               key={tab.id}
               href={tab.href}
               className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                  ? 'border-primary text-[#282828]'
-                  : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
+                ? 'border-primary text-[#282828]'
+                : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
                 }`}
             >
               {tab.name}
@@ -697,10 +698,10 @@ export default function SettingsPage() {
             key={notification.id}
             data-notification-id={notification.id}
             className={`relative overflow-hidden rounded-lg shadow-lg ${notification.type === 'success'
-                ? 'bg-green-600'
-                : notification.type === 'error'
-                  ? 'bg-red-600'
-                  : 'bg-primary'
+              ? 'bg-green-600'
+              : notification.type === 'error'
+                ? 'bg-red-600'
+                : 'bg-primary'
               }`}
             style={{ transform: 'translateX(100%)', opacity: 0 }}
           >

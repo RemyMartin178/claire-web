@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useSubscription } from '@/hooks/useSubscription'
 import { loadStripe } from '@stripe/stripe-js'
 import { auth } from '@/utils/firebase'
+import { toast } from 'react-hot-toast'
 import {
   trackBillingPageView,
   trackBillingCycleChanged,
