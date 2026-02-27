@@ -124,14 +124,14 @@ function safeWebContentsSend(webContents, channel, ...args) {
         }
     } catch (error) {
         if (error.code === 'EPIPE' || error.message.includes('broken pipe')) {
-            logger.warn('[SafeIPC] EPIPE error in webContents.send, ignoring...', { 
+            logger.warn('[SafeIPC] EPIPE error in webContents.send, ignoring...', {
                 channel,
-                error: error.message 
+                error: error.message
             });
         } else {
-            logger.error('[SafeIPC] Error in webContents.send:', { 
+            logger.error('[SafeIPC] Error in webContents.send:', {
                 channel,
-                error: error.message 
+                error: error.message
             });
         }
     }
@@ -144,20 +144,20 @@ global.safeWebContentsSend = safeWebContentsSend;
 process.on('uncaughtException', (error) => {
     // Handle EPIPE (Broken pipe) errors gracefully
     if (error.code === 'EPIPE' || error.message.includes('Broken pipe')) {
-        logger.warn('[Process] EPIPE error caught (broken pipe/write), continuing...', { 
+        logger.warn('[Process] EPIPE error caught (broken pipe/write), continuing...', {
             error: error.message,
-            code: error.code 
+            code: error.code
         });
         return; // Don't crash the app for broken pipe errors
     }
-    
+
     // Handle other uncaught exceptions
-    logger.error('[Process] Uncaught exception:', { 
+    logger.error('[Process] Uncaught exception:', {
         error: error.message,
         stack: error.stack,
-        code: error.code 
+        code: error.code
     });
-    
+
     // Attempt graceful shutdown for critical errors
     if (!isShuttingDown) {
         logger.error('[Process] Attempting graceful shutdown due to uncaught exception...');
@@ -166,7 +166,7 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('[Process] Unhandled promise rejection:', { 
+    logger.error('[Process] Unhandled promise rejection:', {
         reason: reason?.message || reason,
         stack: reason?.stack
     });
@@ -178,7 +178,7 @@ let pendingDeepLinkUrl = null;
 function setupProtocolHandling() {
     // Register pickleglass:// and claire:// protocol handlers for deep linking
     logger.info('[Protocol] Registering pickleglass:// and claire:// custom URL schemes...');
-    
+
     try {
         // Register pickleglass protocol (primary)
         if (!app.isDefaultProtocolClient('pickleglass')) {
@@ -191,7 +191,7 @@ function setupProtocolHandling() {
         } else {
             logger.info('[Protocol] [OK] pickleglass:// protocol already registered');
         }
-        
+
         // Also register claire protocol (alias)
         if (!app.isDefaultProtocolClient('claire')) {
             app.setAsDefaultProtocolClient('claire');
@@ -205,7 +205,7 @@ function setupProtocolHandling() {
     app.on('second-instance', (event, commandLine, workingDirectory) => {
         logger.info('[Protocol] Second instance detected, command line:', commandLine);
         focusMainWindow();
-        
+
         // Find pickleglass:// or claire:// URL in command line arguments
         const protocolUrl = commandLine.find(arg => arg.startsWith('pickleglass://') || arg.startsWith('claire://'));
         if (protocolUrl) {
@@ -218,7 +218,7 @@ function setupProtocolHandling() {
     app.on('open-url', (event, url) => {
         event.preventDefault();
         logger.info('[Protocol] Received protocol URL on macOS:', url);
-        
+
         if (url.startsWith('pickleglass://') || url.startsWith('claire://')) {
             focusMainWindow();
             handleCustomUrl(url);
@@ -238,7 +238,7 @@ function focusMainWindow() {
             return true;
         }
     }
-    
+
     // Fallback: focus any available window
     const windows = BrowserWindow.getAllWindows();
     if (windows.length > 0) {
@@ -249,7 +249,7 @@ function focusMainWindow() {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -267,7 +267,7 @@ console.log('[STARTUP] 🔒 Requesting single instance lock...');
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     console.log('[STARTUP] ❌ CRITICAL: Single instance lock failed!');
-        console.log('[STARTUP] ❌ Another Claire instance is already running.');
+    console.log('[STARTUP] ❌ Another Claire instance is already running.');
 
     if (forceStart) {
         console.log('[STARTUP] ⚠️ WARNING: Force start enabled - bypassing single instance lock');
@@ -304,7 +304,7 @@ app.whenReady().then(async () => {
             // Grant access to the first screen found with loopback audio
             callback({ video: sources[0], audio: 'loopback' });
         }).catch((error) => {
-            logger.error('Error occurred', { error  });
+            logger.error('Error occurred', { error });
             callback({});
         });
     });
@@ -318,13 +318,13 @@ app.whenReady().then(async () => {
 
     // Initialize core services
     initializeFirebase();
-    
+
     try {
         // Phase 1 Fix: Temporarily disable SQLite database initialization
         // This prevents SQLite module errors while we migrate to unified Neon database
         // await databaseInitializer.initialize();
         logger.info('>>> [index.js] SQLite database initialization disabled (Phase 1 Fix)');
-        
+
         // Clean up zombie sessions from previous runs first - MOVED TO authService
         // sessionRepository.endAllActiveSessions();
 
@@ -332,6 +332,18 @@ app.whenReady().then(async () => {
         try {
             await authService.initialize();
             logger.info('[Index] DEBUG: authService.initialize() completed');
+
+            // --- DECRYPTION MIGRATION INJECTION ---
+            const uid = authService.getCurrentUserId ? authService.getCurrentUserId() : (authService.getCurrentUser()?.uid);
+            if (uid) {
+                logger.info(`[Index] DEBUG: Running decryption migration for UID: ${uid}`);
+                const { decryptUserData } = require('./scripts/decrypt_firestore');
+                await decryptUserData(uid);
+            } else {
+                logger.info('[Index] DEBUG: Auth user not found yet, skipping decryption migration.');
+            }
+            // --------------------------------------
+
         } catch (error) {
             logger.error('[Index] ERROR: authService.initialize() failed:', error.message);
             logger.info('[Index] Continuing with limited functionality...');
@@ -350,7 +362,7 @@ app.whenReady().then(async () => {
         // const contextIpcHandlers = new ContextIpcHandlers(); // Temporarily disabled due to circular dependency
         setupWebDataHandlers();
         logger.info('[Index] DEBUG: featureBridge, windowBridge, and setupWebDataHandlers completed');
-        
+
         // Initialize listen service and IPC handlers
         logger.info('[Index] DEBUG: About to initialize listenService...');
         listenService.initialize();
@@ -372,14 +384,14 @@ app.whenReady().then(async () => {
         // Start web server and create windows ONLY after all initializations are successful
         WEB_PORT = await startWebStack();
         logger.info('Web front-end listening on', WEB_PORT);
-        
+
         createWindows();
 
     } catch (err) {
-        logger.error('>>> [index.js] Database initialization failed - some features may not work', { 
-            error: err.message, 
+        logger.error('>>> [index.js] Database initialization failed - some features may not work', {
+            error: err.message,
             stack: err.stack,
-            name: err.name 
+            name: err.name
         });
         dialog.showErrorBox(
             'Initialization Error',
@@ -397,7 +409,7 @@ app.whenReady().then(async () => {
             clearInterval(autoUpdaterRetryInterval);
         }
     }, 2000); // Check every 2 seconds
-    
+
     // Stop trying after 60 seconds to avoid infinite polling
     setTimeout(() => {
         clearInterval(autoUpdaterRetryInterval);
@@ -420,20 +432,20 @@ app.on('before-quit', async (event) => {
         logger.info('[Shutdown] [LOADING] Shutdown already in progress, allowing quit...');
         return;
     }
-    
+
     logger.info('[Shutdown] App is about to quit. Starting graceful shutdown...');
-    
+
     // Set shutdown flag to prevent infinite loop
     isShuttingDown = true;
-    
+
     // Prevent immediate quit to allow graceful shutdown
     event.preventDefault();
-    
+
     try {
         // 1. Stop audio capture first (immediate)
         await listenService.closeSession();
         logger.info('[Shutdown] Audio capture stopped');
-        
+
         // 2. End all active sessions (database operations) - with error handling
         try {
             await sessionRepository.endAllActiveSessions();
@@ -441,14 +453,14 @@ app.on('before-quit', async (event) => {
         } catch (dbError) {
             logger.warn('Could not end active sessions (database may be closed):', { error: dbError.message });
         }
-        
+
         // 3. Shutdown Ollama service (potentially time-consuming)
         logger.info('[Shutdown] shutting down Ollama service...');
         const ollamaShutdownSuccess = await Promise.race([
             ollamaService.shutdown(false), // Graceful shutdown
             new Promise(resolve => setTimeout(() => resolve(false), 8000)) // 8s timeout
         ]);
-        
+
         if (ollamaShutdownSuccess) {
             logger.info('[Shutdown] Ollama service shut down gracefully');
         } else {
@@ -460,12 +472,12 @@ app.on('before-quit', async (event) => {
                 logger.warn('Force shutdown also failed:', { error: forceShutdownError.message });
             }
         }
-        
+
         // 4. Close database connections (final cleanup) - SQLite removed
         logger.info('[Shutdown] SQLite database close skipped (migrated to Neon)');
-        
+
         logger.info('[Shutdown] Graceful shutdown completed successfully');
-        
+
     } catch (error) {
         logger.error('Error during graceful shutdown:', { error });
         // Continue with shutdown even if there were errors
@@ -524,14 +536,14 @@ function setupWebDataHandlers() {
                     }
                     result = { id };
                     break;
-                
+
                 // USER
                 case 'get-user-profile':
                     // Adapter injects UID
                     result = await userRepository.getById();
                     break;
                 case 'update-user-profile':
-                     // Adapter injects UID
+                    // Adapter injects UID
                     result = await userRepository.update(payload);
                     break;
                 case 'find-or-create-user':
@@ -595,12 +607,12 @@ function setupWebDataHandlers() {
                     result = await presetRepository.delete(payload);
                     settingsService.notifyPresetUpdate('deleted', payload);
                     break;
-                
+
                 // BATCH
                 case 'get-batch-data':
                     const includes = payload ? payload.split(',').map(item => item.trim()) : ['profile', 'presets', 'sessions'];
                     const promises = {};
-            
+
                     if (includes.includes('profile')) {
                         // Adapter injects UID
                         promises.profile = userRepository.getById();
@@ -613,7 +625,7 @@ function setupWebDataHandlers() {
                         // Adapter injects UID
                         promises.sessions = sessionRepository.getAllByUserId();
                     }
-                    
+
                     const batchResult = {};
                     const promiseResults = await Promise.all(Object.values(promises));
                     Object.keys(promises).forEach((key, index) => {
@@ -632,7 +644,7 @@ function setupWebDataHandlers() {
             eventBridge.emit(responseChannel, { success: false, error: error.message });
         }
     };
-    
+
     eventBridge.on('web-data-request', handleRequest);
 }
 
@@ -643,27 +655,27 @@ async function handleCustomUrl(url) {
         console.log('URL:', url);
         console.log('========================================');
         logger.info('[Custom URL] Processing URL:', url);
-        
+
         // Validate and clean URL
         if (!url || typeof url !== 'string' || !(url.startsWith('pickleglass://') || url.startsWith('claire://'))) {
             console.log('❌ INVALID URL FORMAT:', url);
             logger.error('Invalid URL format:', { url });
             return;
         }
-        
+
         // Clean up URL by removing problematic characters
         const cleanUrl = url.replace(/[\\₩]/g, '');
-        
+
         // Additional validation
         if (cleanUrl !== url) {
             logger.info('[Custom URL] Cleaned URL from:', url, 'to:', cleanUrl);
             url = cleanUrl;
         }
-        
+
         const urlObj = new URL(url);
         const action = urlObj.hostname;
         const params = Object.fromEntries(urlObj.searchParams);
-        
+
         logger.info('[Custom URL] Action:', action, 'Params:', params);
 
         // Handle auth with subpath (e.g., pickleglass://auth/callback)
@@ -675,7 +687,7 @@ async function handleCustomUrl(url) {
                 const state = params.state;
                 console.log('✅ AUTH CALLBACK - code:', code, 'state:', state);
                 logger.info('[deeplink] received auth callback', { code, state });
-                
+
                 // Focus the app window
                 const { windowPool } = require('./window/windowManager.js');
                 const header = windowPool.get('header');
@@ -683,7 +695,7 @@ async function handleCustomUrl(url) {
                     if (header.isMinimized()) header.restore();
                     header.focus();
                 }
-                
+
                 // Send to renderer process
                 const { BrowserWindow } = require('electron');
                 BrowserWindow.getAllWindows().forEach(win => {
@@ -693,7 +705,7 @@ async function handleCustomUrl(url) {
                         win.webContents.send('header-controller:deep-link-received', { action: 'auth', subPath: 'callback' });
                     }
                 });
-                
+
                 await handleMobileAuthCallback(params);
             }
             return;
@@ -716,7 +728,7 @@ async function handleCustomUrl(url) {
                 if (header) {
                     if (header.isMinimized()) header.restore();
                     header.focus();
-                    
+
                     const targetUrl = `http://localhost:${WEB_PORT}/${action}`;
                     logger.info('Navigating webview to:');
                     header.webContents.loadURL(targetUrl);
@@ -742,46 +754,46 @@ async function handleMobileAuthCallback(params) {
         const isPackaged = app.isPackaged;
         const execPath = process.execPath || '';
         const isProduction = isPackaged || execPath.includes('Claire.exe') || execPath.includes('dist');
-        
+
         console.log('🔍 app.isPackaged:', isPackaged);
         console.log('🔍 process.execPath:', execPath);
         console.log('🔍 isProduction:', isProduction);
-        
+
         // In production, ALWAYS use Railway - ignore any .env values
-        const backendUrl = isProduction 
+        const backendUrl = isProduction
             ? 'https://backend-production-ba2c.up.railway.app'
             : 'http://localhost:3001';
         const exchangeUrl = `${backendUrl}/api/v1/auth/mobile-auth/exchange`;  // ✅ FIX: Ajout de /api/v1 dans le path
-        
+
         console.log('📡 Backend URL:', backendUrl);
         console.log('📡 Calling exchange API:', exchangeUrl);
         logger.info('[Auth] Exchanging session via web API:', exchangeUrl);
-        
+
         const fetch = require('node-fetch');
         const response = await fetch(exchangeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: code })
         });
-        
+
         console.log('📡 Exchange API response status:', response.status);
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             console.log('❌ Exchange API error:', errorText);
             logger.error('[Auth] Exchange API failed:', errorText);
             throw new Error(`Exchange failed: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('✅ Exchange API success:', data.success);
-        
+
         if (!data.success || !data.custom_token) {
             console.log('❌ No custom token in response');
             logger.error('[Auth] No custom token in response:', data);
             throw new Error('No custom token received');
         }
-        
+
         const custom_token = data.custom_token;
         console.log('🔑 Got custom token, signing in...');
         logger.info('[Auth] Got custom token, signing in...');
@@ -793,10 +805,10 @@ async function handleMobileAuthCallback(params) {
 
         // Sign in with the custom token (waits for onAuthStateChanged internally)
         await authService.signInWithCustomToken(custom_token);
-        
+
         console.log('🎉 Sign in successful!');
         logger.info('[Auth] signInWithCustomToken successful - user should be connected');
-        
+
         // Force broadcast to ensure UI updates
         console.log('📡 Broadcasting user state...');
         authService.broadcastUserState();
@@ -863,7 +875,7 @@ async function handleFirebaseAuthCallback(params) {
         } else {
             logger.error('Header window not found after auth callback.');
         }
-        
+
     } catch (error) {
         logger.error('Error during custom token exchange or sign-in:', { error });
         // The UI will not change, and the user can try again.
@@ -878,18 +890,18 @@ async function handleFirebaseAuthCallback(params) {
 
 function handlePersonalizeFromUrl(params) {
     logger.info('[Custom URL] Personalize params:', params);
-    
+
     const { windowPool } = require('./window/windowManager.js');
     const header = windowPool.get('header');
-    
+
     if (header) {
         if (header.isMinimized()) header.restore();
         header.focus();
-        
+
         const personalizeUrl = `http://localhost:${WEB_PORT}/settings`;
         logger.info('Navigating to personalize page:');
         header.webContents.loadURL(personalizeUrl);
-        
+
         BrowserWindow.getAllWindows().forEach(win => {
             safeWebContentsSend(win.webContents, 'enter-personalize-mode', {
                 message: 'Personalization mode activated',
@@ -903,16 +915,16 @@ function handlePersonalizeFromUrl(params) {
 
 function handleLocalModeFromUrl() {
     logger.info('[Custom URL] Local mode activation requested via protocol');
-    
+
     const { windowPool } = require('./window/windowManager.js');
     const header = windowPool.get('header');
-    
+
     if (header) {
         if (header.isMinimized()) header.restore();
         header.focus();
-        
+
         logger.info('[Custom URL] Focusing main window for local mode');
-        
+
         // Send event to renderer to confirm local mode activation
         BrowserWindow.getAllWindows().forEach(win => {
             safeWebContentsSend(win.webContents, 'local-mode-activated', {
@@ -926,214 +938,214 @@ function handleLocalModeFromUrl() {
 
 
 async function startWebStack() {
-  logger.info('NODE_ENV =', process.env.NODE_ENV); 
-  const isDev = !app.isPackaged;
+    logger.info('NODE_ENV =', process.env.NODE_ENV);
+    const isDev = !app.isPackaged;
 
-  const getAvailablePort = () => {
-    return new Promise((resolve, reject) => {
-      const server = require('net').createServer();
-      server.listen(0, (err) => {
-        if (err) reject(err);
-        const port = server.address().port;
-        server.close(() => resolve(port));
-      });
+    const getAvailablePort = () => {
+        return new Promise((resolve, reject) => {
+            const server = require('net').createServer();
+            server.listen(0, (err) => {
+                if (err) reject(err);
+                const port = server.address().port;
+                server.close(() => resolve(port));
+            });
+        });
+    };
+
+    // Use consistent ports for API and frontend to avoid conflicts
+    const apiPort = process.env.BACKEND_PORT || process.env.pickleglass_API_PORT || 3001;
+    const frontendPort = await getAvailablePort();
+
+    logger.info(`[TOOL] Allocated ports: API=${apiPort}, Frontend=${frontendPort}`);
+
+    const defaultProdApiUrl = 'https://backend-production-ba2c.up.railway.app';
+    const defaultProdWebUrl = 'https://app.clairia.app';
+    const defaultApiUrl = app.isPackaged ? defaultProdApiUrl : `http://localhost:${apiPort}`;
+    const defaultWebUrl = app.isPackaged ? defaultProdWebUrl : `http://localhost:${frontendPort}`;
+
+    // Set environment variables for inter-service communication (compatible with Glass/pickleglass)
+    if (!process.env.pickleglass_API_URL) {
+        process.env.pickleglass_API_URL = defaultApiUrl;
+    }
+    if (!process.env.pickleglass_WEB_URL) {
+        process.env.pickleglass_WEB_URL = defaultWebUrl;
+    }
+    if (!process.env.xerus_API_URL) {
+        process.env.xerus_API_URL = defaultApiUrl;
+    }
+    if (!process.env.XERUS_WEB_URL) {
+        process.env.XERUS_WEB_URL = defaultWebUrl;
+    }
+
+    logger.info(`🌍 Environment variables set:`, {
+        pickleglass_API_URL: process.env.pickleglass_API_URL,
+        pickleglass_WEB_URL: process.env.pickleglass_WEB_URL
     });
-  };
 
-  // Use consistent ports for API and frontend to avoid conflicts
-  const apiPort = process.env.BACKEND_PORT || process.env.pickleglass_API_PORT || 3001;
-  const frontendPort = await getAvailablePort();
+    // Backend is now running as standalone service on localhost:3001 (Glass) or localhost:5001 (new backend)
+    // No need to embed backend within Electron process
 
-  logger.info(`[TOOL] Allocated ports: API=${apiPort}, Frontend=${frontendPort}`);
+    const staticDir = app.isPackaged
+        ? path.join(process.resourcesPath, 'out')
+        : path.resolve(__dirname, '..', 'pickleglass_web', 'out');
 
-  const defaultProdApiUrl = 'https://backend-production-ba2c.up.railway.app';
-  const defaultProdWebUrl = 'https://app.clairia.app';
-  const defaultApiUrl = app.isPackaged ? defaultProdApiUrl : `http://localhost:${apiPort}`;
-  const defaultWebUrl = app.isPackaged ? defaultProdWebUrl : `http://localhost:${frontendPort}`;
+    const fs = require('fs');
 
-  // Set environment variables for inter-service communication (compatible with Glass/pickleglass)
-  if (!process.env.pickleglass_API_URL) {
-    process.env.pickleglass_API_URL = defaultApiUrl;
-  }
-  if (!process.env.pickleglass_WEB_URL) {
-    process.env.pickleglass_WEB_URL = defaultWebUrl;
-  }
-  if (!process.env.xerus_API_URL) {
-    process.env.xerus_API_URL = defaultApiUrl;
-  }
-  if (!process.env.XERUS_WEB_URL) {
-    process.env.XERUS_WEB_URL = defaultWebUrl;
-  }
-
-  logger.info(`🌍 Environment variables set:`, {
-    pickleglass_API_URL: process.env.pickleglass_API_URL,
-    pickleglass_WEB_URL: process.env.pickleglass_WEB_URL
-  });
-
-  // Backend is now running as standalone service on localhost:3001 (Glass) or localhost:5001 (new backend)
-  // No need to embed backend within Electron process
-
-  const staticDir = app.isPackaged
-    ? path.join(process.resourcesPath, 'out')
-    : path.resolve(__dirname, '..', 'pickleglass_web', 'out');
-
-  const fs = require('fs');
-
-  if (!fs.existsSync(staticDir)) {
-    logger.error(`============================================================`);
-    logger.error('Frontend build directory not found!');
-    logger.error(`Path: ${staticDir}`);
-    logger.error(`Please run 'npm run build:web' to build the frontend first.`);
-    logger.error(`============================================================`);
-    app.quit();
-    return;
-  }
-
-  const runtimeConfig = {
-    API_URL: `http://localhost:${apiPort}/api/v1`,
-    WEB_URL: `http://localhost:${frontendPort}`,
-    timestamp: Date.now(),
-    // Firebase environment variables for web app
-    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-  };
-  
-  // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] Settings File [Korean comment translated]
-  const tempDir = app.getPath('temp');
-  const configPath = path.join(tempDir, 'runtime-config.json');
-  fs.writeFileSync(configPath, JSON.stringify(runtimeConfig, null, 2));
-  logger.info(`[TEXT] Runtime config created in temp location: ${configPath}`);
-
-  const frontSrv = express();
-  
-  // Enable JSON body parsing for auth endpoints
-  frontSrv.use(express.json());
-  
-  // [Korean comment translated] /runtime-config.json[Korean comment translated] Request[Korean comment translated] [Korean comment translated] [Korean comment translated] File[Korean comment translated] [Korean comment translated]
-  frontSrv.get('/runtime-config.json', (req, res) => {
-    res.sendFile(configPath);
-  });
-
-  // Handle authentication callback from browser
-  frontSrv.post('/electron-auth-callback', async (req, res) => {
-    try {
-      const authData = req.body;
-      logger.info('[Auth HTTP] [TARGET] Received authentication data from browser:', {
-        uid: authData.uid,
-        email: authData.email,
-        hasToken: !!authData.idToken,
-        timestamp: authData.timestamp
-      });
-
-      if (!authData.idToken) {
-        logger.error('[Auth HTTP] [ERROR] Missing ID token in request');
-        return res.status(400).json({ error: 'Missing ID token' });
-      }
-
-      logger.info('[Auth HTTP] [LOADING] Processing ID token authentication directly');
-      
-      const userRepository = require('./common/repositories/user');
-      
-      // Create user object from auth data
-      const firebaseUser = {
-        uid: authData.uid,
-        email: authData.email || 'no-email@example.com',
-        displayName: authData.displayName || 'User',
-        photoURL: null
-      };
-
-      // 1. Sync user data to local DB
-      await userRepository.findOrCreate(firebaseUser);
-      logger.info('[Auth HTTP] User data synced with local DB.');
-
-      // 2. Use the new ID token authentication method
-      await authService.handleIdTokenAuthentication(authData);
-      logger.info('[Auth HTTP] [OK] Successfully processed ID token authentication via HTTP');
-      
-      // Force broadcast user state to ensure UI updates immediately
-      logger.info('[Auth HTTP] [SIGNAL] Broadcasting user state to all windows...');
-      setTimeout(() => {
-        authService.broadcastUserState();
-        logger.info('[Auth HTTP] [AUDIO] User state broadcast completed');
-        
-        // Initialize auto-updater now that user is authenticated
-        initAutoUpdaterOnAuth();
-      }, 500);
-      
-      res.json({ success: true, message: 'Authentication processed successfully' });
-    } catch (error) {
-      logger.error('[Auth HTTP] [ERROR] Error processing authentication:', { error: error.message });
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Handle local mode confirmation from browser
-  frontSrv.post('/electron-local-mode', (req, res) => {
-    try {
-      logger.info('[Local Mode HTTP] Local mode confirmation received from browser');
-      
-      // Local mode is already the default state, just acknowledge
-      res.json({ success: true, message: 'Local mode confirmed' });
-      
-      // Focus the main window
-      focusMainWindow();
-    } catch (error) {
-      logger.error('[Local Mode HTTP] Error processing local mode:', { error: error.message });
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  frontSrv.use((req, res, next) => {
-    if (req.path.indexOf('.') === -1 && req.path !== '/') {
-      const htmlPath = path.join(staticDir, req.path + '.html');
-      if (fs.existsSync(htmlPath)) {
-        return res.sendFile(htmlPath);
-      }
-    }
-    next();
-  });
-  
-  frontSrv.use(express.static(staticDir));
-  
-  const frontendServer = await new Promise((resolve, reject) => {
-    const server = frontSrv.listen(frontendPort, '127.0.0.1', () => resolve(server));
-    server.on('error', (error) => {
-      // Handle EPIPE errors gracefully for frontend server
-      if (error.code === 'EPIPE') {
-        logger.warn('[Frontend Server] EPIPE error (broken pipe/write), continuing...', { error: error.message });
+    if (!fs.existsSync(staticDir)) {
+        logger.error(`============================================================`);
+        logger.error('Frontend build directory not found!');
+        logger.error(`Path: ${staticDir}`);
+        logger.error(`Please run 'npm run build:web' to build the frontend first.`);
+        logger.error(`============================================================`);
+        app.quit();
         return;
-      }
-      reject(error);
-    });
-    app.once('before-quit', () => server.close());
-  });
-
-  logger.info(`[OK] Frontend server started on http://localhost:${frontendPort}`);
-
-  // Check if external backend service is running
-  try {
-    // Use ResourcePoolManager to prevent EPIPE errors during health check
-    logger.debug('[Index] Making backend health check request via ResourcePoolManager'); 
-    const response = await resourcePoolManager.queuedFetch(`http://localhost:${apiPort}/health`);
-    if (response.ok) {
-      logger.info(`[OK] External backend service detected on http://localhost:${apiPort}`);
-    } else {
-      logger.warn(`[WARNING] Backend service health check failed - status: ${response.status}`);
     }
-  } catch (error) {
-    logger.warn(`[WARNING] Cannot connect to external backend service on port ${apiPort}`);
-    logger.warn(`   Make sure to start the backend service: cd backend && npm start`);
-  }
-  
-  logger.info(`[START] Electron services ready:`);
-  logger.info(`   Frontend: http://localhost:${frontendPort}`);
-  logger.info(`   Expected Backend: http://localhost:${apiPort} (external service)`);
 
-  return frontendPort;
+    const runtimeConfig = {
+        API_URL: `http://localhost:${apiPort}/api/v1`,
+        WEB_URL: `http://localhost:${frontendPort}`,
+        timestamp: Date.now(),
+        // Firebase environment variables for web app
+        NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+    };
+
+    // [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated] Settings File [Korean comment translated]
+    const tempDir = app.getPath('temp');
+    const configPath = path.join(tempDir, 'runtime-config.json');
+    fs.writeFileSync(configPath, JSON.stringify(runtimeConfig, null, 2));
+    logger.info(`[TEXT] Runtime config created in temp location: ${configPath}`);
+
+    const frontSrv = express();
+
+    // Enable JSON body parsing for auth endpoints
+    frontSrv.use(express.json());
+
+    // [Korean comment translated] /runtime-config.json[Korean comment translated] Request[Korean comment translated] [Korean comment translated] [Korean comment translated] File[Korean comment translated] [Korean comment translated]
+    frontSrv.get('/runtime-config.json', (req, res) => {
+        res.sendFile(configPath);
+    });
+
+    // Handle authentication callback from browser
+    frontSrv.post('/electron-auth-callback', async (req, res) => {
+        try {
+            const authData = req.body;
+            logger.info('[Auth HTTP] [TARGET] Received authentication data from browser:', {
+                uid: authData.uid,
+                email: authData.email,
+                hasToken: !!authData.idToken,
+                timestamp: authData.timestamp
+            });
+
+            if (!authData.idToken) {
+                logger.error('[Auth HTTP] [ERROR] Missing ID token in request');
+                return res.status(400).json({ error: 'Missing ID token' });
+            }
+
+            logger.info('[Auth HTTP] [LOADING] Processing ID token authentication directly');
+
+            const userRepository = require('./common/repositories/user');
+
+            // Create user object from auth data
+            const firebaseUser = {
+                uid: authData.uid,
+                email: authData.email || 'no-email@example.com',
+                displayName: authData.displayName || 'User',
+                photoURL: null
+            };
+
+            // 1. Sync user data to local DB
+            await userRepository.findOrCreate(firebaseUser);
+            logger.info('[Auth HTTP] User data synced with local DB.');
+
+            // 2. Use the new ID token authentication method
+            await authService.handleIdTokenAuthentication(authData);
+            logger.info('[Auth HTTP] [OK] Successfully processed ID token authentication via HTTP');
+
+            // Force broadcast user state to ensure UI updates immediately
+            logger.info('[Auth HTTP] [SIGNAL] Broadcasting user state to all windows...');
+            setTimeout(() => {
+                authService.broadcastUserState();
+                logger.info('[Auth HTTP] [AUDIO] User state broadcast completed');
+
+                // Initialize auto-updater now that user is authenticated
+                initAutoUpdaterOnAuth();
+            }, 500);
+
+            res.json({ success: true, message: 'Authentication processed successfully' });
+        } catch (error) {
+            logger.error('[Auth HTTP] [ERROR] Error processing authentication:', { error: error.message });
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Handle local mode confirmation from browser
+    frontSrv.post('/electron-local-mode', (req, res) => {
+        try {
+            logger.info('[Local Mode HTTP] Local mode confirmation received from browser');
+
+            // Local mode is already the default state, just acknowledge
+            res.json({ success: true, message: 'Local mode confirmed' });
+
+            // Focus the main window
+            focusMainWindow();
+        } catch (error) {
+            logger.error('[Local Mode HTTP] Error processing local mode:', { error: error.message });
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    frontSrv.use((req, res, next) => {
+        if (req.path.indexOf('.') === -1 && req.path !== '/') {
+            const htmlPath = path.join(staticDir, req.path + '.html');
+            if (fs.existsSync(htmlPath)) {
+                return res.sendFile(htmlPath);
+            }
+        }
+        next();
+    });
+
+    frontSrv.use(express.static(staticDir));
+
+    const frontendServer = await new Promise((resolve, reject) => {
+        const server = frontSrv.listen(frontendPort, '127.0.0.1', () => resolve(server));
+        server.on('error', (error) => {
+            // Handle EPIPE errors gracefully for frontend server
+            if (error.code === 'EPIPE') {
+                logger.warn('[Frontend Server] EPIPE error (broken pipe/write), continuing...', { error: error.message });
+                return;
+            }
+            reject(error);
+        });
+        app.once('before-quit', () => server.close());
+    });
+
+    logger.info(`[OK] Frontend server started on http://localhost:${frontendPort}`);
+
+    // Check if external backend service is running
+    try {
+        // Use ResourcePoolManager to prevent EPIPE errors during health check
+        logger.debug('[Index] Making backend health check request via ResourcePoolManager');
+        const response = await resourcePoolManager.queuedFetch(`http://localhost:${apiPort}/health`);
+        if (response.ok) {
+            logger.info(`[OK] External backend service detected on http://localhost:${apiPort}`);
+        } else {
+            logger.warn(`[WARNING] Backend service health check failed - status: ${response.status}`);
+        }
+    } catch (error) {
+        logger.warn(`[WARNING] Cannot connect to external backend service on port ${apiPort}`);
+        logger.warn(`   Make sure to start the backend service: cd backend && npm start`);
+    }
+
+    logger.info(`[START] Electron services ready:`);
+    logger.info(`   Frontend: http://localhost:${frontendPort}`);
+    logger.info(`   Expected Backend: http://localhost:${apiPort} (external service)`);
+
+    return frontendPort;
 }
 
 // Auto-update initialization (called after user authentication)
@@ -1144,7 +1156,7 @@ async function initAutoUpdaterOnAuth() {
     if (autoUpdaterInitialized) {
         return;
     }
-    
+
     const currentUser = authService.getCurrentUser();
     if (!currentUser || !currentUser.isLoggedIn) {
         logger.info('[AutoUpdater] Skipped - user not authenticated');
@@ -1158,7 +1170,7 @@ async function initAutoUpdaterOnAuth() {
             autoUpdaterInitialized = true; // Mark as initialized even if disabled
             return;
         }
-        
+
         // Skip auto-updater in development mode
         if (!app.isPackaged) {
             logger.info('[AutoUpdater] Skipped in development (app is not packaged)');
@@ -1213,7 +1225,7 @@ async function initAutoUpdaterOnAuth() {
                 }
             });
         });
-        
+
         autoUpdaterInitialized = true;
         logger.info('[AutoUpdater] [OK] Auto-updater initialized successfully');
     } catch (e) {
@@ -1223,26 +1235,26 @@ async function initAutoUpdaterOnAuth() {
 
 // Multi-provider API key management for web dashboard
 ipcMain.handle('get-all-api-key-status', async (event, { userId }) => {
-  try {
-    // Returns { openai: true, gemini: false, ... }
-    return await modelStateService.getAllApiKeyStatus(userId);
-  } catch (err) {
-    return { error: err.message };
-  }
+    try {
+        // Returns { openai: true, gemini: false, ... }
+        return await modelStateService.getAllApiKeyStatus(userId);
+    } catch (err) {
+        return { error: err.message };
+    }
 });
 ipcMain.handle('get-all-api-keys', async (event, { userId }) => {
-  try {
-    return await modelStateService.getAllApiKeys(userId);
-  } catch (err) {
-    return { error: err.message };
-  }
+    try {
+        return await modelStateService.getAllApiKeys(userId);
+    } catch (err) {
+        return { error: err.message };
+    }
 });
 ipcMain.handle('remove-api-key', async (event, { userId, provider }) => {
-  try {
-    await modelStateService.removeApiKey(provider, userId);
-    return { success: true };
-  } catch (err) {
-    return { error: err.message };
-  }
+    try {
+        await modelStateService.removeApiKey(provider, userId);
+        return { success: true };
+    } catch (err) {
+        return { error: err.message };
+    }
 });
 

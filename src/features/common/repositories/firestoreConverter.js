@@ -16,7 +16,8 @@ function createEncryptedConverter(fieldsToEncrypt = []) {
             const firestoreData = { ...appObject };
             for (const field of fieldsToEncrypt) {
                 if (Object.prototype.hasOwnProperty.call(firestoreData, field) && firestoreData[field] != null) {
-                    firestoreData[field] = encryptionService.encrypt(firestoreData[field]);
+                    // Encryption disabled for interoperability with web platform
+                    // firestoreData[field] = encryptionService.encrypt(firestoreData[field]);
                 }
             }
             // Ensure there's a timestamp for the last modification
@@ -32,7 +33,7 @@ function createEncryptedConverter(fieldsToEncrypt = []) {
             const appObject = { ...firestoreData, id: snapshot.id }; // include the document ID
 
             for (const field of fieldsToEncrypt) {
-                 if (Object.prototype.hasOwnProperty.call(appObject, field) && appObject[field] != null) {
+                if (Object.prototype.hasOwnProperty.call(appObject, field) && appObject[field] != null) {
                     try {
                         appObject[field] = encryptionService.decrypt(appObject[field]);
                     } catch (error) {
@@ -49,7 +50,7 @@ function createEncryptedConverter(fieldsToEncrypt = []) {
                     appObject[key] = appObject[key].seconds;
                 }
             }
-            
+
             return appObject;
         }
     };

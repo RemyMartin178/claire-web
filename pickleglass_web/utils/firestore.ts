@@ -1,17 +1,17 @@
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  collection, 
-  getDocs, 
-  addDoc, 
-  query, 
-  orderBy, 
-  writeBatch, 
-  serverTimestamp, 
-  Timestamp 
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+  addDoc,
+  query,
+  orderBy,
+  writeBatch,
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore'
 import { db as firestore, auth } from './firebase'
 import { FirebaseErrorHandler } from './errorHandler'
@@ -93,12 +93,12 @@ export class FirestoreUserService {
       cancelAtPeriodEnd: false,
       updatedAt: serverTimestamp(),
     };
-    
+
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
         console.log(`FirestoreUserService: Attempt ${attempt} - Ensuring valid token...`);
         await this.ensureValidToken();
-        
+
         console.log(`FirestoreUserService: Attempt ${attempt} - Checking existing document...`);
         const existingDoc = await getDoc(userRef);
         if (existingDoc.exists()) {
@@ -119,13 +119,13 @@ export class FirestoreUserService {
           createdAt: 'serverTimestamp()',
           subscription: defaultSubscription
         });
-        
+
         await setDoc(userRef, {
           ...profile,
           createdAt: serverTimestamp(),
           subscription: defaultSubscription
         });
-        
+
         console.log('FirestoreUserService: User created successfully on attempt', attempt);
         return;
       } catch (error: any) {
@@ -135,23 +135,23 @@ export class FirestoreUserService {
           message: error.message,
           uid: uid
         });
-        
+
         if (attempt === this.MAX_RETRIES) {
           throw new Error(`Failed to create user after ${this.MAX_RETRIES} attempts: ${FirebaseErrorHandler.getUserFriendlyMessage(error)}`);
         }
-        
+
         if (error.code === 'permission-denied') {
           console.error('FirestoreUserService: Permission denied - checking auth state...');
           const currentUser = auth.currentUser;
           console.error('FirestoreUserService: Current auth user:', currentUser?.uid, currentUser?.email);
           throw new Error('Permission denied. Please check your authentication status.');
         }
-        
+
         if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
           await this.delay(this.RETRY_DELAY * attempt);
           continue;
         }
-        
+
         throw error;
       }
     }
@@ -161,17 +161,17 @@ export class FirestoreUserService {
     try {
       console.log('FirestoreUserService: Getting user for uid:', uid);
       await this.ensureValidToken();
-      
+
       const userRef = doc(firestore, 'users', uid);
       console.log('FirestoreUserService: User ref path:', userRef.path);
-      
+
       const userSnap = await getDoc(userRef);
-      
+
       if (!userSnap.exists()) {
         console.warn("FirestoreUserService: User document does not exist for uid:", uid);
         return null;
       }
-      
+
       const userData = userSnap.data() as FirestoreUserProfile;
       console.log('FirestoreUserService: User data retrieved successfully:', userData);
       return userData;
@@ -182,17 +182,17 @@ export class FirestoreUserService {
         message: error.message,
         uid: uid
       });
-      
+
       if (error.code === 'permission-denied') {
         console.error('FirestoreUserService: Permission denied for user:', uid);
         return null;
       }
-      
+
       if (error.code === 'unavailable' || error.code === 'deadline-exceeded') {
         console.error('FirestoreUserService: Network error, returning null');
         return null;
       }
-      
+
       return null;
     }
   };
@@ -200,7 +200,7 @@ export class FirestoreUserService {
   static updateUser = async (uid: string, updates: Partial<FirestoreUserProfile>): Promise<void> => {
     try {
       await this.ensureValidToken();
-      
+
       const userRef = doc(firestore, 'users', uid);
       await updateDoc(userRef, updates);
     } catch (error: any) {
@@ -212,36 +212,36 @@ export class FirestoreUserService {
   static deleteUser = async (uid: string): Promise<void> => {
     try {
       await this.ensureValidToken();
-      
+
       const batch = writeBatch(firestore);
-      
+
       const sessionsRef = collection(firestore, 'users', uid, 'sessions');
       const sessionsSnap = await getDocs(sessionsRef);
-      
+
       for (const sessionDoc of sessionsSnap.docs) {
         const sessionId = sessionDoc.id;
-        
+
         const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
         const transcriptsSnap = await getDocs(transcriptsRef);
         transcriptsSnap.docs.forEach(doc => batch.delete(doc.ref));
-        
-        const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'aiMessages');
+
+        const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'ai_messages');
         const aiMessagesSnap = await getDocs(aiMessagesRef);
         aiMessagesSnap.docs.forEach(doc => batch.delete(doc.ref));
-        
+
         const summaryRef = doc(firestore, 'users', uid, 'sessions', sessionId, 'summary', 'data');
         batch.delete(summaryRef);
-        
+
         batch.delete(sessionDoc.ref);
       }
-      
+
       const presetsRef = collection(firestore, 'users', uid, 'promptPresets');
       const presetsSnap = await getDocs(presetsRef);
       presetsSnap.docs.forEach(doc => batch.delete(doc.ref));
-      
+
       const userRef = doc(firestore, 'users', uid);
       batch.delete(userRef);
-      
+
       await batch.commit();
     } catch (error: any) {
       console.error('FirestoreUserService: Error deleting user:', error, { uid });
@@ -252,15 +252,15 @@ export class FirestoreUserService {
   private static async ensureValidToken(): Promise<void> {
     const user = auth.currentUser;
     console.log('FirestoreUserService: Current user:', user?.uid, user?.email);
-    
+
     if (!user) {
       throw new Error('No authenticated user found');
     }
-    
+
     try {
       const token = await user.getIdToken(true);
       console.log('FirestoreUserService: Token refreshed successfully, length:', token.length);
-      
+
       // Decode token to check claims and expiration
       const tokenParts = token.split('.');
       if (tokenParts.length === 3) {
@@ -273,7 +273,7 @@ export class FirestoreUserService {
             iat: new Date(payload.iat * 1000).toISOString(),
             auth_time: new Date(payload.auth_time * 1000).toISOString()
           });
-          
+
           // Check if token is expired
           const now = Math.floor(Date.now() / 1000);
           if (payload.exp < now) {
@@ -284,7 +284,7 @@ export class FirestoreUserService {
           console.log('FirestoreUserService: Could not decode token payload');
         }
       }
-      
+
       await this.delay(200);
     } catch (error: any) {
       console.error('FirestoreUserService: Token refresh failed:', error);
@@ -315,13 +315,18 @@ export class FirestoreSessionService {
 
   static async getSessions(uid: string): Promise<Array<{ id: string } & FirestoreSession>> {
     const sessionsRef = collection(firestore, 'users', uid, 'sessions');
-    const q = query(sessionsRef, orderBy('startedAt', 'desc'));
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => ({
+    const querySnapshot = await getDocs(sessionsRef);
+
+    const docs = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data() as FirestoreSession
     }));
+    // Sort in memory to support both startedAt and started_at
+    return docs.sort((a: any, b: any) => {
+      const aTime = a.startedAt?.toMillis?.() || a.started_at?.toMillis?.() || 0;
+      const bTime = b.startedAt?.toMillis?.() || b.started_at?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
   }
 
   static async updateSession(uid: string, sessionId: string, updates: Partial<FirestoreSession>) {
@@ -331,21 +336,21 @@ export class FirestoreSessionService {
 
   static async deleteSession(uid: string, sessionId: string) {
     const batch = writeBatch(firestore);
-    
+
     const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
     const transcriptsSnap = await getDocs(transcriptsRef);
     transcriptsSnap.docs.forEach(doc => batch.delete(doc.ref));
-    
-    const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'aiMessages');
+
+    const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'ai_messages');
     const aiMessagesSnap = await getDocs(aiMessagesRef);
     aiMessagesSnap.docs.forEach(doc => batch.delete(doc.ref));
-    
+
     const summaryRef = doc(firestore, 'users', uid, 'sessions', sessionId, 'summary', 'data');
     batch.delete(summaryRef);
-    
+
     const sessionRef = doc(firestore, 'users', uid, 'sessions', sessionId);
     batch.delete(sessionRef);
-    
+
     await batch.commit();
   }
 }
@@ -362,19 +367,24 @@ export class FirestoreTranscriptService {
 
   static async getTranscripts(uid: string, sessionId: string): Promise<Array<{ id: string } & FirestoreTranscript>> {
     const transcriptsRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'transcripts');
-    const q = query(transcriptsRef, orderBy('startAt', 'asc'));
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => ({
+    const querySnapshot = await getDocs(transcriptsRef);
+
+    const docs = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data() as FirestoreTranscript
     }));
+
+    return docs.sort((a: any, b: any) => {
+      const aTime = a.startAt?.toMillis?.() || a.start_at?.toMillis?.() || 0;
+      const bTime = b.startAt?.toMillis?.() || b.start_at?.toMillis?.() || 0;
+      return aTime - bTime;
+    });
   }
 }
 
 export class FirestoreAiMessageService {
   static async addAiMessage(uid: string, sessionId: string, message: Omit<FirestoreAiMessage, 'createdAt'>): Promise<string> {
-    const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'aiMessages');
+    const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'ai_messages');
     const docRef = await addDoc(aiMessagesRef, {
       ...message,
       createdAt: serverTimestamp()
@@ -383,14 +393,19 @@ export class FirestoreAiMessageService {
   }
 
   static async getAiMessages(uid: string, sessionId: string): Promise<Array<{ id: string } & FirestoreAiMessage>> {
-    const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'aiMessages');
-    const q = query(aiMessagesRef, orderBy('sentAt', 'asc'));
-    const querySnapshot = await getDocs(q);
-    
-    return querySnapshot.docs.map(doc => ({
+    const aiMessagesRef = collection(firestore, 'users', uid, 'sessions', sessionId, 'ai_messages');
+    const querySnapshot = await getDocs(aiMessagesRef);
+
+    const docs = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data() as FirestoreAiMessage
     }));
+
+    return docs.sort((a: any, b: any) => {
+      const aTime = a.sentAt?.toMillis?.() || a.sent_at?.toMillis?.() || 0;
+      const bTime = b.sentAt?.toMillis?.() || b.sent_at?.toMillis?.() || 0;
+      return aTime - bTime;
+    });
   }
 }
 
@@ -421,7 +436,7 @@ export class FirestorePromptPresetService {
     const presetsRef = collection(firestore, 'users', uid, 'promptPresets');
     const q = query(presetsRef, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
-    
+
     return querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data() as FirestorePromptPreset

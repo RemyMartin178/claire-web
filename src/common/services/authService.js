@@ -39,22 +39,22 @@ class AuthService {
             const { initializeFirebase } = require('./firebaseClient');
             await initializeFirebase();
             logger.info('[AuthService] Firebase client initialized');
-            
+
             const auth = getFirebaseAuth();
             let resolved = false;
-            
+
             // Add timeout to prevent infinite hang when Firebase is inaccessible
             const timeoutId = setTimeout(() => {
                 if (!resolved) {
                     resolved = true;
                     logger.warn('[AuthService] Firebase initialization timeout - continuing in local mode');
-                    
+
                     // Set up local/guest mode
                     this.currentUser = null;
                     this.currentUserId = 'default_user';
                     this.currentUserMode = 'local';
                     this.isFirebaseClientReady = false;
-                    
+
                     // Initialize encryption for local user
                     encryptionService.initializeKey(this.currentUserId).then(() => {
                         this.broadcastUserState();
@@ -68,7 +68,7 @@ class AuthService {
                     });
                 }
             }, 2000); // 2 second timeout - faster startup
-            
+
             onAuthStateChanged(auth, async (user) => {
                 const previousUser = this.currentUser;
 
@@ -90,6 +90,16 @@ class AuthService {
 
                     // ** Initialize encryption key for the logged-in user **
                     await encryptionService.initializeKey(user.uid);
+
+                    // --- DECRYPTION MIGRATION INJECTION ---
+                    try {
+                        logger.info(`[AuthService] Running decryption migration for UID: ${user.uid}`);
+                        const { decryptUserData } = require('../../scripts/decrypt_firestore');
+                        decryptUserData(user.uid); // run async in background
+                    } catch (e) {
+                        logger.error('[AuthService] Decryption migration failed to start:', e);
+                    }
+                    // --------------------------------------
 
                     // ** Check for and run data migration for the user **
                     // No 'await' here, so it runs in the background without blocking startup.
@@ -127,10 +137,10 @@ class AuthService {
                     // ** Initialize encryption key for the default/local user **
                     await encryptionService.initializeKey(this.currentUserId);
                 }
-                
+
                 // ALWAYS broadcast user state changes, not just during initialization
                 this.broadcastUserState();
-                
+
                 // Resolve initialization promise only once
                 if (!this.isInitialized && !resolved) {
                     resolved = true;
@@ -150,20 +160,20 @@ class AuthService {
             // Use production URL when packaged, localhost in dev
             const { app } = require('electron');
             const isPackaged = app.isPackaged;
-            const webUrl = isPackaged 
-                ? 'https://app.clairia.app' 
+            const webUrl = isPackaged
+                ? 'https://app.clairia.app'
                 : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
-            
+
             // Generate unique session ID before opening browser
             const sessionId = 'sess-' + Math.random().toString(36).slice(2, 15);
             logger.info('[Auth] Created session ID:', sessionId);
-            
+
             // Open login page with mobile flow and session ID
             const authUrl = `${webUrl}/auth/login?flow=mobile&session_id=${sessionId}`;
             logger.info('[Auth] Opening login page with mobile flow:', authUrl);
             await shell.openExternal(authUrl);
             logger.info('[Auth] Opened login URL - waiting for deeplink callback');
-            
+
             return { success: true };
         } catch (error) {
             logger.error('[Auth] Failed to open login URL:', { error });
@@ -182,7 +192,7 @@ class AuthService {
 
         const pollForAuth = async () => {
             pollAttempts++;
-            
+
             if (pollAttempts > maxAttempts) {
                 logger.info('[Auth] Polling timeout - stopping auth polling');
                 clearInterval(this.authPollingInterval);
@@ -202,7 +212,7 @@ class AuthService {
                 });
 
                 await tempWindow.loadURL(webUrl);
-                
+
                 const authResult = await tempWindow.webContents.executeJavaScript(`
                     localStorage.getItem('electron_auth_result')
                 `);
@@ -215,7 +225,7 @@ class AuthService {
                     this.authPollingInterval = null;
 
                     const authData = JSON.parse(authResult);
-                    
+
                     // Clear the localStorage item
                     const clearWindow = new BrowserWindow({
                         show: false,
@@ -251,19 +261,19 @@ class AuthService {
             logger.info('[Auth] Signing in with custom token...');
             const userCredential = await signInWithCustomToken(auth, token);
             logger.info('[Auth] ✅ signInWithCustomToken completed, user:', { uid: userCredential.user.uid, email: userCredential.user.email });
-            
+
             // MANUALLY update state immediately (don't wait for onAuthStateChanged)
             this.currentUser = userCredential.user;
             this.currentUserId = userCredential.user.uid;
             this.currentUserMode = 'firebase';
             this.isFirebaseClientReady = true;
-            
+
             logger.info('[Auth] ✅ User state manually updated');
-            
+
             // Initialize encryption for the logged-in user
             await encryptionService.initializeKey(userCredential.user.uid);
             logger.info('[Auth] ✅ Encryption key initialized');
-            
+
             // Clean up zombie sessions (with error handling for Firestore permissions)
             try {
                 await sessionRepository.endAllActiveSessions();
@@ -271,7 +281,7 @@ class AuthService {
             } catch (sessionError) {
                 logger.warn('[Auth] ⚠️ Session cleanup failed (non-critical):', sessionError.message);
             }
-            
+
             logger.info('[Auth] ✅ signInWithCustomToken completed successfully');
         } catch (error) {
             logger.error('[Auth] ❌ Error signing in with custom token:', { error: error.message, stack: error.stack });
@@ -282,7 +292,7 @@ class AuthService {
     async handleIdTokenAuthentication(authData) {
         try {
             logger.info('[Auth] [TARGET] Starting ID token authentication for:', { uid: authData.uid, email: authData.email });
-            
+
             // Set user state and mark ready for the repositories to use
             // The repositories will handle the Firebase client authentication internally
             logger.info('[Auth] [TEXT] Step 1: Setting authenticated user state');
@@ -295,11 +305,11 @@ class AuthService {
             this.currentUserId = authData.uid;
             this.currentUserMode = 'firebase';
             this.isFirebaseClientReady = true; // This tells repositories the user is authenticated
-            
+
             logger.info('[Auth] [SECURE] Step 2: Initializing encryption key');
             await encryptionService.initializeKey(this.currentUserId);
             logger.info('[Auth] [OK] Encryption key initialized successfully');
-            
+
             logger.info('[Auth] [CLEAN] Step 3: Cleaning up zombie sessions');
             try {
                 await sessionRepository.endAllActiveSessions();
@@ -307,20 +317,20 @@ class AuthService {
             } catch (sessionError) {
                 logger.warn('[Auth] [WARNING] Session cleanup failed (non-critical):', { error: sessionError.message });
             }
-            
+
             logger.info('[Auth] 🛑 Step 4: Stopping any active polling');
             if (this.authPollingInterval) {
                 clearInterval(this.authPollingInterval);
                 this.authPollingInterval = null;
                 logger.info('[Auth] [OK] Auth polling stopped');
             }
-            
+
             logger.info('[Auth] [SIGNAL] Step 5: Broadcasting user state');
             this.broadcastUserState();
             logger.info('[Auth] [OK] User state broadcast completed');
-            
+
             logger.info('[Auth] 🎉 ID token authentication completed successfully');
-            
+
         } catch (error) {
             logger.error('[Auth] [ERROR] Error in ID token authentication:', { error: error.message });
             throw error;
@@ -330,7 +340,7 @@ class AuthService {
     async signOut() {
         try {
             const auth = getFirebaseAuth();
-            
+
             // Clear any ongoing auth polling
             if (this.authPollingInterval) {
                 clearInterval(this.authPollingInterval);
@@ -348,17 +358,17 @@ class AuthService {
 
             await signOut(auth);
             logger.info('[AuthService] ✅ User sign-out successful');
-            
+
             // Manually update state to local mode
             this.currentUser = null;
             this.currentUserId = 'default_user';
             this.currentUserMode = 'local';
             this.isFirebaseClientReady = false;
-            
+
             // Broadcast the state change (will trigger HeaderController)
             this.broadcastUserState();
             logger.info('[AuthService] ✅ User state broadcast after sign out');
-            
+
         } catch (error) {
             logger.error('[AuthService] ❌ Error signing out:', { error: error.message });
             // Even if sign out fails, reset to local mode
@@ -369,7 +379,7 @@ class AuthService {
             this.broadcastUserState();
         }
     }
-    
+
     broadcastUserState() {
         const userState = this.getCurrentUser();
         logger.info('[AuthService] Broadcasting user state change:', userState);

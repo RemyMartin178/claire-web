@@ -718,9 +718,10 @@ function createFeatureWindows(header, namesToCreate) {
                         }
                     });
                 }
-                if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
+                // DevTools disabled by default
+                /* if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
                     listen.webContents.openDevTools({ mode: 'detach' });
-                }
+                } */
                 windowPool.set('listen', listen);
                 // Apply current theme to the listen window
                 applyThemeToNewWindow(listen, 'listen');
@@ -759,9 +760,10 @@ function createFeatureWindows(header, namesToCreate) {
                 }
 
                 // Open DevTools in development
-                if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
+                // DevTools disabled by default
+                /* if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
                     ask.webContents.openDevTools({ mode: 'detach' });
-                }
+                } */
                 windowPool.set('ask', ask);
                 // Apply current theme to the ask window
                 applyThemeToNewWindow(ask, 'ask');
@@ -803,9 +805,10 @@ function createFeatureWindows(header, namesToCreate) {
                 // Apply current theme to the settings window
                 applyThemeToNewWindow(settings, 'settings');
 
-                if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
+                // DevTools disabled by default
+                /* if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
                     settings.webContents.openDevTools({ mode: 'detach' });
-                }
+                } */
                 break;
             }
 
@@ -859,9 +862,10 @@ function createFeatureWindows(header, namesToCreate) {
                 // Apply current theme to the agent selector window
                 applyThemeToNewWindow(agentSelector, 'agent-selector');
 
-                if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
+                // DevTools disabled by default
+                /* if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
                     agentSelector.webContents.openDevTools({ mode: 'detach' });
-                }
+                } */
                 break;
             }
 
@@ -899,9 +903,10 @@ function createFeatureWindows(header, namesToCreate) {
                 windowPool.set('shortcut-settings', shortcutEditor);
                 // Apply current theme to the shortcut editor window
                 applyThemeToNewWindow(shortcutEditor, 'shortcut-settings');
-                if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
+                // DevTools disabled by default
+                /* if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
                     shortcutEditor.webContents.openDevTools({ mode: 'detach' });
-                }
+                } */
                 break;
             }
         }
@@ -1045,10 +1050,10 @@ function createWindows() {
     header.setContentProtection(isContentProtectionOn);
     header.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-    // Open DevTools in development
-    if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
+    // DevTools disabled by default
+    /* if (!app.isPackaged && process.env.OPEN_DEV_TOOLS === 'true') {
         header.webContents.openDevTools({ mode: 'detach' });
-    }
+    } */
 
     header.on('focus', () => {
         logger.info('[WindowManager] Header gained focus');

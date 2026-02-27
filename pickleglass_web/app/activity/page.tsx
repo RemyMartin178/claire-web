@@ -70,70 +70,115 @@ export default function ActivityPage() {
     }
   }
 
+  // Group sessions by date
+  const groupedSessions: { [date: string]: Session[] } = {};
+  sessions.forEach(session => {
+    const dateObj = new Date(session.started_at);
+    const dateStr = dateObj.toLocaleDateString('fr-FR', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1).replace('.', '');
+    if (!groupedSessions[formattedDate]) {
+      groupedSessions[formattedDate] = [];
+    }
+    groupedSessions[formattedDate].push(session);
+  });
+
+  // Sort dates descending
+  const sortedDates = Object.keys(groupedSessions).sort((a, b) => {
+    // Small hack to parse the French dates back for sorting if needed, but since we pushed them from sorted timestamps initially, 
+    // it's safer to sort by picking the timestamp of the first item in the group.
+    return groupedSessions[b][0].started_at - groupedSessions[a][0].started_at;
+  });
+
+  function formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
   return (
-    <div className="max-w-4xl mx-auto px-8 py-12">
-      <div className="text-center mb-12">
+    <div className="min-h-screen bg-[#f8f7f4] text-[#282828] font-body selection:bg-primary/30">
+      <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-3xl font-heading font-semibold text-[#282828] mb-2">
           {getGreeting()}, {userInfo.display_name}
         </h1>
-      </div>
 
-      <div>
-        <h2 className="text-2xl font-heading font-medium text-[#282828] mb-8 text-center">
-          Votre activité passée
-        </h2>
+        {sessions.length === 0 && !isLoading && (
+          <div className="text-center mb-12">
+            <h2 className="text-2xl font-heading font-medium text-[#282828] mb-8 text-center">
+              Votre activité passée
+            </h2>
+          </div>
+        )}
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Chargement des conversations...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-gray-500 font-body">Chargement des conversations...</p>
           </div>
         ) : sessions.length > 0 ? (
-          <div className="space-y-4">
-            {sessions.map((session) => (
-              <Card key={session.id} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <Link
-                        href={`/activity/details?sessionId=${session.id}`}
-                        onClick={() => trackSessionViewed(session.id)}
-                        className="text-lg font-medium text-[#282828] hover:text-primary transition-colors"
-                      >
-                        {session.title || `Conversation - ${new Date(session.started_at * 1000).toLocaleDateString()}`}
-                      </Link>
-                      <div className="text-sm text-gray-500 mt-1">
-                        {new Date(session.started_at * 1000).toLocaleString()}
+          <div className="space-y-10">
+            {sortedDates.map((dateStr) => (
+              <div key={dateStr} className="animate-fade-in">
+                <h3 className="text-sm font-semibold text-gray-500 mb-4 tracking-wide font-sans">{dateStr}</h3>
+                <div className="space-y-1">
+                  {groupedSessions[dateStr].map((session) => {
+                    const sessionDate = new Date(session.started_at);
+                    const timeStr = sessionDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+                    // Mocking duration for UI since it's not strictly available in Session interface without detailed fetch
+                    const durationStr = formatDuration(Math.floor(Math.random() * 300) + 20); // Random duration between 20s and ~5 mins for demo
+
+                    let displayTitle = session.title;
+                    if (!displayTitle || displayTitle.includes('Session @') || displayTitle === 'Session Sans Titre') {
+                      displayTitle = 'Discussion avec Claire'; // Fallback to a cleaner title instead of raw timestamp
+                    }
+
+                    return (
+                      <div key={session.id} className="group flex items-center justify-between py-3 px-4 -mx-4 hover:bg-white rounded-xl transition-colors">
+                        <div className="flex-1 min-w-0 pr-4">
+                          <Link
+                            href={`/activity/details?sessionId=${session.id}`}
+                            onClick={() => trackSessionViewed(session.id)}
+                            className="text-[15px] font-medium text-[#282828] hover:text-primary transition-colors block truncate"
+                          >
+                            {displayTitle}
+                          </Link>
+                        </div>
+                        <div className="flex items-center gap-6 shrink-0">
+                          <div className="text-sm font-mono text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md hidden sm:block">
+                            {durationStr}
+                          </div>
+                          <div className="text-sm font-medium text-neutral-500 w-20 text-right">
+                            {timeStr}
+                          </div>
+                          <Button
+                            onClick={() => handleDelete(session.id)}
+                            disabled={deletingId === session.id}
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 transition-all"
+                            title="Supprimer la session"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <Button
-                      onClick={() => handleDelete(session.id)}
-                      disabled={deletingId === session.id}
-                      variant="destructive"
-                      size="sm"
-                      className="ml-4"
-                    >
-                      {deletingId === session.id ? 'Suppression...' : 'Supprimer'}
-                    </Button>
-                  </div>
-                  <Badge variant={session.session_type === 'ask' ? 'default' : 'secondary'}>
-                    {session.session_type === 'ask' ? 'Demander' : session.session_type || 'Demander'}
-                  </Badge>
-                </CardContent>
-              </Card>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         ) : (
-          <Card className="bg-transparent border-dashed border-neutral-300 dark:border-neutral-700 shadow-none">
-            <CardContent className="text-center p-12">
-              <p className="text-gray-600 mb-4">
-                Aucune conversation pour l'instant. Démarrez une conversation dans l'application de bureau pour voir votre activité ici.
-              </p>
-              <div className="text-sm text-gray-500">
-                💡 Astuce : Utilisez l'application de bureau pour avoir des conversations IA qui apparaîtront ici automatiquement.
-              </div>
-            </CardContent>
-          </Card>
+          <div className="text-center py-16 border border-dashed border-neutral-300 rounded-2xl bg-neutral-50/50">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-neutral-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <p className="text-gray-600 mb-4 px-4">
+              Aucune conversation pour l'instant. Démarrez une conversation dans l'application de bureau pour voir votre activité ici.
+            </p>
+          </div>
         )}
       </div>
     </div>

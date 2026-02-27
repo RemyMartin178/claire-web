@@ -77,18 +77,33 @@ export interface PromptPreset {
 }
 
 export interface SessionDetails {
-    session: Session;
-    transcripts: Transcript[];
-    ai_messages: AiMessage[];
-    summary: Summary | null;
+  session: Session;
+  transcripts: Transcript[];
+  ai_messages: AiMessage[];
+  summary: Summary | null;
 }
 
 const isFirebaseMode = (): boolean => {
   return true; // Always use Firebase mode
 };
 
-const timestampToUnix = (timestamp: Timestamp): number => {
-  return timestamp.toMillis();
+const timestampToUnix = (timestamp: Timestamp | any): number => {
+  if (!timestamp) return 0;
+  // If it's a firebase Timestamp, toMillis exists
+  if (typeof timestamp.toMillis === 'function') {
+    return timestamp.toMillis();
+  }
+  // If it's already a number (unix ms), return it
+  if (typeof timestamp === 'number') {
+    // Check if it looks like seconds instead of ms
+    if (timestamp < 1000000000000) return timestamp * 1000;
+    return timestamp;
+  }
+  // If it's a seconds/nanoseconds object
+  if (timestamp.seconds) {
+    return timestamp.seconds * 1000 + Math.floor((timestamp.nanoseconds || 0) / 1000000);
+  }
+  return 0;
 };
 
 const unixToTimestamp = (unix: number): Timestamp => {
@@ -111,13 +126,13 @@ const convertFirestoreSession = (session: { id: string } & any, uid: string): Se
 const convertFirestoreTranscript = (transcript: { id: string } & any): Transcript => {
   return {
     id: transcript.id,
-    session_id: transcript.id,
-    start_at: timestampToUnix(transcript.startAt),
-    end_at: timestampToUnix(transcript.endAt),
+    session_id: transcript.sessionId || transcript.session_id || transcript.id,
+    start_at: timestampToUnix(transcript.startAt || transcript.start_at),
+    end_at: timestampToUnix(transcript.endAt || transcript.end_at),
     speaker: transcript.speaker,
     text: transcript.text,
     lang: transcript.lang,
-    created_at: timestampToUnix(transcript.createdAt),
+    created_at: timestampToUnix(transcript.createdAt || transcript.created_at),
     sync_state: 'clean'
   };
 };
@@ -125,28 +140,31 @@ const convertFirestoreTranscript = (transcript: { id: string } & any): Transcrip
 const convertFirestoreAiMessage = (message: { id: string } & any): AiMessage => {
   return {
     id: message.id,
-    session_id: message.id,
-    sent_at: timestampToUnix(message.sentAt),
+    session_id: message.sessionId || message.session_id || message.id,
+    sent_at: timestampToUnix(message.sentAt || message.sent_at),
     role: message.role,
     content: message.content,
     tokens: message.tokens,
     model: message.model,
-    created_at: timestampToUnix(message.createdAt),
+    created_at: timestampToUnix(message.createdAt || message.created_at),
     sync_state: 'clean'
   };
 };
 
 const convertFirestoreSummary = (summary: any, sessionId: string): Summary => {
+  const bulletPoints = summary.bulletPoints || summary.bullet_points || summary.bullet_json;
+  const actionItems = summary.actionItems || summary.action_items || summary.action_json;
+
   return {
     session_id: sessionId,
-    generated_at: timestampToUnix(summary.generatedAt),
+    generated_at: timestampToUnix(summary.generatedAt || summary.generated_at),
     model: summary.model,
     text: summary.text,
     tldr: summary.tldr,
-    bullet_json: JSON.stringify(summary.bulletPoints),
-    action_json: JSON.stringify(summary.actionItems),
-    tokens_used: summary.tokensUsed,
-    updated_at: timestampToUnix(summary.generatedAt),
+    bullet_json: typeof bulletPoints === 'string' ? bulletPoints : JSON.stringify(bulletPoints || []),
+    action_json: typeof actionItems === 'string' ? actionItems : JSON.stringify(actionItems || []),
+    tokens_used: summary.tokensUsed || summary.tokens_used,
+    updated_at: timestampToUnix(summary.updatedAt || summary.updated_at || summary.generatedAt || summary.generated_at),
     sync_state: 'clean'
   };
 };
@@ -164,7 +182,7 @@ const convertFirestorePreset = (preset: { id: string } & any, uid: string): Prom
 };
 
 // In prod, rely on NEXT_PUBLIC_API_URL; fallback to host-based heuristic
-const initializeApiUrl = async () => {};
+const initializeApiUrl = async () => { };
 
 export const getUserInfo = (): UserProfile | null => {
   if (typeof window === 'undefined') return null;
@@ -174,21 +192,21 @@ export const getUserInfo = (): UserProfile | null => {
 
 export const setUserInfo = (userInfo: UserProfile | null, skipEvents: boolean = false) => {
   if (typeof window === 'undefined') return;
-  
+
   if (userInfo) {
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
   } else {
     localStorage.removeItem('userInfo');
   }
-  
+
   if (!skipEvents) {
     window.dispatchEvent(new CustomEvent('userInfoChanged', { detail: userInfo }));
   }
 };
 
 export const onUserInfoChange = (listener: (userInfo: UserProfile | null) => void) => {
-  if (typeof window === 'undefined') return () => {};
-  
+  if (typeof window === 'undefined') return () => { };
+
   const handler = (event: CustomEvent) => listener(event.detail);
   window.addEventListener('userInfoChanged', handler as EventListener);
   return () => window.removeEventListener('userInfoChanged', handler as EventListener);
@@ -198,11 +216,11 @@ export const getApiHeaders = async (): Promise<HeadersInit> => {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
-  
+
   if (typeof window !== 'undefined' && window.__API_URL__) {
     headers['X-API-URL'] = window.__API_URL__;
   }
-  
+
   // Add Firebase auth token if available
   const user = auth.currentUser
   if (user) {
@@ -213,13 +231,13 @@ export const getApiHeaders = async (): Promise<HeadersInit> => {
       console.error('Failed to get auth token:', error)
     }
   }
-  
+
   return headers;
 };
 
 export const apiCall = async (path: string, options: RequestInit = {}) => {
   const baseUrl = getApiBase();
-  
+
   const url = `${baseUrl}${path}`;
   const config: RequestInit = {
     ...options,
@@ -228,14 +246,14 @@ export const apiCall = async (path: string, options: RequestInit = {}) => {
       ...options.headers,
     },
   };
-  
+
   return fetch(url, config);
 };
 
 export const searchConversations = async (query: string): Promise<Session[]> => {
   if (isFirebaseMode()) {
     const sessions = await getSessions();
-    return sessions.filter(session => 
+    return sessions.filter(session =>
       session.title.toLowerCase().includes(query.toLowerCase())
     );
   } else {
@@ -249,7 +267,7 @@ export const getSessions = async (): Promise<Session[]> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     const firestoreSessions = await FirestoreSessionService.getSessions(uid);
     return firestoreSessions.map(session => convertFirestoreSession(session, uid));
   } else {
@@ -263,14 +281,14 @@ export const getSessionDetails = async (sessionId: string): Promise<SessionDetai
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     const session = await FirestoreSessionService.getSession(uid, sessionId);
     if (!session) throw new Error('Session not found');
-    
+
     const transcripts = await FirestoreTranscriptService.getTranscripts(uid, sessionId);
     const aiMessages = await FirestoreAiMessageService.getAiMessages(uid, sessionId);
     const summary = await FirestoreSummaryService.getSummary(uid, sessionId);
-    
+
     return {
       session: convertFirestoreSession({ id: sessionId, ...session }, uid),
       transcripts: transcripts.map(convertFirestoreTranscript),
@@ -288,7 +306,7 @@ export const createSession = async (title?: string): Promise<{ id: string }> => 
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     const sessionId = await FirestoreSessionService.createSession(uid, {
       title: title || 'New Session',
       session_type: 'conversation'
@@ -308,7 +326,7 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     await FirestoreSessionService.deleteSession(uid, sessionId);
   } else {
     const response = await apiCall(`/api/sessions/${sessionId}`, { method: 'DELETE' });
@@ -322,21 +340,21 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
     if (!user) {
       return null;
     }
-    
+
     try {
       const firestoreProfile = await FirestoreUserService.getUser(user.uid);
-      
+
       if (!firestoreProfile) {
         return null;
       }
-      
+
       const userProfile = {
         uid: user.uid,
         display_name: firestoreProfile.displayName || user.displayName || 'User',
         email: firestoreProfile.email || user.email || 'no-email@example.com',
         isAdmin: (firestoreProfile as any)?.isAdmin === true
       };
-      
+
       return userProfile;
     } catch (error: any) {
       console.error('Error fetching profile:', error);
@@ -358,7 +376,7 @@ export const updateUserProfile = async (data: { displayName: string }): Promise<
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     await FirestoreUserService.updateUser(uid, { displayName: data.displayName });
   } else {
     const response = await apiCall('/api/user/profile', {
@@ -373,21 +391,21 @@ export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> 
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     try {
       // Attendre que l'utilisateur soit complètement authentifié
       await auth.currentUser?.getIdToken(true);
-      
+
       console.log('Creating Firestore profile for existing user:', uid);
-      
+
       // Create Firestore profile immediately
       await FirestoreUserService.createUser(uid, {
         displayName: user.display_name,
         email: user.email
       });
-      
+
       console.log('Firestore profile created successfully for existing user');
-      
+
       return {
         uid,
         display_name: user.display_name,
@@ -433,27 +451,27 @@ export const deleteAccount = async (): Promise<void> => {
   if (isFirebaseMode()) {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('No authenticated user');
-    
+
     const uid = currentUser.uid;
-    
+
     try {
       // 1. Supprimer toutes les données Firestore
       await FirestoreUserService.deleteUser(uid);
-      
+
       // 2. Supprimer le compte Firebase Authentication
       await currentUser.delete();
-      
+
       // 3. Nettoyer toutes les données locales
       sessionStorage.clear();
       localStorage.clear();
-      
+
       // 4. Déconnecter l'utilisateur immédiatement
       await signOut(auth);
-      
+
       console.log('Account deleted successfully from both Firestore and Firebase Auth, user signed out and local data cleared');
     } catch (error: any) {
       console.error('Error deleting account:', error);
-      
+
       // Si la suppression du compte Auth échoue, on peut avoir besoin de réauthentifier
       if (error.code === 'auth/requires-recent-login') {
         throw new Error('requires-recent-login');
@@ -462,17 +480,17 @@ export const deleteAccount = async (): Promise<void> => {
       } else if (error.code === 'permission-denied') {
         throw new Error('permission');
       }
-      
+
       throw error;
     }
   } else {
     const response = await apiCall('/api/auth/delete-account', { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete account');
-    
+
     // Nettoyer toutes les données locales
     sessionStorage.clear();
     localStorage.clear();
-    
+
     // Déconnecter l'utilisateur après suppression réussie
     await signOut(auth);
   }
@@ -482,7 +500,7 @@ export const getPresets = async (): Promise<PromptPreset[]> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     const firestorePresets = await FirestorePromptPresetService.getPresets(uid);
     return firestorePresets.map(preset => convertFirestorePreset(preset, uid));
   } else {
@@ -496,7 +514,7 @@ export const createPreset = async (data: { title: string, prompt: string }): Pro
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     const presetId = await FirestorePromptPresetService.createPreset(uid, {
       title: data.title,
       prompt: data.prompt,
@@ -517,7 +535,7 @@ export const updatePreset = async (id: string, data: { title: string, prompt: st
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     await FirestorePromptPresetService.updatePreset(uid, id, {
       title: data.title,
       prompt: data.prompt
@@ -535,7 +553,7 @@ export const deletePreset = async (id: string): Promise<void> => {
   if (isFirebaseMode()) {
     const uid = auth.currentUser?.uid;
     if (!uid) throw new Error('No authenticated user');
-    
+
     await FirestorePromptPresetService.deletePreset(uid, id);
   } else {
     const response = await apiCall(`/api/presets/${id}`, { method: 'DELETE' });
@@ -552,7 +570,7 @@ export interface BatchData {
 export const getBatchData = async (includes: ('profile' | 'presets' | 'sessions')[]): Promise<BatchData> => {
   if (isFirebaseMode()) {
     const promises: Promise<any>[] = [];
-    
+
     if (includes.includes('profile')) {
       promises.push(getUserProfile().then(profile => ({ type: 'profile', data: profile })));
     }
@@ -562,17 +580,17 @@ export const getBatchData = async (includes: ('profile' | 'presets' | 'sessions'
     if (includes.includes('sessions')) {
       promises.push(getSessions().then(sessions => ({ type: 'sessions', data: sessions })));
     }
-    
+
     const results = await Promise.allSettled(promises);
     const batchData: BatchData = {};
-    
+
     results.forEach((result, index) => {
       if (result.status === 'fulfilled') {
         const { type, data } = result.value;
         batchData[type as keyof BatchData] = data;
       }
     });
-    
+
     return batchData;
   } else {
     const response = await apiCall(`/api/batch?includes=${includes.join(',')}`);
@@ -593,71 +611,71 @@ export const logout = async () => {
 export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
   const MAX_RETRIES = 2;
   const RETRY_DELAY = 500;
-  
+
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       let user = auth.currentUser;
-      
+
       if (!user) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         user = userCredential.user;
       }
-      
+
       // Attendre que l'utilisateur soit complètement authentifié
       await user.getIdToken(true);
-      
+
       // Attendre un peu plus pour s'assurer que auth.currentUser est mis à jour
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Vérifier que l'utilisateur est bien authentifié avant d'écrire dans Firestore
       if (!auth.currentUser) {
         console.error('User not authenticated after creation');
         throw new Error('Erreur d\'authentification');
       }
-      
+
       console.log('Creating Firestore profile for user:', user.uid);
-      
+
       await FirestoreUserService.createUser(user.uid, {
         displayName: data.displayName,
         email: data.email
       });
-      
+
       console.log('Firestore profile created successfully');
-      
+
       // Attendre un peu plus pour s'assurer que Firestore est synchronisé
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       return user;
     } catch (error: any) {
       console.error(`Registration attempt ${attempt} failed:`, error);
-      
+
       if (error.code === 'auth/email-already-in-use') {
         throw new Error('Cette adresse email est déjà utilisée');
       }
-      
+
       if (attempt === MAX_RETRIES) {
         throw new Error(`Échec de la création du compte après ${MAX_RETRIES} tentatives. Veuillez réessayer.`);
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
     }
   }
-}; 
+};
 
 export const getAuthType = async (): Promise<{ authType: 'google' | 'email', email: string, providerId: string }> => {
   if (isFirebaseMode()) {
     const currentUser = auth.currentUser;
     if (!currentUser) throw new Error('No authenticated user');
-    
+
     // Récupérer les informations du provider depuis Firebase
     const providerData = currentUser.providerData;
-    
+
     // Détecter le type d'authentification
     let authType: 'google' | 'email' = 'email'; // Par défaut
-    
+
     if (providerData && providerData.length > 0) {
       const provider = providerData[0];
-      
+
       if (provider.providerId === 'google.com') {
         authType = 'google';
       } else if (provider.providerId === 'password') {
@@ -666,9 +684,9 @@ export const getAuthType = async (): Promise<{ authType: 'google' | 'email', ema
     } else {
       // Fallback basé sur l'email si pas de provider data
       const email = currentUser.email || '';
-      if (email.includes('@gmail.com') || 
-          email.includes('@google.com') || 
-          email.includes('@googlemail.com')) {
+      if (email.includes('@gmail.com') ||
+        email.includes('@google.com') ||
+        email.includes('@googlemail.com')) {
         authType = 'google';
       } else {
         authType = 'email';
