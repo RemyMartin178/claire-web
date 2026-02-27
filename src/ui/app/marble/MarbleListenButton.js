@@ -7,8 +7,8 @@ export class MarbleListenButton extends LitElement {
     static styles = css`
         :host {
             display: inline-block;
-            width: 40px;
-            height: 40px;
+            width: 48px;
+            height: 48px;
             cursor: pointer;
             -webkit-app-region: no-drag; /* Prevent header drag from interfering with clicks */
         }
@@ -77,20 +77,20 @@ export class MarbleListenButton extends LitElement {
         this.marble = null;
         this.material = null;
         this.isWebGLSupported = this.checkWebGLSupport();
-        
+
         // Initialize utility classes
         this.colorInterpolator = new ColorInterpolator(MarbleStates.IDLE);
         this.animator = new MarbleAnimator();
         this.performanceMonitor = new AnimationPerformanceMonitor();
-        
+
         // Shader uniforms will be initialized after THREE.js loads
         this.uniforms = null;
-        
+
         // Double-click handling
         this.clickTimeout = null;
         this.clickCount = 0;
         this.doubleClickDelay = 300; // ms
-        
+
         // Bind methods
         this.handleResize = this.handleResize.bind(this);
         this.handlePerformanceIssue = this.handlePerformanceIssue.bind(this);
@@ -110,7 +110,7 @@ export class MarbleListenButton extends LitElement {
 
     async firstUpdated() {
         super.firstUpdated();
-        
+
         if (!this.isWebGLSupported) {
             console.warn('WebGL not supported, using fallback button');
             return;
@@ -121,10 +121,10 @@ export class MarbleListenButton extends LitElement {
             this.initializeUniforms();
             await this.initializeMarble();
             this.startAnimation();
-            
+
             // Set up performance monitoring
             this.performanceMonitor.onLowFPS(this.handlePerformanceIssue);
-            
+
             // Add resize listener
             window.addEventListener('resize', this.handleResize);
         } catch (error) {
@@ -148,7 +148,7 @@ export class MarbleListenButton extends LitElement {
 
     async createMarbleMaterial() {
         let heightMap, displacementMap;
-        
+
         try {
             // Load noise textures
             const textureLoader = new THREE.TextureLoader();
@@ -158,20 +158,20 @@ export class MarbleListenButton extends LitElement {
             displacementMap = await new Promise((resolve, reject) => {
                 textureLoader.load('./../assets/noise3D.jpg', resolve, undefined, reject);
             });
-            
+
             // Configure textures like in the working demo
             heightMap.minFilter = displacementMap.minFilter = THREE.NearestFilter;
             displacementMap.wrapS = displacementMap.wrapT = THREE.RepeatWrapping;
-            
+
             console.log('[MarbleListenButton] Textures loaded successfully');
         } catch (error) {
             console.warn('[MarbleListenButton] Failed to load textures, using fallback:', error);
-            
+
             // Create fallback textures
             const canvas = document.createElement('canvas');
             canvas.width = canvas.height = 256;
             const ctx = canvas.getContext('2d');
-            
+
             // Create simple noise pattern
             const imageData = ctx.createImageData(256, 256);
             for (let i = 0; i < imageData.data.length; i += 4) {
@@ -182,7 +182,7 @@ export class MarbleListenButton extends LitElement {
                 imageData.data[i + 3] = 255;   // A
             }
             ctx.putImageData(imageData, 0, 0);
-            
+
             heightMap = new THREE.CanvasTexture(canvas);
             displacementMap = new THREE.CanvasTexture(canvas);
             displacementMap.wrapS = displacementMap.wrapT = THREE.RepeatWrapping;
@@ -214,7 +214,7 @@ export class MarbleListenButton extends LitElement {
         material.onBeforeCompile = (shader) => {
             // Wire up uniforms
             shader.uniforms = { ...shader.uniforms, ...marbleUniforms };
-            
+
             // Add to top of vertex shader
             shader.vertexShader = `
                 varying vec3 v_pos;
@@ -324,13 +324,13 @@ export class MarbleListenButton extends LitElement {
 
         // Store uniforms reference for animation updates
         this.marbleUniforms = marbleUniforms;
-        
+
         return material;
     }
 
     handleResize() {
         if (this.renderer && this.camera) {
-            this.renderer.setSize(40, 40);
+            this.renderer.setSize(48, 48);
         }
     }
 
@@ -347,49 +347,49 @@ export class MarbleListenButton extends LitElement {
     async initializeMarble() {
         const container = this.shadowRoot.querySelector('.marble-container');
         const canvas = this.shadowRoot.querySelector('.marble-canvas');
-        
+
         if (!container || !canvas) {
             throw new Error('Container or canvas not found');
         }
 
         // Scene setup
         this.scene = new THREE.Scene();
-        
+
         // Camera setup
         this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
         this.camera.position.z = 2;
-        
+
         // Renderer setup with proper color management like CodePen demo
-        this.renderer = new THREE.WebGLRenderer({ 
-            canvas: canvas, 
-            alpha: true, 
-            antialias: true 
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: canvas,
+            alpha: true,
+            antialias: true
         });
-        this.renderer.setSize(40, 40);
+        this.renderer.setSize(48, 48);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setClearColor(0x000000, 0); // Transparent background
-        
+
         // Add color management and tone mapping like CodePen demo
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.outputEncoding = THREE.sRGBEncoding;
-        
+
         // Marble geometry - made bigger for better visibility
         const geometry = new THREE.SphereGeometry(1.2, 64, 64);
-        
+
         // Create marble material with shader patching
         this.material = await this.createMarbleMaterial();
-        
+
         this.marble = new THREE.Mesh(geometry, this.material);
         this.scene.add(this.marble);
-        
+
         // Lighting setup
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         this.scene.add(ambientLight);
-        
+
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
         directionalLight.position.set(1, 1, 1);
         this.scene.add(directionalLight);
-        
+
         const pointLight = new THREE.PointLight(0xffffff, 0.5);
         pointLight.position.set(-1, -1, 1);
         this.scene.add(pointLight);
@@ -397,49 +397,49 @@ export class MarbleListenButton extends LitElement {
 
     startAnimation() {
         if (!this.renderer || !this.scene || !this.camera) return;
-        
+
         this.animator.start();
-        
+
         const animate = () => {
             this.animationId = requestAnimationFrame(animate);
-            
+
             if (this.marble) {
                 // Update time for shaders
                 const time = this.animator.getTime();
-                
+
                 // Update marble uniforms
                 if (this.marbleUniforms) {
                     // Speed 0 - No time animation for static interior patterns
                     // this.marbleUniforms.time.value += 0.016 * 0; // Speed = 0
-                    
+
                     // Set colorB using HSL like working demo for richer colors
                     const hsl = this.getStateHSL(this.state);
                     this.marbleUniforms.colorB.value.setHSL(hsl.h, hsl.s, hsl.l);
-                    
+
                     // Apply HDR color boost for more vibrant colors (beyond [0,1] range)
                     this.marbleUniforms.colorB.value.multiplyScalar(1.5);
                 }
-                
+
                 // Apply state-specific animations
                 this.animator.getRotationForState(this.state, this.marble);
             }
-            
+
             // Monitor performance
             this.performanceMonitor.update();
-            
+
             this.renderer.render(this.scene, this.camera);
         };
-        
+
         animate();
     }
 
     updated(changedProperties) {
         super.updated(changedProperties);
-        
+
         if (changedProperties.has('state')) {
             // Update color interpolator target
             this.colorInterpolator.setTargetState(this.state);
-            
+
             // Create transition effect
             if (this.marble && this.animator) {
                 this.animator.createStateTransition(this.marble, changedProperties.get('state'), this.state);
@@ -450,28 +450,28 @@ export class MarbleListenButton extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        
+
         // Remove event listeners
         window.removeEventListener('resize', this.handleResize);
-        
+
         // Cleanup animation systems
         if (this.animator) {
             this.animator.destroy();
         }
-        
+
         // Cleanup Three.js resources
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
         }
-        
+
         if (this.renderer) {
             this.renderer.dispose();
         }
-        
+
         if (this.marble && this.marble.geometry) {
             this.marble.geometry.dispose();
         }
-        
+
         if (this.material) {
             this.material.dispose();
         }
@@ -479,10 +479,10 @@ export class MarbleListenButton extends LitElement {
 
     handleClick() {
         if (this.disabled) return;
-        
+
         // Handle double-click detection
         this.clickCount++;
-        
+
         if (this.clickCount === 1) {
             // Start waiting for potential second click
             this.clickTimeout = setTimeout(() => {
@@ -497,24 +497,24 @@ export class MarbleListenButton extends LitElement {
             this.clickCount = 0;
         }
     }
-    
+
     performSingleClick() {
         // Add click ripple effect
         if (this.marble && this.animator) {
             this.animator.createClickRipple(this.marble);
         }
-        
+
         this.dispatchEvent(new CustomEvent('marble-click', {
             detail: { state: this.state },
             bubbles: true,
             composed: true
         }));
     }
-    
+
     handleDoubleClick() {
         // Show brief purple flash to indicate TTS toggle (only visual feedback)
         const originalState = this.state;
-        
+
         // Add double-click ripple effect with different animation
         if (this.marble && this.animator) {
             this.animator.createClickRipple(this.marble);
@@ -525,29 +525,29 @@ export class MarbleListenButton extends LitElement {
                 }
             }, 100);
         }
-        
+
         // Toggle TTS state
         this.ttsEnabled = !this.ttsEnabled;
-        
+
         // Store TTS preference in localStorage
         try {
             localStorage.setItem('claire_tts_enabled', this.ttsEnabled.toString());
         } catch (error) {
             console.warn('Failed to save TTS preference:', error);
         }
-        
+
         // Emit TTS toggle event (MainHeader will handle agent mode activation)
         this.dispatchEvent(new CustomEvent('marble-tts-toggle', {
-            detail: { 
+            detail: {
                 ttsEnabled: this.ttsEnabled,
                 originalState: originalState
             },
             bubbles: true,
             composed: true
         }));
-        
+
         console.log(`[AUDIO] TTS ${this.ttsEnabled ? 'enabled' : 'disabled'} via marble double-click`);
-        
+
         // If we were idle and just enabled TTS, start listening session for agent mode
         if (originalState === 'idle' && this.ttsEnabled) {
             // Brief delay for TTS toggle to process, then start listening
@@ -574,10 +574,10 @@ export class MarbleListenButton extends LitElement {
     getStateHSL(state) {
         // HSL values for the 4 marble states
         const stateHSL = {
-            [MarbleStates.IDLE]: { h: 22/360, s: 1.0, l: 0.5 },        // Orange #ff5f00 - Default/idle state
-            [MarbleStates.LISTENING]: { h: 142/360, s: 0.64, l: 0.5 }, // Green #26d980 - Actively listening/recording
-            [MarbleStates.STOPPING]: { h: 0/360, s: 0.69, l: 0.5 },    // Red #d92626 - Stop recording (clickable to end)
-            [MarbleStates.TTS]: { h: 250/360, s: 0.7, l: 0.55 }        // Purple/Blue #7344f0 - TTS mode active
+            [MarbleStates.IDLE]: { h: 22 / 360, s: 1.0, l: 0.5 },        // Orange #ff5f00 - Default/idle state
+            [MarbleStates.LISTENING]: { h: 142 / 360, s: 0.64, l: 0.5 }, // Green #26d980 - Actively listening/recording
+            [MarbleStates.STOPPING]: { h: 0 / 360, s: 0.69, l: 0.5 },    // Red #d92626 - Stop recording (clickable to end)
+            [MarbleStates.TTS]: { h: 250 / 360, s: 0.7, l: 0.55 }        // Purple/Blue #7344f0 - TTS mode active
         };
         return stateHSL[state] || stateHSL[MarbleStates.IDLE];
     }
