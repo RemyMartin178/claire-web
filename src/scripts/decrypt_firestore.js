@@ -4,10 +4,8 @@ const { createEncryptedConverter } = require('../common/repositories/firestoreCo
 const fs = require('fs');
 const path = require('path');
 
-const logFile = path.join(__dirname, '../../migration_progress.log');
 function logItem(msg) {
     console.log(msg);
-    fs.appendFileSync(logFile, msg + '\n');
 }
 
 const transcriptConverter = createEncryptedConverter(['text']);
