@@ -129,7 +129,7 @@ export default function SettingsPage() {
 
   const handleManageSubscription = async () => {
     if (!userInfo) {
-      alert('Vous devez être connecté')
+      toast.error('Vous devez être connecté')
       return
     }
 

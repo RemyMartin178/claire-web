@@ -12,10 +12,11 @@ import {
   getSessionDetails,
   deleteSession,
 } from '@/utils/api'
-import { Page } from '@/components/Page'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Mail, Share2, Play, ArrowUpRight } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import React from 'react'
 
 // Util function to format seconds to m:ss
 const formatTime = (seconds: number) => {
@@ -24,11 +25,62 @@ const formatTime = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// Custom Markdown Renderer to bypass NPM install issues
+const parseMarkdown = (text: string) => {
+  if (!text) return null;
+  // Remove the Title section completely since we show it in the header
+  const cleanText = text.replace(/\*\*Title\*\*\n[\s\S]*?\n/, '');
+
+  const blocks = cleanText.split('\n\n');
+  return blocks.map((block, i) => {
+    if (block.trim() === '') return null;
+
+    // Headers
+    if (block.startsWith('## ')) {
+      const headerText = block.replace('## ', '').trim();
+      return <h2 key={i} className="text-xl font-heading font-semibold mt-8 mb-4 tracking-tight">{headerText}</h2>;
+    }
+    if (block.startsWith('### ')) {
+      const headerText = block.replace('### ', '').trim();
+      return <h3 key={i} className="text-lg font-heading font-medium mt-6 mb-3">{headerText}</h3>;
+    }
+
+    // List blocks
+    if (block.startsWith('- ')) {
+      const listItems = block.split('\n').filter(line => line.trim().startsWith('- '));
+      return (
+        <ul key={i} className="list-disc pl-5 space-y-2 mb-6">
+          {listItems.map((item, j) => {
+            let content = item.replace(/^- /, '').trim();
+            // Process bold tags natively
+            const parts = content.split(/(\*\*.*?\*\*)/g);
+            return (
+              <li key={j} className="text-gray-600">
+                {parts.map((p, k) => p.startsWith('**') && p.endsWith('**') ?
+                  <strong key={k} className="font-semibold text-black">{p.slice(2, -2)}</strong> : p)}
+              </li>
+            );
+          })}
+        </ul>
+      );
+    }
+
+    // Paragraphs
+    const pParts = block.split(/(\*\*.*?\*\*)/g);
+    return (
+      <p key={i} className="mb-4 text-gray-600">
+        {pParts.map((p, k) => p.startsWith('**') && p.endsWith('**') ?
+          <strong key={k} className="font-semibold text-black">{p.slice(2, -2)}</strong> : p)}
+      </p>
+    );
+  });
+};
+
 type TabType = 'summary' | 'transcript' | 'usage';
 
 const SectionHeader = ({ title, onAction, actionText }: { title: string, onAction?: () => void, actionText?: string }) => (
   <div className="flex justify-between items-center mb-6">
-    <h2 className="text-xl font-sans font-semibold text-[#f3f4f6]">
+    <h2 className="text-xl font-sans font-semibold text-black">
       {title}
     </h2>
     {onAction && actionText && (
@@ -80,9 +132,10 @@ function SessionDetailsContent() {
     setDeleting(true);
     try {
       await deleteSession(sessionId);
+      toast.success('Session supprimée');
       router.push('/activity');
     } catch (error) {
-      alert('Échec de la suppression de l\'activité.');
+      toast.error('Échec de la suppression de l\'activité.');
       setDeleting(false);
       console.error(error);
     }
@@ -101,7 +154,7 @@ function SessionDetailsContent() {
       if (actions.length) text += `Actions:\n${actions.map((a: string) => `- ${a}`).join('\n')}\n\n`;
     }
     navigator.clipboard.writeText(text);
-    alert('Résumé copié !');
+    toast.success('Résumé copié !');
   }
 
   const handleCopyTranscript = () => {
@@ -111,7 +164,7 @@ function SessionDetailsContent() {
       return `${speakerName}:\n${t.text}\n`;
     }).join('\n');
     navigator.clipboard.writeText(text);
-    alert('Transcription copiée !');
+    toast.success('Transcription copiée !');
   }
 
   if (loading || isLoading) {
@@ -155,13 +208,16 @@ function SessionDetailsContent() {
   const askMessages = sessionDetails.ai_messages || [];
 
   let displayTitle = sessionDetails.session.title;
-  if (askMessages.length > 0) {
-    const firstUserMsg = askMessages.find(m => m.role === 'user');
-    if (firstUserMsg && (!displayTitle || displayTitle.includes('Session @') || displayTitle === 'Session Sans Titre')) {
-      displayTitle = firstUserMsg.content.length > 50 ? firstUserMsg.content.substring(0, 50) + '...' : firstUserMsg.content;
-    }
+  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire'];
+  const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
+
+  if (isGeneric && sessionDetails.summary?.tldr) {
+    let cleanTldr = sessionDetails.summary.tldr.replace(/^(La discussion porte sur|La conversation porte sur|Ce \w+ porte sur|Le sujet est)\s*/i, '');
+    displayTitle = cleanTldr.length > 50 ? cleanTldr.substring(0, 50) + '...' : cleanTldr;
   }
-  if (!displayTitle || displayTitle.trim() === '' || displayTitle.includes('Session @')) {
+
+  // If still generic, ultimate fallback
+  if (!displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t))) {
     displayTitle = `Discussion avec Claire`; // Fallback translation
   }
 
@@ -201,7 +257,7 @@ function SessionDetailsContent() {
         {/* Header Title */}
         <div className="mb-8">
           <div className="text-gray-500 text-sm mb-2">{displayDate}</div>
-          <h1 className="text-3xl sm:text-4xl font-sans font-semibold text-[#282828] tracking-tight leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-sans font-semibold text-black tracking-tight leading-tight">
             {displayTitle}
           </h1>
         </div>
@@ -231,41 +287,13 @@ function SessionDetailsContent() {
         {/* Tab Content: SUMMARY */}
         {activeTab === 'summary' && (
           <div className="space-y-10 animate-fade-in">
-            {sessionDetails.summary ? (
-              <>
-                <div className="max-w-3xl">
-                  <SectionHeader title="Résumé" onAction={handleCopySummary} actionText="Copier le résumé complet" />
-                  <div className="text-gray-600 leading-relaxed space-y-4">
-                    <p className="flex items-start">
-                      <span className="text-neutral-300 mr-2 mt-1">●</span>
-                      <span>{sessionDetails.summary.tldr}</span>
-                    </p>
-
-                    {sessionDetails.summary.bullet_json && JSON.parse(sessionDetails.summary.bullet_json).length > 0 && (
-                      JSON.parse(sessionDetails.summary.bullet_json).map((point: string, idx: number) => (
-                        <p key={idx} className="flex items-start">
-                          <span className="text-neutral-300 mr-2 mt-1">●</span>
-                          <span>{point}</span>
-                        </p>
-                      ))
-                    )}
-                  </div>
+            {sessionDetails.summary?.text ? (
+              <div className="max-w-3xl">
+                <SectionHeader title="Résumé" onAction={handleCopySummary} actionText="Copier le résumé complet" />
+                <div className="prose prose-neutral max-w-none text-[#282828] leading-relaxed">
+                  {parseMarkdown(sessionDetails.summary.text)}
                 </div>
-
-                {sessionDetails.summary.action_json && JSON.parse(sessionDetails.summary.action_json).length > 0 && (
-                  <div className="max-w-3xl pt-2">
-                    <h3 className="text-lg font-heading font-semibold text-[#282828] mb-4">À retenir</h3>
-                    <div className="text-gray-600 leading-relaxed space-y-4">
-                      {JSON.parse(sessionDetails.summary.action_json).map((action: string, idx: number) => (
-                        <p key={idx} className="flex items-start">
-                          <span className="text-neutral-300 mr-2 mt-1">●</span>
-                          <span>{action}</span>
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
+              </div>
             ) : (
               <div className="text-gray-400 py-12 text-center border border-dashed border-neutral-200 rounded-lg bg-neutral-50/50">
                 Aucun résumé disponible pour cette session.

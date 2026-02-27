@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+ { toast } from 'react-hot-toast';
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
@@ -141,7 +141,7 @@ export default function KnowledgeBasePage() {
       await fetchFolders()
     } catch (err) {
       console.error('Failed to create folder:', err)
-      alert('Échec de la création du dossier')
+      toast.error('Échec de la création du dossier')
     }
   }
 

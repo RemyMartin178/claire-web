@@ -16,7 +16,7 @@ class SummaryService {
         this.analysisHistory = [];
         this.conversationHistory = [];
         this.currentSessionId = null;
-        
+
         // Callbacks
         this.onAnalysisComplete = null;
         this.onStatusUpdate = null;
@@ -34,7 +34,7 @@ class SummaryService {
     sendToRenderer(channel, data) {
         const { windowPool } = require('../../../window/windowManager');
         const listenWindow = windowPool?.get('listen');
-        
+
         if (listenWindow && !listenWindow.isDestroyed()) {
             listenWindow.webContents.send(channel, data);
         }
@@ -47,7 +47,7 @@ class SummaryService {
         logger.info(`📈 Total conversation history: ${this.conversationHistory.length} texts`);
 
         // Debug: show the actual conversation history
-        console.log('DEBUG conversation history:', this.conversationHistory.map((text, i) => `${i+1}: ${text.substring(0, 50)}...`));
+        console.log('DEBUG conversation history:', this.conversationHistory.map((text, i) => `${i + 1}: ${text.substring(0, 50)}...`));
 
         // Trigger analysis if needed
         this.triggerAnalysisIfNeeded();
@@ -108,19 +108,19 @@ Please build upon this context while analyzing the new conversation segments.
             }
 
             const modelInfo = modelStateService.getCurrentModelInfo('llm');
-            console.log('DEBUG LLM modelInfo:', { 
-                hasModelInfo: !!modelInfo, 
-                provider: modelInfo?.provider, 
-                model: modelInfo?.model, 
-                hasApiKey: !!modelInfo?.apiKey 
+            console.log('DEBUG LLM modelInfo:', {
+                hasModelInfo: !!modelInfo,
+                provider: modelInfo?.provider,
+                model: modelInfo?.model,
+                hasApiKey: !!modelInfo?.apiKey
             });
-            
+
             if (!modelInfo || !modelInfo.apiKey) {
                 console.log('ERROR: LLM analysis failing - no model or API key');
                 throw new Error('AI model or API key is not configured.');
             }
             logger.info(`[AI] Sending analysis request to ${modelInfo.provider} using model ${modelInfo.model}`);
-            
+
             const messages = [
                 {
                     role: 'system',
@@ -130,25 +130,28 @@ Please build upon this context while analyzing the new conversation segments.
                     role: 'user',
                     content: `${contextualPrompt}
 
-Analyze the conversation and provide a structured summary. Format your response as follows:
+Analyse la conversation et fournis un résumé très structuré. Formate ta réponse EXACTEMENT avec ces 4 sections Markdown :
 
-**Summary Overview**
-- Main discussion point with context
+**Title**
+Génère un titre de 3 à 5 mots maximum, centré uniquement sur les mots-clés (comme les titres courts de ChatGPT). N'utilise jamais de phrases d'introduction (par exemple évite "La discussion porte sur..."). Ton titre doit juste être le sujet traité (ex: "Plan marketing Q3", "Bug d'affichage iOS").
 
-**Key Topic: [Topic Name]**
-- First key insight
-- Second key insight
-- Third key insight
+## Résumé
+- (Premier point clé)
+- (Deuxième point clé)
 
-**Extended Explanation**
-Provide 2-3 sentences explaining the context and implications.
+## À retenir
+- ❓ (Première question suggérée concernant la conversation)
+- ❓ (Deuxième question suggérée)
+- ❓ (Troisième question suggérée)
 
-**Suggested Questions**
-1. First follow-up question?
-2. Second follow-up question?
-3. Third follow-up question?
+## Notes
+- **(Nom du sujet premier)**
+  - (Détail)
+  - (Détail)
+- **(Nom du sujet deuxième)**
+  - (Détail)
 
-Keep all points concise and build upon previous analysis if provided.`,
+Rédige le contenu dans la langue principale de la conversation. Sois toujours extrêmement concis, factuel et utile.`,
                 },
             ];
 
@@ -227,63 +230,28 @@ Keep all points concise and build upon previous analysis if provided.`,
             for (const line of lines) {
                 const trimmedLine = line.trim();
 
-                // [Korean comment translated] [Korean comment translated] [Korean comment translated]
-                if (trimmedLine.startsWith('**Summary Overview**')) {
-                    currentSection = 'summary-overview';
+                if (trimmedLine.startsWith('**Title**')) {
+                    currentSection = 'title';
                     continue;
-                } else if (trimmedLine.startsWith('**Key Topic:')) {
-                    currentSection = 'topic';
-                    isCapturingTopic = true;
-                    topicName = trimmedLine.match(/\*\*Key Topic: (.+?)\*\*/)?.[1] || '';
-                    if (topicName) {
-                        structuredData.topic.header = topicName + ':';
-                    }
-                    continue;
-                } else if (trimmedLine.startsWith('**Extended Explanation**')) {
-                    currentSection = 'explanation';
-                    continue;
-                } else if (trimmedLine.startsWith('**Suggested Questions**')) {
-                    currentSection = 'questions';
+                } else if (trimmedLine.startsWith('## Summary') || trimmedLine.startsWith('## Action Items') || trimmedLine.startsWith('## Notes') ||
+                    trimmedLine.startsWith('## Résumé') || trimmedLine.startsWith('## À retenir') || trimmedLine.startsWith('## A retenir')) {
+                    currentSection = 'body';
                     continue;
                 }
 
-                // [Korean comment translated] [Korean comment translated]
-                if (trimmedLine.startsWith('-') && currentSection === 'summary-overview') {
-                    const summaryPoint = trimmedLine.substring(1).trim();
-                    if (summaryPoint && !structuredData.summary.includes(summaryPoint)) {
-                        // [Korean comment translated] summary Update ([Korean comment translated] 5[Korean comment translated] [Korean comment translated])
-                        structuredData.summary.unshift(summaryPoint);
-                        if (structuredData.summary.length > 5) {
-                            structuredData.summary.pop();
-                        }
-                    }
-                } else if (trimmedLine.startsWith('-') && currentSection === 'topic') {
-                    const bullet = trimmedLine.substring(1).trim();
-                    if (bullet && structuredData.topic.bullets.length < 3) {
-                        structuredData.topic.bullets.push(bullet);
-                    }
-                } else if (currentSection === 'explanation' && trimmedLine) {
-                    // explanation[Korean comment translated] topic bullets[Korean comment translated] [Korean comment translated] ([Korean comment translated] [Korean comment translated])
-                    const sentences = trimmedLine
-                        .split(/\.\s+/)
-                        .filter(s => s.trim().length > 0)
-                        .map(s => s.trim() + (s.endsWith('.') ? '' : '.'));
-
-                    sentences.forEach(sentence => {
-                        if (structuredData.topic.bullets.length < 3 && !structuredData.topic.bullets.includes(sentence)) {
-                            structuredData.topic.bullets.push(sentence);
-                        }
-                    });
-                } else if (trimmedLine.match(/^\d+\./) && currentSection === 'questions') {
-                    const question = trimmedLine.replace(/^\d+\.\s*/, '').trim();
-                    if (question && question.includes('?')) {
-                        structuredData.actions.push(`❓ ${question}`);
+                if (currentSection === 'title' && trimmedLine && !trimmedLine.startsWith('**Title**')) {
+                    // Extract the first non-empty line after **Title** as the title.
+                    // Remove leading dashes or asterisks if the AI added them.
+                    const cleanTitle = trimmedLine.replace(/^[-*\s]+/, '');
+                    if (cleanTitle && !structuredData.summary.length) {
+                        structuredData.summary.push(cleanTitle);
+                        // structuredData.summary[0] will be used as the short `tldr` Title.
                     }
                 }
             }
 
             // [Korean comment translated] [Korean comment translated] [Korean comment translated]
-            const defaultActions = ['✨ What should I say next?', '[CHAT] Suggest follow-up questions'];
+            const defaultActions = ['✨ Que dois-je dire ?', '💡 Suggérer des questions'];
             defaultActions.forEach(action => {
                 if (!structuredData.actions.includes(action)) {
                     structuredData.actions.push(action);
@@ -323,29 +291,29 @@ Keep all points concise and build upon previous analysis if provided.`,
      */
     async triggerAnalysisIfNeeded() {
         const length = this.conversationHistory.length;
-        
+
         // Check if last message contains a question - if so, trigger immediately
         const lastMessage = this.conversationHistory[this.conversationHistory.length - 1];
         const hasQuestion = lastMessage && /\?|comment|pourquoi|quand|où|qui|quoi|quel|quelle/i.test(lastMessage);
-        
+
         // Trigger analysis at strategic intervals for responsive insights
-        const shouldTrigger = 
+        const shouldTrigger =
             length === 1 ||  // INSTANT: First message triggers analysis immediately
             hasQuestion ||   // INSTANT: Question detected triggers analysis immediately
             length === 2 ||  // Second update after 2 messages ✅
             length === 4 ||  // Third update
             (length >= 8 && length % 5 === 0);  // Then every 5 turns
-        
+
         if (shouldTrigger) {
             logger.info(`Triggering analysis - ${length} conversation texts accumulated${hasQuestion ? ' (question detected)' : ''}`);
 
             const data = await this.makeOutlineAndRequests(this.conversationHistory);
-            
+
             if (data) {
                 logger.info('Sending structured data to renderer');
                 console.log('DEBUG sending summary-update to renderer:', JSON.stringify(data, null, 2));
                 this.sendToRenderer('summary-update', data);
-                
+
                 // Notify callback
                 if (this.onAnalysisComplete) {
                     this.onAnalysisComplete(data);
@@ -369,7 +337,7 @@ Keep all points concise and build upon previous analysis if provided.`,
      */
     async forceAnalysis() {
         logger.info(`[TOOL] Force triggering analysis - ${this.conversationHistory.length} conversation texts`);
-        
+
         if (this.conversationHistory.length === 0) {
             logger.warn('No conversation history available for analysis');
             return null;
@@ -379,7 +347,7 @@ Keep all points concise and build upon previous analysis if provided.`,
         if (data) {
             logger.info('[OK] Force analysis completed, sending to renderer');
             this.sendToRenderer('summary-update', data);
-            
+
             // Notify callback
             if (this.onAnalysisComplete) {
                 this.onAnalysisComplete(data);

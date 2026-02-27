@@ -269,7 +269,30 @@ export const getSessions = async (): Promise<Session[]> => {
     if (!uid) throw new Error('No authenticated user');
 
     const firestoreSessions = await FirestoreSessionService.getSessions(uid);
-    return firestoreSessions.map(session => convertFirestoreSession(session, uid));
+    const sessions = firestoreSessions.map(session => convertFirestoreSession(session, uid));
+
+    // Enrich with fallback titles from Summary if needed
+    await Promise.all(sessions.map(async (session) => {
+      let displayTitle = session.title;
+      const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'La discussion porte sur', 'La conversation porte sur'];
+      const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
+
+      if (isGeneric) {
+        try {
+          const summary = await FirestoreSummaryService.getSummary(uid, session.id);
+          if (summary && summary.tldr) {
+            let cleanTldr = summary.tldr.replace(/^(La discussion porte sur|La conversation porte sur|Ce \w+ porte sur|Le sujet est)\s*/i, '');
+            session.title = cleanTldr.length > 50 ? cleanTldr.substring(0, 50) + '...' : cleanTldr;
+          } else {
+            session.title = 'Discussion avec Claire';
+          }
+        } catch (e) {
+          session.title = 'Discussion avec Claire';
+        }
+      }
+    }));
+
+    return sessions;
   } else {
     const response = await apiCall('/api/sessions');
     if (!response.ok) throw new Error('Failed to fetch sessions');

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
+import { toast } from 'react-hot-toast'
 
 export default function ActivityPage() {
   const router = useRouter();
@@ -62,8 +63,9 @@ export default function ActivityPage() {
     try {
       await deleteSession(sessionId);
       setSessions(sessions => sessions.filter(s => s.id !== sessionId));
+      toast.success('Activité supprimée');
     } catch (error) {
-      alert('Échec de la suppression de l\'activité.');
+      toast.error('Échec de la suppression de l\'activité.');
       console.error(error);
     } finally {
       setDeletingId(null);
@@ -98,13 +100,13 @@ export default function ActivityPage() {
   return (
     <div className="min-h-screen bg-[#f8f7f4] text-[#282828] font-body selection:bg-primary/30">
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-3xl font-heading font-semibold text-[#282828] mb-2">
+        <h1 className="text-3xl font-heading font-semibold text-black mb-2">
           {getGreeting()}, {userInfo.display_name}
         </h1>
 
         {sessions.length === 0 && !isLoading && (
           <div className="text-center mb-12">
-            <h2 className="text-2xl font-heading font-medium text-[#282828] mb-8 text-center">
+            <h2 className="text-2xl font-heading font-medium text-black mb-8 text-center">
               Votre activité passée
             </h2>
           </div>
@@ -124,10 +126,17 @@ export default function ActivityPage() {
                   {groupedSessions[dateStr].map((session) => {
                     const sessionDate = new Date(session.started_at);
                     const timeStr = sessionDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
-                    // Mocking duration for UI since it's not strictly available in Session interface without detailed fetch
-                    const durationStr = formatDuration(Math.floor(Math.random() * 300) + 20); // Random duration between 20s and ~5 mins for demo
+
+                    let durationStr = "0:00";
+                    if (session.ended_at && session.started_at) {
+                      const diffSec = Math.floor((session.ended_at - session.started_at) / 1000);
+                      durationStr = formatDuration(Math.max(0, diffSec));
+                    } else {
+                      durationStr = "En cours";
+                    }
 
                     let displayTitle = session.title;
+                    // If title looks like base64 or is clearly raw generic filler, try a fallback or clean it
                     if (!displayTitle || displayTitle.includes('Session @') || displayTitle === 'Session Sans Titre') {
                       displayTitle = 'Discussion avec Claire'; // Fallback to a cleaner title instead of raw timestamp
                     }
@@ -138,7 +147,7 @@ export default function ActivityPage() {
                           <Link
                             href={`/activity/details?sessionId=${session.id}`}
                             onClick={() => trackSessionViewed(session.id)}
-                            className="text-[15px] font-medium text-[#282828] hover:text-primary transition-colors block truncate"
+                            className="text-[15px] font-medium text-black hover:text-primary transition-colors block truncate"
                           >
                             {displayTitle}
                           </Link>

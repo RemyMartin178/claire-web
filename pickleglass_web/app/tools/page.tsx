@@ -291,7 +291,7 @@ export default function ToolsPage() {
       )
     } catch (err) {
       console.error('Failed to toggle tool:', err)
-      alert(`Failed to toggle tool: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      toast.error(`Failed to toggle tool: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)
@@ -337,7 +337,7 @@ export default function ToolsPage() {
       }, 3000)
     } catch (error) {
       console.error('Failed to configure auth:', error)
-      alert(`Failed to configure authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Failed to configure authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)
@@ -375,10 +375,10 @@ export default function ToolsPage() {
         )
       )
       
-      alert('Authentication revoked successfully')
+      toast.success('Authentication revoked successfully')
     } catch (error) {
       console.error('Failed to revoke auth:', error)
-      alert(`Failed to revoke authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)
@@ -392,10 +392,10 @@ export default function ToolsPage() {
     setOperatingTools(prev => new Set(Array.from(prev).concat([`${toolName}_test`])))
     
     try {
-      alert('Tool execution not yet fully implemented. This is a demo.')
+      toast.error('Tool execution not yet fully implemented. This is a demo.')
     } catch (err) {
       console.error('Tool execution error:', err)
-      alert(`Tool execution failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      toast.error(`Tool execution failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)

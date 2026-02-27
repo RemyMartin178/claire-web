@@ -18,7 +18,7 @@ const { platformManager } = require('../../main/platform-manager');
 async function captureScreenshotForTTS(options = {}) {
     try {
         logger.info('[ListenService] Capturing screenshot for TTS context');
-        
+
         // Use the enhanced platform manager for cross-platform screen capture
         const screenCaptureService = platformManager.getScreenCaptureService();
         const result = await screenCaptureService.captureScreen({
@@ -27,14 +27,14 @@ async function captureScreenshotForTTS(options = {}) {
             maxHeight: 720,
             ...options
         });
-        
+
         if (result.success) {
             logger.info('[ListenService] [OK] Screenshot captured for TTS', {
                 width: result.width,
                 height: result.height,
                 dataLength: result.base64?.length || 0
             });
-            
+
             return {
                 success: true,
                 base64: result.base64,
@@ -95,20 +95,20 @@ class ListenService {
         this.summaryService = new SummaryService();
         this.currentSessionId = null;
         this.isInitializingSession = false;
-        
+
         // Enhanced audio integration state
         this.enhancedAudioEnabled = false;
         this.voiceCommandsEnabled = false;
         this.selectedAudioDevice = null;
         this.audioProcessingActive = false;
-        
+
         // Agent mode tracking
         this.agentModeActive = false;
-        
+
         // Personality manager integration
         this.agentPersonalityManager = null;
         this.personalityInitialized = false;
-        
+
         // Memory API client for backend memory storage
         this.memoryApiClient = new MemoryApiClient();
         this.initializeMemoryClient();
@@ -117,7 +117,7 @@ class ListenService {
         this.initializePersonalityManager();
         logger.info('[ListenService] Service instance created.');
     }
-    
+
     /**
      * Initialize personality manager integration
      */
@@ -126,14 +126,14 @@ class ListenService {
             // Use lazy import from agents domain to avoid circular dependency
             const { agentPersonalityManager } = require('../../domains/agents');
             this.agentPersonalityManager = agentPersonalityManager;
-            
+
             if (!this.agentPersonalityManager.initialized) {
                 await this.agentPersonalityManager.initialize();
             }
-            
+
             this.personalityInitialized = true;
             logger.info('[ListenService] Personality manager integration initialized');
-            
+
             // Listen for personality changes
             this.agentPersonalityManager.on('personalitySwitched', (event) => {
                 logger.info(`[ListenService] Personality switched: ${event.previous} → ${event.current}`);
@@ -142,13 +142,13 @@ class ListenService {
                     personality: event.personality
                 });
             });
-            
+
         } catch (error) {
             logger.warn('[ListenService] Failed to initialize personality manager:', { error });
             this.personalityInitialized = false;
         }
     }
-    
+
     /**
      * Initialize memory API client with authentication context
      */
@@ -163,7 +163,7 @@ class ListenService {
                     isGuest: currentUser.isGuest || false,
                     permissions: currentUser.permissions || []
                 });
-                
+
                 logger.info('[ListenService] Memory client initialized with auth context', {
                     userId: currentUser.uid || currentUser.id,
                     isGuest: currentUser.isGuest || false
@@ -171,7 +171,7 @@ class ListenService {
             } else {
                 logger.info('[ListenService] Memory client initialized without auth context (guest mode)');
             }
-            
+
         } catch (error) {
             logger.warn('[ListenService] Failed to initialize memory client:', { error });
         }
@@ -205,70 +205,70 @@ class ListenService {
      */
     async handleVoiceAction(action) {
         logger.info('Handling voice action:');
-        
+
         try {
             switch (action.action) {
                 case 'startListening':
                     await this.handleListenRequest('Listen');
                     break;
-                    
+
                 case 'stopListening':
                     await this.handleListenRequest('Stop');
                     break;
-                    
+
                 case 'hideWindow':
                     await this.handleListenRequest('Done');
                     break;
-                    
+
                 case 'askQuestion':
                     if (action.question) {
                         // Update personality context based on voice question
                         if (this.personalityInitialized && this.agentPersonalityManager) {
                             this.updatePersonalityContextForVoice(action.question);
                         }
-                        
+
                         // Forward to ask service with full conversation context
                         const askService = require('../ask/askService');
                         const sessionData = this.getCurrentSessionData();
                         const conversationHistory = sessionData?.conversationHistory || [];
                         const analysisData = sessionData?.analysisData || {};
-                        
+
                         // ✅ Enrichir avec le contexte de la session d'écoute
                         let enrichedQuestion = `${action.question}\n\n`;
-                        
+
                         if (conversationHistory.length > 0) {
-                            enrichedQuestion += `**Contexte de la conversation récente :**\n`;
+                            enrichedQuestion += `**Contexte :**\n`;
                             const recentHistory = conversationHistory.slice(-20);
                             enrichedQuestion += recentHistory.join('\n') + '\n\n';
                         }
-                        
+
                         if (analysisData.summary && analysisData.summary.length > 0) {
-                            enrichedQuestion += `**Résumé de la conversation :**\n`;
+                            enrichedQuestion += `**Résumé :**\n`;
                             enrichedQuestion += analysisData.summary.join('\n') + '\n\n';
                         }
-                        
+
                         logger.info('[ListenService] Forwarding AI-suggested question with context', {
                             question: action.question,
                             historyLength: conversationHistory.length
                         });
-                        
+
                         // ✅ Pass original question for screenshot detection (not enriched context)
                         await askService.sendMessage(enrichedQuestion, [], { originalPrompt: action.question });
                     }
                     break;
-                    
+
                 case 'adjustTransparency':
                     // Emit to main process for transparency adjustment
-                    internalBridge.emit('window:adjustTransparency', { 
-                        direction: action.direction 
+                    internalBridge.emit('window:adjustTransparency', {
+                        direction: action.direction
                     });
                     break;
-                    
+
                 case 'takeScreenshot':
                     // Emit to main process for screenshot
                     internalBridge.emit('window:takeScreenshot');
                     break;
-                    
+
                 default:
                     logger.warn(`Unknown voice action: ${action.action}'`);
             }
@@ -285,12 +285,12 @@ class ListenService {
      */
     async handleEnhancedTranscription(transcription) {
         logger.info('Enhanced transcription: "" (confidence: )');
-        
+
         // Use the enhanced transcription if confidence is high enough
         if (transcription.confidence >= 0.7) {
             await this.handleTranscriptionComplete('user', transcription.text);
         }
-        
+
         // Send enhanced transcription data to renderer
         this.sendToRenderer('enhanced-transcription', {
             text: transcription.text,
@@ -305,14 +305,14 @@ class ListenService {
      */
     handleAudioDeviceChanges(changes) {
         logger.info('Audio devices changed: +, -');
-        
+
         // Notify renderer of device changes
         this.sendToRenderer('audio-devices-changed', {
             added: changes.added,
             removed: changes.removed,
             available: audioDeviceManager.getAllDevices()
         });
-        
+
         // Show notification for significant changes (if available)
         if (notificationManager) {
             if (changes.removed.length > 0) {
@@ -341,7 +341,7 @@ class ListenService {
      */
     async handleFeatureIntegrationAction(action) {
         logger.info('Feature integration action:');
-        
+
         // Delegate to voice action handler
         await this.handleVoiceAction(action);
     }
@@ -349,7 +349,7 @@ class ListenService {
     sendToRenderer(channel, data) {
         const { windowPool } = require('../../window/windowManager');
         const listenWindow = windowPool?.get('listen');
-        
+
         if (listenWindow && !listenWindow.isDestroyed()) {
             listenWindow.webContents.send(channel, data);
         }
@@ -360,7 +360,7 @@ class ListenService {
      */
     setupIpcHandlers() {
         const { ipcMain } = require('electron');
-        
+
         // TTS Audio Interference Prevention Handlers
         ipcMain.handle('listen:pause-system-audio', async (event) => {
             try {
@@ -372,7 +372,7 @@ class ListenService {
                 return { success: false, error: error.message };
             }
         });
-        
+
         ipcMain.handle('listen:resume-system-audio', async (event) => {
             try {
                 const result = await this.sttService.resumeSystemAudioCapture();
@@ -394,7 +394,7 @@ class ListenService {
                 return { success: false, error: error.message };
             }
         });
-        
+
         ipcMain.handle('listen:resume-microphone', async (event) => {
             try {
                 const result = await this.sttService.resumeMicrophoneCapture();
@@ -405,7 +405,7 @@ class ListenService {
                 return { success: false, error: error.message };
             }
         });
-        
+
         logger.info('[ListenService] IPC handlers configured');
     }
 
@@ -416,7 +416,7 @@ class ListenService {
 
     async handleListenRequest(listenButtonText) {
         logger.info('[SEARCH] DEBUG: handleListenRequest called with:', listenButtonText);
-        
+
         const { windowPool, updateLayout } = require('../../window/windowManager');
         const listenWindow = windowPool.get('listen');
         const header = windowPool.get('header');
@@ -431,31 +431,31 @@ class ListenService {
                 case 'Listen':
                     logger.info('[ListenService] [SEARCH] DEBUG: Processing "Listen" case');
                     logger.info('[ListenService] [START] Enhanced session start with pre-initialization');
-                    
+
                     logger.info('[SEARCH] DEBUG: About to emit window:requestVisibility');
                     internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
                     logger.info('[SEARCH] DEBUG: window:requestVisibility emitted successfully');
-                    
+
                     logger.info('[SEARCH] DEBUG: About to call preInitializeComponents');
                     // [TOOL] Pre-initialize critical components before session start
                     await this.preInitializeComponents();
                     logger.info('[SEARCH] DEBUG: preInitializeComponents completed');
-                    
+
                     logger.info('[SEARCH] DEBUG: About to call initializeSession');
                     const sessionInitialized = await this.initializeSession();
                     logger.info('[SEARCH] DEBUG: initializeSession returned:', sessionInitialized);
-                    
+
                     if (sessionInitialized) {
                         logger.info('[SEARCH] DEBUG: Session initialized successfully, sending session-state-changed');
                         listenWindow.webContents.send('session-state-changed', { isActive: true });
                         logger.info('[SEARCH] DEBUG: session-state-changed sent successfully');
-                        
+
                         // Start audio capture when user actually clicks the listen button
                         logger.info('[ListenService] Starting audio capture for user-initiated listen request');
                         logger.info('[SEARCH] DEBUG: About to call sendToRenderer with change-listen-capture-state');
                         this.sendToRenderer('change-listen-capture-state', { status: "start" });
                         logger.info('[SEARCH] DEBUG: change-listen-capture-state sent successfully');
-                        
+
                         logger.info('[ListenService] Session successfully started and activated');
                     } else {
                         logger.error('[ListenService] [SEARCH] DEBUG: Session initialization failed - not activating');
@@ -463,23 +463,23 @@ class ListenService {
                         throw new Error('Session initialization failed');
                     }
                     break;
-        
+
                 case 'Stop':
                     logger.info('[ListenService] changeSession to "Stop"');
                     await this.closeSession();
                     listenWindow.webContents.send('session-state-changed', { isActive: false });
                     break;
-        
+
                 case 'Done':
                     logger.info('[ListenService] changeSession to "Done"');
                     internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
                     listenWindow.webContents.send('session-state-changed', { isActive: false });
                     break;
-        
+
                 default:
                     throw new Error(`[ListenService] unknown listenButtonText: ${listenButtonText}`);
             }
-            
+
             logger.info('[SEARCH] DEBUG: About to send listen:changeSessionResult success to header');
             header.webContents.send('listen:changeSessionResult', { success: true });
             logger.info('[SEARCH] DEBUG: listen:changeSessionResult success sent successfully');
@@ -489,17 +489,17 @@ class ListenService {
             logger.error('[SEARCH] DEBUG: About to send listen:changeSessionResult failure to header');
             header.webContents.send('listen:changeSessionResult', { success: false });
             logger.error('[SEARCH] DEBUG: listen:changeSessionResult failure sent successfully');
-            throw error; 
+            throw error;
         }
     }
 
     async preInitializeComponents() {
         logger.info('[ListenService] [TOOL] Pre-initializing components for reliable startup...');
-        
+
         try {
             // Pre-initialize model state service
             const modelStateService = require('../../common/services/modelStateService');
-            
+
             // Ensure Deepgram is selected and ready
             const modelInfo = modelStateService.getCurrentModelInfo('stt');
             if (!modelInfo || modelInfo.provider !== 'deepgram') {
@@ -510,10 +510,10 @@ class ListenService {
                         modelStateService.state.selectedModels.stt = null;
                     }
                     modelStateService._autoSelectAvailableModels(['stt']);
-                    
+
                     // Wait a moment for selection to complete
                     await new Promise(resolve => setTimeout(resolve, 100));
-                    
+
                     // Verify selection worked
                     const updatedModelInfo = modelStateService.getCurrentModelInfo('stt');
                     logger.info('[ListenService] [SEARCH] Post-selection model info:', {
@@ -528,7 +528,7 @@ class ListenService {
                     model: modelInfo.model
                 });
             }
-            
+
             // Pre-warm audio context (helps prevent browser audio context suspension)
             if (typeof window !== 'undefined' && window.AudioContext) {
                 try {
@@ -540,7 +540,7 @@ class ListenService {
                     logger.warn('[ListenService] Audio context pre-warm failed:', audioError.message);
                 }
             }
-            
+
             logger.info('[ListenService] [OK] Components pre-initialized successfully');
         } catch (error) {
             logger.warn('[ListenService] [WARNING] Component pre-initialization failed (continuing anyway):', error.message);
@@ -549,45 +549,45 @@ class ListenService {
 
     async handleTranscriptionComplete(speaker, text) {
         // Handle transcription completion
-        
+
         // Update personality context based on transcription
         if (speaker === 'user' && this.personalityInitialized && this.agentPersonalityManager) {
             this.updatePersonalityContextForVoice(text);
         }
-        
+
         // Add to summary service conversation history for analysis
         this.summaryService.addConversationTurn(speaker, text);
-        
+
         // Save to database
         await this.saveConversationTurn(speaker, text);
-        
+
         // ============================================================================
         // MEMORY STORAGE: Store voice transcription in backend memory system
         // ============================================================================
-        
+
         // Store voice transcription in backend memory for learning and context
         if (speaker === 'user' && text.trim()) {
             // Get current user and agent context (outside try block for scope)
             const currentUser = authService.getCurrentUser();
             const userId = currentUser?.uid || currentUser?.id || 'guest';
-            
+
             try {
                 const currentPersonality = this.agentPersonalityManager?.getCurrentPersonalityStatus();
                 const agentId = currentPersonality?.id || 1; // Agent ID is already numeric from database
-                
+
                 logger.info('[ListenService] Current agent info', {
                     agentId,
                     agentName: currentPersonality?.name,
                     personalityType: currentPersonality?.personalityType
                 });
-                
+
                 logger.info('[ListenService] Storing voice transcription in memory', {
                     agentId,
                     userId,
                     speaker,
                     textLength: text.length
                 });
-                
+
                 // Store voice interaction in Episodic Memory (for learning)
                 await this.memoryApiClient.storeEpisodicMemory(agentId, userId, {
                     content: {
@@ -609,7 +609,7 @@ class ListenService {
                     },
                     importance: 0.6 // Medium importance for voice transcriptions
                 });
-                
+
                 // Store interaction pattern in Procedural Memory (for behavior learning)
                 await this.memoryApiClient.storeProceduralMemory(agentId, userId, {
                     pattern: {
@@ -630,13 +630,13 @@ class ListenService {
                     },
                     success: true
                 });
-                
+
                 logger.info('[ListenService] [OK] Voice transcription stored in memory system', {
                     agentId,
                     userId,
                     textPreview: text.substring(0, 50) + '...'
                 });
-                
+
             } catch (memoryError) {
                 // Don't fail the main flow if memory storage fails
                 logger.warn('[ListenService] [WARNING] Failed to store transcription in memory (non-blocking):', {
@@ -646,32 +646,32 @@ class ListenService {
                 });
             }
         }
-        
+
         // ============================================================================
         // FIXED TTS ARCHITECTURE: Send raw transcript directly to TTS WebSocket
         // ============================================================================
-        
+
         // Send raw user transcript directly to TTS WebSocket for agent analysis + TTS generation  
         // Note: STT sends 'Me' for microphone input, but we check for both 'user' and 'Me'
         // IMPORTANT: Only trigger agent in agent mode (purple), not in listen mode (green)
-        
+
         // Use local agent mode state (updated via internal bridge events)
         const isInAgentMode = this.agentModeActive;
-        
+
         logger.info(`[ListenService] [TOOL] DEBUG TTS check: speaker="${speaker}", text="${text.trim()}", isInAgentMode=${isInAgentMode}, shouldSend=${(speaker === 'user' || speaker === 'Me') && text.trim() && isInAgentMode}`);
-        
+
         if ((speaker === 'user' || speaker === 'Me') && text.trim() && isInAgentMode) {
             try {
                 const currentUser = authService.getCurrentUser();
                 const userId = currentUser?.uid || currentUser?.id || 'guest';
                 const currentPersonality = this.agentPersonalityManager?.getCurrentPersonalityStatus();
                 const agentId = currentPersonality?.id || 1; // Agent ID is already numeric from database
-                
+
                 // Sending transcript to TTS agent for voice response
-                
+
                 // Capture screenshot for TTS context
                 const screenshotResult = await captureScreenshotForTTS();
-                
+
                 // Build context with actual screenshot data if available
                 const context = {
                     userId: userId,
@@ -681,7 +681,7 @@ class ListenService {
                     includeKnowledge: true,   // TTS agent can use RAG knowledge
                     timestamp: new Date().toISOString()
                 };
-                
+
                 // Add screenshot data if capture was successful
                 if (screenshotResult.success) {
                     context.screenshot = screenshotResult.base64;
@@ -694,16 +694,16 @@ class ListenService {
                 } else {
                     logger.warn('[ListenService] [WARNING] No screenshot data - TTS will use text-only context');
                 }
-                
+
                 // Send raw transcript to frontend for TTS WebSocket processing
                 this.sendToRenderer('raw-transcript-for-tts', {
                     agentId: agentId,
                     transcript: text, // Raw transcript from STT
                     context: context
                 });
-                
+
                 logger.info('[ListenService] [OK] Raw transcript sent to TTS system');
-                
+
             } catch (ttsError) {
                 // Don't fail the main flow if TTS fails
                 logger.warn('[ListenService] [WARNING] Failed to send transcript to TTS (non-blocking):', {
@@ -721,7 +721,7 @@ class ListenService {
                 mode: 'listen-only'
             });
         }
-        
+
         // Keep original agent analysis for listen view (summary service)
         await this.triggerAgentAnalysis();
     }
@@ -730,13 +730,13 @@ class ListenService {
         try {
             const conversationHistory = this.summaryService.conversationHistory;
             logger.info('[AI] Checking if agent analysis should trigger based on conversation count');
-            
+
             // Use the proper threshold-based analysis (only triggers at 5, 10, 15+ conversations)
             await this.summaryService.triggerAnalysisIfNeeded();
-            
+
             // NOTE: TTS handling is done separately in handleTranscriptionComplete()
             // with raw transcript data for TTS Agent integration
-            
+
         } catch (error) {
             logger.error('[ERROR] Agent analysis failed:', error);
             this.sendToRenderer('analysis-error', {
@@ -772,7 +772,7 @@ class ListenService {
             });
             logger.info('Saved transcript for session : ()');
         } catch (error) {
-            logger.error('Error occurred', { error  });
+            logger.error('Error occurred', { error });
         }
     }
 
@@ -785,20 +785,20 @@ class ListenService {
                 // This case should ideally not happen as authService initializes a default user.
                 throw new Error("Cannot initialize session: auth service not ready.");
             }
-            
+
             this.currentSessionId = await sessionRepository.getOrCreateActive('listen');
             logger.info('New listen session ensured:');
 
             // Set session ID for summary service
             this.summaryService.setSessionId(this.currentSessionId);
-            
+
             // Reset conversation history
             this.summaryService.resetConversationHistory();
 
             logger.info('New conversation session started:', this.currentSessionId);
             return true;
         } catch (error) {
-            logger.error('Error occurred', { error  });
+            logger.error('Error occurred', { error });
             this.currentSessionId = null;
             return false;
         }
@@ -820,7 +820,7 @@ class ListenService {
                 const modelStateService = require('../../common/services/modelStateService');
                 const deepgramKey = modelStateService.getApiKey('deepgram');
                 const currentSTT = modelStateService.getCurrentModelInfo('stt');
-                
+
                 if (deepgramKey && currentSTT?.provider !== 'deepgram') {
                     logger.info('[ListenService] [START] Forcing Deepgram selection for ultra-low latency STT');
                     // Clear current selection and force reselection
@@ -833,7 +833,7 @@ class ListenService {
             } catch (error) {
                 logger.warn('[ListenService] Could not force Deepgram selection:', error.message);
             }
-            
+
             // Initialize database session
             const sessionInitialized = await this.initializeNewSession();
             if (!sessionInitialized) {
@@ -901,27 +901,27 @@ class ListenService {
             }
 
             logger.info('[OK] Listen service initialized successfully.');
-            
+
             this.sendToRenderer('update-status', 'Connected. Ready to listen.');
-            
+
             // NOTE: Removed automatic audio capture start - should only start when user clicks listen button
             // this.sendToRenderer('change-listen-capture-state', { status: "start" });
-            
+
             // Show session started notification (if available)
             if (notificationManager) {
                 notificationManager.showSessionChange('started');
             }
-            
+
             return true;
         } catch (error) {
-            logger.error('Error occurred', { error  });
+            logger.error('Error occurred', { error });
             this.sendToRenderer('update-status', 'Initialization failed.');
-            
+
             // Show error notification (if available)
             if (notificationManager) {
                 notificationManager.showError(`Failed to initialize session: ${error.message}`);
             }
-            
+
             return false;
         } finally {
             this.isInitializingSession = false;
@@ -952,12 +952,12 @@ class ListenService {
     async closeSession() {
         try {
             this.sendToRenderer('change-listen-capture-state', { status: "stop" });
-            
+
             // Stop enhanced audio services if they were enabled
             if (this.enhancedAudioEnabled && featureIntegrationService) {
                 await this.stopEnhancedAudioServices();
             }
-            
+
             // Close STT sessions
             await this.sttService.closeSessions();
 
@@ -978,21 +978,21 @@ class ListenService {
             this.summaryService.resetConversationHistory();
 
             logger.info('Listen service session closed.');
-            
+
             // Show session stopped notification (if available)
             if (notificationManager) {
                 notificationManager.showSessionChange('stopped');
             }
-            
+
             return { success: true };
         } catch (error) {
-            logger.error('Error occurred', { error  });
-            
+            logger.error('Error occurred', { error });
+
             // Show error notification (if available)
             if (notificationManager) {
                 notificationManager.showError(`Failed to close session: ${error.message}`);
             }
-            
+
             return { success: false, error: error.message };
         }
     }
@@ -1002,37 +1002,37 @@ class ListenService {
      */
     async stopEnhancedAudioServices() {
         logger.info('[ListenService] Stopping enhanced audio services...');
-        
+
         try {
             // Check if feature integration service is available
             if (!featureIntegrationService) {
                 logger.warn('[ListenService] Feature integration service not available for stopping enhanced audio services');
                 return;
             }
-            
+
             // Stop voice command processing
             if (this.voiceCommandsEnabled) {
                 await featureIntegrationService.stopVoiceCommands();
                 this.voiceCommandsEnabled = false;
             }
-            
+
             // Stop speech-to-text processing
             if (this.enhancedAudioEnabled) {
                 await featureIntegrationService.stopSpeechToText();
                 this.enhancedAudioEnabled = false;
             }
-            
+
             // Stop audio processing
             await featureIntegrationService.stopAudioProcessing();
             this.audioProcessingActive = false;
-            
+
             logger.info('[ListenService] Enhanced audio services stopped');
             this.sendToRenderer('enhanced-audio-status', {
                 enabled: false,
                 voiceCommands: false,
                 devices: null
             });
-            
+
         } catch (error) {
             logger.warn('Error stopping enhanced audio services:', { error });
         }
@@ -1088,7 +1088,7 @@ class ListenService {
         'macOS audio capture started.',
         'Error starting macOS audio capture:'
     );
-    
+
     handleStopMacosAudio = this._createHandler(
         this.stopMacOSAudioCapture,
         'macOS audio capture stopped.',
@@ -1109,38 +1109,38 @@ class ListenService {
             if (process.platform !== 'win32') {
                 return { success: false, error: 'Speaker control only available on Windows' };
             }
-            
+
             // Get current system volume before muting
             const currentVolume = await this.getSystemVolume();
             if (currentVolume === null) {
                 return { success: false, error: 'Failed to get current volume' };
             }
-            
+
             // Mute speakers by setting volume to 0
             const muteResult = await this.setSystemVolume(0);
             if (!muteResult) {
                 return { success: false, error: 'Failed to mute speakers' };
             }
-            
+
             logger.info(`[ListenService] 🔇 Speakers muted (volume: ${currentVolume} → 0)`);
             return { success: true, originalVolume: currentVolume };
         },
         null,
         'Error muting speakers:'
     );
-    
+
     handleUnmuteSpeakers = this._createHandler(
         async (originalVolume) => {
             if (process.platform !== 'win32') {
                 return { success: false, error: 'Speaker control only available on Windows' };
             }
-            
+
             const volume = originalVolume || 50; // Default to 50% if no original volume
             const unmuteResult = await this.setSystemVolume(volume);
             if (!unmuteResult) {
                 return { success: false, error: 'Failed to unmute speakers' };
             }
-            
+
             logger.info(`[ListenService] [AUDIO] Speakers unmuted (volume: 0 → ${volume})`);
             return { success: true, volume: volume };
         },
@@ -1156,31 +1156,31 @@ class ListenService {
             if (!this.enhancedAudioEnabled) {
                 throw new Error('Enhanced audio services not enabled');
             }
-            
+
             const result = await featureIntegrationService.setAudioInputDevice(deviceId);
-            
+
             if (result) {
                 this.selectedAudioDevice = deviceId;
-                
+
                 // Notify renderer of device change
                 this.sendToRenderer('audio-input-device-changed', {
                     deviceId,
                     success: true
                 });
-                
+
                 logger.info('Audio input device set to:');
             }
-            
+
             return { success: true };
         } catch (error) {
             logger.error('Failed to set audio input device:', { error });
-            
+
             this.sendToRenderer('audio-input-device-changed', {
                 deviceId,
                 success: false,
                 error: error.message
             });
-            
+
             return { success: false, error: error.message };
         }
     }
@@ -1193,7 +1193,7 @@ class ListenService {
             if (!this.enhancedAudioEnabled) {
                 return { input: [], output: [], system: [] };
             }
-            
+
             return featureIntegrationService.getAudioDevices();
         } catch (error) {
             logger.error('Failed to get audio devices:', { error });
@@ -1209,16 +1209,16 @@ class ListenService {
             if (!this.voiceCommandsEnabled) {
                 throw new Error('Voice commands not enabled');
             }
-            
+
             const handler = async () => {
                 this.handleVoiceAction({ action, phrase });
             };
-            
+
             const result = featureIntegrationService.addVoiceCommand(phrase, handler, description);
-            
+
             if (result) {
                 logger.info('Added custom voice command: "" ->');
-                
+
                 // Notify renderer
                 this.sendToRenderer('voice-command-added', {
                     phrase,
@@ -1227,11 +1227,11 @@ class ListenService {
                     success: true
                 });
             }
-            
+
             return { success: true };
         } catch (error) {
             logger.error('Failed to add voice command:', { error });
-            
+
             this.sendToRenderer('voice-command-added', {
                 phrase,
                 action,
@@ -1239,7 +1239,7 @@ class ListenService {
                 success: false,
                 error: error.message
             });
-            
+
             return { success: false, error: error.message };
         }
     }
@@ -1252,7 +1252,7 @@ class ListenService {
             if (!this.voiceCommandsEnabled) {
                 return null;
             }
-            
+
             return featureIntegrationService.getVoiceCommandStats();
         } catch (error) {
             logger.error('Failed to get voice command stats:', { error });
@@ -1268,7 +1268,7 @@ class ListenService {
             if (!this.enhancedAudioEnabled) {
                 return null;
             }
-            
+
             return featureIntegrationService.getAudioStats();
         } catch (error) {
             logger.error('Failed to get audio stats:', { error });
@@ -1284,9 +1284,9 @@ class ListenService {
         if (!this.personalityInitialized || !this.agentPersonalityManager) {
             return;
         }
-        
+
         const textLower = text.toLowerCase();
-        
+
         // Check if user is explicitly requesting personality change
         const personalityChangePatterns = [
             /switch to (.*) personality/,
@@ -1295,19 +1295,19 @@ class ListenService {
             /be more (.*)/,
             /act like a (.*)/
         ];
-        
+
         for (const pattern of personalityChangePatterns) {
             const match = textLower.match(pattern);
             if (match) {
                 const requested = match[1].trim();
                 const recommendations = this.agentPersonalityManager.getPersonalityRecommendations('general');
-                
+
                 // Try to match the requested personality
-                const personality = recommendations.find(p => 
+                const personality = recommendations.find(p =>
                     p.personality.name.toLowerCase().includes(requested) ||
                     p.personality.id.includes(requested.replace(' ', '_'))
                 );
-                
+
                 if (personality) {
                     this.agentPersonalityManager.switchPersonality(personality.id);
                     logger.info(`[ListenService] Switched to ${personality.id} via voice command`);
@@ -1315,7 +1315,7 @@ class ListenService {
                 return;
             }
         }
-        
+
         // Determine context factors for adaptive behavior
         const contextFactors = {
             taskType: this.detectTaskTypeFromVoice(textLower),
@@ -1324,13 +1324,13 @@ class ListenService {
             userMood: this.detectUserMoodFromVoice(textLower),
             userLevel: 'intermediate' // Default for voice interaction
         };
-        
+
         // Update context in personality manager
         this.agentPersonalityManager.updateContextFactors(contextFactors);
-        
+
         logger.info('[ListenService] Updated personality context from voice:', contextFactors);
     }
-    
+
     /**
      * Detect task type from voice input
      */
@@ -1342,16 +1342,16 @@ class ListenService {
             'research': ['search', 'find', 'research', 'investigate', 'look up'],
             'business': ['meeting', 'schedule', 'plan', 'organize', 'management']
         };
-        
+
         for (const [type, keywords] of Object.entries(taskMappings)) {
             if (keywords.some(keyword => text.includes(keyword))) {
                 return type;
             }
         }
-        
+
         return 'general';
     }
-    
+
     /**
      * Detect urgency from voice input
      */
@@ -1359,36 +1359,36 @@ class ListenService {
         const urgentPatterns = ['urgent', 'quickly', 'asap', 'immediately', 'right now', 'emergency'];
         return urgentPatterns.some(pattern => text.includes(pattern)) ? 'high' : 'normal';
     }
-    
+
     /**
      * Detect complexity from voice input
      */
     detectComplexityFromVoice(text) {
         const complexPatterns = ['complex', 'advanced', 'detailed', 'comprehensive', 'thorough'];
         const simplePatterns = ['simple', 'basic', 'quick', 'brief', 'short'];
-        
+
         if (complexPatterns.some(pattern => text.includes(pattern))) {
             return 'high';
         } else if (simplePatterns.some(pattern => text.includes(pattern))) {
             return 'low';
         }
-        
+
         return 'medium';
     }
-    
+
     /**
      * Detect user mood from voice input
      */
     detectUserMoodFromVoice(text) {
         const frustratedPatterns = ['frustrated', 'stuck', 'confused', 'help me', 'not working'];
         const positivePatterns = ['great', 'awesome', 'perfect', 'thanks', 'excellent'];
-        
+
         if (frustratedPatterns.some(pattern => text.includes(pattern))) {
             return 'frustrated';
         } else if (positivePatterns.some(pattern => text.includes(pattern))) {
             return 'positive';
         }
-        
+
         return 'neutral';
     }
 
@@ -1415,18 +1415,18 @@ class ListenService {
      */
     async getSystemVolume() {
         if (process.platform !== 'win32') return null;
-        
+
         try {
             const { exec } = require('child_process');
             const util = require('util');
             const execAsync = util.promisify(exec);
-            
+
             // Use Windows PowerShell to get master volume
             const command = `powershell -Command "[audio]::Volume * 100" 2>$null || powershell -Command "Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class Win32Volume { [DllImport(\\"winmm.dll\\")] public static extern int waveOutGetVolume(IntPtr hwo, out uint dwVolume); }'; [Win32Volume]::waveOutGetVolume([IntPtr]::Zero, [ref]$vol); ($vol -band 0xFFFF) / 655.35"`;
-            
+
             const { stdout } = await execAsync(command);
             const volume = Math.round(parseFloat(stdout.trim()));
-            
+
             return !isNaN(volume) ? Math.max(0, Math.min(100, volume)) : null;
         } catch (error) {
             logger.warn('[ListenService] Failed to get system volume:', error.message);
@@ -1441,17 +1441,17 @@ class ListenService {
      */
     async setSystemVolume(volume) {
         if (process.platform !== 'win32') return false;
-        
+
         try {
             const { exec } = require('child_process');
             const util = require('util');
             const execAsync = util.promisify(exec);
-            
+
             const volumeDecimal = Math.max(0, Math.min(100, volume)) / 100;
-            
+
             // Use Windows PowerShell to set master volume
             const command = `powershell -Command "[audio]::Volume = ${volumeDecimal}" 2>$null || powershell -Command "Add-Type -TypeDefinition 'using System.Runtime.InteropServices; public class Win32Volume { [DllImport(\\"winmm.dll\\")] public static extern int waveOutSetVolume(IntPtr hwo, uint dwVolume); }'; $vol = [uint32]($volumeDecimal * 65535); [Win32Volume]::waveOutSetVolume([IntPtr]::Zero, ($vol -shl 16) -bor $vol)"`;
-            
+
             await execAsync(command);
             return true;
         } catch (error) {

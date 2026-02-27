@@ -7,6 +7,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { PasswordModalProvider } from '@/contexts/PasswordModalContext'
 import Analytics from '@/components/Analytics'
 import { GA_TRACKING_ID } from '@/lib/gtag'
+import { Toaster } from 'react-hot-toast'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -50,6 +51,14 @@ export default function RootLayout({
               <ConditionalLayout>
                 <Analytics />
                 {children}
+                <Toaster position="bottom-right" toastOptions={{
+                  style: {
+                    background: '#282828',
+                    color: '#fff',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }
+                }} />
               </ConditionalLayout>
             </PasswordModalProvider>
           </AuthProvider>

@@ -7,8 +7,8 @@ export class MarbleListenButton extends LitElement {
     static styles = css`
         :host {
             display: inline-block;
-            width: 48px;
-            height: 48px;
+            width: 44px;
+            height: 44px;
             cursor: pointer;
             -webkit-app-region: no-drag; /* Prevent header drag from interfering with clicks */
         }
@@ -330,7 +330,7 @@ export class MarbleListenButton extends LitElement {
 
     handleResize() {
         if (this.renderer && this.camera) {
-            this.renderer.setSize(48, 48);
+            this.renderer.setSize(44, 44);
         }
     }
 
@@ -365,7 +365,7 @@ export class MarbleListenButton extends LitElement {
             alpha: true,
             antialias: true
         });
-        this.renderer.setSize(48, 48);
+        this.renderer.setSize(44, 44);
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setClearColor(0x000000, 0); // Transparent background
 
