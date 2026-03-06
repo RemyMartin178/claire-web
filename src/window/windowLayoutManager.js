@@ -157,8 +157,8 @@ class WindowLayoutManager {
         if (settings && !settings.isDestroyed() && settings.isVisible()) {
             const settingPos = this.calculateSettingsWindowPosition();
             if (settingPos) {
-                const { width, height } = settings.getBounds();
-                settings.setBounds({ x: settingPos.x, y: settingPos.y, width, height });
+                // Position-only update to avoid accidental DPI resize drift while dragging header
+                settings.setPosition(settingPos.x, settingPos.y, false);
             }
         }
 
@@ -166,8 +166,8 @@ class WindowLayoutManager {
         if (agentSelector && !agentSelector.isDestroyed() && agentSelector.isVisible()) {
             const agentSelectorPos = this.calculateAgentSelectorWindowPosition();
             if (agentSelectorPos) {
-                const { width, height } = agentSelector.getBounds();
-                agentSelector.setBounds({ x: agentSelectorPos.x, y: agentSelectorPos.y, width, height });
+                // Position-only update to avoid accidental DPI resize drift while dragging header
+                agentSelector.setPosition(agentSelectorPos.x, agentSelectorPos.y, false);
             }
         }
     }

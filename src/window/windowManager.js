@@ -436,7 +436,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
             }
             const position = layoutManager.calculateAgentSelectorWindowPosition();
             if (position) {
-                win.setBounds(position);
+                win.setPosition(position.x, position.y, false);
                 win.__lockedByButton = true;
                 win.show();
                 win.moveTop();
@@ -511,7 +511,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                     if (!targets.listen) return;
 
                     const startPos = { x: targets.listen.x - ANIM_OFFSET_X, y: targets.listen.y };
-                    win.setBounds(startPos);
+                    win.setPosition(startPos.x, startPos.y, false);
                     win.show();
                     fadeWindow(win, 0, 1);
                     movementManager.animateWindow(win, targets.listen.x, targets.listen.y);
@@ -521,7 +521,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                     if (!targets.listen || !targets.ask) return;
 
                     const startListenPos = { x: targets.listen.x - ANIM_OFFSET_X, y: targets.listen.y };
-                    win.setBounds(startListenPos);
+                    win.setPosition(startListenPos.x, startListenPos.y, false);
 
                     win.show();
                     fadeWindow(win, 0, 1);
@@ -534,7 +534,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                     if (!targets.ask) return;
 
                     const startPos = { x: targets.ask.x, y: targets.ask.y - ANIM_OFFSET_Y };
-                    win.setBounds(startPos);
+                    win.setPosition(startPos.x, startPos.y, false);
                     win.show();
                     fadeWindow(win, 0, 1);
                     movementManager.animateWindow(win, targets.ask.x, targets.ask.y);
@@ -544,7 +544,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                     if (!targets.listen || !targets.ask) return;
 
                     const startAskPos = { x: targets.ask.x, y: targets.ask.y - ANIM_OFFSET_Y };
-                    win.setBounds(startAskPos);
+                    win.setPosition(startAskPos.x, startAskPos.y, false);
 
                     win.show();
                     fadeWindow(win, 0, 1);
