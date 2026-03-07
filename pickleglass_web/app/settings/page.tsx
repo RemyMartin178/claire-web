@@ -59,7 +59,7 @@ export default function SettingsPage() {
       // Vérifier si l'abonnement est déjà annulé
       if (subscription.cancelAtPeriodEnd) {
         setShowCancelModal(false)
-        toast("Votre abonnement a déjà été annulé. Il prendra fin à la fin de la période de facturation.")
+        toast("Abonnement déjà annulé")
         return
       }
 
@@ -107,24 +107,24 @@ export default function SettingsPage() {
       // Ne pas afficher d'erreur si l'abonnement est déjà annulé (c'est juste informatif)
       if (errorMessage.includes('déjà annulé')) {
         setShowCancelModal(false)
-        toast("Votre abonnement a déjà été annulé. Il prendra fin à la fin de la période de facturation.")
+        toast("Abonnement déjà annulé")
         // Recharger pour mettre à jour l'état
         setTimeout(() => window.location.reload(), 1500)
       } else {
-        toast.error(errorMessage)
+        toast.error("Échec de l'annulation")
       }
     }
   }
 
   const handleManageSubscription = async () => {
     if (!userInfo) {
-      toast.error('Vous devez être connecté')
+      toast.error('Connexion requise')
       return
     }
 
     // ✅ FIX: Vérifier d'abord si l'utilisateur a un abonnement actif
     if (subscription.plan === 'free' || !subscription.isActive || !subscription.stripeSubscriptionId) {
-      toast("Aucun abonnement actif. Souscrivez à un plan pour gérer vos paiements.")
+      toast("Aucun abonnement")
       return
     }
 
@@ -150,7 +150,7 @@ export default function SettingsPage() {
       } else {
         // Si l'API échoue, utiliser les données du hook useSubscription
         console.warn('API failed, using hook data:', subscription)
-        toast.error('Impossible d\'accéder au portail de paiement pour le moment.')
+        toast.error('Portail indisponible')
         setIsManagingSubscription(false)
         setShowSubscriptionMenu(false)
         return
@@ -158,7 +158,7 @@ export default function SettingsPage() {
 
       // Vérifier si l'utilisateur a un stripeCustomerId
       if (!subData.subscription?.stripeCustomerId) {
-        toast("Votre abonnement a été ajouté manuellement. Aucun portail de paiement disponible.")
+        toast("Abonnement manuel")
         setIsManagingSubscription(false)
         setShowSubscriptionMenu(false)
         return
@@ -186,7 +186,7 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Erreur portail Stripe:', error)
-      toast.error('Erreur lors de l\'ouverture du portail de gestion. Réessayez plus tard.')
+      toast.error('Erreur portail')
     } finally {
       setIsManagingSubscription(false)
       setShowSubscriptionMenu(false)
@@ -234,10 +234,10 @@ export default function SettingsPage() {
     setIsSaving(true)
     try {
       await updateUserProfile({ displayName: displayNameInput.trim() })
-      toast.success('Nom d\'affichage mis à jour')
+      toast.success('Profil mis à jour')
     } catch (error) {
       console.error("Failed to update display name:", error);
-      toast.error('Erreur lors de la mise à jour du nom affiché')
+      toast.error('Échec mise à jour')
     } finally {
       setIsSaving(false);
     }
@@ -273,7 +273,7 @@ export default function SettingsPage() {
       }
 
       setDeleteError(errorMessage);
-      toast.error(errorMessage)
+      toast.error("Échec de la suppression")
     } finally {
       setIsDeleting(false)
     }

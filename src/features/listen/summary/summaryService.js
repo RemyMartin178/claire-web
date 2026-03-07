@@ -130,28 +130,21 @@ Please build upon this context while analyzing the new conversation segments.
                     role: 'user',
                     content: `${contextualPrompt}
 
-Analyse la conversation et fournis un résumé très structuré. Formate ta réponse EXACTEMENT avec ces 4 sections Markdown :
+Analyse la conversation et fournis un résumé très structuré. Formate ta réponse EXACTEMENT avec ces 3 sections Markdown :
 
 **Title**
-Génère un titre de 3 à 5 mots maximum, centré uniquement sur les mots-clés (comme les titres courts de ChatGPT). N'utilise jamais de phrases d'introduction (par exemple évite "La discussion porte sur..."). Ton titre doit juste être le sujet traité (ex: "Plan marketing Q3", "Bug d'affichage iOS").
+Génère un titre de 3 à 5 mots maximum, centré uniquement sur les mots-clés.
 
 ## Résumé
-- (Premier point clé)
-- (Deuxième point clé)
+- (Point clé 1)
+- (Point clé 2)
+- (Point clé 3)
 
 ## À retenir
-- ❓ (Première question suggérée concernant la conversation)
-- ❓ (Deuxième question suggérée)
-- ❓ (Troisième question suggérée)
+- ❓ (Question suggérée 1)
+- ❓ (Question suggérée 2)
 
-## Notes
-- **(Nom du sujet premier)**
-  - (Détail)
-  - (Détail)
-- **(Nom du sujet deuxième)**
-  - (Détail)
-
-Rédige le contenu dans la langue principale de la conversation. Sois toujours extrêmement concis, factuel et utile.`,
+Rédige le contenu dans la langue principale de la conversation. Sois extrêmement concis, factuel et utile. L'objectif est d'avoir une structure claire et épurée.`,
                 },
             ];
 

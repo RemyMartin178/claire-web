@@ -141,7 +141,7 @@ export default function KnowledgeBasePage() {
       await fetchFolders()
     } catch (err) {
       console.error('Failed to create folder:', err)
-      toast.error('Échec de la création du dossier')
+      toast.error('Échec de la création')
     }
   }
 

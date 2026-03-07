@@ -292,7 +292,7 @@ export default function ToolsPage() {
       )
     } catch (err) {
       console.error('Failed to toggle tool:', err)
-      toast.error(`Failed to toggle tool: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      toast.error('Échec de l\'activation')
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)
@@ -338,7 +338,7 @@ export default function ToolsPage() {
       }, 3000)
     } catch (error) {
       console.error('Failed to configure auth:', error)
-      toast.error(`Failed to configure authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error('Échec de la configuration')
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)
@@ -376,10 +376,10 @@ export default function ToolsPage() {
         )
       )
 
-      toast.success('Authentication revoked successfully')
+      toast.success('Accès révoqué')
     } catch (error) {
       console.error('Failed to revoke auth:', error)
-      toast.error(`Failed to revoke authentication: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error('Échec de la révocation')
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)
@@ -393,10 +393,10 @@ export default function ToolsPage() {
     setOperatingTools(prev => new Set(Array.from(prev).concat([`${toolName}_test`])))
 
     try {
-      toast.error('Tool execution not yet fully implemented. This is a demo.')
+      toast.error('Non implémenté')
     } catch (err) {
       console.error('Tool execution error:', err)
-      toast.error(`Tool execution failed: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      toast.error('Échec de l\'exécution')
     } finally {
       setOperatingTools(prev => {
         const newSet = new Set(prev)
@@ -514,8 +514,8 @@ export default function ToolsPage() {
                   size="sm"
                   onClick={() => setSelectedCategory(category)}
                   className={`capitalize font-medium transition-colors ${selectedCategory === category
-                      ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] shadow-sm'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900'
+                    ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900'
                     }`}
                 >
                   {category.replace('_', ' ')}

@@ -140,7 +140,7 @@ function PersonalizeContent() {
     if (!selectedPreset || saving || !isDirty) return;
 
     if (selectedPreset.is_default === 1) {
-      toast.error("Les préréglages par défaut ne peuvent pas être modifiés.");
+      toast.error("Modification impossible");
       return;
     }
 
@@ -161,7 +161,7 @@ function PersonalizeContent() {
       setIsDirty(false);
     } catch (error) {
       console.error("Save failed:", error);
-      toast.error("Échec de l'enregistrement du préréglage. Voir la console pour plus de détails.");
+      toast.error("Échec de l'enregistrement");
     } finally {
       setSaving(false);
     }
@@ -194,7 +194,7 @@ function PersonalizeContent() {
       setIsDirty(false);
     } catch (error) {
       console.error("Failed to create preset:", error);
-      toast.error("Échec de la création du préréglage. Voir la console pour plus de détails.");
+      toast.error("Échec de la création");
     } finally {
       setSaving(false);
     }
@@ -228,7 +228,7 @@ function PersonalizeContent() {
       setIsDirty(false);
     } catch (error) {
       console.error("Failed to duplicate preset:", error);
-      toast.error("Échec de la duplication du préréglage. Voir la console pour plus de détails.");
+      toast.error("Échec de la duplication");
     } finally {
       setSaving(false);
     }

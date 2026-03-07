@@ -75,14 +75,10 @@ async function updatePreset(id, { title, prompt }, uid) {
     }
 
     const updates = {};
-    if (title !== undefined) {
-        updates.title = encryptionService.encrypt(title);
-    }
-    if (prompt !== undefined) {
-        updates.prompt = encryptionService.encrypt(prompt);
-    }
+    if (title !== undefined) updates.title = title;
+    if (prompt !== undefined) updates.prompt = prompt;
     updates.updated_at = Math.floor(Date.now() / 1000);
-    
+
     await updateDoc(docRef, updates);
     return { changes: 1 };
 }
@@ -118,7 +114,7 @@ async function getAutoUpdate(uid) {
             return true;
         }
     } catch (error) {
-        logger.error('Error occurred', { error  });
+        logger.error('Error occurred', { error });
         return true; // fallback to enabled
     }
 }
@@ -133,7 +129,7 @@ async function setAutoUpdate(uid, isEnabled) {
         // If user doc does not exist, do nothing (no creation)
         return { success: true };
     } catch (error) {
-        logger.error('Error occurred', { error  });
+        logger.error('Error occurred', { error });
         return { success: false, error: error.message };
     }
 }

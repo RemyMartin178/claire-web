@@ -354,12 +354,12 @@ app.whenReady().then(async () => {
 
             const uid = await waitForUserReady();
             if (uid) {
-                console.log(`[Migration] 🏃 Starting decryption migration for user: ${uid}`);
+                logger.info(`[Migration] 🏃 Starting decryption migration for user: ${uid}`);
                 const { decryptUserData } = require('./scripts/decrypt_firestore');
                 await decryptUserData(uid);
-                console.log(`[Migration] ✅ Decryption migration attempt finished for user: ${uid}`);
+                logger.info(`[Migration] ✅ Decryption migration attempt finished for user: ${uid}`);
             } else {
-                console.log('[Migration] ⚠️ Skipped migration: No user or key ready.');
+                logger.warn('[Migration] ⚠️ Skipped migration: No user or key ready.');
             }
             // --------------------------------------
 

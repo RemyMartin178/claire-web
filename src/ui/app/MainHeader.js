@@ -325,6 +325,10 @@ export class MainHeader extends ThemeMixin(LitElement) {
             height: 28px;
         }
 
+        .settings-button *, .action-text-content, .listen-button, svg, img {
+            -webkit-app-region: no-drag;
+        }
+
         .settings-button:hover {
             background: rgba(255, 255, 255, 0.18);
         }
@@ -613,6 +617,17 @@ export class MainHeader extends ThemeMixin(LitElement) {
     }
 
     async handleMouseDown(e) {
+        // Prevent manual drag if clicking on interactive elements
+        if (e.composedPath().some(n =>
+            n?.classList?.contains('settings-button') ||
+            n?.tagName?.toLowerCase() === 'button' ||
+            n?.tagName?.toLowerCase() === 'marble-listen-button' ||
+            n?.classList?.contains('header-actions') ||
+            n?.classList?.contains('no-drag')
+        )) {
+            return;
+        }
+
         e.preventDefault();
 
         const initialPosition = await window.api.mainHeader.getHeaderPosition();
@@ -988,9 +1003,8 @@ export class MainHeader extends ThemeMixin(LitElement) {
         }
     }
 
-    onSettingsPointerDown(e) {
+    onSettingsClick(e) {
         if (this.wasJustDragged) return;
-        e.preventDefault();
         e.stopPropagation();
 
         // Anti-rebond : évite les toggles multiples en moins de 400ms
@@ -1337,8 +1351,8 @@ export class MainHeader extends ThemeMixin(LitElement) {
                        </div>
 
                        <button 
-                           class="settings-button"
-                           @pointerdown=${(e) => this.onSettingsPointerDown(e)}
+                           class="settings-button no-drag"
+                           @click=${(e) => this.onSettingsClick(e)}
                        >
                           <div class="settings-icon">
                               <img src="../assets/settings.svg" width="16" height="16" alt="Settings" />

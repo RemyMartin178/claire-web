@@ -1179,15 +1179,16 @@ const moveHeaderTo = (newX, newY, skipLayoutUpdate = false) => {
         if (skipLayoutUpdate) {
             isDraggingHeader = true;
             layoutFrozen = true;
-        }
-
-        header.setPosition(clampedX, clampedY, false);
-
-        // ✅ FIX: Appeler updateLayout() seulement si pas en train de dragger
-        if (!skipLayoutUpdate) {
+            // Use setPosition to avoid recalculating width and height which can cause the window to gradually increase in size
+            header.setPosition(Math.round(clampedX), Math.round(clampedY), false);
+        } else {
             isDraggingHeader = false;
             layoutFrozen = false;
-            updateLayout();
+            header.setPosition(Math.round(clampedX), Math.round(clampedY), false);
+            // Short debounce before restoring layout updates to let bounds settle
+            setTimeout(() => {
+                updateLayout();
+            }, 50);
         }
     }
 };

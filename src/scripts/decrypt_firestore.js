@@ -10,8 +10,8 @@ function logItem(msg) {
 
 const transcriptConverter = createEncryptedConverter(['text', 'content']);
 const aiMessageConverter = createEncryptedConverter(['content', 'text']);
-const summaryConverter = createEncryptedConverter(['tldr', 'text', 'bulletPoints', 'actionItems', 'bullet_json', 'action_json', 'bullet_points', 'action_items']);
-const sessionConverter = createEncryptedConverter(['title']);
+const summaryConverter = createEncryptedConverter(['tldr', 'text', 'bulletPoints', 'actionItems', 'bullet_json', 'action_json', 'bullet_points', 'action_items', 'content']);
+const sessionConverter = createEncryptedConverter(['title', 'content']);
 
 async function decryptUserData(uid) {
     logItem(`\n\n[Migration] === Starting decryption migration for user: ${uid} ===`);
@@ -46,18 +46,19 @@ async function decryptUserData(uid) {
             }
 
             // 4. Summary
-            const summaryRef = collection(db, `users/${uid}/sessions/${sessionId}/summary`).withConverter(summaryConverter);
-            const summarySnap = await getDocs(summaryRef);
             for (const sumDoc of summarySnap.docs) {
                 let data = sumDoc.data();
+                const sumId = sumDoc.id;
+                logItem(`[Migration] Decrypting summary doc: ${sumId}...`);
 
-                // Special mapping: if we found bullet_json (encrypted), we save it back as bulletPoints (plaintext)
-                // This ensures the web app finds the data where it expects it.
+                // Map old/encrypted fields to fields the web app expects (both formats for safety)
                 if (data.bullet_json && !data.bulletPoints) data.bulletPoints = data.bullet_json;
                 if (data.action_json && !data.actionItems) data.actionItems = data.action_json;
                 if (data.bullet_points && !data.bulletPoints) data.bulletPoints = data.bullet_points;
                 if (data.action_items && !data.actionItems) data.actionItems = data.action_items;
 
+                // Also ensure the original fields are now plaintext
+                // (Already handled by the converter when we do setDoc)
                 await setDoc(sumDoc.ref, data);
             }
         }

@@ -265,7 +265,7 @@ export default function BillingPage() {
     }
 
     if (subscription.billingCycle === 'yearly') {
-      toast.error('Vous êtes déjà sur le plan annuel')
+      toast.error('Déjà sur le plan annuel')
       return
     }
 
@@ -403,7 +403,7 @@ export default function BillingPage() {
 
   const handleManageSubscription = async () => {
     if (!user) {
-      toast.error('Vous devez être connecté')
+      toast.error('Connexion requise')
       return
     }
 
@@ -476,7 +476,7 @@ export default function BillingPage() {
       }
     } catch (error: any) {
       console.error('Erreur portail Stripe:', error)
-      toast.error(`Erreur lors de l'ouverture du portail de gestion: ${error.message}`)
+      toast.error('Erreur portail')
     } finally {
       setIsLoading(null)
     }
@@ -484,7 +484,7 @@ export default function BillingPage() {
 
   const handleSubscribe = async (plan: 'plus' | 'enterprise') => {
     if (!user) {
-      toast.error('Vous devez être connecté pour souscrire')
+      toast.error('Connexion requise')
       return
     }
 
@@ -544,7 +544,7 @@ export default function BillingPage() {
       }
     } catch (error: any) {
       console.error('Checkout error:', error)
-      toast.error(`Erreur lors de l'ouverture du paiement: ${error.message}`)
+      toast.error('Erreur de paiement')
     } finally {
       setIsLoading(null)
     }

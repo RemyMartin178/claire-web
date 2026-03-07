@@ -91,29 +91,8 @@ function resetSessionKey() {
  * @returns {string | null} The encrypted data, as a base64 string.
  */
 function encrypt(text) {
-    if (!sessionKey) {
-        logger.error('Encryption key is not initialized. Cannot encrypt.');
-        return text;
-    }
-    if (text == null) {
-        return text;
-    }
-
-    try {
-        const key = Buffer.from(sessionKey, 'hex');
-        const iv = crypto.randomBytes(IV_LENGTH);
-        const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-
-        let encrypted = cipher.update(String(text), 'utf8', 'hex');
-        encrypted += cipher.final('hex');
-
-        const authTag = cipher.getAuthTag();
-
-        return Buffer.concat([iv, authTag, Buffer.from(encrypted, 'hex')]).toString('base64');
-    } catch (error) {
-        logger.error('Encryption failed:', { error });
-        return text;
-    }
+    // Encryption COMPLETELY DISABLED as per user request to ensure plaintext storage across platforms
+    return text;
 }
 
 /**
@@ -122,35 +101,9 @@ function encrypt(text) {
  * @returns {string | null} The decrypted text.
  */
 function decrypt(encryptedText) {
-    if (!sessionKey) {
-        logger.error('Encryption key is not initialized. Cannot decrypt.');
-        return encryptedText;
-    }
-    if (encryptedText == null || typeof encryptedText !== 'string') {
-        return encryptedText;
-    }
-
-    try {
-        const data = Buffer.from(encryptedText, 'base64');
-        if (data.length < IV_LENGTH + AUTH_TAG_LENGTH) {
-            return encryptedText;
-        }
-
-        const key = Buffer.from(sessionKey, 'hex');
-        const iv = data.slice(0, IV_LENGTH);
-        const authTag = data.slice(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
-        const encryptedContent = data.slice(IV_LENGTH + AUTH_TAG_LENGTH);
-
-        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-        decipher.setAuthTag(authTag);
-
-        let decrypted = decipher.update(encryptedContent, 'hex', 'utf8');
-        decrypted += decipher.final('utf8');
-
-        return decrypted;
-    } catch (error) {
-        return encryptedText;
-    }
+    // Encryption COMPLETELY DISABLED - return as-is. 
+    // If it looks like base64-ish encrypted data, our migration script will handle it on startup.
+    return encryptedText;
 }
 
 function looksEncrypted(str) {

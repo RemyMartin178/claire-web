@@ -46,7 +46,7 @@ class ModelStateService extends EventEmitter {
         const sttModel = this.state.selectedModels.stt;
         const llmProvider = this.getProviderForModel('llm', llmModel) || 'None';
         const sttProvider = this.getProviderForModel('stt', sttModel) || 'None';
-    
+
         logger.info(`Current Selection -> LLM: ${llmModel} (Provider: ${llmProvider}), STT: ${sttModel} (Provider: ${sttProvider})`);
     }
 
@@ -63,7 +63,7 @@ class ModelStateService extends EventEmitter {
             // Special logic for STT: Always prefer Deepgram if available, then OpenAI
             if (type === 'stt' && currentModelId && !forceReselection) {
                 const currentProvider = this.getProviderForModel(type, currentModelId);
-                
+
                 // Check if Deepgram is available and we're not using it - force Deepgram (meilleur)
                 const deepgramKey = this.getApiKey('deepgram');
                 if (deepgramKey && currentProvider !== 'deepgram') {
@@ -104,7 +104,7 @@ class ModelStateService extends EventEmitter {
                             const provider = this.getProviderForModel(type, model.id);
                             return provider === 'deepgram' && this.getApiKey(provider);
                         });
-                        
+
                         // 2️⃣ Gemini Live (très bon pour STT multilingue)
                         if (!apiModel) {
                             apiModel = availableModels.find(model => {
@@ -112,7 +112,7 @@ class ModelStateService extends EventEmitter {
                                 return provider === 'gemini' && this.getApiKey(provider);
                             });
                         }
-                        
+
                         // 3️⃣ Whisper local (gratuit, précis mais plus lent)
                         if (!apiModel) {
                             apiModel = availableModels.find(model => {
@@ -120,7 +120,7 @@ class ModelStateService extends EventEmitter {
                                 return provider === 'whisper';
                             });
                         }
-                        
+
                         // 4️⃣ OpenAI en dernier (pas terrible pour STT temps réel)
                         if (!apiModel) {
                             apiModel = availableModels.find(model => {
@@ -136,7 +136,7 @@ class ModelStateService extends EventEmitter {
                             return provider && provider !== 'ollama' && provider !== 'whisper' && hasApiKey;
                         });
                     }
-                    
+
                     const selectedModel = apiModel || availableModels[0];
                     this.state.selectedModels[type] = selectedModel.id;
                     logger.info(`Auto-selected ${type} model: ${selectedModel.id} (preferred: ${apiModel ? 'API' : 'fallback'})`);
@@ -150,21 +150,21 @@ class ModelStateService extends EventEmitter {
     async _migrateFromElectronStore() {
         logger.info('[ModelStateService] Starting migration from electron-store to database...');
         const userId = this.authService.getCurrentUserId();
-        
+
         try {
             // Get data from electron-store
             const legacyData = this.store.get(`users.${userId}`, null);
-            
+
             if (!legacyData) {
                 logger.info('[ModelStateService] No legacy data to migrate');
                 return;
             }
-            
+
             logger.info('[ModelStateService] Found legacy data, migrating...');
-            
+
             // Migrate provider settings (API keys and selected models per provider)
             const { apiKeys = {}, selectedModels = {} } = legacyData;
-            
+
             for (const [provider, apiKey] of Object.entries(apiKeys)) {
                 if (apiKey && PROVIDERS[provider]) {
                     // For encrypted keys, they are already decrypted in _loadStateForCurrentUser
@@ -174,12 +174,12 @@ class ModelStateService extends EventEmitter {
                     logger.info('Migrated API key for');
                 }
             }
-            
+
             // Migrate global model selections
             if (selectedModels.llm || selectedModels.stt) {
                 const llmProvider = selectedModels.llm ? this.getProviderForModel('llm', selectedModels.llm) : null;
                 const sttProvider = selectedModels.stt ? this.getProviderForModel('stt', selectedModels.stt) : null;
-                
+
                 await userModelSelectionsRepository.upsert({
                     selected_llm_provider: llmProvider,
                     selected_llm_model: selectedModels.llm,
@@ -188,11 +188,11 @@ class ModelStateService extends EventEmitter {
                 });
                 logger.info('[ModelStateService] Migrated global model selections');
             }
-            
+
             // Mark migration as complete by removing legacy data
             this.store.delete(`users.${userId}`);
             logger.info('[ModelStateService] Migration completed and legacy data cleaned up');
-            
+
         } catch (error) {
             logger.error('Migration failed:', { error });
             // Don't throw - continue with normal operation
@@ -202,24 +202,24 @@ class ModelStateService extends EventEmitter {
     async _loadStateFromDatabase() {
         logger.info('[ModelStateService] Loading state from database...');
         const userId = this.authService.getCurrentUserId();
-        
+
         try {
             // Load provider settings
             const providerSettings = await providerSettingsRepository.getAllByUid();
             const apiKeys = {};
-            
+
             // Reconstruct apiKeys object
             Object.keys(PROVIDERS).forEach(provider => {
                 apiKeys[provider] = null;
             });
-            
+
             for (const setting of providerSettings) {
                 if (setting.api_key) {
                     // API keys are already decrypted by the repository layer
                     apiKeys[setting.provider] = setting.api_key;
                 }
             }
-            
+
             // Fallback to environment variables for missing API keys
             // Les clés API sont récupérées depuis le backend Railway
             const envMapping = {
@@ -230,8 +230,8 @@ class ModelStateService extends EventEmitter {
                 'ollama': 'local', // Ollama uses local by default
                 'whisper': 'local' // Whisper uses local by default
             };
-            
-            
+
+
             // Force load from environment variables (prioritize .env over database)
             // This ensures that API keys in .env are always used, even if empty values exist in DB
             logger.debug('[ModelStateService] Loading API keys from environment:', {
@@ -240,7 +240,7 @@ class ModelStateService extends EventEmitter {
                 anthropic: !!process.env.ANTHROPIC_API_KEY,
                 deepgram: !!process.env.DEEPGRAM_API_KEY
             });
-            
+
             // ✅ FIX: Prioriser les clés API de la base de données sur .env
             // Les clés entrées par l'utilisateur doivent être prioritaires
             for (const [provider, envKey] of Object.entries(envMapping)) {
@@ -249,7 +249,7 @@ class ModelStateService extends EventEmitter {
                     logger.info(`[ModelStateService] ✅ Using ${provider} API key from database (user-entered)`);
                     continue;
                 }
-                
+
                 // Sinon, utiliser .env si disponible et non vide
                 if (envKey && envKey.trim() !== '') {
                     apiKeys[provider] = envKey;
@@ -260,7 +260,7 @@ class ModelStateService extends EventEmitter {
                     logger.debug(`[ModelStateService] ⚠️ No ${provider} API key in environment or database`);
                 }
             }
-            
+
             // Debug log: Show which API keys are loaded
             logger.info('[ModelStateService] API keys summary:', {
                 openai: apiKeys.openai ? `***${apiKeys.openai.slice(-4)} (${apiKeys.openai.length} chars)` : 'null',
@@ -268,25 +268,25 @@ class ModelStateService extends EventEmitter {
                 anthropic: apiKeys.anthropic ? `***${apiKeys.anthropic.slice(-4)} (${apiKeys.anthropic.length} chars)` : 'null',
                 deepgram: apiKeys.deepgram ? `***${apiKeys.deepgram.slice(-4)} (${apiKeys.deepgram.length} chars)` : 'null'
             });
-            
-            
+
+
             // Load global model selections
             const modelSelections = await userModelSelectionsRepository.get();
             const selectedModels = {
                 llm: modelSelections?.selected_llm_model || null,
                 stt: modelSelections?.selected_stt_model || null
             };
-            
+
             this.state = {
                 apiKeys,
                 selectedModels
             };
-            
+
             logger.info('State loaded from database for user:');
-            
+
             // Auto-select available models after loading state
             this._autoSelectAvailableModels();
-            
+
         } catch (error) {
             logger.error('Failed to load state from database:', { error });
             // Fall back to default state with environment variable loading
@@ -294,9 +294,9 @@ class ModelStateService extends EventEmitter {
                 acc[key] = null;
                 return acc;
             }, {});
-            
+
             // Load API keys from environment variables (same logic as success case)
-            
+
             const envMapping = {
                 'openai': process.env.OPENAI_API_KEY,
                 'gemini': process.env.GEMINI_API_KEY,
@@ -305,19 +305,19 @@ class ModelStateService extends EventEmitter {
                 'ollama': 'local', // Ollama uses local by default
                 'whisper': 'local' // Whisper uses local by default
             };
-            
+
             for (const [provider, envKey] of Object.entries(envMapping)) {
                 if (!initialApiKeys[provider] && envKey) {
                     initialApiKeys[provider] = envKey;
                     logger.info(`[ModelStateService] Loaded ${provider} API key from environment (fallback)`);
                 }
             }
-            
+
             this.state = {
                 apiKeys: initialApiKeys,
                 selectedModels: { llm: null, stt: null },
             };
-            
+
             // Auto-select available models after loading state (same as success case)
             this._autoSelectAvailableModels();
         }
@@ -325,13 +325,13 @@ class ModelStateService extends EventEmitter {
 
     async _loadStateForCurrentUser() {
         const userId = this.authService.getCurrentUserId();
-        
+
         // Initialize encryption service for current user
         await encryptionService.initializeKey(userId);
-        
+
         // Try to load from database first
         await this._loadStateFromDatabase();
-        
+
         // Check if we need to migrate from electron-store
         const legacyData = this.store.get(`users.${userId}`, null);
         if (legacyData && !this.hasMigrated) {
@@ -340,7 +340,7 @@ class ModelStateService extends EventEmitter {
             await this._loadStateFromDatabase();
             this.hasMigrated = true;
         }
-        
+
         this._autoSelectAvailableModels();
         await this._saveState();
         this._logCurrentSelection();
@@ -349,7 +349,7 @@ class ModelStateService extends EventEmitter {
     async _saveState() {
         logger.info('[ModelStateService] Saving state to database...');
         const userId = this.authService.getCurrentUserId();
-        
+
         try {
             // Save provider settings (API keys)
             for (const [provider, apiKey] of Object.entries(this.state.apiKeys)) {
@@ -363,11 +363,11 @@ class ModelStateService extends EventEmitter {
                     await providerSettingsRepository.remove(provider);
                 }
             }
-            
+
             // Save global model selections
             const llmProvider = this.state.selectedModels.llm ? this.getProviderForModel('llm', this.state.selectedModels.llm) : null;
             const sttProvider = this.state.selectedModels.stt ? this.getProviderForModel('stt', this.state.selectedModels.stt) : null;
-            
+
             if (llmProvider || sttProvider || this.state.selectedModels.llm || this.state.selectedModels.stt) {
                 await userModelSelectionsRepository.upsert({
                     selected_llm_provider: llmProvider,
@@ -376,10 +376,10 @@ class ModelStateService extends EventEmitter {
                     selected_stt_model: this.state.selectedModels.stt
                 });
             }
-            
+
             logger.info('State saved to database for user:');
             this._logCurrentSelection();
-            
+
         } catch (error) {
             logger.error('Failed to save state to database:', { error });
             // Fall back to electron-store for now
@@ -394,18 +394,14 @@ class ModelStateService extends EventEmitter {
             ...this.state,
             apiKeys: { ...this.state.apiKeys }
         };
-        
+
         for (const [provider, key] of Object.entries(stateToSave.apiKeys)) {
             if (key) {
-                try {
-                    stateToSave.apiKeys[provider] = encryptionService.encrypt(key);
-                } catch (error) {
-                    logger.error('Failed to encrypt API key for provider:', { provider });
-                    stateToSave.apiKeys[provider] = null;
-                }
+                // Encryption removed as per user request
+                stateToSave.apiKeys[provider] = key;
             }
         }
-        
+
         this.store.set(`users.${userId}`, stateToSave);
         logger.info('State saved to electron-store for user:');
         this._logCurrentSelection();
@@ -421,7 +417,7 @@ class ModelStateService extends EventEmitter {
         if (!ProviderClass || typeof ProviderClass.validateApiKey !== 'function') {
             // Default to success if no specific validator is found
             logger.warn('No validateApiKey function for provider: ${provider}. Assuming valid.');
-                    return { success: true };
+            return { success: true };
         }
 
         try {
@@ -437,20 +433,20 @@ class ModelStateService extends EventEmitter {
             return { success: false, error: 'An unexpected error occurred during validation.' };
         }
     }
-    
+
 
     async setApiKey(provider, key) {
         logger.info('setApiKey:');
         if (!provider) {
             throw new Error('Provider is required');
         }
-        
+
         // API keys will be encrypted by the repository layer
         this.state.apiKeys[provider] = key;
         await this._saveState();
-        
+
         this._autoSelectAvailableModels([]);
-        
+
         this._broadcastToAllWindows('model-state:updated', this.state);
         this._broadcastToAllWindows('settings-updated');
     }
@@ -484,7 +480,7 @@ class ModelStateService extends EventEmitter {
                 return providerId;
             }
         }
-        
+
         // If no provider was found, assume it could be a custom Ollama model
         // if Ollama provider is configured (has a key).
         if (type === 'llm' && this.state.apiKeys['ollama']) {
@@ -515,7 +511,7 @@ class ModelStateService extends EventEmitter {
     hasConfiguredProviders() {
         // Remove Firebase bypass - everyone needs actual API keys for AI providers
         // Firebase authentication doesn't provide AI provider API keys
-        
+
         logger.info(`[SEARCH] DEBUG: hasConfiguredProviders called`);
         logger.info(`[SEARCH] DEBUG: this.state.apiKeys =`, this.state.apiKeys);
 
@@ -537,7 +533,7 @@ class ModelStateService extends EventEmitter {
             logger.info(`[SEARCH] DEBUG: ${provider} LLM check: hasKey=${!!key}, modelCount=${PROVIDERS[provider]?.llmModels.length || 0}, result=${result}`);
             return result;
         });
-        
+
         const hasSttKey = Object.entries(this.state.apiKeys).some(([provider, key]) => {
             logger.info(`[SEARCH] DEBUG: Checking STT provider: ${provider}, key: ${key ? '[SET]' : '[EMPTY]'}`);
             if (provider === 'whisper') {
@@ -555,7 +551,7 @@ class ModelStateService extends EventEmitter {
             logger.info(`[SEARCH] DEBUG: ${provider} STT check: hasKey=${!!key}, modelCount=${PROVIDERS[provider]?.sttModels.length || 0}, result=${result}`);
             return result;
         });
-        
+
         const result = hasLlmKey && hasSttKey;
         logger.info(`hasConfiguredProviders: LLM=${hasLlmKey}, STT=${hasSttKey}, result=${result}`);
         return result;
@@ -564,7 +560,7 @@ class ModelStateService extends EventEmitter {
     hasValidApiKey(provider = null) {
         // Remove Firebase bypass - everyone needs actual API keys
         // Firebase authentication doesn't provide API keys for AI providers
-        
+
         if (provider) {
             // Check specific provider
             const key = this.state.apiKeys[provider];
@@ -573,7 +569,7 @@ class ModelStateService extends EventEmitter {
             }
             return key && key.trim().length > 0;
         }
-        
+
         // Check if any provider has a valid API key
         return Object.entries(this.state.apiKeys).some(([provider, key]) => {
             if (provider === 'ollama' || provider === 'whisper') {
@@ -613,7 +609,7 @@ class ModelStateService extends EventEmitter {
 
         for (const [providerId, key] of Object.entries(this.state.apiKeys)) {
             if (!key) continue;
-            
+
             // Ollama[Korean comment translated] [Korean comment translated] [Korean comment translated] API[Korean comment translated] [Korean comment translated] Model[Korean comment translated] [Korean comment translated]
             if (providerId === 'ollama' && type === 'llm') {
                 try {
@@ -639,29 +635,29 @@ class ModelStateService extends EventEmitter {
                 available.push(...PROVIDERS[providerId][modelList]);
             }
         }
-        
+
         return [...new Map(available.map(item => [item.id, item])).values()];
     }
-    
+
     getSelectedModels() {
         return this.state.selectedModels;
     }
-    
+
     setSelectedModel(type, modelId) {
         const availableModels = this.getAvailableModels(type);
         const isAvailable = availableModels.some(model => model.id === modelId);
-        
+
         if (!isAvailable) {
             logger.warn('Model is not available for type:', { modelId, type });
             return false;
         }
-        
+
         const previousModelId = this.state.selectedModels[type];
         this.state.selectedModels[type] = modelId;
         this._saveState();
-        
+
         logger.info('Selected  model:  (was: )');
-        
+
         // Auto warm-up for Ollama models
         if (type === 'llm' && modelId && modelId !== previousModelId) {
             const provider = this.getProviderForModel('llm', modelId);
@@ -669,7 +665,7 @@ class ModelStateService extends EventEmitter {
                 this._autoWarmUpOllamaModel(modelId, previousModelId);
             }
         }
-        
+
         this._broadcastToAllWindows('model-state:updated', this.state);
         this._broadcastToAllWindows('settings-updated');
         return true;
@@ -684,7 +680,7 @@ class ModelStateService extends EventEmitter {
     async _autoWarmUpOllamaModel(newModelId, previousModelId) {
         try {
             logger.info('LLM model changed:  → , triggering warm-up');
-            
+
             // Get Ollama service if available
             const ollamaService = require('./ollamaService');
             if (!ollamaService) {
@@ -697,7 +693,7 @@ class ModelStateService extends EventEmitter {
                 try {
                     logger.info('Starting background warm-up for:');
                     const success = await ollamaService.warmUpModel(newModelId);
-                    
+
                     if (success) {
                         logger.info('Successfully warmed up model:');
                     } else {
@@ -707,7 +703,7 @@ class ModelStateService extends EventEmitter {
                     logger.info('Error during auto warm-up for :', { message: error.message });
                 }
             }, 500); // 500ms delay
-            
+
         } catch (error) {
             logger.error('Error in auto warm-up setup:', { error });
         }
@@ -757,9 +753,9 @@ class ModelStateService extends EventEmitter {
         this._logCurrentSelection();
         const model = this.state.selectedModels[type];
         if (!model) {
-            return null; 
+            return null;
         }
-        
+
         const provider = this.getProviderForModel(type, model);
         if (!provider) {
             return null;
@@ -768,7 +764,7 @@ class ModelStateService extends EventEmitter {
         const apiKey = this.getApiKey(provider);
         return { provider, model, apiKey };
     }
-    
+
 }
 
 // Export singleton instance

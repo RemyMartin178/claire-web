@@ -72,14 +72,9 @@ async function update(id, { title, prompt }, uid) {
         throw new Error("Preset not found or permission denied to update.");
     }
 
-    // Encrypt sensitive fields before sending to Firestore because `updateDoc` bypasses converters.
     const updates = {};
-    if (title !== undefined) {
-        updates.title = encryptionService.encrypt(title);
-    }
-    if (prompt !== undefined) {
-        updates.prompt = encryptionService.encrypt(prompt);
-    }
+    if (title !== undefined) updates.title = title;
+    if (prompt !== undefined) updates.prompt = prompt;
     updates.updated_at = Timestamp.now();
 
     await updateDoc(docRef, updates);

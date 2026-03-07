@@ -26,24 +26,24 @@ async function checkAndRunMigration(firebaseUser) {
     }
 
     console.log(`[Migration] Starting data migration for user ${firebaseUser.uid}...`);
-    
+
     try {
         const db = getFirestoreInstance();
-        
+
         // --- Phase 1: Migrate Parent Documents (Presets & Sessions) ---
         console.log('[Migration Phase 1] Migrating parent documents...');
         let phase1Batch = writeBatch(db);
         let phase1OpCount = 0;
         const phase1Promises = [];
-        
+
         const localPresets = (await sqlitePresetRepo.getPresets(firebaseUser.uid)).filter(p => !p.is_default);
         console.log(`[Migration Phase 1] Found ${localPresets.length} custom presets.`);
         for (const preset of localPresets) {
             const presetRef = doc(db, 'prompt_presets', preset.id);
             const cleanPreset = {
                 uid: preset.uid,
-                title: encryptionService.encrypt(preset.title ?? ''),
-                prompt: encryptionService.encrypt(preset.prompt ?? ''),
+                title: preset.title ?? '',
+                prompt: preset.prompt ?? '',
                 is_default: preset.is_default ?? 0,
                 created_at: preset.created_at ? Timestamp.fromMillis(preset.created_at * 1000) : null,
                 updated_at: preset.updated_at ? Timestamp.fromMillis(preset.updated_at * 1000) : null
@@ -56,7 +56,7 @@ async function checkAndRunMigration(firebaseUser) {
                 phase1OpCount = 0;
             }
         }
-        
+
         const localSessions = await sqliteSessionRepo.getAllByUserId(firebaseUser.uid);
         console.log(`[Migration Phase 1] Found ${localSessions.length} sessions.`);
         for (const session of localSessions) {
@@ -64,7 +64,7 @@ async function checkAndRunMigration(firebaseUser) {
             const cleanSession = {
                 uid: session.uid,
                 members: session.members ?? [session.uid],
-                title: encryptionService.encrypt(session.title ?? ''),
+                title: session.title ?? '',
                 session_type: session.session_type ?? 'ask',
                 started_at: session.started_at ? Timestamp.fromMillis(session.started_at * 1000) : null,
                 ended_at: session.ended_at ? Timestamp.fromMillis(session.ended_at * 1000) : null,
@@ -78,11 +78,11 @@ async function checkAndRunMigration(firebaseUser) {
                 phase1OpCount = 0;
             }
         }
-        
+
         if (phase1OpCount > 0) {
             phase1Promises.push(phase1Batch.commit());
         }
-        
+
         if (phase1Promises.length > 0) {
             await Promise.all(phase1Promises);
             console.log(`[Migration Phase 1] Successfully committed ${phase1Promises.length} batches of parent documents.`);
@@ -106,7 +106,7 @@ async function checkAndRunMigration(firebaseUser) {
                     start_at: t.start_at ? Timestamp.fromMillis(t.start_at * 1000) : null,
                     end_at: t.end_at ? Timestamp.fromMillis(t.end_at * 1000) : null,
                     speaker: t.speaker ?? null,
-                    text: encryptionService.encrypt(t.text ?? ''),
+                    text: t.text ?? '',
                     lang: t.lang ?? 'en',
                     created_at: t.created_at ? Timestamp.fromMillis(t.created_at * 1000) : null
                 };
@@ -127,7 +127,7 @@ async function checkAndRunMigration(firebaseUser) {
                     session_id: m.session_id,
                     sent_at: m.sent_at ? Timestamp.fromMillis(m.sent_at * 1000) : null,
                     role: m.role ?? 'user',
-                    content: encryptionService.encrypt(m.content ?? ''),
+                    content: m.content ?? '',
                     tokens: m.tokens ?? null,
                     model: m.model ?? 'unknown',
                     created_at: m.created_at ? Timestamp.fromMillis(m.created_at * 1000) : null
@@ -150,10 +150,10 @@ async function checkAndRunMigration(firebaseUser) {
                     session_id: summary.session_id,
                     generated_at: summary.generated_at ? Timestamp.fromMillis(summary.generated_at * 1000) : null,
                     model: summary.model ?? 'unknown',
-                    tldr: encryptionService.encrypt(summary.tldr ?? ''),
-                    text: encryptionService.encrypt(summary.text ?? ''),
-                    bullet_json: encryptionService.encrypt(summary.bullet_json ?? '[]'),
-                    action_json: encryptionService.encrypt(summary.action_json ?? '[]'),
+                    tldr: summary.tldr ?? '',
+                    text: summary.text ?? '',
+                    bullet_json: summary.bullet_json ?? '[]',
+                    action_json: summary.action_json ?? '[]',
                     tokens_used: summary.tokens_used ?? null,
                     updated_at: summary.updated_at ? Timestamp.fromMillis(summary.updated_at * 1000) : null
                 };

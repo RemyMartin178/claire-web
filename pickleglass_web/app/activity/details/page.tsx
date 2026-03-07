@@ -362,7 +362,19 @@ function SessionDetailsContent() {
         </div>
 
         <div className="mb-8 font-heading">
-          <div className="text-gray-500 text-sm mb-2">{displayDate}</div>
+          <div className="flex items-center gap-3 text-gray-500 text-sm mb-2">
+            <span>{displayDate}</span>
+            <span className="w-1 h-1 rounded-full bg-neutral-300"></span>
+            <span className="font-mono bg-neutral-100 px-2 py-0.5 rounded-md">
+              {(() => {
+                if (sessionDetails.session.ended_at && sessionDetails.session.started_at) {
+                  const diffSec = Math.floor((sessionDetails.session.ended_at - sessionDetails.session.started_at) / 1000);
+                  return formatTime(Math.max(0, diffSec));
+                }
+                return "En cours";
+              })()}
+            </span>
+          </div>
           <h1 className="text-3xl sm:text-4xl font-semibold text-black tracking-tight leading-tight">
             {displayTitle}
           </h1>
@@ -374,8 +386,8 @@ function SessionDetailsContent() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-8 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === tab
-                  ? 'bg-black text-white shadow-lg'
-                  : 'text-zinc-500 hover:text-black hover:bg-white/80'
+                ? 'bg-primary text-white shadow-md'
+                : 'text-zinc-500 hover:text-black hover:bg-white/80'
                 }`}
             >
               {tab === 'summary' ? 'Résumé' : tab === 'transcript' ? 'Transcription' : 'Utilisation'}
