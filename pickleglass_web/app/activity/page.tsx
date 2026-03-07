@@ -120,7 +120,7 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f7f4] text-[#282828] font-body selection:bg-primary/30">
+    <div className="min-h-screen bg-white text-[#282828] font-body selection:bg-primary/30">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-3xl font-heading font-semibold text-black mb-2">
           {getGreeting()}, {userInfo.display_name}

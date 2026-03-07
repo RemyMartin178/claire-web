@@ -28,8 +28,8 @@ export default function PrivacySettingsPage() {
               key={tab.id}
               href={tab.href}
               className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${tab.id === 'privacy'
-                  ? 'border-primary text-[#282828]'
-                  : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
+                ? 'border-primary text-[#282828]'
+                : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
                 }`}
             >
               {tab.name}
@@ -48,14 +48,16 @@ export default function PrivacySettingsPage() {
               </p>
             </div>
             <div className="flex justify-end mt-6">
-              <Button
+              <button
+                type="button"
                 onClick={() => window.open('https://www.clairia.app/privacy', '_blank')}
-                variant="outline"
-                className="gap-2"
+                className="btn-secondary gap-2"
               >
-                Confidentialité
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+                <span>
+                  Confidentialité
+                  <ExternalLink className="h-4 w-4" />
+                </span>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -69,14 +71,16 @@ export default function PrivacySettingsPage() {
               </p>
             </div>
             <div className="flex justify-end mt-6">
-              <Button
+              <button
+                type="button"
                 onClick={() => window.open('https://www.clairia.app/terms', '_blank')}
-                variant="outline"
-                className="gap-2"
+                className="btn-secondary gap-2"
               >
-                Conditions
-                <ExternalLink className="h-4 w-4" />
-              </Button>
+                <span>
+                  Conditions
+                  <ExternalLink className="h-4 w-4" />
+                </span>
+              </button>
             </div>
           </CardContent>
         </Card>

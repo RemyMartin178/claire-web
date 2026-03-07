@@ -14,7 +14,7 @@ export default function ModelsPage() {
   return (
     <Page>
       {/* Back button */}
-      <Link 
+      <Link
         href="/settings"
         className="inline-flex items-center gap-2 text-gray-600 hover:text-[#282828] mb-6 transition-colors"
       >
@@ -37,22 +37,24 @@ export default function ModelsPage() {
             Configuration des modèles IA
           </h3>
           <p className="text-gray-600 max-w-md mx-auto mb-8">
-            La configuration avancée des modèles IA (OpenAI, Claude, Gemini, etc.) 
+            La configuration avancée des modèles IA (OpenAI, Claude, Gemini, etc.)
             arrivera prochainement. Vous pourrez gérer vos clés API et préférences de modèles.
           </p>
           <div className="flex gap-3 justify-center">
-            <Button
+            <button
+              type="button"
               onClick={() => router.push('/settings')}
-              variant="outline"
+              className="btn-secondary"
             >
-              Retour aux paramètres
-            </Button>
-            <Button
+              <span>Retour aux paramètres</span>
+            </button>
+            <button
+              type="button"
               onClick={() => router.push('/personalize')}
-              variant="default"
+              className="btn-primary"
             >
-              Personnaliser les prompts
-            </Button>
+              <span>Personnaliser les prompts</span>
+            </button>
           </div>
         </CardContent>
       </Card>

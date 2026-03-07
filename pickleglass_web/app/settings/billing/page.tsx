@@ -682,13 +682,13 @@ export default function BillingPage() {
             </ul>
 
             <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button
-                className="w-full"
-                variant="outline"
+              <button
+                type="button"
+                className="btn-secondary w-full justify-center"
                 disabled
               >
-                {subscription.plan === 'free' ? '✓ Plan actuel' : 'Plan gratuit'}
-              </Button>
+                <span>{subscription.plan === 'free' ? '✓ Plan actuel' : 'Plan gratuit'}</span>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -740,13 +740,14 @@ export default function BillingPage() {
             </ul>
 
             <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button
-                className="w-full bg-primary text-white hover:bg-primary/90"
+              <button
+                type="button"
+                className="btn-primary w-full justify-center"
                 onClick={billingCycle === 'monthly' ? handleMonthlyClick : handleYearlyClick}
                 disabled={billingCycle === 'monthly' ? isMonthlyButtonDisabled() : isYearlyButtonDisabled()}
               >
-                {billingCycle === 'monthly' ? getMonthlyButtonText() : getYearlyButtonText()}
-              </Button>
+                <span>{billingCycle === 'monthly' ? getMonthlyButtonText() : getYearlyButtonText()}</span>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -795,13 +796,13 @@ export default function BillingPage() {
             </ul>
 
             <div className="pt-4 border-t border-gray-200 mt-auto">
-              <Button
-                className="w-full text-[#374151] border-gray-300 hover:bg-gray-50"
-                variant="outline"
+              <button
+                type="button"
+                className="btn-secondary w-full justify-center"
                 onClick={() => window.location.href = 'mailto:contact@clairia.app?subject=Claire Enterprise - Demande de devis'}
               >
-                Nous contacter
-              </Button>
+                <span>Nous contacter</span>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -858,18 +859,20 @@ export default function BillingPage() {
 
             <div className="mt-6 flex gap-3">
               <button
+                type="button"
                 onClick={() => setUpgradeModalOpen(false)}
-                className="rounded-xl border px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                className="btn-secondary"
                 disabled={upgradeLoading}
               >
-                Annuler
+                <span>Annuler</span>
               </button>
               <button
+                type="button"
                 onClick={confirmUpgrade}
-                className="rounded-xl bg-primary text-white px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors duration-150 disabled:opacity-50"
+                className="btn-primary"
                 disabled={upgradeLoading || !!upgradeError}
               >
-                {upgradeSuccess ? 'Fait ✅' : upgradeLoading ? 'Traitement…' : 'Confirmer l\'upgrade'}
+                <span>{upgradeSuccess ? 'Fait ✅' : upgradeLoading ? 'Traitement…' : 'Confirmer l\'upgrade'}</span>
               </button>
             </div>
           </div>
@@ -959,18 +962,20 @@ export default function BillingPage() {
             {!paymentLoading && (
               <div className="mt-5 flex justify-end gap-2">
                 <button
+                  type="button"
                   onClick={() => setPaymentModalOpen(false)}
-                  className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  className="btn-secondary"
                   disabled={paymentLoading}
                 >
-                  Annuler
+                  <span>Annuler</span>
                 </button>
                 <button
+                  type="button"
                   onClick={confirmDirectPayment}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-primary rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary"
                   disabled={paymentLoading || !!paymentError || !upgradePreview}
                 >
-                  Payer maintenant
+                  <span>Payer maintenant</span>
                 </button>
               </div>
             )}

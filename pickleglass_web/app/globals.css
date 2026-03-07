@@ -93,9 +93,9 @@
   --background-end-rgb: 255, 255, 255;
 
   /* Design System Variables */
-  --gh-font-heading: 'Lora', serif;
-  --theme-font-heading: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
-  --theme-font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+  --gh-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  --theme-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  --theme-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
 
   /* Brand Colors */
   --primary-color: #3b82f6;
@@ -137,9 +137,9 @@
     --background-end-rgb: 0, 0, 0;
 
     /* Font variables remain the same in dark mode */
-    --gh-font-heading: 'Lora', serif;
-    --theme-font-heading: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
-    --theme-font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+    --gh-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+    --theme-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+    --theme-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
 
     /* Dark mode adjustments */
     --text-color: #f3f4f6;
@@ -164,12 +164,14 @@
 }
 
 body {
-  font-family: var(--theme-font-body);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1d1d1f;
   line-height: 1.6;
-  color: var(--text-color);
   margin: 0;
   padding: 0;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.011em;
 }
 
 /* Typography Hierarchy */
@@ -179,10 +181,11 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--gh-font-heading, var(--theme-font-heading));
-  line-height: 1.3;
-  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  line-height: 1.1;
+  color: #1d1d1f;
   font-weight: 600;
+  letter-spacing: -0.022em;
 }
 
 h1 {
@@ -411,8 +414,8 @@ a:hover {
 
 @layer base {
   :root {
-    /* Set app background to subtle warm off-white (#f8f7f4) */
-    --background: 45 22% 96%;
+    /* Set app background to absolute pure white */
+    --background: 0 0% 100% !important;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -476,6 +479,7 @@ a:hover {
 
   body {
     @apply bg-background text-foreground;
+    background-color: white !important;
     font-family: var(--theme-font-body);
     line-height: 1.6;
     color: var(--text-color);
@@ -483,7 +487,7 @@ a:hover {
 
   /* Utility override in case classes expect literal .bg-background */
   .bg-background {
-    background-color: #f8f7f4 !important;
+    background-color: white !important;
   }
 }
 
@@ -593,4 +597,134 @@ a:hover {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* --- PREMIUM APPLE BUTTONS --- */
+.btn-primary,
+.btn-danger,
+.btn-primary-icon {
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1.2rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  color: white;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+}
+
+.btn-primary-icon {
+  padding: 0.5rem;
+  justify-content: center;
+}
+
+.btn-primary,
+.btn-primary-icon {
+  background: radial-gradient(92.09% 124.47% at 50% 99.24%, #1d1d1f 0%, #000000 100%);
+  box-shadow:
+    15px 15px 35px rgba(255, 255, 255, 0.15) inset,
+    5px 5px 15px rgba(255, 255, 255, 0.12) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.btn-danger {
+  background: radial-gradient(92.09% 124.47% at 50% 99.24%, #ff453a 0%, #d70015 100%);
+  box-shadow:
+    15px 15px 35px rgba(255, 255, 255, 0.2) inset,
+    5px 5px 15px rgba(255, 255, 255, 0.15) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.btn-primary span,
+.btn-danger span,
+.btn-primary-icon span,
+.btn-secondary span {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-primary::before,
+.btn-danger::before,
+.btn-primary-icon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 100% at 15% 0%, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0) 80%);
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.btn-primary::after,
+.btn-danger::after,
+.btn-primary-icon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  box-shadow:
+    inset 2px 0 0 rgba(255, 255, 255, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 0 rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.btn-primary:hover,
+.btn-primary-icon:hover {
+  background: radial-gradient(92.09% 124.47% at 50% 99.24%, #2a2a2d 0%, #121214 100%);
+  box-shadow:
+    20px 20px 45px rgba(255, 255, 255, 0.2) inset,
+    8px 8px 20px rgba(255, 255, 255, 0.15) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+}
+
+.btn-danger:hover {
+  background: radial-gradient(92.09% 124.47% at 50% 99.24%, #ff5b52 0%, #e60017 100%);
+  box-shadow:
+    20px 20px 45px rgba(255, 255, 255, 0.25) inset,
+    8px 8px 20px rgba(255, 255, 255, 0.2) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+}
+
+.btn-secondary {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(100% 100% at 50% 0%, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%), rgba(245, 245, 247, 0.85);
+  /* Apple light gray with faint top light */
+  color: #1d1d1f;
+  padding: 0.5rem 1.2rem;
+  border-radius: 9999px;
+  font-weight: 500;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05),
+    0 1px 2px rgba(0, 0, 0, 0.05);
+  /* 3D pill effect */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+  background: radial-gradient(100% 100% at 50% 0%, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 100%), rgba(230, 230, 235, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.08);
+  transform: translateY(-0.5px);
 }

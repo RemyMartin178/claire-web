@@ -45,50 +45,59 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
         return 'Utilisateur';
     }, [userInfo, authLoading]);
 
-    const links = useMemo(() => [
-        {
-            label: "Recherche",
-            href: "#",
-            icon: <Image src="/search.svg" width={20} height={20} alt="Search" className="dark:invert w-5 h-5 shrink-0" />,
-            onClick: onSearchClick
-        },
-        {
-            label: "Mon activité",
-            href: "/activity",
-            icon: <Image src="/activity.svg" width={20} height={20} alt="Activity" className="dark:invert w-5 h-5 shrink-0" />
-        },
-        {
-            label: "Agents IA",
-            href: "/ai-agents",
-            icon: <Image src="/book.svg" width={20} height={20} alt="Agents" className="dark:invert w-5 h-5 shrink-0" />
-        },
-        {
-            label: "Outils & Intégrations",
-            href: "/tools",
-            icon: <Database className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
-        },
-        {
-            label: "Base de connaissances",
-            href: "/knowledge-base",
-            icon: <Image src="/book.svg" width={20} height={20} alt="Knowledge" className="dark:invert w-5 h-5 shrink-0" />
-        },
-        {
-            label: "Aide",
-            href: "/help",
-            icon: <HelpCircle className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
-        },
-        {
-            label: "Paramètres",
-            href: "/settings",
-            icon: <Image src="/setting.svg" width={20} height={20} alt="Settings" className="dark:invert w-5 h-5 shrink-0" />
-        }
-    ], [onSearchClick]);
+    const links = useMemo(() => {
+        const baseLinks = [
+            {
+                label: "Recherche",
+                href: "#",
+                icon: <Image src="/search.svg" width={20} height={20} alt="Search" className="dark:invert w-5 h-5 shrink-0" />,
+                onClick: onSearchClick
+            },
+            {
+                label: "Mon activité",
+                href: "/activity",
+                icon: <Image src="/activity.svg" width={20} height={20} alt="Activity" className="dark:invert w-5 h-5 shrink-0" />
+            },
+            {
+                label: "Agents IA",
+                href: "/ai-agents",
+                icon: <Image src="/book.svg" width={20} height={20} alt="Agents" className="dark:invert w-5 h-5 shrink-0" />
+            },
+            {
+                label: "Outils & Intégrations",
+                href: "/tools",
+                icon: <Database className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
+            },
+            {
+                label: "Base de connaissances",
+                href: "/knowledge-base",
+                icon: <Image src="/book.svg" width={20} height={20} alt="Knowledge" className="dark:invert w-5 h-5 shrink-0" />
+            },
+            {
+                label: "Aide",
+                href: "/help",
+                icon: <HelpCircle className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
+            },
+            {
+                label: "Paramètres",
+                href: "/settings",
+                icon: <Image src="/setting.svg" width={20} height={20} alt="Settings" className="dark:invert w-5 h-5 shrink-0" />
+            }
+        ];
+
+        return baseLinks.filter(link => {
+            if (userInfo?.email === 'pantherg719@gmail.com') {
+                return link.label !== 'Outils & Intégrations' && link.label !== 'Base de connaissances';
+            }
+            return true;
+        });
+    }, [onSearchClick, userInfo?.email]);
 
     return (
         <ShadcnSidebar open={open} setOpen={setOpen}>
             <SidebarBody className="justify-between gap-10">
                 <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-                    {open ? <Logo /> : <LogoIcon />}
+                    <Logo open={open} />
                     <div className="mt-8 flex flex-col gap-2">
                         {links.map((link, idx) => (
                             <SidebarLink
@@ -139,18 +148,25 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                     {/* Profile Section */}
                     <div className="mt-2 border-t border-neutral-200 dark:border-neutral-800 pt-4">
                         <Link href="/settings" className="block">
-                            <div className={cn("flex items-center gap-3 py-2 px-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors", open ? "justify-start" : "justify-center")}>
-                                <Avatar name={getUserDisplayName()} size="sm" />
-                                {open && (
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate pr-2">
-                                            {getUserDisplayName()}
-                                        </div>
-                                        <div className="text-xs text-neutral-500 truncate">
-                                            {subscription?.isLoading ? '...' : getSubscriptionDisplayName(subscription?.plan)}
-                                        </div>
+                            <div className="flex items-center justify-start gap-4 px-2 rounded-md hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors h-[52px]">
+                                <div className="flex items-center justify-center min-w-[24px] shrink-0">
+                                    <Avatar name={getUserDisplayName()} size="sm" />
+                                </div>
+                                <motion.div
+                                    animate={{
+                                        display: open ? "block" : "none",
+                                        opacity: open ? 1 : 0,
+                                        width: open ? "auto" : 0,
+                                    }}
+                                    className="flex-1 min-w-0 overflow-hidden"
+                                >
+                                    <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate pr-2">
+                                        {getUserDisplayName()}
                                     </div>
-                                )}
+                                    <div className="text-xs text-neutral-500 truncate whitespace-nowrap">
+                                        {subscription?.isLoading ? '...' : getSubscriptionDisplayName(subscription?.plan)}
+                                    </div>
+                                </motion.div>
                             </div>
                         </Link>
                     </div>
@@ -160,43 +176,31 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
     );
 }
 
-export const Logo = () => {
+export const Logo = ({ open }: { open?: boolean }) => {
     return (
         <Link
             href="/activity"
-            className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20"
+            className="font-normal flex gap-2 items-center justify-start text-sm text-black py-1 relative z-20 hover:no-underline"
         >
-            <Image
-                src="/claire_logo-removebg-preview.png"
-                alt="Claire"
-                width={30}
-                height={30}
-                className="brightness-0 dark:invert object-contain shrink-0"
-            />
+            <div className="flex items-center justify-center min-w-[36px]">
+                <Image
+                    src="/claire_logo-removebg-preview.png"
+                    alt="Claire"
+                    width={36}
+                    height={36}
+                    className="brightness-0 dark:invert object-contain shrink-0"
+                />
+            </div>
             <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="font-medium text-black dark:text-white whitespace-pre"
+                animate={{
+                    opacity: open ? 1 : 0,
+                    width: open ? "auto" : 0,
+                    display: open ? "inline-block" : "none"
+                }}
+                className="font-medium text-base text-black dark:text-white whitespace-pre overflow-hidden"
             >
                 Claire
             </motion.span>
-        </Link>
-    );
-};
-
-export const LogoIcon = () => {
-    return (
-        <Link
-            href="/activity"
-            className="font-normal flex space-x-2 items-center text-sm text-black py-1 relative z-20 justify-center"
-        >
-            <Image
-                src="/claire_logo-removebg-preview.png"
-                alt="Claire"
-                width={30}
-                height={30}
-                className="brightness-0 dark:invert object-contain shrink-0"
-            />
         </Link>
     );
 };

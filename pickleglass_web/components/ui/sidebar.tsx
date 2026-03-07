@@ -94,7 +94,7 @@ export const DesktopSidebar = ({
                 className
             )}
             animate={{
-                width: animate ? (open ? "240px" : "68px") : "240px",
+                width: animate ? (open ? "240px" : "72px") : "240px",
             }}
             onMouseEnter={() => setOpen(true)}
             onMouseLeave={() => setOpen(false)}
@@ -173,13 +173,16 @@ export const SidebarLink = ({
             )}
             {...props}
         >
-            {link.icon}
+            <div className="flex items-center justify-center min-w-[24px] shrink-0">
+                {link.icon}
+            </div>
             <motion.span
                 animate={{
                     display: animate ? (open ? "inline-block" : "none") : "inline-block",
                     opacity: animate ? (open ? 1 : 0) : 1,
+                    width: animate ? (open ? "auto" : 0) : "auto",
                 }}
-                className="text-neutral-700 dark:text-neutral-200 text-sm font-medium group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+                className="text-neutral-700 dark:text-neutral-200 text-sm font-medium group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0 overflow-hidden"
             >
                 {link.label}
             </motion.span>

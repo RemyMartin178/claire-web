@@ -307,9 +307,9 @@ export default function SettingsPage() {
             }
           </p>
           <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-            <Button variant="outline">
-              {isGoogleUser ? 'Ajouter un mot de passe' : 'Modifier le mot de passe'}
-            </Button>
+            <button type="button" className="btn-secondary">
+              <span>{isGoogleUser ? 'Ajouter un mot de passe' : 'Modifier le mot de passe'}</span>
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -336,9 +336,9 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-            <Button variant="outline" disabled>
-              Déconnecter tous les appareils
-            </Button>
+            <button type="button" className="btn-secondary" disabled>
+              <span>Déconnecter tous les appareils</span>
+            </button>
           </div>
         </CardContent>
       </Card>
@@ -386,12 +386,14 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-                  <Button
+                  <button
+                    type="button"
+                    className="btn-primary"
                     onClick={handleSaveDisplayName}
                     disabled={isSaving || !displayNameInput || displayNameInput === userInfo?.display_name}
                   >
-                    Mettre à jour
-                  </Button>
+                    <span>Mettre à jour</span>
+                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -453,21 +455,23 @@ export default function SettingsPage() {
 
                 <div className="pt-4 border-t border-gray-200 flex justify-end">
                   <div className="relative" data-subscription-menu>
-                    <Button
-                      variant="outline"
-                      className="flex items-center gap-2"
+                    <button
+                      type="button"
+                      className="btn-secondary min-w-[110px]"
                       onClick={() => setShowSubscriptionMenu(!showSubscriptionMenu)}
                       disabled={subscription.isLoading}
                     >
-                      {subscription.isLoading ? (
-                        'Chargement...'
-                      ) : (
-                        <>
-                          Gérer
-                          <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showSubscriptionMenu ? 'rotate-180' : ''}`} />
-                        </>
-                      )}
-                    </Button>
+                      <span className="flex items-center justify-between w-full gap-2">
+                        {subscription.isLoading ? (
+                          'Chargement...'
+                        ) : (
+                          <>
+                            Gérer
+                            <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showSubscriptionMenu ? 'rotate-180' : ''}`} />
+                          </>
+                        )}
+                      </span>
+                    </button>
 
                     <div className={`absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 transition-all duration-200 ${showSubscriptionMenu ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
                       }`}>
@@ -503,13 +507,14 @@ export default function SettingsPage() {
                 </p>
 
                 <div className="pt-4 border-t border-gray-200 flex justify-end">
-                  <Button
-                    variant="outline"
+                  <button
+                    type="button"
+                    className="btn-secondary"
                     onClick={handleManageSubscription}
                     disabled={isManagingSubscription}
                   >
-                    {isManagingSubscription ? 'Ouverture...' : 'Gérer'}
-                  </Button>
+                    <span>{isManagingSubscription ? 'Ouverture...' : 'Gérer'}</span>
+                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -519,12 +524,13 @@ export default function SettingsPage() {
                 <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Supprimer le compte</h3>
                 <p className="text-sm text-gray-600 mb-4">Supprimez définitivement votre compte personnel et tout le contenu de la plateforme Claire. Cette action est irréversible, veuillez procéder avec précaution.</p>
                 <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-                  <Button
+                  <button
+                    type="button"
                     onClick={() => setShowDeleteModal(true)}
-                    variant="destructive"
+                    className="btn-danger"
                   >
-                    Supprimer
-                  </Button>
+                    <span>Supprimer</span>
+                  </button>
                 </div>
               </CardContent>
             </Card>
@@ -589,20 +595,21 @@ export default function SettingsPage() {
               )}
 
               <div className="flex justify-end space-x-2">
-                <Button
+                <button
                   type="button"
                   onClick={() => setShowDeleteModal(false)}
-                  variant="outline"
+                  className="btn-secondary"
                 >
-                  Annuler
-                </Button>
-                <Button
+                  <span>Annuler</span>
+                </button>
+                <button
+                  type="button"
                   onClick={handleDeleteAccount}
                   disabled={isDeleting}
-                  variant="destructive"
+                  className="btn-danger"
                 >
-                  {isDeleting ? 'Suppression...' : 'Supprimer définitivement'}
-                </Button>
+                  <span>{isDeleting ? 'Suppression...' : 'Supprimer définitivement'}</span>
+                </button>
               </div>
             </CardContent>
           </Card>
@@ -627,16 +634,18 @@ export default function SettingsPage() {
 
             <div className="flex justify-end space-x-3">
               <button
+                type="button"
                 onClick={() => setShowCancelModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors duration-150"
+                className="btn-secondary"
               >
-                Annuler
+                <span>Annuler</span>
               </button>
               <button
+                type="button"
                 onClick={confirmCancelSubscription}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors duration-150"
+                className="btn-danger"
               >
-                Confirmer
+                <span>Confirmer</span>
               </button>
             </div>
           </div>

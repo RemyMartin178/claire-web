@@ -86,24 +86,24 @@ export function ConfirmationModal({
                         {message}
                     </p>
 
-                    <div className="flex gap-3 justify-end">
-                        <Button
-                            variant="outline"
+                    <div className="flex gap-3 justify-end mt-2">
+                        <button
+                            type="button"
                             onClick={onCancel}
-                            className="px-6 rounded-lg border-zinc-200 dark:border-zinc-800"
+                            className="btn-secondary"
                         >
-                            {cancelText}
-                        </Button>
-                        <Button
-                            variant={variant === 'danger' ? 'destructive' : 'default'}
+                            <span>{cancelText}</span>
+                        </button>
+                        <button
+                            type="button"
                             onClick={() => {
                                 onConfirm()
                                 onCancel() // Close after confirm
                             }}
-                            className={`px-6 rounded-lg ${variant === 'danger' ? 'bg-red-600 hover:bg-red-700' : ''}`}
+                            className={variant === 'danger' ? 'btn-danger' : 'btn-primary'}
                         >
-                            {confirmText}
-                        </Button>
+                            <span>{confirmText}</span>
+                        </button>
                     </div>
                 </div>
             </div>

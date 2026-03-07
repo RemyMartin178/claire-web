@@ -37,7 +37,7 @@ export default function SecurityPage() {
   // Fonction pour détecter le type d'authentification depuis la base de données
   const detectAuthType = useCallback(async () => {
     if (!userInfo) return;
-    
+
     try {
       // Utiliser la nouvelle fonction API pour récupérer le type d'auth
       const authInfo = await getAuthType();
@@ -58,7 +58,7 @@ export default function SecurityPage() {
   const isGoogleUser = authType === 'google';
 
   const passwordActionText = isGoogleUser ? 'Ajouter un mot de passe' : 'Modifier le mot de passe';
-  const passwordDescription = isGoogleUser 
+  const passwordDescription = isGoogleUser
     ? 'Ajoutez un mot de passe à votre compte Google pour une sécurité renforcée.'
     : 'Modifiez votre mot de passe existant pour sécuriser votre compte.';
 
@@ -70,19 +70,19 @@ export default function SecurityPage() {
   useEffect(() => {
     if (userInfo) {
       detectAuthType();
-      
+
       const detectCurrentDevice = async () => {
         try {
           const ipResponse = await fetch('https://api.ipify.org?format=json');
           const ipData = await ipResponse.json();
-          
+
           const geoResponse = await fetch(`https://ipapi.co/${ipData.ip}/json/`);
           const geoData = await geoResponse.json();
-          
+
           const userAgent = navigator.userAgent;
           let browser = 'Unknown';
           let os = 'Unknown';
-          
+
           if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
             browser = 'Chrome';
           } else if (userAgent.includes('Firefox')) {
@@ -94,7 +94,7 @@ export default function SecurityPage() {
           } else if (userAgent.includes('Opera')) {
             browser = 'Opera';
           }
-          
+
           if (userAgent.includes('Windows')) {
             os = 'Windows';
           } else if (userAgent.includes('Mac')) {
@@ -106,7 +106,7 @@ export default function SecurityPage() {
           } else if (userAgent.includes('iOS')) {
             os = 'iOS';
           }
-          
+
           const currentDevice: Device = {
             id: 'current',
             name: 'Cet appareil',
@@ -117,30 +117,30 @@ export default function SecurityPage() {
             lastSeen: 'Connecté maintenant',
             isCurrent: true
           };
-          
+
           setDevices([currentDevice]);
         } catch (error) {
           console.error('Erreur lors de la détection de l\'appareil:', error);
-          
+
           const fallbackDevice: Device = {
             id: 'current',
             name: 'Cet appareil',
-            os: navigator.platform.includes('Win') ? 'Windows' : 
-                navigator.platform.includes('Mac') ? 'macOS' : 
+            os: navigator.platform.includes('Win') ? 'Windows' :
+              navigator.platform.includes('Mac') ? 'macOS' :
                 navigator.platform.includes('Linux') ? 'Linux' : 'Unknown',
             browser: navigator.userAgent.includes('Chrome') ? 'Chrome' :
-                    navigator.userAgent.includes('Firefox') ? 'Firefox' :
-                    navigator.userAgent.includes('Safari') ? 'Safari' : 'Unknown',
+              navigator.userAgent.includes('Firefox') ? 'Firefox' :
+                navigator.userAgent.includes('Safari') ? 'Safari' : 'Unknown',
             location: 'Localisation non disponible',
             ip: 'IP non disponible',
             lastSeen: 'Connecté maintenant',
             isCurrent: true
           };
-          
+
           setDevices([fallbackDevice]);
         }
       };
-      
+
       detectCurrentDevice();
     }
   }, [userInfo, detectAuthType]);
@@ -186,18 +186,17 @@ export default function SecurityPage() {
         <p className="text-xs text-gray-600 mb-1">Paramètres</p>
         <h1 className="text-3xl font-heading font-semibold text-[#282828]">Paramètres personnels</h1>
       </div>
-      
+
       <div className="mb-8">
         <nav className="flex space-x-10 border-b border-gray-200">
           {tabs.map((tab) => (
             <Link
               key={tab.id}
               href={tab.href}
-              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                tab.id === 'security'
+              className={`pb-4 px-2 border-b-2 font-medium text-sm transition-colors ${tab.id === 'security'
                   ? 'border-primary text-[#282828]'
                   : 'border-transparent text-gray-600 hover:text-[#282828] hover:border-gray-300'
-              }`}
+                }`}
             >
               {tab.name}
             </Link>
@@ -214,13 +213,14 @@ export default function SecurityPage() {
               {passwordDescription}
             </p>
             <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-              <Button
+              <button
+                type="button"
                 onClick={handlePasswordAction}
                 disabled={isLoading}
-                className="bg-[#3b82f6] text-white hover:bg-[#2563eb]"
+                className="btn-primary"
               >
-                {isLoading ? 'Chargement...' : passwordActionText}
-              </Button>
+                <span>{isLoading ? 'Chargement...' : passwordActionText}</span>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -230,7 +230,7 @@ export default function SecurityPage() {
           <CardContent className="p-6">
             <h3 className="text-lg font-heading font-semibold text-[#282828] mb-1">Appareils connectés</h3>
             <p className="text-sm text-gray-600 mb-4">Gérez les appareils connectés à votre compte et surveillez l'activité de connexion.</p>
-            
+
             <div className="space-y-4">
               {devices.map((device) => (
                 <div key={device.id} className="flex items-center justify-between p-3 bg-transparent rounded-md">
@@ -245,26 +245,27 @@ export default function SecurityPage() {
                   {device.isCurrent ? (
                     <span className="text-xs text-green-600 font-medium">Actuel</span>
                   ) : (
-                    <Button 
+                    <button
+                      type="button"
                       onClick={() => handleDisconnectDevice(device.id)}
-                      variant="destructive"
-                      size="sm"
+                      className="btn-danger"
                     >
-                      Déconnecter
-                    </Button>
+                      <span>Déconnecter</span>
+                    </button>
                   )}
                 </div>
               ))}
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-              <Button 
+              <button
+                type="button"
                 onClick={handleDisconnectAllDevices}
                 disabled={devices.length <= 1}
-                variant="outline"
+                className="btn-secondary"
               >
-                Déconnecter tous les appareils
-              </Button>
+                <span>Déconnecter tous les appareils</span>
+              </button>
             </div>
           </CardContent>
         </Card>
