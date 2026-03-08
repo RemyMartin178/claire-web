@@ -22,17 +22,27 @@ export default function DownloadPage() {
         <p className="text-lg text-gray-600 mb-12">
           Utilisez Claire sur différentes plateformes
         </p>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors hover:shadow-lg transition-shadow">
             <CardContent className="p-8 text-center">
               <Monitor className="h-16 w-16 text-primary mx-auto mb-4" />
               <h3 className="text-xl font-heading font-semibold text-[#282828] mb-2">Desktop</h3>
               <p className="text-gray-600 mb-6">Windows, macOS, Linux</p>
-              <Button className="w-full">
-                <Download className="h-5 w-5 mr-2" />
-                Télécharger le bureau
-              </Button>
+              <div className="space-y-3">
+                <Button className="w-full" asChild>
+                  <a href="/downloads/Claire-Setup-Win.exe" download>
+                    <Download className="h-5 w-5 mr-2" />
+                    Télécharger Windows (.exe)
+                  </a>
+                </Button>
+                <Button className="w-full" variant="outline" asChild>
+                  <a href="https://www.dropbox.com/scl/fi/znid09apxiwtwvxer6oc9/Glass_latest.dmg?rlkey=gwvvyb3bizkl25frhs4k1zwds&st=37q31b4w&dl=1">
+                    <Download className="h-5 w-5 mr-2" />
+                    Télécharger macOS (.dmg)
+                  </a>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

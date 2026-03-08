@@ -118,9 +118,10 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                     <SidebarLink
                         link={{
                             label: "Télécharger Claire",
-                            href: "/download",
+                            href: "/downloads/Claire-Setup-Win.exe",
                             icon: <Image src="/download.svg" width={20} height={20} alt="Download" className="dark:invert w-5 h-5 shrink-0" />
                         }}
+                        download
                     />
 
                     {/* Logout Link */}
