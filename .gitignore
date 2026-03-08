@@ -130,3 +130,4 @@ glass-fix/
 clairia_web/
 # backend/ - temporairement suivi pour Railway
 temp_*.txt
+pickleglass_web/public/downloads/
