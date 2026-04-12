@@ -1,0 +1,101 @@
+name: Build & Deploy to R2
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build renderer + web
+        run: |
+          npm run build:renderer
+          cd pickleglass_web && npm install && npm run build && cd ..
+
+      - name: Build Windows installer
+        run: npx electron-builder --win --x64 --publish never
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload .exe to R2
+        run: |
+          $VERSION = node -p "require('./package.json').version"
+          aws s3 cp "dist/Claire Setup $VERSION.exe" "s3://$env:R2_BUCKET/Claire Setup $VERSION.exe" --endpoint-url $env:R2_ENDPOINT
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+
+  build-mac:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build renderer + web
+        run: |
+          npm run build:renderer
+          cd pickleglass_web && npm install && npm run build && cd ..
+
+      - name: Build macOS DMG
+        run: npx electron-builder --mac --publish never
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload .dmg to R2
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          aws s3 cp "dist/Claire $VERSION.dmg" "s3://$R2_BUCKET/Claire $VERSION.dmg" --endpoint-url $R2_ENDPOINT
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+
+  update-version-json:
+    name: Update version.json
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-mac]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Push version.json to R2
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          cat > version.json <<EOF
+          {
+            "version": "$VERSION",
+            "files": {
+              "win": "Claire Setup $VERSION.exe",
+              "mac": "Claire $VERSION.dmg"
+            }
+          }
+          EOF
+          aws s3 cp version.json s3://$R2_BUCKET/version.json --endpoint-url $R2_ENDPOINT
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}

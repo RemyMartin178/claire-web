@@ -1,0 +1,17 @@
+[phases.setup]
+nixPkgs = ["nodejs"]
+
+[phases.install]
+cmds = [
+  "cd pickleglass_web/backend_node && npm install --no-audit --no-fund"
+]
+
+[phases.build]
+cmds = [
+  "echo 'No build step for backend service'"
+]
+
+[start]
+cmd = "cd pickleglass_web/backend_node && node server.js"
+
+

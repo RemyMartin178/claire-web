@@ -1,0 +1,98 @@
+# electron-builder.yml
+
+# The unique application ID
+appId: com.pickle.claire
+
+# The user-facing application name
+productName: Claire
+
+# Build resources directory (icons, etc.)
+directories:
+    buildResources: build
+
+# Publish configuration for GitHub releases
+publish:
+    provider: github
+    owner: pickle-com
+    repo: claire
+    releaseType: draft
+
+# Protocols configuration for deep linking
+protocols:
+    name: Claire Protocol
+    schemes: 
+        - claire
+        - pickleglass
+
+# List of files to be included in the app package
+files:
+    - src/**/*
+    - build/**/*
+    - package.json
+    - backend/**/*
+    - '!**/node_modules/electron/**'
+    - .env
+    - '!**/.env.test'
+    - '!**/.env.local'
+    - '!**/test-db-connection.js'
+    - public/build/**/*
+
+# Additional resources to be copied into the app's resources directory
+extraResources:
+    - from: pickleglass_web/out
+      to: out
+    - from: src/common/config/production-config.js
+      to: config/production-config.js
+    # .env is now copied by afterPack hook to preserve line endings
+
+# Hook to copy .env with proper line endings (prevents dotenv parsing issues)
+afterPack: "./copy-env-prod.js"
+
+asarUnpack:
+    - "src/ui/assets/SystemAudioDump"
+    - "**/node_modules/sharp/**/*"
+    - "**/node_modules/@img/**/*"
+    - "build/icon.ico"
+    - "build/icon.png"
+
+# Windows configuration (electron-builder converts PNG to .ico)
+win:
+    executableName: Claire
+    icon: build/icon.ico
+    artifactName: "${productName} Setup ${version}.${ext}"
+    target:
+        - target: nsis
+          arch: x64
+    requestedExecutionLevel: asInvoker
+    signAndEditExecutable: false
+
+# NSIS installer configuration for Windows
+nsis:
+    oneClick: false
+    perMachine: false
+    allowToChangeInstallationDirectory: true
+    deleteAppDataOnUninstall: true
+    createDesktopShortcut: always
+    createStartMenuShortcut: true
+    shortcutName: Claire
+    installerIcon: build/icon.ico
+    uninstallerIcon: build/icon.ico
+    include: build/installer.nsh
+
+# macOS specific configuration
+mac:
+    # The application category type
+    category: public.app-category.utilities
+    # Path to icon (electron-builder converts PNG to .icns)
+    icon: build/icon.png
+    # Minimum macOS version (supports both Intel and Apple Silicon)
+    minimumSystemVersion: '11.0'
+    hardenedRuntime: true
+    entitlements: entitlements.plist
+    entitlementsInherit: entitlements.plist
+    artifactName: "${productName} ${version}.${ext}"
+    target:
+      - target: dmg
+        arch: universal
+      - target: zip
+        arch: universal
