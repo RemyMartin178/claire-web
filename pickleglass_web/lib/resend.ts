@@ -1,6 +1,13 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+let _resend: Resend | null = null
+function getResend(): Resend {
+  if (!_resend) {
+    if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY is not set')
+    _resend = new Resend(process.env.RESEND_API_KEY)
+  }
+  return _resend
+}
 
 const FROM = 'Claire <noreply@clairia.app>'
 const APP_URL = 'https://app.clairia.app'
@@ -285,7 +292,7 @@ export async function sendEmail(
 ) {
   const { subject, html } = (templates[template] as (...a: any[]) => { subject: string; html: string })(...args)
   try {
-    await resend.emails.send({ from: FROM, to, subject, html })
+    await getResend().emails.send({ from: FROM, to, subject, html })
   } catch (err) {
     console.error(`[resend] Failed to send ${template} to ${to}:`, err)
   }
