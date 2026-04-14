@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Loader2, Calendar, Video, Clock, ExternalLink, Check, Mail, LogOut, RefreshCw } from 'lucide-react'
 import Image from 'next/image'
 import { getApiHeaders } from '@/utils/api'
-import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth'
+import { openOAuthPopup, checkAuthStatus, revokeAuth, getBackendUrl } from '@/utils/oauth'
 import { toast } from 'react-hot-toast'
 
 export default function CalendarPage() {
@@ -36,7 +36,7 @@ export default function CalendarPage() {
             // 2. Signal via postMessage as fallback
             if (window.opener) {
                 try {
-                    window.opener.postMessage('google-auth-success', '*')
+                    window.opener.postMessage('google-auth-success', window.location.origin)
                 } catch (e) {
                     console.error('postMessage failed:', e)
                 }
@@ -180,8 +180,9 @@ export default function CalendarPage() {
         try {
             const { auth } = await import('@/utils/firebase')
             const userId = auth.currentUser?.uid
+            const backendUrl = await getBackendUrl()
 
-            const eventsRes = await fetch(`/api/v1/tools/${toolName}/execute`, {
+            const eventsRes = await fetch(`${backendUrl}/api/v1/tools/${toolName}/execute`, {
                 method: 'POST',
                 headers: { ...(await getApiHeaders()), 'Content-Type': 'application/json', 'x-claire-uid': userId || '' },
                 body: JSON.stringify({ parameters: { operation: 'listEvents', maxResults: 10 } })
@@ -189,9 +190,8 @@ export default function CalendarPage() {
 
             if (eventsRes.ok) {
                 const eventsData = await eventsRes.json()
-                if (eventsData.result && eventsData.result.success) {
-                    setUpcomingEvents(eventsData.result.events)
-                }
+                const events = eventsData.result?.events || eventsData.events || []
+                setUpcomingEvents(events)
             }
         } catch (e) {
         } finally {
@@ -366,6 +366,78 @@ export default function CalendarPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Upcoming events */}
+                {isConfigured && (
+                    <div className="w-full px-4">
+                        {eventsLoading ? (
+                            <div className="flex items-center gap-2 text-sm text-gray-400 py-4">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Chargement des réunions...
+                            </div>
+                        ) : upcomingEvents.length === 0 ? (
+                            <p className="text-sm text-gray-400 py-4">Aucune réunion à venir.</p>
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {upcomingEvents.map((event: any) => {
+                                    const startStr = event.start?.dateTime || event.start?.date
+                                    const endStr = event.end?.dateTime || event.end?.date
+                                    const start = startStr ? new Date(startStr) : null
+                                    const end = endStr ? new Date(endStr) : null
+                                    const meetLink = event.conferenceData?.entryPoints?.find((e: any) => e.entryPointType === 'video')?.uri
+                                    return (
+                                        <Card key={event.id} className="border border-gray-100 shadow-none">
+                                            <CardContent className="p-4 flex items-start justify-between gap-4">
+                                                <div className="flex items-start gap-3 min-w-0">
+                                                    <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                                                        <Calendar className="w-4 h-4 text-blue-500" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-semibold text-gray-900 truncate">{event.summary || 'Sans titre'}</p>
+                                                        {mounted && start && (
+                                                            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                                                <Clock className="w-3 h-3" />
+                                                                {start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                                                                {' · '}
+                                                                {start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                                                {end && ` – ${end.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
+                                                            </p>
+                                                        )}
+                                                        {event.attendees && event.attendees.length > 0 && (
+                                                            <p className="text-xs text-gray-400 mt-0.5 truncate">
+                                                                {event.attendees.filter((a: any) => !a.self).slice(0, 3).map((a: any) => a.displayName || a.email).join(', ')}
+                                                                {event.attendees.filter((a: any) => !a.self).length > 3 && ` +${event.attendees.filter((a: any) => !a.self).length - 3}`}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {meetLink && (
+                                                        <a href={meetLink} target="_blank" rel="noopener noreferrer">
+                                                            <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5">
+                                                                <Video className="w-3 h-3" />
+                                                                Rejoindre
+                                                            </Button>
+                                                        </a>
+                                                    )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 px-2 text-xs text-gray-400 hover:text-gray-700"
+                                                        onClick={() => handlePrepareEmail(event)}
+                                                        disabled={preparingEmailId === event.id}
+                                                    >
+                                                        {preparingEmailId === event.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                                                    </Button>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </Page>
     )

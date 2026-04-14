@@ -125,7 +125,7 @@ export async function revokeAuth(toolName: string, userId: string): Promise<void
 /**
  * Get backend URL (helper)
  */
-async function getBackendUrl(): Promise<string> {
+export async function getBackendUrl(): Promise<string> {
   // If we're fully in a browser window on localhost, force relative paths 
   // so Next.js rewrites (next.config.js) can proxy without triggering CSP blocks.
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
