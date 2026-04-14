@@ -5,6 +5,32 @@ import { useAuth } from '@/contexts/AuthContext'
 import ClientLayout from './ClientLayout'
 import { useEffect } from 'react'
 
+const PAGE_TITLES: Array<{ prefix: string; title: string }> = [
+  { prefix: '/activity', title: 'Activite' },
+  { prefix: '/calendar', title: 'Calendrier' },
+  { prefix: '/settings', title: 'Parametres' },
+  { prefix: '/knowledge-base', title: 'Base de connaissances' },
+  { prefix: '/tools', title: 'Outils' },
+  { prefix: '/chat', title: 'Chat' },
+  { prefix: '/profile', title: 'Profil' },
+  { prefix: '/billing', title: 'Facturation' },
+  { prefix: '/help', title: 'Aide' },
+  { prefix: '/ai-agents', title: 'Agents IA' },
+]
+
+function getDocumentTitle(pathname: string | null) {
+  if (!pathname || pathname === '/') {
+    return 'Claire | Assistant IA en temps reel'
+  }
+
+  const match = PAGE_TITLES.find(({ prefix }) => pathname.startsWith(prefix))
+  if (!match) {
+    return 'Claire | Assistant IA en temps reel'
+  }
+
+  return `${match.title} | Claire`
+}
+
 export default function ConditionalLayout({
   children,
 }: {
@@ -38,6 +64,10 @@ export default function ConditionalLayout({
       return () => clearTimeout(timer)
     }
   }, [loading, isAuthenticated, isAuthPage, isDebugPage, router])
+
+  useEffect(() => {
+    document.title = getDocumentTitle(pathname)
+  }, [pathname])
 
   if (isAuthPage) {
     return (
