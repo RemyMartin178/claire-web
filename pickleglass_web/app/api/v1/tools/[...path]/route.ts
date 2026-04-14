@@ -13,6 +13,13 @@ const RAILWAY_URL =
   'https://claire-web-production.up.railway.app'
 
 const JWT_SECRET = process.env.JWT_SECRET || ''
+const TOOL_PROXY_PERMISSIONS = [
+  'tools:read',
+  'tools:execute',
+  'tools:configure',
+  'tools:manage',
+  'tools:analytics',
+]
 
 async function getFirebaseUid(authHeader: string | null): Promise<string | null> {
   if (!authHeader?.startsWith('Bearer ')) return null
@@ -32,7 +39,12 @@ async function getFirebaseUid(authHeader: string | null): Promise<string | null>
 async function buildRailwayAuth(uid: string): Promise<string> {
   if (!JWT_SECRET) return ''
   const secret = new TextEncoder().encode(JWT_SECRET)
-  return new SignJWT({ userId: uid, sub: uid, role: 'user' })
+  return new SignJWT({
+    userId: uid,
+    sub: uid,
+    role: 'user',
+    permissions: TOOL_PROXY_PERMISSIONS,
+  })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('1h')
