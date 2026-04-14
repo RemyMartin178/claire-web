@@ -8,10 +8,24 @@ const { neonDB } = require('../database/connections/neon');
 
 class CredentialService {
   constructor() {
-    // Simple encryption key derived from environment
-    // In production, this should come from secure environment variable
+    // Primary key for new writes
     this.encryptionKey = process.env.CREDENTIAL_ENCRYPTION_KEY || 'xerus-default-key-change-in-production';
+    // Legacy keys for backward-compatible reads (older Claire backend deployments)
+    const legacyFromEnv = (process.env.LEGACY_CREDENTIAL_ENCRYPTION_KEYS || '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    this.decryptionKeys = [
+      this.encryptionKey,
+      'claire-default-key-change-in-production',
+      'xerus-default-key-change-in-production',
+      ...legacyFromEnv,
+    ].filter((value, index, arr) => arr.indexOf(value) === index);
     this.algorithm = 'aes-256-gcm';
+  }
+
+  deriveKey(encryptionKey) {
+    return crypto.scryptSync(encryptionKey, 'salt', 32);
   }
 
   parseEncryptedPayload(value) {
@@ -31,7 +45,7 @@ class CredentialService {
   encrypt(text) {
     try {
       const iv = crypto.randomBytes(16);
-      const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
+      const key = this.deriveKey(this.encryptionKey);
       const cipher = crypto.createCipheriv(this.algorithm, key, iv);
       
       let encrypted = cipher.update(text, 'utf8', 'hex');
@@ -53,20 +67,26 @@ class CredentialService {
    * Decrypt sensitive data
    */
   decrypt(encryptedData) {
-    try {
-      const key = crypto.scryptSync(this.encryptionKey, 'salt', 32);
-      const iv = Buffer.from(encryptedData.iv, 'hex');
-      const decipher = crypto.createDecipheriv(this.algorithm, key, iv);
-      
-      decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'hex'));
-      
-      let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      
-      return decrypted;
-    } catch (error) {
-      throw new Error(`Decryption failed: ${error.message}`);
+    let lastError = null;
+
+    for (const keyMaterial of this.decryptionKeys) {
+      try {
+        const key = this.deriveKey(keyMaterial);
+        const iv = Buffer.from(encryptedData.iv, 'hex');
+        const decipher = crypto.createDecipheriv(this.algorithm, key, iv);
+        
+        decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'hex'));
+        
+        let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        return decrypted;
+      } catch (error) {
+        lastError = error;
+      }
     }
+
+    throw new Error(`Decryption failed: ${lastError ? lastError.message : 'No valid key matched'}`);
   }
 
   /**
