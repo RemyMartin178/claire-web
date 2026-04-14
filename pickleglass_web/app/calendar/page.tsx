@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { Loader2, Calendar, Video, Clock, ExternalLink, Check, Mail, LogOut, RefreshCw } from 'lucide-react'
 import Image from 'next/image'
 import { getApiHeaders } from '@/utils/api'
-import { openOAuthPopup, checkAuthStatus, revokeAuth, getBackendUrl } from '@/utils/oauth'
+import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth'
 import { toast } from 'react-hot-toast'
 
 export default function CalendarPage() {
@@ -178,9 +178,8 @@ export default function CalendarPage() {
     const fetchCalendarData = async () => {
         setEventsLoading(true)
         try {
-            const backendUrl = await getBackendUrl()
-
-            const eventsRes = await fetch(`${backendUrl}/api/v1/tools/${toolName}/execute`, {
+            // Use relative URL — Next.js rewrite proxies /api/v1/* to Railway (server-to-server, no CORS)
+            const eventsRes = await fetch(`/api/v1/tools/${toolName}/execute`, {
                 method: 'POST',
                 headers: { ...(await getApiHeaders()), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ parameters: { operation: 'listEvents', maxResults: 10 } })
@@ -190,8 +189,11 @@ export default function CalendarPage() {
                 const eventsData = await eventsRes.json()
                 const events = eventsData.result?.events || eventsData.events || []
                 setUpcomingEvents(events)
+            } else {
+                console.error('[Calendar] execute returned', eventsRes.status)
             }
         } catch (e) {
+            console.error('[Calendar] fetchCalendarData error:', e)
         } finally {
             setEventsLoading(false)
         }
