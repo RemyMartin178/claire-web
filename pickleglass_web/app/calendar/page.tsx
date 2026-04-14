@@ -1,14 +1,12 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Page } from '@/components/Page'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Loader2, Calendar, Video, Clock, ExternalLink, Check, Mail, LogOut, RefreshCw } from 'lucide-react'
-import Image from 'next/image'
+import { Loader2, Calendar, Video, Clock, Mail, LogOut, RefreshCw } from 'lucide-react'
 import { getApiHeaders } from '@/utils/api'
 import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth'
 import { toast } from 'react-hot-toast'
@@ -18,7 +16,7 @@ export default function CalendarPage() {
     const [isConfigured, setIsConfigured] = useState(false)
     const [statusLoading, setStatusLoading] = useState(true)
     const [eventsLoading, setEventsLoading] = useState(false)
-    const [calendarInfo, setCalendarInfo] = useState<any>(null)
+    const [, setCalendarInfo] = useState<any>(null)
     const [connectedEmail, setConnectedEmail] = useState<string | null>(null)
     const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
     const [operatingAuth, setOperatingAuth] = useState(false)
@@ -26,38 +24,38 @@ export default function CalendarPage() {
 
     const searchParams = useSearchParams()
     const authSuccess = searchParams.get('auth') === 'success'
-
-    // Robust Popup handling: signal parent and close
-    useEffect(() => {
-        if (authSuccess) {
-            // 1. Signal via localStorage (works even across domain redirects if same origin remains)
-            localStorage.setItem('google-auth-success', Date.now().toString())
-
-            // 2. Signal via postMessage as fallback
-            if (window.opener) {
-                try {
-                    window.opener.postMessage('google-auth-success', window.location.origin)
-                } catch (e) {
-                    console.error('postMessage failed:', e)
-                }
-            }
-
-            // 3. Attempt to close
-            const timeout = setTimeout(() => {
-                window.close()
-            }, 2000)
-            return () => clearTimeout(timeout)
-        }
-    }, [authSuccess])
-
     const toolName = 'google_calendar'
     const provider = 'google'
 
-    // Hydration fix: only render dynamic dates after mount
     const [mounted, setMounted] = useState(false)
     useEffect(() => {
         setMounted(true)
     }, [])
+
+    const fetchCalendarData = useCallback(async () => {
+        setEventsLoading(true)
+        try {
+            const eventsRes = await fetch(`/api/v1/tools/${toolName}/execute`, {
+                method: 'POST',
+                headers: { ...(await getApiHeaders()), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ parameters: { operation: 'listEvents', maxResults: 10 } })
+            })
+
+            if (eventsRes.ok) {
+                const eventsData = await eventsRes.json()
+                const events = eventsData.result?.events || eventsData.events || []
+                console.log('[Calendar] execute success', { eventsCount: events.length, eventsData })
+                setUpcomingEvents(events)
+            } else {
+                const errorBody = await eventsRes.text()
+                console.error('[Calendar] execute returned', eventsRes.status, errorBody)
+            }
+        } catch (error) {
+            console.error('[Calendar] fetchCalendarData error:', error)
+        } finally {
+            setEventsLoading(false)
+        }
+    }, [toolName])
 
     const checkStatus = useCallback(async () => {
         setStatusLoading(true)
@@ -71,133 +69,79 @@ export default function CalendarPage() {
             }
 
             const status = await checkAuthStatus(toolName, userId)
+            console.log('[Calendar] auth status', status)
+
             setIsConfigured(status.authenticated)
             if ((status as any).accountEmail) {
                 setConnectedEmail((status as any).accountEmail)
+            } else {
+                setConnectedEmail(null)
             }
 
             if (status.authenticated) {
                 await fetchCalendarData()
             }
-        } catch (e) {
+        } catch (error) {
+            console.error('[Calendar] checkStatus failed', error)
         } finally {
             setStatusLoading(false)
         }
-    }, [toolName])
+    }, [fetchCalendarData, toolName])
 
-    // IPC support for Electron Deep Links
+    const waitForConnectedStatus = useCallback(async (userId: string) => {
+        const maxAttempts = 12
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                const status = await checkAuthStatus(toolName, userId)
+                console.log('[Calendar] auth status poll', { attempt, status })
+
+                setIsConfigured(status.authenticated)
+                if ((status as any).accountEmail) {
+                    setConnectedEmail((status as any).accountEmail)
+                }
+
+                if (status.authenticated) {
+                    await fetchCalendarData()
+                    return true
+                }
+            } catch (error) {
+                console.error('[Calendar] auth status poll failed', { attempt, error })
+            }
+
+            if (attempt < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 1000))
+            }
+        }
+
+        return false
+    }, [fetchCalendarData, toolName])
+
     useEffect(() => {
         if (typeof window !== 'undefined' && (window as any).api) {
-            const api = (window as any).api;
-            const handleOAuthSuccess = (_event: any, data: any) => {
-                if (data.tool === toolName) {
-                    toast.success('Calendrier connecté !');
-                    setTimeout(() => checkStatus(), 1500);
-                }
-            };
+            const api = (window as any).api
+            const handleOAuthSuccess = async (_event: any, data: any) => {
+                if (data.tool !== toolName) return
 
-            api.on('oauth:success', handleOAuthSuccess);
+                const { auth } = await import('@/utils/firebase')
+                const userId = auth.currentUser?.uid
+                if (!userId) return
+
+                const connected = await waitForConnectedStatus(userId)
+                if (connected) {
+                    toast.success('Calendrier connecté !')
+                }
+            }
+
+            api.on('oauth:success', handleOAuthSuccess)
         }
-    }, [checkStatus]);
+    }, [toolName, waitForConnectedStatus])
 
     useEffect(() => {
         if (userInfo) {
             checkStatus()
         }
     }, [userInfo, checkStatus])
-
-    // Listen for popup success via BroadcastChannel, postMessage, and localStorage
-    const signalHandledRef = useRef<string | null>(null);
-
-    useEffect(() => {
-        let bc: BroadcastChannel | null = null;
-        try {
-            bc = new BroadcastChannel('oauth_channel');
-        } catch (e) {
-        }
-
-        const handleResult = (data: any) => {
-            if (data?.type === 'oauth_result' && data?.tool === toolName) {
-                // Prevent duplicate processing of the same signal (with 2s debounce)
-                const signalId = `${data.ts}-${data.status}`;
-                if (signalHandledRef.current === signalId) return;
-                signalHandledRef.current = signalId;
-
-                if (data.status === 'success') {
-                    toast.success('Calendrier connecté !');
-                    // Small delay to ensure Railway has stored the tokens
-                    setTimeout(() => checkStatus(), 1500);
-                } else {
-                    toast.error('Échec de la connexion: ' + (data.error || 'Erreur inconnue'));
-                }
-                localStorage.removeItem('oauth_result');
-
-                // Clear ref after some time
-                setTimeout(() => { signalHandledRef.current = null; }, 2000);
-            }
-        }
-
-        const handleStorage = (event: StorageEvent) => {
-            if (event.key === 'oauth_result' && event.newValue) {
-                try {
-                    handleResult(JSON.parse(event.newValue));
-                } catch (e) { }
-            }
-            // Compatibility for old keys
-            if (event.key === 'google-auth-success' || event.key === 'oauth_success') {
-                const ts = Date.now();
-                handleResult({ type: 'oauth_result', tool: 'google_calendar', status: 'success', ts });
-                localStorage.removeItem(event.key);
-            }
-        }
-
-        const handleMessage = (event: MessageEvent) => {
-            if (event.origin !== window.location.origin) return;
-            handleResult(event.data);
-        }
-
-        if (bc) {
-            bc.onmessage = (event) => handleResult(event.data);
-        }
-        window.addEventListener('storage', handleStorage)
-        window.addEventListener('message', handleMessage)
-
-        // Initial check for storage
-        const pending = localStorage.getItem('oauth_result');
-        if (pending) {
-            try { handleResult(JSON.parse(pending)); } catch (e) { }
-        }
-
-        return () => {
-            if (bc) bc.close();
-            window.removeEventListener('storage', handleStorage)
-            window.removeEventListener('message', handleMessage)
-        }
-    }, [checkStatus])
-
-    const fetchCalendarData = async () => {
-        setEventsLoading(true)
-        try {
-            // Use relative URL — Next.js rewrite proxies /api/v1/* to Railway (server-to-server, no CORS)
-            const eventsRes = await fetch(`/api/v1/tools/${toolName}/execute`, {
-                method: 'POST',
-                headers: { ...(await getApiHeaders()), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ parameters: { operation: 'listEvents', maxResults: 10 } })
-            })
-
-            if (eventsRes.ok) {
-                const eventsData = await eventsRes.json()
-                const events = eventsData.result?.events || eventsData.events || []
-                setUpcomingEvents(events)
-            } else {
-                console.error('[Calendar] execute returned', eventsRes.status)
-            }
-        } catch (e) {
-            console.error('[Calendar] fetchCalendarData error:', e)
-        } finally {
-            setEventsLoading(false)
-        }
-    }
 
     const handleConnect = async () => {
         try {
@@ -208,11 +152,16 @@ export default function CalendarPage() {
 
             await openOAuthPopup({ toolName, provider }, userId)
 
-            // Wait for Railway to finish saving tokens before checking status
-            toast.success('Calendrier connecté !')
-            await new Promise(resolve => setTimeout(resolve, 1500))
-            await checkStatus()
+            const connected = await waitForConnectedStatus(userId)
+            if (connected) {
+                toast.success('Calendrier connecté !')
+                return
+            }
+
+            console.error('[Calendar] OAuth popup completed but credentials were not visible after polling')
+            toast.error('Connexion réussie côté Google, mais le calendrier ne s\'est pas synchronisé.')
         } catch (error: any) {
+            console.error('[Calendar] handleConnect failed', error)
             if (error?.message?.includes('fermée')) return
             toast.error('Échec de la connexion au calendrier')
         } finally {
@@ -229,10 +178,12 @@ export default function CalendarPage() {
 
             await revokeAuth(toolName, userId)
             setIsConfigured(false)
+            setConnectedEmail(null)
             setCalendarInfo(null)
             setUpcomingEvents([])
             toast.success('Calendrier déconnecté')
         } catch (error) {
+            console.error('[Calendar] handleDisconnect failed', error)
             toast.error('Échec de la déconnexion')
         } finally {
             setOperatingAuth(false)
@@ -261,13 +212,13 @@ export default function CalendarPage() {
             window.location.href = `mailto:?subject=${subject}&body=${body}`
             toast.success('Brouillon généré !', { id: toastId })
         } catch (error) {
+            console.error('[Calendar] handlePrepareEmail failed', error)
             toast.error('Échec de la génération de l\'email', { id: toastId })
         } finally {
             setPreparingEmailId(null)
         }
     }
 
-    // Success UI for the popup window itself - moved here to follow rules of hooks
     if (authSuccess) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center bg-background">
@@ -367,7 +318,6 @@ export default function CalendarPage() {
                     )}
                 </div>
 
-                {/* Upcoming events */}
                 {isConfigured && (
                     <div className="w-full px-4">
                         {eventsLoading ? (
