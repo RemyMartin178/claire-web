@@ -261,7 +261,8 @@ router.post('/:toolName/execute', asyncHandler(async (req, res) => {
     }
   } else {
     // Regular tool execution
-    result = await toolService.executeTool(toolName, parameters);
+    const userId = req.user?.uid || req.user?.id || null;
+    result = await toolService.executeTool(toolName, parameters, { userId });
   }
   
   res.json({

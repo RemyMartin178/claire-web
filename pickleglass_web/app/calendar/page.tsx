@@ -178,13 +178,11 @@ export default function CalendarPage() {
     const fetchCalendarData = async () => {
         setEventsLoading(true)
         try {
-            const { auth } = await import('@/utils/firebase')
-            const userId = auth.currentUser?.uid
             const backendUrl = await getBackendUrl()
 
             const eventsRes = await fetch(`${backendUrl}/api/v1/tools/${toolName}/execute`, {
                 method: 'POST',
-                headers: { ...(await getApiHeaders()), 'Content-Type': 'application/json', 'x-claire-uid': userId || '' },
+                headers: { ...(await getApiHeaders()), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ parameters: { operation: 'listEvents', maxResults: 10 } })
             })
 
