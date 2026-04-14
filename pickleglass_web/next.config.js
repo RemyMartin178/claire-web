@@ -14,6 +14,7 @@ const nextConfig = {
             value: [
               "default-src 'self' https: data: blob:",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+              "worker-src 'self' blob:",
               "style-src 'self' 'unsafe-inline' https:",
               "img-src 'self' https: data: blob:",
               "connect-src 'self' https: wss:",
@@ -36,7 +37,7 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/v1/:path*',
+        source: '/api/v1/:path((?!tools(?:/|$)|knowledge(?:/|$)).*)',
         destination: process.env.API_URL
           ? `${process.env.API_URL}/api/v1/:path*`
           : 'https://claire-web-production.up.railway.app/api/v1/:path*',
