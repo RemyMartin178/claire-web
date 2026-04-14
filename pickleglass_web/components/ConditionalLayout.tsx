@@ -7,9 +7,9 @@ import { useEffect } from 'react'
 
 const PAGE_TITLES: Record<string, string> = {
   '': 'Claire',
-  activity: 'Activite',
+  activity: 'Activité',
   calendar: 'Calendrier',
-  settings: 'Parametres',
+  settings: 'Paramètres',
   'knowledge-base': 'Base de connaissances',
   tools: 'Outils',
   chat: 'Chat',
@@ -25,10 +25,10 @@ const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   account: 'Compte',
   notifications: 'Notifications',
-  integrations: 'Integrations',
+  integrations: 'Intégrations',
   documents: 'Documents',
-  meetings: 'Reunions',
-  inbox: 'Boite de reception',
+  meetings: 'Réunions',
+  inbox: 'Boîte de réception',
 }
 
 function getDocumentTitle(pathname: string | null) {
