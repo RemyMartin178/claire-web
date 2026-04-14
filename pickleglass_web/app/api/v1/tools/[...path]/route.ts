@@ -75,22 +75,29 @@ async function proxyToRailway(
   })
 }
 
-export async function GET(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyToRailway(req, params.path, 'GET')
+type RouteContext = { params: Promise<{ path: string[] }> }
+
+export async function GET(req: NextRequest, ctx: RouteContext) {
+  const { path } = await ctx.params
+  return proxyToRailway(req, path, 'GET')
 }
 
-export async function POST(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyToRailway(req, params.path, 'POST')
+export async function POST(req: NextRequest, ctx: RouteContext) {
+  const { path } = await ctx.params
+  return proxyToRailway(req, path, 'POST')
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyToRailway(req, params.path, 'PUT')
+export async function PUT(req: NextRequest, ctx: RouteContext) {
+  const { path } = await ctx.params
+  return proxyToRailway(req, path, 'PUT')
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyToRailway(req, params.path, 'DELETE')
+export async function DELETE(req: NextRequest, ctx: RouteContext) {
+  const { path } = await ctx.params
+  return proxyToRailway(req, path, 'DELETE')
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { path: string[] } }) {
-  return proxyToRailway(req, params.path, 'PATCH')
+export async function PATCH(req: NextRequest, ctx: RouteContext) {
+  const { path } = await ctx.params
+  return proxyToRailway(req, path, 'PATCH')
 }
