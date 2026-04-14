@@ -14,6 +14,17 @@ class CredentialService {
     this.algorithm = 'aes-256-gcm';
   }
 
+  parseEncryptedPayload(value) {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    if (typeof value === 'object') {
+      return value;
+    }
+    throw new Error('Unsupported encrypted payload format');
+  }
+
   /**
    * Encrypt sensitive data
    */
@@ -112,12 +123,12 @@ class CredentialService {
       const row = result.rows[0];
       
       // Decrypt tokens
-      const accessTokenData = JSON.parse(row.encrypted_access_token);
+      const accessTokenData = this.parseEncryptedPayload(row.encrypted_access_token);
       const accessToken = this.decrypt(accessTokenData);
       
       let refreshToken = null;
       if (row.encrypted_refresh_token) {
-        const refreshTokenData = JSON.parse(row.encrypted_refresh_token);
+        const refreshTokenData = this.parseEncryptedPayload(row.encrypted_refresh_token);
         refreshToken = this.decrypt(refreshTokenData);
       }
 
