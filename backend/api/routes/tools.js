@@ -18,6 +18,7 @@ const { asyncHandler, ValidationError, NotFoundError } = require('../middleware/
 const { requirePermission, requireGuestPermission, DEFAULT_USER_PERMISSIONS } = require('../middleware/auth');
 const CredentialService = require('../../services/credentialService');
 const GenericOAuthService = require('../../services/oauth/genericOAuthService');
+const { neonDB } = require('../../database/connections/neon');
 const sharedMCPManager = require('../../services/sharedMCPManager');
 
 // Initialize services
@@ -292,11 +293,61 @@ router.get('/:toolName/auth/debug', requireGuestPermission('tools:read'), asyncH
 
   let tokens = null;
   let tokenError = null;
+  let rawCredential = null;
+  let rawCredentialError = null;
 
   try {
     tokens = await credentialService.getOAuthTokens(userId, toolName);
   } catch (error) {
     tokenError = error.message;
+  }
+
+  try {
+    const result = await neonDB.query(`
+      SELECT id, created_at, updated_at, token_expires_at, encrypted_access_token, encrypted_refresh_token
+      FROM user_credentials
+      WHERE user_id = $1 AND tool_name = $2
+      ORDER BY updated_at DESC
+      LIMIT 1
+    `, [userId, toolName]);
+
+    if (result.rows.length > 0) {
+      const row = result.rows[0];
+
+      const summarizePayload = (value) => {
+        if (value == null) return { type: 'null' };
+        if (typeof value === 'string') {
+          return {
+            type: 'string',
+            length: value.length,
+            startsWith: value.slice(0, 1),
+          };
+        }
+
+        if (typeof value === 'object') {
+          return {
+            type: 'object',
+            keys: Object.keys(value),
+            encryptedLength: typeof value.encrypted === 'string' ? value.encrypted.length : null,
+            ivLength: typeof value.iv === 'string' ? value.iv.length : null,
+            authTagLength: typeof value.authTag === 'string' ? value.authTag.length : null,
+          };
+        }
+
+        return { type: typeof value };
+      };
+
+      rawCredential = {
+        id: row.id,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        tokenExpiresAt: row.token_expires_at,
+        accessPayload: summarizePayload(row.encrypted_access_token),
+        refreshPayload: summarizePayload(row.encrypted_refresh_token),
+      };
+    }
+  } catch (error) {
+    rawCredentialError = error.message;
   }
 
   const now = new Date();
@@ -312,7 +363,9 @@ router.get('/:toolName/auth/debug', requireGuestPermission('tools:read'), asyncH
     expiresAt: expiresAt ? expiresAt.toISOString() : null,
     expiresInMs,
     isExpired: expiresInMs !== null ? expiresInMs <= 0 : null,
-    tokenError
+    tokenError,
+    rawCredential,
+    rawCredentialError
   });
 }));
 
