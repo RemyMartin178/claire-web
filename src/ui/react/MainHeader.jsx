@@ -324,9 +324,10 @@ const CSS = `
   padding: 0 6px 0 4px;
   border-radius: 100px;
   gap: 8px;
-  background: rgba(14, 14, 16, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  backdrop-filter: blur(20px);
+  background: #18171ccc;
+  border: 1px solid rgba(207,226,255,0.24);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   flex-wrap: nowrap !important;
   white-space: nowrap !important;
 }
@@ -360,15 +361,16 @@ const CSS = `
   height: 28px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(14, 14, 16, 0.82);
-  backdrop-filter: blur(20px);
+  border: 1px solid rgba(207,226,255,0.24);
+  background: #18171ccc;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: rgba(255,255,255,0.6);
   cursor: pointer;
   margin-left: 8px;
   transition: background 0.12s ease, color 0.12s ease;
 }
-.mh-quit-btn:hover { background: rgba(60,60,60,0.9); color: rgba(255,255,255,0.95); }
+.mh-quit-btn:hover { background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.95); }
 `;
 
 const KEY_MAP = {

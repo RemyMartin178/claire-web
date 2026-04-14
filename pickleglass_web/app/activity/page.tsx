@@ -203,6 +203,7 @@ export default function ActivityPage() {
           <GettingStartedChecklist
             allSessions={allSessions}
             userId={userInfo.uid || userInfo.email || 'anonymous'}
+            userAliases={[userInfo.uid, userInfo.email].filter(Boolean)}
           />
         )}
 

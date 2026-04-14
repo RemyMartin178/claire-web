@@ -22,10 +22,12 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
     const isFirebaseUser = userInfo && userInfo.uid !== 'default_user';
 
     const handleDownloadClick = useCallback(() => {
-        const scopedUserId = userInfo?.uid || userInfo?.email || 'anonymous';
-        localStorage.setItem(`cl_downloaded:${scopedUserId}`, 'true');
+        const scopedUserIds = Array.from(new Set([userInfo?.uid, userInfo?.email, 'anonymous'].filter(Boolean)));
+        scopedUserIds.forEach((scopedUserId) => {
+            localStorage.setItem(`cl_downloaded:${scopedUserId}`, 'true');
+        });
         window.dispatchEvent(new CustomEvent('claire:download-clicked', {
-            detail: { userId: scopedUserId }
+            detail: { scopedIds: scopedUserIds }
         }));
     }, [userInfo?.uid, userInfo?.email]);
 

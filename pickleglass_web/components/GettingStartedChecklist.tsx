@@ -18,43 +18,55 @@ interface Step {
 interface GettingStartedChecklistProps {
   allSessions: Session[]
   userId: string
+  userAliases?: string[]
 }
 
-function getChecklistStorageKeys(userId: string) {
-  const scopedUserId = userId || 'anonymous'
-
-  return {
-    dismissed: `cl_checklist_dismissed:${scopedUserId}`,
-    downloaded: `cl_downloaded:${scopedUserId}`,
-  }
+function getScopedIds(userId: string, userAliases: string[] = []) {
+  return Array.from(new Set([userId, ...userAliases].filter(Boolean)))
 }
 
-function markChecklistDownloaded(userId: string) {
-  const { downloaded } = getChecklistStorageKeys(userId)
-  localStorage.setItem(downloaded, 'true')
+function getChecklistStorageKey(prefix: 'cl_checklist_dismissed' | 'cl_downloaded', scopedUserId: string) {
+  return `${prefix}:${scopedUserId || 'anonymous'}`
+}
+
+function readScopedFlag(prefix: 'cl_checklist_dismissed' | 'cl_downloaded', scopedIds: string[]) {
+  return scopedIds.some((scopedId) => localStorage.getItem(getChecklistStorageKey(prefix, scopedId)) === 'true')
+}
+
+function writeScopedFlag(prefix: 'cl_checklist_dismissed' | 'cl_downloaded', scopedIds: string[]) {
+  scopedIds.forEach((scopedId) => {
+    localStorage.setItem(getChecklistStorageKey(prefix, scopedId), 'true')
+  })
+}
+
+function markChecklistDownloaded(scopedIds: string[]) {
+  writeScopedFlag('cl_downloaded', scopedIds)
   window.dispatchEvent(new CustomEvent('claire:download-clicked', {
-    detail: { userId },
+    detail: { scopedIds },
   }))
 }
 
-export default function GettingStartedChecklist({ allSessions, userId }: GettingStartedChecklistProps) {
+export default function GettingStartedChecklist({ allSessions, userId, userAliases = [] }: GettingStartedChecklistProps) {
   const [dismissed, setDismissed] = useState(true)
   const [isVisible, setIsVisible] = useState(false)
   const [downloaded, setDownloaded] = useState(false)
-  const storageKeys = getChecklistStorageKeys(userId)
+  const scopedIds = getScopedIds(userId, userAliases)
 
   useEffect(() => {
-    const isDismissed = localStorage.getItem(storageKeys.dismissed) === 'true'
+    const isDismissed = readScopedFlag('cl_checklist_dismissed', scopedIds)
     setDismissed(isDismissed)
     setIsVisible(!isDismissed)
-    setDownloaded(localStorage.getItem(storageKeys.downloaded) === 'true')
-  }, [storageKeys.dismissed, storageKeys.downloaded])
+    setDownloaded(readScopedFlag('cl_downloaded', scopedIds))
+  }, [userId, userAliases.join('|')])
 
   useEffect(() => {
     const handleDownloadClicked = (event: Event) => {
-      const detail = (event as CustomEvent<{ userId?: string }>).detail
-      if (!detail?.userId || detail.userId === userId) {
-        localStorage.setItem(storageKeys.downloaded, 'true')
+      const detail = (event as CustomEvent<{ scopedIds?: string[] }>).detail
+      const incomingIds = detail?.scopedIds || []
+      const matchesCurrentUser = incomingIds.length === 0 || incomingIds.some((id) => scopedIds.includes(id))
+
+      if (matchesCurrentUser) {
+        writeScopedFlag('cl_downloaded', scopedIds)
         setDownloaded(true)
       }
     }
@@ -63,7 +75,7 @@ export default function GettingStartedChecklist({ allSessions, userId }: Getting
     return () => {
       window.removeEventListener('claire:download-clicked', handleDownloadClicked as EventListener)
     }
-  }, [storageKeys.downloaded, userId])
+  }, [userId, userAliases.join('|')])
 
   const hasListenSession = allSessions.some((s) => s.session_type !== 'ask')
   const isAppDownloaded = downloaded || hasListenSession
@@ -81,7 +93,7 @@ export default function GettingStartedChecklist({ allSessions, userId }: Getting
       description: 'Installez Claire sur votre ordinateur.',
       done: isAppDownloaded,
       action: () => {
-        markChecklistDownloaded(userId)
+        markChecklistDownloaded(scopedIds)
         setDownloaded(true)
         window.open(DOWNLOAD_URL, '_blank')
       },
@@ -108,7 +120,7 @@ export default function GettingStartedChecklist({ allSessions, userId }: Getting
 
   const handleDismiss = () => {
     if (dismissed || !isVisible) return
-    localStorage.setItem(storageKeys.dismissed, 'true')
+    writeScopedFlag('cl_checklist_dismissed', scopedIds)
     setIsVisible(false)
   }
 

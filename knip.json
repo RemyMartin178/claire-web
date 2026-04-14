@@ -1,0 +1,53 @@
+{
+  "ignore": [
+    ".claude/**",
+    "xerus-master/**",
+    "dist/**",
+    "node_modules/**",
+    "public/build/**",
+    "scripts/**",
+    "**/*.min.js",
+    "notarize.js",
+    "copy-env.js",
+    "copy-env-prod.js",
+    "build.js",
+    "dev-with-devtools.js"
+  ],
+  "ignoreDependencies": [],
+  "entry": [
+    "src/index.js",
+    "src/preload.js",
+    "src/bridge/*.js",
+    "src/window/windowManager.js",
+    "pickleglass_web/app/**/*.{ts,tsx}",
+    "pickleglass_web/app/api/**/*.ts"
+  ],
+  "project": [
+    "src/**/*.{js,ts}",
+    "pickleglass_web/**/*.{ts,tsx}",
+    "backend/**/*.{js,ts}",
+    "functions/**/*.{js,ts}"
+  ],
+  "workspaces": {
+    ".": {
+      "entry": ["src/index.js", "src/preload.js"],
+      "project": ["src/**/*.js", "backend/**/*.js", "functions/**/*.js"]
+    },
+    "pickleglass_web": {
+      "entry": [
+        "app/**/{page,layout,loading,error,not-found,route}.{ts,tsx}",
+        "app/api/**/route.ts",
+        "middleware.ts"
+      ],
+      "project": [
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "contexts/**/*.{ts,tsx}",
+        "hooks/**/*.{ts,tsx}",
+        "lib/**/*.{ts,tsx}",
+        "utils/**/*.{ts,tsx}",
+        "stores/**/*.{ts,tsx}"
+      ]
+    }
+  }
+}

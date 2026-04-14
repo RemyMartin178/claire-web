@@ -324,21 +324,58 @@ class AuthService {
         }
     }
 
+    async applyAuthenticatedUser(authData) {
+        const idToken = authData?.idToken || authData?.accessToken || null;
+        const pseudoUser = {
+            uid: authData.uid,
+            email: authData.email || 'no-email@example.com',
+            displayName: authData.displayName || 'User',
+            photoURL: authData.photoURL || null,
+            accessToken: idToken,
+            refreshToken: authData.refreshToken || null,
+            async getIdToken() {
+                return idToken;
+            },
+        };
+
+        this.currentUser = pseudoUser;
+        this.currentUserId = pseudoUser.uid;
+        this.currentUserMode = 'firebase';
+        this.isFirebaseClientReady = true;
+
+        await encryptionService.initializeKey(this.currentUserId);
+
+        try {
+            await sessionRepository.endAllActiveSessions();
+            logger.info('[Auth] Sessions cleaned up');
+        } catch (sessionError) {
+            logger.warn('[Auth] Session cleanup failed (non-critical):', sessionError.message);
+        }
+
+        if (this.authPollingInterval) {
+            clearInterval(this.authPollingInterval);
+            this.authPollingInterval = null;
+        }
+
+        this.broadcastUserState();
+    }
+
     async handleIdTokenAuthentication(authData) {
         try {
             logger.info('[Auth] [TARGET] Starting ID token authentication for:', { uid: authData.uid, email: authData.email });
 
-            if (authData?.idToken) {
-                logger.info('[Auth] [SECURE] Real Firebase sign-in from ID token callback');
-                await this.signInWithCustomToken(authData.idToken);
-
-                if (this.authPollingInterval) {
-                    clearInterval(this.authPollingInterval);
-                    this.authPollingInterval = null;
-                }
-
+            if (authData?.customToken) {
+                logger.info('[Auth] [SECURE] Firebase custom token received');
+                await this.signInWithCustomToken(authData.customToken);
                 this.broadcastUserState();
-                logger.info('[Auth] [OK] ID token authentication completed through Firebase client');
+                logger.info('[Auth] [OK] Custom token authentication completed through Firebase client');
+                return;
+            }
+
+            if (authData?.idToken) {
+                logger.info('[Auth] [SECURE] Firebase ID token received - applying local authenticated user context');
+                await this.applyAuthenticatedUser(authData);
+                logger.info('[Auth] [OK] ID token authentication completed through local authenticated context');
                 return;
             }
 
