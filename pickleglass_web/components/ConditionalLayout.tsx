@@ -6,7 +6,7 @@ import ClientLayout from './ClientLayout'
 import { useEffect } from 'react'
 
 const PAGE_TITLES: Record<string, string> = {
-  '': 'Accueil',
+  '': 'Claire',
   activity: 'Activite',
   calendar: 'Calendrier',
   settings: 'Parametres',
@@ -33,7 +33,7 @@ const PAGE_TITLES: Record<string, string> = {
 
 function getDocumentTitle(pathname: string | null) {
   if (!pathname) {
-    return 'Accueil'
+    return 'Claire'
   }
 
   const normalizedPath = pathname.split('?')[0].split('#')[0]
@@ -45,7 +45,7 @@ function getDocumentTitle(pathname: string | null) {
   }
 
   if (!primarySegment) {
-    return 'Accueil'
+    return 'Claire'
   }
 
   return primarySegment

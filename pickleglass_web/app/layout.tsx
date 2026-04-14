@@ -13,13 +13,13 @@ import { Toaster } from 'react-hot-toast'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: { default: 'Claire — Assistant IA en temps réel', template: '%s | Claire' },
+  title: { default: 'Claire', template: '%s' },
   description: 'Claire transcrit et analyse vos réunions en temps réel, génère vos comptes-rendus et vous apporte des suggestions contextuelles pendant vos appels et visioconférences.',
   icons: {
     icon: [{ url: '/favicon.ico' }, { url: '/favicon.svg', type: 'image/svg+xml' }],
   },
   openGraph: {
-    title: 'Claire — Assistant IA en temps réel',
+    title: 'Claire',
     description: 'Claire transcrit et analyse vos réunions en temps réel, génère vos comptes-rendus et vous apporte des suggestions contextuelles pendant vos appels et visioconférences.',
     url: 'https://www.clairia.app',
     siteName: 'Claire',
@@ -106,4 +106,3 @@ export default function RootLayout({
     </html>
   )
 }
-
