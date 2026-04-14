@@ -136,3 +136,40 @@ clairia_web/
 # backend/ - temporairement suivi pour Railway
 temp_*.txt
 pickleglass_web/public/downloads/
+
+# Local artifacts accidentally added during debugging
+pending_sessions.sqlite
+firebase_hosting_tmp/
+web2/
+cluely_app/
+diff.txt
+1956
+2168
+Frontend
+cd
+s_web
+tatus
+tatus --porcelain
+debug-prod.bat
+launch-claire-debug-simple.bat
+launch-claire-debug.bat
+launch-claire-desktop.bat
+launch-claire-prod.bat
+launch-glass.bat
+launch-prod-logs.bat
+run-prod-logs.bat
+run_prod_with_logs.bat
+test-launch.bat
+BACKEND_CHECKLIST.md
+DEPLOY_BACKEND_AGENTS.md
+RESUME_SETUP_BACKEND.md
+SUPABASE_BEST_PRACTICES.md
+docs/
+full-ronded-claire-logo-Fond-blanc-logo-noir.ico
+knip.json
+pickleglass_web/run-fix-subscriptions.bat
+preload.js
+scripts/generate-icons-bmp.ps1
+scripts/generate-icons.ps1
+scripts/update-all-icons.ps1
+scripts/update-icon.ps1
