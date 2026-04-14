@@ -39,6 +39,20 @@ class ToolService {
     };
   }
 
+  getBuiltInToolFallback(toolName) {
+    if (toolName === 'google_calendar') {
+      return {
+        tool_name: 'google_calendar',
+        display_name: 'Google Calendar',
+        provider: 'google',
+        tool_type: 'external',
+        is_enabled: true
+      };
+    }
+
+    return null;
+  }
+
   /**
    * Get tools with filtering support
    */
@@ -123,10 +137,35 @@ class ToolService {
         throw new Error('Parameters cannot be empty');
       }
 
-      // Get tool configuration
-      const tool = await this.getToolByName(toolName);
+      // Get tool configuration (fallback to built-in config for critical tools)
+      let tool = null;
+      try {
+        tool = await this.getToolByName(toolName);
+      } catch (configError) {
+        const fallbackTool = this.getBuiltInToolFallback(toolName);
+        if (fallbackTool) {
+          tool = fallbackTool;
+        } else {
+          throw configError;
+        }
+      }
+
       if (!tool) {
-        throw new Error('Tool not found');
+        const fallbackTool = this.getBuiltInToolFallback(toolName);
+        if (fallbackTool) {
+          tool = fallbackTool;
+        } else {
+          throw new Error('Tool not found');
+        }
+      }
+
+      // Ensure Google Calendar always uses the external execution path
+      if (toolName === 'google_calendar' && tool.tool_type !== 'external') {
+        tool = {
+          ...tool,
+          tool_type: 'external',
+          is_enabled: true
+        };
       }
       
       if (!tool.is_enabled) {
