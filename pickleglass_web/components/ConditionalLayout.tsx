@@ -5,30 +5,54 @@ import { useAuth } from '@/contexts/AuthContext'
 import ClientLayout from './ClientLayout'
 import { useEffect } from 'react'
 
-const PAGE_TITLES: Array<{ prefix: string; title: string }> = [
-  { prefix: '/activity', title: 'Activite' },
-  { prefix: '/calendar', title: 'Calendrier' },
-  { prefix: '/settings', title: 'Parametres' },
-  { prefix: '/knowledge-base', title: 'Base de connaissances' },
-  { prefix: '/tools', title: 'Outils' },
-  { prefix: '/chat', title: 'Chat' },
-  { prefix: '/profile', title: 'Profil' },
-  { prefix: '/billing', title: 'Facturation' },
-  { prefix: '/help', title: 'Aide' },
-  { prefix: '/ai-agents', title: 'Agents IA' },
-]
+const PAGE_TITLES: Record<string, string> = {
+  '': 'Accueil',
+  activity: 'Activite',
+  calendar: 'Calendrier',
+  settings: 'Parametres',
+  'knowledge-base': 'Base de connaissances',
+  tools: 'Outils',
+  chat: 'Chat',
+  profile: 'Profil',
+  billing: 'Facturation',
+  help: 'Aide',
+  'ai-agents': 'Agents IA',
+  auth: 'Authentification',
+  login: 'Connexion',
+  register: 'Inscription',
+  pricing: 'Tarifs',
+  subscription: 'Abonnement',
+  dashboard: 'Dashboard',
+  account: 'Compte',
+  notifications: 'Notifications',
+  integrations: 'Integrations',
+  documents: 'Documents',
+  meetings: 'Reunions',
+  inbox: 'Boite de reception',
+}
 
 function getDocumentTitle(pathname: string | null) {
-  if (!pathname || pathname === '/') {
-    return 'Claire | Assistant IA en temps reel'
+  if (!pathname) {
+    return 'Accueil'
   }
 
-  const match = PAGE_TITLES.find(({ prefix }) => pathname.startsWith(prefix))
-  if (!match) {
-    return 'Claire | Assistant IA en temps reel'
+  const normalizedPath = pathname.split('?')[0].split('#')[0]
+  const segments = normalizedPath.split('/').filter(Boolean)
+  const primarySegment = segments[0] || ''
+
+  if (primarySegment in PAGE_TITLES) {
+    return PAGE_TITLES[primarySegment]
   }
 
-  return `${match.title} | Claire`
+  if (!primarySegment) {
+    return 'Accueil'
+  }
+
+  return primarySegment
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 export default function ConditionalLayout({

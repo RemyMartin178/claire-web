@@ -17,6 +17,13 @@ export interface AuthStatus {
   userId: string
 }
 
+type OAuthResultPayload = {
+  type: 'oauth_result'
+  tool?: string
+  status?: 'success' | 'error' | 'cancelled'
+  error?: string
+}
+
 /**
  * Get OAuth authorization URL for a tool
  */
@@ -170,6 +177,7 @@ export async function openOAuthPopup(config: OAuthConfig, userId: string): Promi
   // Clear any previous signals before opening
   localStorage.removeItem('oauth_success')
   localStorage.removeItem('oauth_error')
+  localStorage.removeItem('oauth_result')
 
   return new Promise<void>((resolve, reject) => {
     let settled = false
@@ -185,8 +193,20 @@ export async function openOAuthPopup(config: OAuthConfig, userId: string): Promi
     // Listen for postMessage from popup (works when COOP allows it)
     const onMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== 'object') return
-      if (event.data.type === 'oauth_success') settle(true)
-      else if (event.data.type === 'oauth_error') settle(false, event.data.error)
+      if (event.data.type === 'oauth_success') {
+        settle(true)
+        return
+      }
+      if (event.data.type === 'oauth_error') {
+        settle(false, event.data.error)
+        return
+      }
+
+      const payload = event.data as OAuthResultPayload
+      if (payload.type === 'oauth_result' && payload.tool === config.toolName) {
+        if (payload.status === 'success') settle(true)
+        else settle(false, payload.error)
+      }
     }
     window.addEventListener('message', onMessage)
 
@@ -202,6 +222,20 @@ export async function openOAuthPopup(config: OAuthConfig, userId: string): Promi
       if (err) {
         localStorage.removeItem('oauth_error')
         try { settle(false, JSON.parse(err).error) } catch { settle(false) }
+        return
+      }
+
+      const result = localStorage.getItem('oauth_result')
+      if (result) {
+        localStorage.removeItem('oauth_result')
+        try {
+          const payload = JSON.parse(result) as OAuthResultPayload
+          if (payload.tool !== config.toolName) return
+          if (payload.status === 'success') settle(true)
+          else settle(false, payload.error)
+        } catch {
+          settle(false)
+        }
       }
     }, 300)
 
