@@ -45,25 +45,40 @@ const initializeFirebase = () => {
   }
 
   try {
-    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'dedale-database';
+    let serviceAccount = null;
 
-    if (!serviceAccountKey || !projectId) {
-      logger.warn('Firebase credentials not found, running in development mode');
-      return;
+    // Option 1: single JSON env var (FIREBASE_SERVICE_ACCOUNT_KEY)
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+      try {
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      } catch {
+        logger.error('Invalid FIREBASE_SERVICE_ACCOUNT_KEY format');
+      }
     }
 
-    let serviceAccount;
-    try {
-      serviceAccount = JSON.parse(serviceAccountKey);
-    } catch (error) {
-      logger.error('Invalid Firebase service account key format');
+    // Option 2: individual env vars (same as Next.js web app)
+    if (!serviceAccount && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+      serviceAccount = {
+        type: 'service_account',
+        project_id: projectId,
+        private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+        private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        client_id: process.env.FIREBASE_CLIENT_ID,
+        auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_uri: 'https://oauth2.googleapis.com/token',
+      };
+    }
+
+    if (!serviceAccount) {
+      logger.warn('Firebase credentials not found (set FIREBASE_SERVICE_ACCOUNT_KEY or FIREBASE_PRIVATE_KEY+FIREBASE_CLIENT_EMAIL), running in development mode');
       return;
     }
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
-      projectId: projectId
+      projectId,
     });
 
     firebaseInitialized = true;
