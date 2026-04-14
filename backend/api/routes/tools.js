@@ -373,6 +373,8 @@ router.get('/:toolName/auth/callback', asyncHandler(async (req, res) => {
       provider || null
     );
 
+    // Replace any legacy/corrupted credential row before storing fresh tokens.
+    await credentialService.deleteCredentials(userId, toolName);
     await credentialService.storeOAuthTokens(userId, toolName, tokens);
 
     res.redirect(buildFrontendOAuthRedirect(toolName, 'success'));
@@ -394,7 +396,12 @@ router.delete('/:toolName/auth', requireGuestPermission('tools:configure'), asyn
     throw new ValidationError('userId is required');
   }
 
-  const tokens = await credentialService.getOAuthTokens(userId, toolName);
+  let tokens = null;
+  try {
+    tokens = await credentialService.getOAuthTokens(userId, toolName);
+  } catch (error) {
+    console.warn(`Failed to load stored tokens before revoke for ${toolName}:`, error.message);
+  }
 
   if (tokens?.access_token) {
     await oauthService.revokeTokens(
