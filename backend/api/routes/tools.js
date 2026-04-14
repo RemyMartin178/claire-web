@@ -8,6 +8,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const { google } = require('googleapis');
 const router = express.Router();
 
 // Import services and middleware
@@ -25,6 +26,71 @@ const toolConfigService = new ToolConfigurationService();
 const credentialService = new CredentialService();
 const oauthService = new GenericOAuthService();
 const mcpManager = sharedMCPManager;
+
+function getRequestUserId(req, options = {}) {
+  const { allowGuest = false } = options;
+  const authenticatedUserId = req.user?.uid || req.user?.id;
+
+  if (authenticatedUserId && (allowGuest || !req.user?.isGuest)) {
+    return authenticatedUserId;
+  }
+
+  return req.query.userId || req.body?.userId || null;
+}
+
+function buildOAuthRedirectUri(toolName, req) {
+  const configuredBaseUrl = process.env.API_BASE_URL;
+  const fallbackBaseUrl = `${req.protocol}://${req.get('host')}/api/v1`;
+  const baseUrl = (configuredBaseUrl || fallbackBaseUrl).replace(/\/$/, '');
+  const normalizedBaseUrl = /\/api\/v\d+$/i.test(baseUrl) ? baseUrl : `${baseUrl}/api/v1`;
+
+  return `${normalizedBaseUrl}/tools/${toolName}/auth/callback`;
+}
+
+function buildFrontendOAuthRedirect(toolName, status, errorMessage = '') {
+  const frontendBaseUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const popupCloseUrl = new URL(`${frontendBaseUrl}/api/auth/popup-close`);
+  popupCloseUrl.searchParams.set('tool', toolName);
+  popupCloseUrl.searchParams.set('status', status);
+
+  if (errorMessage) {
+    popupCloseUrl.searchParams.set('error', errorMessage);
+  }
+
+  return popupCloseUrl.toString();
+}
+
+function parseOAuthState(stateValue = '') {
+  const [toolName, userId] = stateValue.split(':');
+
+  if (!toolName || !userId) {
+    throw new ValidationError('Invalid OAuth state parameter');
+  }
+
+  return { toolName, userId };
+}
+
+async function getGoogleAccountEmail(accessToken) {
+  if (!accessToken) {
+    return null;
+  }
+
+  try {
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const oauth2 = google.oauth2({
+      version: 'v2',
+      auth: oauth2Client
+    });
+
+    const profile = await oauth2.userinfo.get();
+    return profile.data?.email || null;
+  } catch (error) {
+    console.warn('Failed to retrieve Google account email:', error.message);
+    return null;
+  }
+}
 
 // Helper function to get appropriate icons for MCP servers
 function getMCPServerIcon(serverCategory, serverName) {
@@ -179,6 +245,136 @@ router.get('/', requireGuestPermission('tools:read'), asyncHandler(async (req, r
   });
 
   res.json(tools);
+}));
+
+/**
+ * GET /api/v1/tools/:toolName/auth/status
+ * Check OAuth status for a tool
+ */
+router.get('/:toolName/auth/status', requireGuestPermission('tools:read'), asyncHandler(async (req, res) => {
+  const { toolName } = req.params;
+  const userId = getRequestUserId(req);
+
+  if (!userId) {
+    throw new ValidationError('userId is required');
+  }
+
+  const authenticated = await credentialService.hasValidCredentials(userId, toolName);
+  const response = {
+    authenticated,
+    toolName,
+    userId
+  };
+
+  if (authenticated) {
+    const tokens = await credentialService.getOAuthTokens(userId, toolName);
+    const accountEmail = await getGoogleAccountEmail(tokens?.access_token);
+
+    if (accountEmail) {
+      response.accountEmail = accountEmail;
+    }
+  }
+
+  res.json(response);
+}));
+
+/**
+ * GET /api/v1/tools/:toolName/auth/authorize
+ * Generate OAuth authorization URL
+ */
+router.get('/:toolName/auth/authorize', requireGuestPermission('tools:read'), asyncHandler(async (req, res) => {
+  const { toolName } = req.params;
+  const userId = getRequestUserId(req);
+  const provider = req.query.provider || null;
+  const redirectUri = req.query.redirect_uri || buildOAuthRedirectUri(toolName, req);
+
+  if (!userId) {
+    throw new ValidationError('userId is required');
+  }
+
+  const authUrl = oauthService.generateAuthUrl(toolName, provider, redirectUri, userId);
+
+  res.json({
+    authUrl,
+    toolName,
+    userId
+  });
+}));
+
+/**
+ * GET /api/v1/tools/:toolName/auth/callback
+ * OAuth callback handler
+ */
+router.get('/:toolName/auth/callback', asyncHandler(async (req, res) => {
+  const { toolName: routeToolName } = req.params;
+  const { code, state, provider } = req.query;
+
+  if (!code) {
+    return res.redirect(buildFrontendOAuthRedirect(routeToolName, 'error', 'Missing OAuth code'));
+  }
+
+  let parsedState;
+  try {
+    parsedState = parseOAuthState(state);
+  } catch (error) {
+    return res.redirect(buildFrontendOAuthRedirect(routeToolName, 'error', error.message));
+  }
+
+  const { toolName, userId } = parsedState;
+
+  if (toolName !== routeToolName) {
+    return res.redirect(buildFrontendOAuthRedirect(routeToolName, 'error', 'OAuth state mismatch'));
+  }
+
+  try {
+    const redirectUri = buildOAuthRedirectUri(toolName, req);
+    const tokens = await oauthService.exchangeCodeForTokens(
+      toolName,
+      code,
+      redirectUri,
+      provider || null
+    );
+
+    await credentialService.storeOAuthTokens(userId, toolName, tokens);
+
+    res.redirect(buildFrontendOAuthRedirect(toolName, 'success'));
+  } catch (error) {
+    console.error(`OAuth callback failed for ${routeToolName}:`, error.message);
+    res.redirect(buildFrontendOAuthRedirect(routeToolName, 'error', error.message));
+  }
+}));
+
+/**
+ * DELETE /api/v1/tools/:toolName/auth
+ * Revoke OAuth credentials and delete stored tokens
+ */
+router.delete('/:toolName/auth', requireGuestPermission('tools:configure'), asyncHandler(async (req, res) => {
+  const { toolName } = req.params;
+  const userId = getRequestUserId(req);
+
+  if (!userId) {
+    throw new ValidationError('userId is required');
+  }
+
+  const tokens = await credentialService.getOAuthTokens(userId, toolName);
+
+  if (tokens?.access_token) {
+    await oauthService.revokeTokens(
+      toolName,
+      tokens.access_token,
+      tokens.refresh_token || null,
+      req.query.provider || null
+    );
+  }
+
+  await credentialService.deleteCredentials(userId, toolName);
+
+  res.json({
+    success: true,
+    toolName,
+    userId,
+    revoked: true
+  });
 }));
 
 /**
@@ -1026,10 +1222,11 @@ router.post('/:toolName/token-refresh', requirePermission('tools:configure'), as
 }));
 
 // =====================================
-// Legacy MCP OAuth endpoints have been unified into main OAuth endpoints above
-// All OAuth requests (both regular tools and MCP servers) now use:
-// GET  /api/v1/tools/:toolName/auth/url
-// POST /api/v1/tools/:toolName/auth/callback
-// This provides consistent behavior and eliminates dual endpoint confusion
+// Legacy MCP OAuth endpoints have been unified into the main OAuth endpoints above.
+// Current flow:
+// GET    /api/v1/tools/:toolName/auth/status
+// GET    /api/v1/tools/:toolName/auth/authorize
+// GET    /api/v1/tools/:toolName/auth/callback
+// DELETE /api/v1/tools/:toolName/auth
 
 module.exports = router;
