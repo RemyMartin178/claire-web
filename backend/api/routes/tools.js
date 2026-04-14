@@ -555,7 +555,10 @@ router.post('/:toolName/execute', asyncHandler(async (req, res) => {
     }
   } else {
     // Regular tool execution
-    const userId = req.user?.uid || req.user?.id || null;
+    const userId =
+      getRequestUserId(req, { allowGuest: true }) ||
+      req.body?.parameters?.userId ||
+      null;
     try {
       result = await toolService.executeTool(toolName, parameters, { userId });
     } catch (error) {
