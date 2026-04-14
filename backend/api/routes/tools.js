@@ -279,6 +279,44 @@ router.get('/:toolName/auth/status', requireGuestPermission('tools:read'), async
 }));
 
 /**
+ * GET /api/v1/tools/:toolName/auth/debug
+ * Inspect stored OAuth credential state without exposing token values
+ */
+router.get('/:toolName/auth/debug', requireGuestPermission('tools:read'), asyncHandler(async (req, res) => {
+  const { toolName } = req.params;
+  const userId = getRequestUserId(req);
+
+  if (!userId) {
+    throw new ValidationError('userId is required');
+  }
+
+  let tokens = null;
+  let tokenError = null;
+
+  try {
+    tokens = await credentialService.getOAuthTokens(userId, toolName);
+  } catch (error) {
+    tokenError = error.message;
+  }
+
+  const now = new Date();
+  const expiresAt = tokens?.expires_at ? new Date(tokens.expires_at) : null;
+  const expiresInMs = expiresAt ? expiresAt.getTime() - now.getTime() : null;
+
+  res.json({
+    toolName,
+    userId,
+    hasStoredCredentials: !!tokens,
+    hasAccessToken: !!tokens?.access_token,
+    hasRefreshToken: !!tokens?.refresh_token,
+    expiresAt: expiresAt ? expiresAt.toISOString() : null,
+    expiresInMs,
+    isExpired: expiresInMs !== null ? expiresInMs <= 0 : null,
+    tokenError
+  });
+}));
+
+/**
  * GET /api/v1/tools/:toolName/auth/authorize
  * Generate OAuth authorization URL
  */
