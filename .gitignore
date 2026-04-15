@@ -173,3 +173,5 @@ scripts/generate-icons-bmp.ps1
 scripts/generate-icons.ps1
 scripts/update-all-icons.ps1
 scripts/update-icon.ps1
+
+.vercel

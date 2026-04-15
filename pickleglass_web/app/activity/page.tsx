@@ -262,6 +262,20 @@ export default function ActivityPage() {
           {getGreeting()}, {userInfo.display_name}
         </h1>
 
+        {/* Démarrez Claire — visible uniquement dans l'app Electron */}
+        {typeof window !== 'undefined' && (window as any).api?.dashboard?.startClaire && (
+          <button
+            onClick={() => (window as any).api.dashboard.startClaire()}
+            className="mt-4 mb-6 flex items-center gap-2.5 px-5 py-3 rounded-xl text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #4f8ef7 0%, #1a63e8 100%)', boxShadow: '0 4px 16px rgba(79,142,247,0.35)' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="10 8 16 12 10 16 10 8"/>
+            </svg>
+            Démarrez Claire
+          </button>
+        )}
+
         {(() => {
           if (!upcomingMeeting) return null
           const start = getEventStartDate(upcomingMeeting)

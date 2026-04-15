@@ -70,7 +70,7 @@ console.log('[STARTUP] Detected API keys:', {
     geminiKeyLength: process.env.GEMINI_API_KEY?.length || 0
 });
 
-const { createWindows } = require('./window/windowManager.js');
+const { createWindows, createDashboardWindow, setDashboardUrl } = require('./window/windowManager.js');
 
 const listenService = require('./features/listen/listenService');
 
@@ -446,7 +446,9 @@ app.whenReady().then(async () => {
         WEB_PORT = await startWebStack();
         logger.info('Web front-end listening on', WEB_PORT);
 
-        createWindows();
+        // Only open the dashboard on launch — overlay windows are created lazily via dashboard:startClaire
+        setDashboardUrl('https://app.clairia.app');
+        createDashboardWindow();
 
         // Start meeting notifications (polls Google Calendar every 5 min)
         const meetingNotifier = require('./main/meeting-notifier');

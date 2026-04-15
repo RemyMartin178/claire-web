@@ -268,11 +268,29 @@ router.get('/:toolName/auth/status', requireGuestPermission('tools:read'), async
   };
 
   if (authenticated) {
-    const tokens = await credentialService.getOAuthTokens(userId, toolName);
-    const accountEmail = await getGoogleAccountEmail(tokens?.access_token);
+    // Try DB-cached email first (set at OAuth time, doesn't need a live access_token)
+    const row = await neonDB.query(
+      `SELECT account_email FROM user_credentials WHERE user_id = $1 AND tool_name = $2`,
+      [userId, toolName]
+    );
+    const cachedEmail = row.rows[0]?.account_email;
 
-    if (accountEmail) {
-      response.accountEmail = accountEmail;
+    if (cachedEmail) {
+      response.accountEmail = cachedEmail;
+    } else {
+      // Fallback: fetch from Google using the access_token (may fail if expired)
+      const tokens = await credentialService.getOAuthTokens(userId, toolName);
+      const accountEmail = await getGoogleAccountEmail(tokens?.access_token);
+      if (accountEmail) {
+        response.accountEmail = accountEmail;
+        // Cache it for next time
+        try {
+          await neonDB.query(
+            `UPDATE user_credentials SET account_email = $1 WHERE user_id = $2 AND tool_name = $3`,
+            [accountEmail, userId, toolName]
+          );
+        } catch (_) { /* non-blocking */ }
+      }
     }
   }
 
@@ -429,6 +447,17 @@ router.get('/:toolName/auth/callback', asyncHandler(async (req, res) => {
     // Replace any legacy/corrupted credential row before storing fresh tokens.
     await credentialService.deleteCredentials(userId, toolName);
     await credentialService.storeOAuthTokens(userId, toolName, tokens);
+
+    // Store the Google account email at connection time so status checks don't rely on the access_token
+    try {
+      const email = await getGoogleAccountEmail(tokens.access_token);
+      if (email) {
+        await neonDB.query(
+          `UPDATE user_credentials SET account_email = $1 WHERE user_id = $2 AND tool_name = $3`,
+          [email, userId, toolName]
+        );
+      }
+    } catch (_) { /* non-blocking */ }
 
     res.redirect(buildFrontendOAuthRedirect(toolName, 'success'));
   } catch (error) {

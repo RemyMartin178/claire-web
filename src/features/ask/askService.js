@@ -966,86 +966,58 @@ class AskService {
                 const agentIdToUse = this.selectedAgentId || 1;
                 
                 if (agentIdToUse) {
-                    logger.info('[AskService] Using backend agent execution for agent ID:', agentIdToUse);
+                    logger.info('[AskService] Using backend agent execution (streaming) for agent ID:', agentIdToUse);
                     try {
                         const { agentsApiClient } = require('../../domains/agents');
-                        const agentResponse = await agentsApiClient.executeAgent(agentIdToUse, {
+
+                        // Switch to streaming state immediately so UI shows activity
+                        this.state.isLoading = false;
+                        this.state.isStreaming = true;
+                        this.state.currentResponse = '';
+                        this._broadcastState();
+
+                        const agentResponse = await agentsApiClient.executeAgentStream(agentIdToUse, {
                             message: userPrompt,
                             conversationHistory: conversationHistoryRaw || [],
                             context: screenshotBase64 ? {
                                 image: screenshotBase64,
                                 imageContext: screenshotContext
                             } : {}
+                        }, (chunk) => {
+                            // Called for each SSE chunk — append content and push to UI
+                            if (chunk.content) {
+                                this.state.currentResponse += chunk.content;
+                                this._broadcastStreamToken();
+                            }
                         });
-                        
-                        logger.debug('[AskService] Agent response received:', { 
-                            agentId: this.selectedAgentId,
-                            agentResponse: agentResponse ? 'defined' : 'undefined',
-                            hasResponse: agentResponse?.response ? 'yes' : 'no',
-                            responseType: typeof agentResponse?.response,
-                            keys: agentResponse ? Object.keys(agentResponse) : 'no keys',
-                            success: agentResponse?.success
-                        });
-                        
-                        // DEBUG: Log full agent response to debug "No analysis results available"
-                        logger.info('[AskService] [RAILWAY DEBUG] Full agent response:', {
-                            success: agentResponse?.success,
-                            responseExists: !!agentResponse?.response,
-                            responseType: typeof agentResponse?.response,
-                            responseLength: agentResponse?.response?.length || 0,
-                            responsePreview: agentResponse?.response ? agentResponse.response.substring(0, 100) : 'NO RESPONSE',
-                            metadata: agentResponse?.metadata,
-                            error: agentResponse?.error,
-                            allKeys: agentResponse ? Object.keys(agentResponse) : []
-                        });
-                        
+
                         // Check if we have a valid response
                         if (agentResponse && agentResponse.success && agentResponse.response) {
                             const askWin = getWindowPool()?.get('ask');
-                            
-                            logger.debug('[AskService] Window check:', {
-                                hasWindowPool: !!getWindowPool(),
-                                hasAskWindow: !!askWin,
-                                isDestroyed: askWin ? askWin.isDestroyed() : 'no window'
-                            });
-                            
+
+                            this.state.isStreaming = false;
+                            this.state.currentResponse = agentResponse.response;
+                            this.state.showTextInput = true;
+                            this._broadcastState();
+
                             if (askWin && !askWin.isDestroyed()) {
-                                // Update internal state to match streaming behavior
-                                this.state.isLoading = false;
-                                this.state.isStreaming = false;
-                                this.state.currentResponse = agentResponse.response;
-                                this.state.showTextInput = true;
-                                
-                                // Log response for debugging
-                                logger.info('[AskService] Backend response:', {
-                                    responseLength: agentResponse.response?.length,
-                                    responsePreview: agentResponse.response?.substring(0, 100)
-                                });
-                                
-                                // Broadcast state to all listeners
-                                this._broadcastState();
-                                
-                                // Also send directly to Ask window
                                 askWin.webContents.send('ask:responseComplete', {
                                     response: agentResponse.response,
                                     sessionId
                                 });
-                                
-                                logger.info('[AskService] UI updated with agent response - state broadcasted and sent directly');
-                            } else {
-                                logger.warn('[AskService] Ask window not available, skipping UI update');
+                                logger.info('[AskService] UI updated with streamed agent response');
                             }
-                            
-                            // Save to database regardless of window state
-                            await this.askRepository.addAiMessage({ 
-                                sessionId, 
-                                role: 'assistant', 
+
+                            // Save to database
+                            await this.askRepository.addAiMessage({
+                                sessionId,
+                                role: 'assistant',
                                 content: agentResponse.response
                             });
-                            
-                            logger.info('[AskService] Backend agent execution completed successfully');
-                            
-                            // Consommer le quota après une requête réussie
+
+                            logger.info('[AskService] Backend agent stream completed successfully');
+
+                            // Consume quota
                             const requestQuotaService = require('../../common/services/requestQuotaService');
                             const consumed = await requestQuotaService.consumeRequest();
                             if (typeof consumed.remaining === 'number') {
@@ -1058,12 +1030,11 @@ class AskService {
 
                             return { success: true, response: agentResponse.response };
                         } else {
-                            logger.error('[AskService] Backend agent execution failed - Invalid response:', {
+                            logger.error('[AskService] Backend agent stream failed - Invalid response:', {
                                 agentId: this.selectedAgentId,
                                 success: agentResponse?.success,
                                 hasResponse: !!agentResponse?.response,
-                                error: agentResponse?.error,
-                                agentResponse: agentResponse
+                                error: agentResponse?.error
                             });
                             throw new Error(`Backend agent execution failed: ${agentResponse?.error || 'Invalid response'}`);
                         }

@@ -443,6 +443,14 @@ server.listen(PORT, HOST, async () => {
   try {
     // Initialize database connection
     await neonDB.initialize();
+
+    // Run incremental migrations (idempotent)
+    try {
+      await neonDB.query(`ALTER TABLE user_credentials ADD COLUMN IF NOT EXISTS account_email TEXT`);
+      logger.info('DB migration: account_email column ensured');
+    } catch (e) {
+      logger.warn('DB migration skipped:', e.message);
+    }
     
     // Guest permission service removed - unified permissions system
     

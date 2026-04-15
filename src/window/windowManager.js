@@ -1769,9 +1769,74 @@ const setWindowOpacity = (opacity) => {
 };
 
 
+// ── Dashboard Window ──────────────────────────────────────────
+let dashboardWindow = null;
+let _dashboardUrl = null;
+
+function setDashboardUrl(url) {
+    _dashboardUrl = url;
+}
+
+function createDashboardWindow() {
+    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+        dashboardWindow.focus();
+        return dashboardWindow;
+    }
+
+    const titleBarOptions = process.platform === 'darwin'
+        ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 12 } }
+        : { titleBarStyle: 'hidden', titleBarOverlay: { color: '#00000000', height: 38, symbolColor: '#000000' } };
+
+    dashboardWindow = new BrowserWindow({
+        width: 980,
+        height: 660,
+        minWidth: 720,
+        minHeight: 500,
+        ...titleBarOptions,
+        backgroundColor: '#ffffff',
+        title: 'Claire',
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, '../preload.js'),
+            webSecurity: false,
+        },
+    });
+
+    if (_dashboardUrl) {
+        dashboardWindow.loadURL(_dashboardUrl);
+    } else {
+        dashboardWindow.loadFile(path.join(__dirname, '../ui/app/dashboard.html'));
+    }
+
+    dashboardWindow.on('closed', () => { dashboardWindow = null; });
+
+    return dashboardWindow;
+}
+
+function getDashboardWindow() {
+    return dashboardWindow && !dashboardWindow.isDestroyed() ? dashboardWindow : null;
+}
+
+function showDashboardWindow() {
+    const win = getDashboardWindow();
+    if (win) { win.show(); win.focus(); }
+    else createDashboardWindow();
+}
+
+function hideDashboardWindow() {
+    const win = getDashboardWindow();
+    if (win) win.hide();
+}
+
 module.exports = {
     updateLayout,
     createWindows,
+    createDashboardWindow,
+    setDashboardUrl,
+    getDashboardWindow,
+    showDashboardWindow,
+    hideDashboardWindow,
     windowPool,
     toggleContentProtection,
     resizeHeaderWindow,

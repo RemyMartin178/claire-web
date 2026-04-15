@@ -430,7 +430,7 @@ class ListenService {
     async handleListenRequest(listenButtonText) {
         logger.info('[SEARCH] DEBUG: handleListenRequest called with:', listenButtonText);
 
-        const { windowPool, updateLayout, getPillWindow } = require('../../window/windowManager');
+        const { windowPool, updateLayout, getPillWindow, hideDashboardWindow, showDashboardWindow } = require('../../window/windowManager');
         const listenWindow = windowPool.get('listen');
         const header = getPillWindow();
 
@@ -444,6 +444,8 @@ class ListenService {
                 case 'Listen':
                     logger.info('[ListenService] [SEARCH] DEBUG: Processing "Listen" case');
                     logger.info('[ListenService] [START] Enhanced session start with pre-initialization');
+
+                    hideDashboardWindow();
 
                     logger.info('[SEARCH] DEBUG: About to emit window:requestVisibility');
                     internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
@@ -487,6 +489,7 @@ class ListenService {
                     logger.info('[ListenService] changeSession to "Done"');
                     internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
                     listenWindow.webContents.send('session-state-changed', { isActive: false });
+                    showDashboardWindow();
                     break;
 
                 default:

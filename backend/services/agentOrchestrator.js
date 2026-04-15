@@ -275,6 +275,18 @@ class AgentOrchestrator {
         );
       }
 
+      if (!useScreenshot && !hasKnowledge) {
+        console.log('💬 [ANALYSIS] No screenshot/knowledge — starting conversational fallback...');
+        const convStartTime = Date.now();
+        individualPromises.push(
+          this.generateConversationalResponse(dbAgent, query, memoryContext, context.conversationHistory)
+            .then(response => {
+              console.log(`[OK] [ANALYSIS] Conversational completed in ${Date.now() - convStartTime}ms`);
+              return { type: 'conversational', response, score: this.quickScore(response, query, 'basic') };
+            })
+        );
+      }
+
       // Step 3b: Wait for individual analyses to complete (NO EARLY TERMINATION)
       const individualResults = await Promise.all(individualPromises);
       console.log(`[FAST] [PERFORMANCE] Individual analyses completed in ${Date.now() - analysisStartTime}ms`);
@@ -726,6 +738,48 @@ class AgentOrchestrator {
     console.log(`[OK] [KNOWLEDGE RESPONSE] Length: ${response.content.length} chars`);
     console.log(`📝 [KNOWLEDGE RESPONSE] Preview: "${response.content.substring(0, 200)}..."`);
     
+    return response.content;
+  }
+
+  /**
+   * Generate a basic conversational response when no screenshot or knowledge base is available.
+   */
+  async generateConversationalResponse(agent, query, memoryContext, conversationHistory) {
+    const llm = this.createLLM(agent);
+
+    const context = {
+      strategy: {
+        useKnowledge: false,
+        useScreenshot: false,
+        useTools: false,
+        reasoning: 'Conversational fallback — no visual or knowledge context available'
+      },
+      ragResults: []
+    };
+
+    let systemPrompt = masterPromptOrchestrator.orchestratePrompt(agent, context, query);
+
+    if (memoryContext) {
+      systemPrompt += `\n\nMemory context:\n${memoryContext}`;
+    }
+
+    const messages = [new SystemMessage(systemPrompt)];
+
+    if (Array.isArray(conversationHistory)) {
+      for (const turn of conversationHistory) {
+        if (turn.role === 'user') messages.push(new HumanMessage(turn.content));
+        else if (turn.role === 'assistant') messages.push(new AIMessage(turn.content));
+      }
+    }
+
+    messages.push(new HumanMessage(query));
+
+    console.log(`🔥 [PERFORMANCE] Starting conversational LLM call for ${agent.ai_model}...`);
+    const t0 = Date.now();
+    const response = await llm.invoke(messages);
+    console.log(`🔥 [PERFORMANCE] Conversational LLM call completed in ${Date.now() - t0}ms`);
+    console.log(`[OK] [CONVERSATIONAL RESPONSE] Length: ${response.content.length} chars`);
+
     return response.content;
   }
 

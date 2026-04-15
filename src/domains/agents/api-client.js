@@ -382,6 +382,75 @@ class AgentsApiClient {
     }
     
     /**
+     * Execute agent with streaming (SSE) — calls /execute-stream
+     * onChunk(chunk) is called for each SSE data event.
+     * Returns the full accumulated response string.
+     */
+    async executeAgentStream(agentId, chatRequest, onChunk) {
+        const url = this._buildUrl(`/agents/${agentId}/execute-stream`);
+        const payload = {
+            input: chatRequest.message,
+            conversation_history: chatRequest.conversationHistory || [],
+            context: chatRequest.context || {}
+        };
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream'
+        };
+        if (this.authToken) headers['Authorization'] = `Bearer ${this.authToken}`;
+        if (this.userId) headers['X-User-ID'] = this.userId;
+        if (this.isGuest) headers['X-Guest-Mode'] = 'true';
+
+        logger.info(`[AgentsApiClient] Executing agent stream: ${agentId}`);
+
+        const fetchFn = globalThis.fetch || require('node-fetch');
+        const response = await fetchFn(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(this.timeout)
+        });
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                const errorData = await response.json();
+                return { success: false, error: { message: errorData.message || 'Permission denied', code: errorData.code || 'AUTH_REQUIRED', type: 'AuthenticationError' } };
+            }
+            throw new Error(`Agent stream failed: ${response.status} ${response.statusText}`);
+        }
+
+        let fullResponse = '';
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        for await (const rawChunk of response.body) {
+            buffer += decoder.decode(rawChunk, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const jsonStr = line.slice(6).trim();
+                if (!jsonStr) continue;
+                try {
+                    const chunk = JSON.parse(jsonStr);
+                    if (chunk.type === 'complete') break;
+                    if (chunk.type === 'error') throw new Error(chunk.error || 'Streaming error');
+                    if (chunk.content) fullResponse += chunk.content;
+                    onChunk(chunk);
+                } catch (e) {
+                    if (e.message === 'Streaming error' || e.message.includes('Agent stream')) throw e;
+                    // JSON parse error — skip malformed line
+                }
+            }
+        }
+
+        logger.info(`[AgentsApiClient] Agent stream completed: ${agentId}, length: ${fullResponse.length}`);
+        return { success: true, response: fullResponse };
+    }
+
+    /**
      * Get agent analytics
      */
     async getAgentAnalytics(agentId) {

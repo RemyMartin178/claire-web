@@ -123,28 +123,18 @@ const parseMarkdown = (text: string, onCopySummary?: () => void) => {
     if (currentList) {
       elements.push(
         <ul key={`ul-${elements.length}`} className="list-disc pl-4 space-y-4 mb-8 marker:text-[#86868b] text-[#1d1d1f]">
-          {currentList.items.map((item, idx) => {
-            const parts = item.content.split(/(\*\*.*?\*\*)/g);
-            return (
-              <li key={idx} className="text-[15px] leading-relaxed pl-1">
-                {parts.map((p, k) => p.startsWith('**') && p.endsWith('**') ?
-                  <strong key={k} className="font-semibold">{p.slice(2, -2)}</strong> : p)}
-                {item.subItems.length > 0 && (
-                  <ul className="list-disc pl-5 mt-3 space-y-2 marker:text-[#86868b] text-[#86868b] text-[14px]">
-                    {item.subItems.map((sub, sIdx) => {
-                      const sParts = sub.split(/(\*\*.*?\*\*)/g);
-                      return (
-                        <li key={sIdx} className="leading-relaxed">
-                          {sParts.map((p, k) => p.startsWith('**') && p.endsWith('**') ?
-                            <strong key={k} className="font-semibold text-[#1d1d1f]">{p.slice(2, -2)}</strong> : p)}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </li>
-            );
-          })}
+          {currentList.items.map((item, idx) => (
+            <li key={idx} className="text-[15px] leading-relaxed pl-1">
+              {item.content.replace(/\*\*/g, '')}
+              {item.subItems.length > 0 && (
+                <ul className="list-disc pl-5 mt-3 space-y-2 marker:text-[#86868b] text-[#86868b] text-[14px]">
+                  {item.subItems.map((sub, sIdx) => (
+                    <li key={sIdx} className="leading-relaxed">{sub.replace(/\*\*/g, '')}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
         </ul>
       );
       currentList = null;
@@ -299,13 +289,22 @@ function SessionDetailsContent() {
 
   const handleCopySummary = () => {
     if (!sessionDetails?.summary) return;
-    const { tldr, bullet_json } = sessionDetails.summary;
-    let text = `${tldr}\n\n`;
+    const { bullet_json, text: summaryText } = sessionDetails.summary;
+
+    let bullets: string[] = [];
     if (bullet_json) {
-      const bullets = JSON.parse(bullet_json);
-      if (bullets.length) text += `Points clés:\n${bullets.map((b: string) => `- ${b}`).join('\n')}\n\n`;
+      try { bullets = JSON.parse(bullet_json); } catch (_) {}
     }
-    navigator.clipboard.writeText(text.trim());
+    if (bullets.length === 0 && summaryText) {
+      const matches = summaryText.match(/^- .+/gm);
+      if (matches) bullets = matches.map(m => m.replace(/^- /, '').replace(/\*\*/g, '').trim());
+    }
+
+    const copyText = bullets.length > 0
+      ? bullets.map(b => `- ${b.replace(/\*\*/g, '')}`).join('\n')
+      : (summaryText || '').replace(/\*\*/g, '').replace(/## /g, '').trim();
+
+    navigator.clipboard.writeText(copyText);
     toast.success('Résumé copié !');
   }
 
@@ -534,15 +533,11 @@ function SessionDetailsContent() {
             </div>
             {bulletPoints.length > 0 ? (
               <ul className="list-disc pl-4 space-y-4 mb-8 marker:text-[#86868b] text-[#1d1d1f]">
-                {bulletPoints.map((item: string, i: number) => {
-                  const parts = item.split(/(\*\*.*?\*\*)/g);
-                  return (
-                    <li key={i} className="text-[15px] leading-relaxed pl-1">
-                      {parts.map((p: string, k: number) => p.startsWith('**') && p.endsWith('**') ?
-                        <strong key={k} className="font-semibold">{p.slice(2, -2)}</strong> : p)}
-                    </li>
-                  );
-                })}
+                {bulletPoints.map((item: string, i: number) => (
+                  <li key={i} className="text-[15px] leading-relaxed pl-1">
+                    {item.replace(/\*\*/g, '')}
+                  </li>
+                ))}
               </ul>
             ) : (
               <div className="max-w-none">

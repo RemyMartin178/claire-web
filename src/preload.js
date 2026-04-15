@@ -446,6 +446,27 @@ contextBridge.exposeInMainWorld('api', {
 
     // Platform Detection
     getPlatformInfo: () => ipcRenderer.invoke('get-platform-info')
+  },
+
+  // src/ui/dashboard — native Electron dashboard window
+  dashboard: {
+    open: () => ipcRenderer.invoke('dashboard:open'),
+    close: () => ipcRenderer.invoke('dashboard:close'),
+    minimize: () => ipcRenderer.invoke('dashboard:minimize'),
+    maximize: () => ipcRenderer.invoke('dashboard:maximize'),
+    isMaximized: () => ipcRenderer.invoke('dashboard:isMaximized'),
+    getUser: () => ipcRenderer.invoke('dashboard:getUser'),
+    getSessions: (uid) => ipcRenderer.invoke('dashboard:getSessions', uid),
+    getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
+    deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
+    onUserChanged: (cb) => ipcRenderer.on('user-state-changed', cb),
+    removeUserChanged: (cb) => ipcRenderer.removeListener('user-state-changed', cb),
+    // Splash / onboarding
+    loadWebApp: () => ipcRenderer.invoke('dashboard:loadWebApp'),
+    isFirstLaunch: () => ipcRenderer.invoke('dashboard:isFirstLaunch'),
+    setLaunched: () => ipcRenderer.invoke('dashboard:setLaunched'),
+    // Start Claire from dashboard
+    startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
   }
 });
 

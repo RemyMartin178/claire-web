@@ -1,5 +1,8 @@
 // src/bridge/featureBridge.js
 const { ipcMain, app } = require('electron');
+const windowManager = require('../window/windowManager');
+const { getFirestoreInstance } = require('../common/services/firebaseClient');
+const { collection, doc, getDoc, getDocs, deleteDoc, writeBatch } = require('firebase/firestore');
 const settingsService = require('../features/settings/settingsService');
 const authService = require('../common/services/authService');
 const whisperService = require('../common/services/whisperService');
@@ -35,6 +38,26 @@ function withModelName(channel, handler) {
         }
         return handler(modelName);
     };
+}
+
+// Serialize Firestore Timestamps to plain ms numbers for IPC transport
+function _serializeFsDoc(data) {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+    const out = {};
+    for (const [k, v] of Object.entries(data)) {
+        if (v && typeof v.toMillis === 'function') {
+            out[k] = v.toMillis(); // Timestamp → number
+            // Convenience keys used by sorting
+            if (k === 'startedAt' || k === 'started_at') out._startMs = v.toMillis();
+            if (k === 'startAt') out._startAtMs = v.toMillis();
+            if (k === 'sentAt') out._sentAtMs = v.toMillis();
+        } else if (v && typeof v === 'object' && !Array.isArray(v)) {
+            out[k] = _serializeFsDoc(v);
+        } else {
+            out[k] = v;
+        }
+    }
+    return out;
 }
 
 module.exports = {
@@ -545,6 +568,161 @@ module.exports = {
 
             } catch (error) {
                 logger.error('[FeatureBridge] Failed to update memory auth context:', { error });
+                return { success: false, error: error.message };
+            }
+        });
+
+        // Dashboard Window
+        ipcMain.handle('dashboard:open', async () => {
+            try {
+                windowManager.showDashboardWindow();
+                return { success: true };
+            } catch (error) {
+                logger.error('[FeatureBridge] dashboard:open failed:', { error });
+                return { success: false, error: error.message };
+            }
+        });
+
+        ipcMain.handle('dashboard:close', async (event) => {
+            try {
+                const win = require('electron').BrowserWindow.fromWebContents(event.sender);
+                if (win && !win.isDestroyed()) win.close();
+                return { success: true };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        });
+
+        ipcMain.handle('dashboard:minimize', async (event) => {
+            const win = require('electron').BrowserWindow.fromWebContents(event.sender);
+            if (win && !win.isDestroyed()) win.minimize();
+            return { success: true };
+        });
+
+        ipcMain.handle('dashboard:maximize', async (event) => {
+            const win = require('electron').BrowserWindow.fromWebContents(event.sender);
+            if (!win || win.isDestroyed()) return { success: false };
+            if (win.isMaximized()) win.restore(); else win.maximize();
+            return { success: true, isMaximized: win.isMaximized() };
+        });
+
+        ipcMain.handle('dashboard:isMaximized', async (event) => {
+            const win = require('electron').BrowserWindow.fromWebContents(event.sender);
+            return { isMaximized: win ? win.isMaximized() : false };
+        });
+
+        // Dashboard: current user (no Firebase auth needed in renderer)
+        ipcMain.handle('dashboard:getUser', async () => {
+            try {
+                const u = authService.getCurrentUser();
+                if (!u || !u.isLoggedIn) return { success: true, user: null };
+                let token = null;
+                try { token = await authService.currentUser?.getIdToken?.(); } catch {}
+                return { success: true, user: { uid: u.uid, email: u.email, displayName: u.displayName }, token };
+            } catch (error) {
+                return { success: false, user: null };
+            }
+        });
+
+        // Dashboard: Firestore helpers (main process is already authenticated)
+        ipcMain.handle('dashboard:getSessions', async (event, uid) => {
+            try {
+                const db = getFirestoreInstance();
+                const snap = await getDocs(collection(db, 'users', uid, 'sessions'));
+                const docs = snap.docs
+                    .map(d => _serializeFsDoc({ id: d.id, ...d.data() }))
+                    .filter(s => s.session_type !== 'ask')
+                    .sort((a, b) => (b._startMs || 0) - (a._startMs || 0));
+                return { success: true, sessions: docs };
+            } catch (error) {
+                logger.error('[FeatureBridge] dashboard:getSessions failed', { error: error.message });
+                return { success: true, sessions: [] };
+            }
+        });
+
+        ipcMain.handle('dashboard:getSession', async (event, uid, sessionId) => {
+            try {
+                const db = getFirestoreInstance();
+                const [sessionSnap, summarySnap, transcriptsSnap, aiSnap] = await Promise.all([
+                    getDoc(doc(db, 'users', uid, 'sessions', sessionId)),
+                    getDoc(doc(db, 'users', uid, 'sessions', sessionId, 'summary', 'data')),
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'transcripts')),
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'ai_messages')),
+                ]);
+                if (!sessionSnap.exists()) return { success: true, data: null };
+                const session = _serializeFsDoc({ id: sessionId, ...sessionSnap.data() });
+                const summary = summarySnap.exists() ? _serializeFsDoc(summarySnap.data()) : null;
+                const transcripts = transcriptsSnap.docs
+                    .map(d => _serializeFsDoc({ id: d.id, ...d.data() }))
+                    .sort((a, b) => (a._startAtMs || 0) - (b._startAtMs || 0));
+                const aiMessages = aiSnap.docs
+                    .map(d => _serializeFsDoc({ id: d.id, ...d.data() }))
+                    .sort((a, b) => (a._sentAtMs || 0) - (b._sentAtMs || 0));
+                return { success: true, data: { session, summary, transcripts, aiMessages } };
+            } catch (error) {
+                logger.error('[FeatureBridge] dashboard:getSession failed', { error: error.message });
+                return { success: false, data: null };
+            }
+        });
+
+        ipcMain.handle('dashboard:deleteSession', async (event, uid, sessionId) => {
+            try {
+                const db = getFirestoreInstance();
+                const batch = writeBatch(db);
+                const [trSnap, aiSnap] = await Promise.all([
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'transcripts')),
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'ai_messages')),
+                ]);
+                trSnap.docs.forEach(d => batch.delete(d.ref));
+                aiSnap.docs.forEach(d => batch.delete(d.ref));
+                batch.delete(doc(db, 'users', uid, 'sessions', sessionId, 'summary', 'data'));
+                batch.delete(doc(db, 'users', uid, 'sessions', sessionId));
+                await batch.commit();
+                return { success: true };
+            } catch (error) {
+                logger.error('[FeatureBridge] dashboard:deleteSession failed', { error: error.message });
+                return { success: false, error: error.message };
+            }
+        });
+
+        // ── Dashboard: splash + startClaire ──────────────────────────────────
+        const Store = require('electron-store');
+        const dashboardStore = new Store({ name: 'dashboard-prefs' });
+
+        ipcMain.handle('dashboard:isFirstLaunch', () => {
+            return { firstLaunch: !dashboardStore.get('launched', false) };
+        });
+
+        ipcMain.handle('dashboard:setLaunched', () => {
+            dashboardStore.set('launched', true);
+            return { success: true };
+        });
+
+        ipcMain.handle('dashboard:loadWebApp', async (event) => {
+            try {
+                const win = require('electron').BrowserWindow.fromWebContents(event.sender);
+                if (win && !win.isDestroyed()) {
+                    win.loadURL('https://app.clairia.app');
+                }
+                return { success: true };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        });
+
+        ipcMain.handle('dashboard:startClaire', async (event) => {
+            try {
+                // Create overlay windows if not already created
+                windowManager.createWindows();
+                // Small delay to let windows render
+                await new Promise(r => setTimeout(r, 300));
+                // Start listening
+                await listenService.handleListenRequest('Listen');
+                // Hide dashboard
+                windowManager.hideDashboardWindow();
+                return { success: true };
+            } catch (error) {
+                logger.error('[FeatureBridge] dashboard:startClaire failed:', { error: error.message });
                 return { success: false, error: error.message };
             }
         });
