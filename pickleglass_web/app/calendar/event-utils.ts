@@ -6,8 +6,8 @@ export type CalendarEvent = {
   end?: string | { dateTime?: string; date?: string }
   location?: string
   attendees?: Array<string | { email?: string; displayName?: string; self?: boolean }>
-  creator?: string | { email?: string; displayName?: string }
-  organizer?: string | { email?: string; displayName?: string }
+  creator?: string | { email?: string; displayName?: string; self?: boolean }
+  organizer?: string | { email?: string; displayName?: string; self?: boolean }
   htmlLink?: string
   hangoutLink?: string
   conferenceData?: { entryPoints?: Array<{ entryPointType?: string; uri?: string }> }
