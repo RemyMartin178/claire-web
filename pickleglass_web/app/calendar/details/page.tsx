@@ -22,7 +22,6 @@ import { toast } from 'react-hot-toast'
 import { getApiHeaders } from '@/utils/api'
 import {
   CalendarEvent,
-  buildEventSummaryMarkdown,
   formatDurationLabel,
   formatEventDateLabel,
   formatEventRangeLabel,
@@ -33,6 +32,25 @@ import {
 } from '../event-utils'
 
 type DetailsTab = 'summary' | 'details'
+
+function getInitials(label: string): string {
+  if (label.includes('@')) {
+    const local = label.split('@')[0]
+    const parts = local.split(/[._-]/).filter(Boolean)
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+    return local.substring(0, 2).toUpperCase()
+  }
+  const words = label.trim().split(/\s+/)
+  if (words.length >= 2) return (words[0][0] + words[words.length - 1][0]).toUpperCase()
+  return label.substring(0, 2).toUpperCase()
+}
+
+function formatAttendeeLabel(label: string): { name: string; email: string | null } {
+  if (!label.includes('@')) return { name: label, email: null }
+  const local = label.split('@')[0]
+  const name = local.split(/[._-]/).filter(Boolean).map(p => p.charAt(0).toUpperCase() + p.slice(1).replace(/\d+$/, '')).join(' ').trim() || label
+  return { name, email: label }
+}
 
 function renderInlineBold(text: string) {
   const segments = text.split(/(\*\*.*?\*\*)/g)
@@ -110,6 +128,8 @@ export default function CalendarDetailsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isEmailing, setIsEmailing] = useState(false)
   const [activeTab, setActiveTab] = useState<DetailsTab>('summary')
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false)
 
   const resolveUserId = useCallback(async (): Promise<string | null> => {
     const { auth } = await import('@/utils/firebase')
@@ -197,6 +217,41 @@ export default function CalendarDetailsPage() {
     void loadEvent(eventId)
   }, [authLoading, eventId, loadEvent])
 
+  useEffect(() => {
+    if (!eventData) return
+    setAiSummary(null)
+    setIsSummaryLoading(true)
+
+    const org = eventData.organizer
+    const orgEmail: string = typeof org === 'object' && org !== null
+      ? ((org as { email?: string }).email || '')
+      : (typeof org === 'string' ? org : '')
+    const attendeeEmails: string[] = Array.isArray(eventData.attendees)
+      ? eventData.attendees.map((a: unknown) => {
+          if (typeof a === 'object' && a !== null) return (a as { email?: string }).email || ''
+          return typeof a === 'string' ? a : ''
+        }).filter(Boolean)
+      : []
+
+    fetch('/api/calendar/meeting-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: getEventTitle(eventData),
+        organizerEmail: orgEmail,
+        attendeeEmails,
+        calendarDescription: eventData.description || '',
+        dateLabel: formatEventDateLabel(eventData),
+        rangeLabel: formatEventRangeLabel(eventData),
+        duration: formatDurationLabel(eventData),
+      }),
+    })
+      .then(r => r.json())
+      .then(data => { if (data.paragraph) setAiSummary(data.paragraph) })
+      .catch(() => {})
+      .finally(() => setIsSummaryLoading(false))
+  }, [eventData])
+
   const handleRefresh = async () => {
     if (!eventId) return
     setIsRefreshing(true)
@@ -212,7 +267,7 @@ export default function CalendarDetailsPage() {
 
   const handleCopySummary = async () => {
     if (!eventData) return
-    await navigator.clipboard.writeText(buildEventSummaryMarkdown(eventData))
+    await navigator.clipboard.writeText(aiSummary || getEventTitle(eventData))
     toast.success('Resume copie')
   }
 
@@ -256,7 +311,6 @@ export default function CalendarDetailsPage() {
     }
   }
 
-  const summaryMarkdown = useMemo(() => (eventData ? buildEventSummaryMarkdown(eventData) : ''), [eventData])
   const attendees = useMemo(() => (eventData ? getEventAttendees(eventData) : []), [eventData])
   const joinLink = useMemo(() => (eventData ? getEventJoinLink(eventData) : null), [eventData])
   const organizer = useMemo(() => (eventData ? getEventOrganizer(eventData) : null), [eventData])
@@ -360,79 +414,108 @@ export default function CalendarDetailsPage() {
         </div>
 
         {activeTab === 'summary' ? (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between mt-2 mb-1">
-              <h2 className="text-[17px] font-semibold text-[#1d1d1f]">Resume</h2>
-              <button
-                onClick={() => void handleCopySummary()}
-                className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
-              >
-                <Copy className="h-3.5 w-3.5" />
-                Copier le resume
-              </button>
+          <div className="space-y-8">
+            {/* AI-generated paragraph */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[17px] font-semibold text-[#1d1d1f]">Resume</h2>
+                {aiSummary && (
+                  <button
+                    onClick={() => void handleCopySummary()}
+                    className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                    Copier
+                  </button>
+                )}
+              </div>
+              {isSummaryLoading ? (
+                <div className="space-y-2.5">
+                  <div className="h-4 bg-gray-100 rounded-md animate-pulse w-full" />
+                  <div className="h-4 bg-gray-100 rounded-md animate-pulse w-5/6" />
+                  <div className="h-4 bg-gray-100 rounded-md animate-pulse w-4/6" />
+                </div>
+              ) : aiSummary ? (
+                <p className="text-[15px] leading-[1.7] text-[#1d1d1f]">{aiSummary}</p>
+              ) : (
+                <p className="text-[15px] text-[#86868b] italic">Aucune description disponible.</p>
+              )}
             </div>
-            <div>{renderSummary(summaryMarkdown)}</div>
+
+            {/* People in this call */}
+            {attendees.length > 0 && (
+              <div>
+                <h3 className="text-[13px] font-semibold text-[#86868b] uppercase tracking-wide mb-4">
+                  Participants
+                </h3>
+                <div className="space-y-3">
+                  {attendees.map((attendee) => {
+                    const initials = getInitials(attendee)
+                    const { name, email } = formatAttendeeLabel(attendee)
+                    return (
+                      <div key={attendee} className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-[12px] font-semibold text-gray-500 shrink-0">
+                          {initials}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[14px] font-medium text-[#1d1d1f] truncate">{name}</p>
+                          {email && <p className="text-[12px] text-[#86868b] truncate">{email}</p>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="space-y-8">
-            <div className="rounded-2xl border border-gray-100 p-5 bg-white">
-              <h3 className="text-sm font-semibold text-[#1d1d1f] mb-3">Participants</h3>
-              {attendees.length > 0 ? (
-                <ul className="space-y-2">
-                  {attendees.map((attendee) => (
-                    <li key={attendee} className="text-[14px] text-[#4b5563]">
-                      {attendee}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-[14px] text-[#86868b]">Aucun participant explicite dans cet evenement.</p>
-              )}
-              {organizer && <p className="text-[13px] text-[#86868b] mt-3">Organisateur: {organizer}</p>}
-            </div>
-
-            <div className="rounded-2xl border border-gray-100 p-5 bg-white">
-              <h3 className="text-sm font-semibold text-[#1d1d1f] mb-3">Description</h3>
-              <p className="text-[14px] leading-relaxed text-[#4b5563] whitespace-pre-wrap">
-                {eventData.description?.trim() || 'Aucune description detaillee dans Google Calendar.'}
-              </p>
-            </div>
-
+          <div className="space-y-5">
             <div className="rounded-2xl border border-gray-100 p-5 bg-white space-y-3">
-              <h3 className="text-sm font-semibold text-[#1d1d1f]">Liens et logistique</h3>
+              <div className="flex items-center gap-3 text-[14px] text-[#4b5563]">
+                <Calendar className="w-4 h-4 text-[#86868b] shrink-0" />
+                <span>{formatEventDateLabel(eventData)}</span>
+              </div>
+              <div className="flex items-center gap-3 text-[14px] text-[#4b5563]">
+                <Clock className="w-4 h-4 text-[#86868b] shrink-0" />
+                <span>{formatEventRangeLabel(eventData)} ({formatDurationLabel(eventData)})</span>
+              </div>
+              {organizer && (
+                <div className="flex items-center gap-3 text-[14px] text-[#4b5563]">
+                  <Users className="w-4 h-4 text-[#86868b] shrink-0" />
+                  <span>Organisateur : {organizer}</span>
+                </div>
+              )}
               {eventData.location && (
-                <div className="flex items-center gap-2 text-[14px] text-[#4b5563]">
-                  <MapPin className="w-4 h-4 text-[#86868b]" />
+                <div className="flex items-center gap-3 text-[14px] text-[#4b5563]">
+                  <MapPin className="w-4 h-4 text-[#86868b] shrink-0" />
                   <span>{eventData.location}</span>
                 </div>
               )}
-
-              {joinLink && (
-                <a
-                  href={joinLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-[14px] text-[#1d1d1f] hover:text-[#007aff]"
-                >
-                  <Video className="w-4 h-4" />
-                  Ouvrir le lien de reunion
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
-
-              {eventData.htmlLink && (
-                <a
-                  href={eventData.htmlLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-[14px] text-[#1d1d1f] hover:text-[#007aff]"
-                >
-                  <Calendar className="w-4 h-4" />
-                  Ouvrir dans Google Calendar
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              )}
             </div>
+
+            {(joinLink || eventData.htmlLink) && (
+              <div className="rounded-2xl border border-gray-100 p-5 bg-white space-y-3">
+                <h3 className="text-sm font-semibold text-[#1d1d1f] mb-1">Liens</h3>
+                {joinLink && (
+                  <a href={joinLink} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[14px] text-[#1d1d1f] hover:text-[#007aff] transition-colors"
+                  >
+                    <Video className="w-4 h-4" />
+                    Rejoindre la reunion
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                {eventData.htmlLink && (
+                  <a href={eventData.htmlLink} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[14px] text-[#1d1d1f] hover:text-[#007aff] transition-colors"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Ouvrir dans Google Calendar
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

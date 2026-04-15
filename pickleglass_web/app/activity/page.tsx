@@ -17,7 +17,7 @@ import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import GettingStartedChecklist from '@/components/GettingStartedChecklist'
-import { getEventStartDate, getEventAttendees, getEventTitle } from '../calendar/event-utils'
+import { getEventStartDate, getEventEndDate, getEventTitle } from '../calendar/event-utils'
 
 export default function ActivityPage() {
   const router = useRouter();
@@ -254,13 +254,15 @@ export default function ActivityPage() {
           if (!upcomingMeeting) return null
           const start = getEventStartDate(upcomingMeeting)
           if (!start || start <= currentTime) return null
+          const end = getEventEndDate(upcomingMeeting)
           const isToday = start.toDateString() === currentTime.toDateString()
           const isTomorrow = new Date(currentTime.getTime() + 86_400_000).toDateString() === start.toDateString()
           const dayLabel = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : start.toLocaleDateString('fr-FR', { weekday: 'long' })
-          const timeStr = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+          const fmt = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+          const timeRange = end ? `${fmt(start)} – ${fmt(end)}` : fmt(start)
           return (
             <div className="mt-4 mb-6 border-l-[3px] border-blue-500 bg-blue-50/40 rounded-r-xl pl-4 pr-4 py-3">
-              <p className="text-xs font-medium text-gray-400 mb-0.5">{dayLabel} à {timeStr}</p>
+              <p className="text-xs font-medium text-gray-400 mb-0.5">{dayLabel} · {timeRange}</p>
               <p className="text-[15px] font-semibold text-black">{getEventTitle(upcomingMeeting)}</p>
               {meetingBrief && <p className="text-sm text-gray-500 mt-0.5">{meetingBrief}</p>}
             </div>
