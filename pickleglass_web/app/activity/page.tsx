@@ -218,6 +218,47 @@ export default function ActivityPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  function extractCompanyFromDomain(domain: string): string | null {
+    const personal = ['gmail.com','yahoo.com','hotmail.com','outlook.com','live.com','icloud.com','me.com','protonmail.com','proton.me','laposte.net','orange.fr','free.fr','sfr.fr','wanadoo.fr','hotmail.fr','yahoo.fr']
+    if (personal.includes(domain)) return null
+    const main = domain.split('.')[0]
+    // Strip common corporate suffixes to get the brand name
+    const name = main.replace(/(group|corp|inc|ltd|sa|sas|holding|digital|tech|services|solutions)$/i, '').trim()
+    return name.length > 1 ? name.charAt(0).toUpperCase() + name.slice(1) : null
+  }
+
+  function buildMeetingContext(event: any): string | null {
+    // 1. Use the event description if present (first sentence only)
+    const rawDesc = (event.description || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
+    if (rawDesc.length > 10) {
+      const sentence = rawDesc.split(/[.\n]/)[0].trim()
+      if (sentence.length > 10) return sentence.length > 100 ? sentence.substring(0, 97) + '...' : sentence
+    }
+
+    // 2. Infer company from organizer email domain
+    const org = event.organizer
+    const orgEmail: string = typeof org === 'object' && org !== null ? (org.email || '') : (typeof org === 'string' ? org : '')
+    const orgDomain = orgEmail.includes('@') ? orgEmail.split('@')[1].toLowerCase() : ''
+    const company = orgDomain ? extractCompanyFromDomain(orgDomain) : null
+
+    // 3. Fall back to attendee domains
+    const attendeeEmails: string[] = Array.isArray(event.attendees)
+      ? event.attendees.map((a: any) => (typeof a === 'object' ? a?.email : a) || '').filter(Boolean)
+      : []
+    const companyFromAttendee = !company
+      ? attendeeEmails.map(e => extractCompanyFromDomain(e.split('@')[1]?.toLowerCase() || '')).find(Boolean) || null
+      : null
+    const brand = company || companyFromAttendee
+
+    if (!brand) return null
+
+    const title = (event.summary || '').toLowerCase()
+    if (/entretien|interview/i.test(title)) return `Entretien avec ${brand}`
+    if (/stage|internship/i.test(title)) return `Suivi de stage — ${brand}`
+    if (/réunion|meeting|standup|stand-up/i.test(title)) return `Réunion avec ${brand}`
+    return `Avec ${brand}`
+  }
+
   return (
     <div className="min-h-screen bg-white text-[#282828] font-body selection:bg-primary/30">
       <div className="max-w-3xl mx-auto px-6 py-16">
@@ -229,19 +270,16 @@ export default function ActivityPage() {
           if (!upcomingMeeting) return null
           const start = getEventStartDate(upcomingMeeting)
           if (!start || start <= currentTime) return null
-          const attendees = getEventAttendees(upcomingMeeting)
           const isToday = start.toDateString() === currentTime.toDateString()
           const isTomorrow = new Date(currentTime.getTime() + 86_400_000).toDateString() === start.toDateString()
           const dayLabel = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : start.toLocaleDateString('fr-FR', { weekday: 'long' })
           const timeStr = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
-          const attendeeLabel = attendees.length > 0
-            ? `Avec ${attendees.slice(0, 2).join(', ')}${attendees.length > 2 ? ` et ${attendees.length - 2} autre${attendees.length > 3 ? 's' : ''}` : ''}`
-            : null
+          const context = buildMeetingContext(upcomingMeeting)
           return (
             <div className="mt-4 mb-6 border-l-[3px] border-blue-500 bg-blue-50/40 rounded-r-xl pl-4 pr-4 py-3">
               <p className="text-xs font-medium text-gray-400 mb-0.5">{dayLabel} à {timeStr}</p>
               <p className="text-[15px] font-semibold text-black">{getEventTitle(upcomingMeeting)}</p>
-              {attendeeLabel && <p className="text-sm text-gray-500 mt-0.5 truncate">{attendeeLabel}</p>}
+              {context && <p className="text-sm text-gray-500 mt-0.5">{context}</p>}
             </div>
           )
         })()}
