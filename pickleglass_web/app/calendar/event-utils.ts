@@ -128,6 +128,17 @@ export function getEventAttendees(event: CalendarEvent): string[] {
 }
 
 export function getEventOrganizer(event: CalendarEvent): string | null {
+  const org = event.organizer
+  // organizer.self === true means the calendar owner is considered the organizer by Google,
+  // which happens when Google propagates meetings to invited users' calendars.
+  // In that case, try the creator field for the actual external organizer.
+  if (isObject(org) && org.self === true) {
+    const creator = event.creator
+    if (isObject(creator) && creator.self !== true) {
+      return readContact(creator)
+    }
+    return null
+  }
   return readContact(event.organizer) || readContact(event.creator)
 }
 
@@ -148,22 +159,17 @@ function cleanDescription(description: string | undefined): string {
 }
 
 export function buildEventSummaryMarkdown(event: CalendarEvent): string {
-  const title = getEventTitle(event)
   const dateLabel = formatEventDateLabel(event)
   const rangeLabel = formatEventRangeLabel(event)
   const duration = formatDurationLabel(event)
   const organizer = getEventOrganizer(event)
   const attendees = getEventAttendees(event)
-  const joinLink = getEventJoinLink(event)
-  const location = (event.location || '').trim()
   const description = cleanDescription(event.description)
 
   const lines: string[] = []
   lines.push('## Contexte')
-  lines.push(`- **Sujet**: ${title}`)
   lines.push(`- **Date**: ${dateLabel}`)
-  lines.push(`- **Horaire**: ${rangeLabel}`)
-  lines.push(`- **Duree**: ${duration}`)
+  lines.push(`- **Horaire**: ${rangeLabel} (${duration})`)
   if (organizer) lines.push(`- **Organisateur**: ${organizer}`)
 
   if (attendees.length > 0) {
@@ -172,20 +178,11 @@ export function buildEventSummaryMarkdown(event: CalendarEvent): string {
     attendees.forEach((attendee) => lines.push(`- ${attendee}`))
   }
 
-  lines.push('')
-  lines.push('## Notes de reunion')
   if (description) {
-    lines.push(description)
-  } else {
-    lines.push('Aucune description detaillee n a ete ajoutee dans Google Calendar pour cette reunion.')
-  }
-
-  if (location || joinLink || event.htmlLink) {
     lines.push('')
-    lines.push('## Liens et logistique')
-    if (location) lines.push(`- **Lieu**: ${location}`)
-    if (joinLink) lines.push(`- **Lien visio**: ${joinLink}`)
-    if (event.htmlLink) lines.push(`- **Evenement Google**: ${event.htmlLink}`)
+    lines.push('## Description')
+    const brief = description.length > 400 ? description.substring(0, 400).trimEnd() + '...' : description
+    lines.push(brief)
   }
 
   return lines.join('\n')

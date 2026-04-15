@@ -17,6 +17,7 @@ import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import GettingStartedChecklist from '@/components/GettingStartedChecklist'
+import { getEventStartDate, getEventAttendees, getEventTitle } from '../calendar/event-utils'
 
 export default function ActivityPage() {
   const router = useRouter();
@@ -27,6 +28,8 @@ export default function ActivityPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [emailingId, setEmailingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [upcomingMeeting, setUpcomingMeeting] = useState<any>(null)
+  const [currentTime, setCurrentTime] = useState(() => new Date())
 
   const fetchSessions = async () => {
     try {
@@ -86,6 +89,29 @@ export default function ActivityPage() {
       window.clearInterval(interval)
     }
   }, [userInfo, hasListenSession])
+
+  // Clock tick to auto-hide past meetings
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Load next upcoming meeting from sessionStorage (populated by the calendar page)
+  useEffect(() => {
+    if (!userInfo || typeof window === 'undefined') return
+    try {
+      const cached = window.sessionStorage.getItem('calendar:events')
+      if (!cached) return
+      const events = JSON.parse(cached) as any[]
+      if (!Array.isArray(events)) return
+      const now = new Date()
+      const next = events
+        .map((e) => ({ event: e, start: getEventStartDate(e) }))
+        .filter(({ start }) => start && start > now)
+        .sort((a, b) => a.start!.getTime() - b.start!.getTime())[0]
+      setUpcomingMeeting(next?.event || null)
+    } catch {}
+  }, [userInfo])
 
   if (loading) {
     return null
@@ -198,6 +224,27 @@ export default function ActivityPage() {
         <h1 className="text-3xl font-heading font-semibold text-black mb-2">
           {getGreeting()}, {userInfo.display_name}
         </h1>
+
+        {(() => {
+          if (!upcomingMeeting) return null
+          const start = getEventStartDate(upcomingMeeting)
+          if (!start || start <= currentTime) return null
+          const attendees = getEventAttendees(upcomingMeeting)
+          const isToday = start.toDateString() === currentTime.toDateString()
+          const isTomorrow = new Date(currentTime.getTime() + 86_400_000).toDateString() === start.toDateString()
+          const dayLabel = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : start.toLocaleDateString('fr-FR', { weekday: 'long' })
+          const timeStr = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+          const attendeeLabel = attendees.length > 0
+            ? `Avec ${attendees.slice(0, 2).join(', ')}${attendees.length > 2 ? ` et ${attendees.length - 2} autre${attendees.length > 3 ? 's' : ''}` : ''}`
+            : null
+          return (
+            <div className="mt-4 mb-6 border-l-[3px] border-blue-500 bg-blue-50/40 rounded-r-xl pl-4 pr-4 py-3">
+              <p className="text-xs font-medium text-gray-400 mb-0.5">{dayLabel} à {timeStr}</p>
+              <p className="text-[15px] font-semibold text-black">{getEventTitle(upcomingMeeting)}</p>
+              {attendeeLabel && <p className="text-sm text-gray-500 mt-0.5 truncate">{attendeeLabel}</p>}
+            </div>
+          )
+        })()}
 
         {!isLoading && (
           <GettingStartedChecklist

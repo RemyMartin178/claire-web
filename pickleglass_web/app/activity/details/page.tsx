@@ -96,7 +96,8 @@ const parseMarkdown = (text: string, onCopySummary?: () => void) => {
   // Remove the Title section and Actions suggérées section from display
   const cleanText = text
     .replace(/\*\*Title\*\*\n[\s\S]*?\n/, '')
-    .replace(/## Actions sugg[eé]r[eé]es[\s\S]*?(?=## |$)/gi, '');
+    .replace(/## Actions sugg[eé]r[eé]es[\s\S]*?(?=## |$)/gi, '')
+    .replace(/## Type[\s\S]*?(?=## |$)/gi, '');
 
   const lines = cleanText.split('\n');
   const elements = [];
@@ -520,45 +521,33 @@ function SessionDetailsContent() {
   const renderContent = () => {
     switch (activeTab) {
       case 'summary':
-        const hasMarkdownHeaders = /^## /m.test(rawSummaryText);
-
         return (
           <div className="space-y-6 animate-in fade-in duration-300">
-            {hasMarkdownHeaders ? (
+            <div className="flex items-center justify-between mt-2 mb-5">
+              <h2 className="text-[17px] font-semibold text-[#1d1d1f] font-sans">Résumé</h2>
+              <button
+                onClick={handleCopySummary}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
+              >
+                <Copy className="h-3.5 w-3.5" /> Copier le résumé
+              </button>
+            </div>
+            {bulletPoints.length > 0 ? (
+              <ul className="list-disc pl-4 space-y-4 mb-8 marker:text-[#86868b] text-[#1d1d1f]">
+                {bulletPoints.map((item: string, i: number) => {
+                  const parts = item.split(/(\*\*.*?\*\*)/g);
+                  return (
+                    <li key={i} className="text-[15px] leading-relaxed pl-1">
+                      {parts.map((p: string, k: number) => p.startsWith('**') && p.endsWith('**') ?
+                        <strong key={k} className="font-semibold">{p.slice(2, -2)}</strong> : p)}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
               <div className="max-w-none">
                 {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
               </div>
-            ) : (
-              <>
-                <div>
-                  <div className="flex items-center justify-between mt-2 mb-5">
-                    <h2 className="text-[17px] font-semibold text-[#1d1d1f] font-sans">Résumé</h2>
-                    <button
-                      onClick={handleCopySummary}
-                      className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
-                    >
-                      <Copy className="h-3.5 w-3.5" /> Copier le résumé
-                    </button>
-                  </div>
-                  {bulletPoints.length > 0 ? (
-                    <ul className="list-disc pl-4 space-y-4 mb-8 marker:text-[#86868b] text-[#1d1d1f]">
-                      {bulletPoints.map((item: string, i: number) => {
-                        const parts = item.split(/(\*\*.*?\*\*)/g);
-                        return (
-                          <li key={i} className="text-[15px] leading-relaxed pl-1">
-                            {parts.map((p: string, k: number) => p.startsWith('**') && p.endsWith('**') ?
-                              <strong key={k} className="font-semibold">{p.slice(2, -2)}</strong> : p)}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <div className="text-[15px] leading-relaxed text-[#1d1d1f]">
-                      {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText))}
-                    </div>
-                  )}
-                </div>
-              </>
             )}
           </div>
         );
