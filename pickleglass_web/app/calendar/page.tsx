@@ -89,7 +89,20 @@ export default function CalendarPage() {
 
   const resolveUserId = useCallback(async (): Promise<string | null> => {
     const { auth } = await import('@/utils/firebase')
-    return auth.currentUser?.uid || userInfo?.uid || null
+    // If Firebase is already initialized, use it directly
+    if (auth.currentUser) return auth.currentUser.uid
+    // Otherwise wait up to 3s for Firebase auth state to settle
+    return new Promise<string | null>((resolve) => {
+      const timeout = setTimeout(() => {
+        unsubscribe()
+        resolve(userInfo?.uid || null)
+      }, 3000)
+      const unsubscribe = auth.onAuthStateChanged((user: { uid?: string } | null) => {
+        clearTimeout(timeout)
+        unsubscribe()
+        resolve(user?.uid || userInfo?.uid || null)
+      })
+    })
   }, [userInfo?.uid])
 
   const fetchCalendarData = useCallback(
@@ -142,7 +155,22 @@ export default function CalendarPage() {
 
       const status = await checkAuthStatus(toolName, userId)
       setIsConfigured(status.authenticated)
-      setConnectedEmail((status as { accountEmail?: string }).accountEmail || null)
+
+      const accountEmail = (status as { accountEmail?: string }).accountEmail
+      if (accountEmail) {
+        // Cache the real Google email so we can restore it if the next call doesn't return it
+        setConnectedEmail(accountEmail)
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem('calendar:connectedEmail', accountEmail)
+        }
+      } else if (status.authenticated) {
+        // Backend authenticated but didn't return the email (network issue / token fetch failed)
+        // Restore from cache rather than falling back to the Claire app email
+        const cached = typeof window !== 'undefined'
+          ? window.sessionStorage.getItem('calendar:connectedEmail')
+          : null
+        setConnectedEmail(cached || null)
+      }
 
       if (status.authenticated) {
         await fetchCalendarData(userId)
@@ -166,7 +194,13 @@ export default function CalendarPage() {
           console.log('[Calendar] auth status poll', { attempt, status })
 
           setIsConfigured(status.authenticated)
-          setConnectedEmail((status as { accountEmail?: string }).accountEmail || null)
+          const pollEmail = (status as { accountEmail?: string }).accountEmail
+          if (pollEmail) {
+            setConnectedEmail(pollEmail)
+            if (typeof window !== 'undefined') {
+              window.sessionStorage.setItem('calendar:connectedEmail', pollEmail)
+            }
+          }
 
           if (status.authenticated) {
             await fetchCalendarData(userId)
@@ -394,7 +428,7 @@ export default function CalendarPage() {
                   d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
                 />
               </svg>
-              <span className="text-sm font-medium text-gray-700">{connectedEmail || userInfo?.email || 'Connecte'}</span>
+              <span className="text-sm font-medium text-gray-700">{connectedEmail || 'Compte Google connecte'}</span>
               <span className="flex h-2 w-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
             </div>
 
