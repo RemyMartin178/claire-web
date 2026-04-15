@@ -447,7 +447,7 @@ app.whenReady().then(async () => {
         logger.info('Web front-end listening on', WEB_PORT);
 
         // Only open the dashboard on launch — overlay windows are created lazily via dashboard:startClaire
-        setDashboardUrl('https://app.clairia.app');
+        setDashboardUrl('https://renderer.clairia.app');
         createDashboardWindow();
 
         // Start meeting notifications (polls Google Calendar every 5 min)
