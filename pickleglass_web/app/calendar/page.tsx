@@ -440,9 +440,7 @@ export default function CalendarPage() {
                   <div className="space-y-1">
                     {group.events.map((event) => {
                       const start = getEventStartDate(event)
-                      const attendees = getEventAttendees(event)
                       const joinLink = getEventJoinLink(event)
-                      const description = (event.description || '').trim()
 
                       return (
                         <div
@@ -452,9 +450,6 @@ export default function CalendarPage() {
                         >
                           <div className="flex-1 min-w-0 pr-4">
                             <p className="text-[15px] font-medium text-black transition-colors block truncate">{getEventTitle(event)}</p>
-                            <p className="text-xs text-gray-500 mt-1 truncate">
-                              {description || (attendees.length > 0 ? attendees.join(', ') : 'Cliquez pour voir le resume')}
-                            </p>
                           </div>
 
                           <div className="flex items-center gap-4 shrink-0">

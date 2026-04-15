@@ -219,6 +219,18 @@ export default function CalendarDetailsPage() {
 
   useEffect(() => {
     if (!eventData) return
+
+    // Check sessionStorage cache first — instant if already generated
+    const cacheKey = `calendar:summary:${eventData.id}`
+    if (typeof window !== 'undefined') {
+      const cached = window.sessionStorage.getItem(cacheKey)
+      if (cached) {
+        setAiSummary(cached)
+        setIsSummaryLoading(false)
+        return
+      }
+    }
+
     setAiSummary(null)
     setIsSummaryLoading(true)
 
@@ -247,7 +259,15 @@ export default function CalendarDetailsPage() {
       }),
     })
       .then(r => r.json())
-      .then(data => { if (data.paragraph) setAiSummary(data.paragraph) })
+      .then(data => {
+        if (data.paragraph) {
+          setAiSummary(data.paragraph)
+          // Cache for instant retrieval next time (and for activity page card)
+          if (typeof window !== 'undefined') {
+            window.sessionStorage.setItem(cacheKey, data.paragraph)
+          }
+        }
+      })
       .catch(() => {})
       .finally(() => setIsSummaryLoading(false))
   }, [eventData])

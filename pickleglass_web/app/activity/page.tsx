@@ -114,26 +114,38 @@ export default function ActivityPage() {
       setUpcomingMeeting(event)
 
       if (event) {
-        // Generate AI brief in the background
-        const org = event.organizer
-        const orgEmail: string = typeof org === 'object' && org !== null ? (org.email || '') : (typeof org === 'string' ? org : '')
-        const attendeeEmails: string[] = Array.isArray(event.attendees)
-          ? event.attendees.map((a: any) => (typeof a === 'object' ? a?.email : a) || '').filter(Boolean)
-          : []
+        // Check sessionStorage cache first (written by calendar/details page)
+        const cacheKey = `calendar:summary:${event.id}`
+        const cached = window.sessionStorage.getItem(cacheKey)
+        if (cached) {
+          setMeetingBrief(cached)
+        } else {
+          // Generate via same API used by calendar details page
+          const org = event.organizer
+          const orgEmail: string = typeof org === 'object' && org !== null ? (org.email || '') : (typeof org === 'string' ? org : '')
+          const attendeeEmails: string[] = Array.isArray(event.attendees)
+            ? event.attendees.map((a: any) => (typeof a === 'object' ? a?.email : a) || '').filter(Boolean)
+            : []
 
-        fetch('/api/calendar/meeting-brief', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: event.summary || '',
-            organizerEmail: orgEmail,
-            attendeeEmails,
-            calendarDescription: event.description || '',
-          }),
-        })
-          .then(r => r.json())
-          .then(data => { if (data.brief) setMeetingBrief(data.brief) })
-          .catch(() => {})
+          fetch('/api/calendar/meeting-summary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: event.summary || '',
+              organizerEmail: orgEmail,
+              attendeeEmails,
+              calendarDescription: event.description || '',
+            }),
+          })
+            .then(r => r.json())
+            .then(data => {
+              if (data.paragraph) {
+                setMeetingBrief(data.paragraph)
+                window.sessionStorage.setItem(cacheKey, data.paragraph)
+              }
+            })
+            .catch(() => {})
+        }
       }
     } catch {}
   }, [userInfo])
