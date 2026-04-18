@@ -1773,6 +1773,21 @@ const setWindowOpacity = (opacity) => {
 let dashboardWindow = null;
 let _dashboardUrl = null;
 
+function getDashboardBaseUrl() {
+    return _dashboardUrl || 'https://renderer.clairia.app';
+}
+
+function isDashboardAuthUrl(url) {
+    try {
+        const target = new URL(url);
+        return target.pathname === '/auth/login'
+            || target.pathname === '/auth/register'
+            || target.pathname.startsWith('/auth/');
+    } catch {
+        return false;
+    }
+}
+
 function setDashboardUrl(url) {
     _dashboardUrl = url;
 }
@@ -1809,7 +1824,25 @@ function createDashboardWindow() {
         },
     });
 
-    dashboardWindow.loadURL(_dashboardUrl || 'https://renderer.clairia.app');
+    const dashboardBaseUrl = getDashboardBaseUrl();
+
+    dashboardWindow.webContents.on('will-navigate', (event, url) => {
+        if (!isDashboardAuthUrl(url)) return;
+        event.preventDefault();
+        dashboardWindow.loadURL(dashboardBaseUrl);
+    });
+
+    dashboardWindow.webContents.on('did-navigate', (_event, url) => {
+        if (!isDashboardAuthUrl(url)) return;
+        dashboardWindow.loadURL(dashboardBaseUrl);
+    });
+
+    dashboardWindow.webContents.on('did-redirect-navigation', (_event, url) => {
+        if (!isDashboardAuthUrl(url)) return;
+        dashboardWindow.loadURL(dashboardBaseUrl);
+    });
+
+    dashboardWindow.loadURL(dashboardBaseUrl);
 
     dashboardWindow.on('closed', () => { dashboardWindow = null; });
 
