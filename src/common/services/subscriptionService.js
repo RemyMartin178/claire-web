@@ -71,7 +71,7 @@ async function getUserSubscription() {
         // Utiliser l'URL de production ou localhost selon l'environnement
         const webApiUrl = isProduction
             ? (process.env.pickleglass_WEB_URL || 'https://pickleglass.com')
-            : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
+            : (process.env.pickleglass_WEB_URL || 'https://app.clairia.app');
         
         const subscriptionUrl = `${webApiUrl}/api/app/subscription`;
         

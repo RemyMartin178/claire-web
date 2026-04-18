@@ -13,7 +13,7 @@ class Config {
             apiUrl: process.env.pickleglass_API_URL || process.env.xerus_API_URL || 'http://localhost:3001',
             apiTimeout: 10000,
             
-            webUrl: process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000',
+            webUrl: process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'https://app.clairia.app',
             
             enableJWT: false,
             fallbackToHeaderAuth: false,

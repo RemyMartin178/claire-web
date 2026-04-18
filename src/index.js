@@ -112,7 +112,7 @@ const { configManager } = require('./main/config-manager');
 
 // Global variables
 const eventBridge = new EventEmitter();
-let WEB_PORT = 3000;
+let WEB_PORT = null;
 let isShuttingDown = false; // Flag to prevent infinite shutdown loop
 global.isQuitting = false; // Set to true only during real quit (not hide)
 
@@ -130,6 +130,65 @@ const ollamaModelRepository = require('./common/repositories/ollamaModel');
 const { createLogger } = require('./common/services/logger.js');
 
 const logger = createLogger('Index');
+const REMOTE_DASHBOARD_URL = 'https://renderer.clairia.app';
+const LOCAL_DASHBOARD_URL = 'http://127.0.0.1:5174';
+const DEFAULT_WEB_APP_URL = 'https://app.clairia.app';
+let auxiliaryWebStackPromise = null;
+
+async function resolveDashboardUrl() {
+    const explicitUrl = process.env.CLAIRE_DASHBOARD_URL || process.env.CLAIRE_RENDERER_URL;
+    if (explicitUrl) {
+        return explicitUrl;
+    }
+
+    if (app.isPackaged) {
+        return REMOTE_DASHBOARD_URL;
+    }
+
+    try {
+        const response = await fetch(LOCAL_DASHBOARD_URL, {
+            method: 'GET',
+            headers: { Accept: 'text/html' }
+        });
+
+        if (response.ok) {
+            logger.info(`[Dashboard] Using local renderer from ${LOCAL_DASHBOARD_URL}`);
+            return LOCAL_DASHBOARD_URL;
+        }
+    } catch (error) {
+        logger.info('[Dashboard] Local renderer not detected - falling back to remote renderer');
+    }
+
+    return REMOTE_DASHBOARD_URL;
+}
+
+function ensureAuxiliaryWebStackStarted() {
+    if (auxiliaryWebStackPromise) {
+        return auxiliaryWebStackPromise;
+    }
+
+    auxiliaryWebStackPromise = (async () => {
+        WEB_PORT = await startWebStack();
+        logger.info('Auxiliary web front-end listening on', WEB_PORT);
+
+        const meetingNotifier = require('./main/meeting-notifier');
+        meetingNotifier.start(WEB_PORT, async () => {
+            try {
+                return await authService.getCurrentUser()?.getIdToken();
+            } catch {
+                return null;
+            }
+        });
+
+        return WEB_PORT;
+    })().catch((error) => {
+        auxiliaryWebStackPromise = null;
+        logger.warn('[Index] Auxiliary web stack not available:', { error: error.message });
+        throw error;
+    });
+
+    return auxiliaryWebStackPromise;
+}
 
 // Safe webContents.send wrapper to handle EPIPE errors
 function safeWebContentsSend(webContents, channel, ...args) {
@@ -443,20 +502,13 @@ app.whenReady().then(async () => {
         }, 2000); // Wait 2 seconds after app start
 
         // Start web server and create windows ONLY after all initializations are successful
-        WEB_PORT = await startWebStack();
-        logger.info('Web front-end listening on', WEB_PORT);
+        const dashboardUrl = await resolveDashboardUrl();
 
         // Only open the dashboard on launch — overlay windows are created lazily via dashboard:startClaire
-        setDashboardUrl('https://renderer.clairia.app');
+        setDashboardUrl(dashboardUrl);
         createDashboardWindow();
 
-        // Start meeting notifications (polls Google Calendar every 5 min)
-        const meetingNotifier = require('./main/meeting-notifier');
-        meetingNotifier.start(WEB_PORT, async () => {
-            try {
-                return await authService.getCurrentUser()?.getIdToken();
-            } catch { return null; }
-        });
+        ensureAuxiliaryWebStackStarted().catch(() => {});
 
     } catch (err) {
         logger.error('>>> [index.js] Database initialization failed - some features may not work', {
@@ -830,7 +882,7 @@ async function handleCustomUrl(url) {
                     try { await firebaseUser.getIdToken(true); } catch (e) { logger.warn('[deeplink] token refresh failed', e); }
                 }
                 // Fetch subscription status from web API
-                const bsWebUrl = app.isPackaged ? 'https://app.clairia.app' : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
+                const bsWebUrl = app.isPackaged ? DEFAULT_WEB_APP_URL : (process.env.pickleglass_WEB_URL || DEFAULT_WEB_APP_URL);
                 let isPremium = false;
                 try {
                     const idToken = firebaseUser ? await firebaseUser.getIdToken() : null;
@@ -871,8 +923,8 @@ async function handleMobileAuthCallback(params) {
         // The exchange endpoint lives on Vercel (has Firebase Admin + creates custom token from uid)
         const isPackaged = app.isPackaged;
         const webUrl = isPackaged
-            ? 'https://app.clairia.app'
-            : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
+            ? DEFAULT_WEB_APP_URL
+            : (process.env.pickleglass_WEB_URL || DEFAULT_WEB_APP_URL);
         const exchangeUrl = `${webUrl}/api/mobile-auth/exchange`;
 
         console.log('app.isPackaged:', isPackaged);
@@ -1017,7 +1069,9 @@ function handlePersonalizeFromUrl(params) {
         if (header.isMinimized()) header.restore();
         header.focus();
 
-        const personalizeUrl = `http://localhost:${WEB_PORT}/settings`;
+        const personalizeUrl = WEB_PORT
+            ? `http://localhost:${WEB_PORT}/settings`
+            : `${process.env.pickleglass_WEB_URL || DEFAULT_WEB_APP_URL}/settings`;
         logger.info('Navigating to personalize page:');
         header.webContents.loadURL(personalizeUrl);
 
@@ -1138,13 +1192,7 @@ async function startWebStack() {
     }
 
     if (!useLiveDevFrontend && !fs.existsSync(staticDir)) {
-        logger.error(`============================================================`);
-        logger.error('Frontend build directory not found!');
-        logger.error(`Path: ${staticDir}`);
-        logger.error(`Please run 'npm run build:web' to build the frontend first.`);
-        logger.error(`============================================================`);
-        app.quit();
-        return;
+        throw new Error(`Auxiliary web frontend build directory not found: ${staticDir}`);
     }
 
     const runtimeConfig = {

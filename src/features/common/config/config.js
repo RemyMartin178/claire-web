@@ -10,7 +10,7 @@ class Config {
             apiUrl: process.env.pickleglass_API_URL || 'http://localhost:9001',
             apiTimeout: 10000,
             
-            webUrl: process.env.pickleglass_WEB_URL || 'http://localhost:3000',
+            webUrl: process.env.pickleglass_WEB_URL || 'https://app.clairia.app',
             
             enableJWT: false,
             fallbackToHeaderAuth: false,

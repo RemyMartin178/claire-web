@@ -26,7 +26,6 @@ const entryPoints = [
     { in: 'src/ui/app/HeaderController.js', out: 'public/build/header' },
     { in: 'src/ui/app/ClaireApp.js', out: 'public/build/content' },
     { in: 'src/ui/app/OverlayController.js', out: 'public/build/overlay' },
-    { in: 'src/ui/dashboard/DashboardApp.jsx', out: 'public/build/dashboard' },
 ];
 
 // Copy shader files to maintain the working shader loading

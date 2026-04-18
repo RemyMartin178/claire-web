@@ -1,3 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* --- Base du bouton Premium --- */
+.btn-apple-premium {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(85.44% 85.44% at 50% 14.56%, #3a3a3c 0%, #1c1c1e 100%);
+    box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.28);
+    color: white !important;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 550;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    cursor: pointer;
+    border: none;
+    min-height: 48px;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* --- Ombre et élévation au survol --- */
+.btn-hero-cta-premium:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 
+        0px 1px 1px rgba(255, 255, 255, 0.3) inset, 
+        0px 20px 40px rgba(0, 0, 0, 0.28),
+        0px 10px 20px rgba(0, 0, 0, 0.15);
+    filter: brightness(1.35); /* Rend le bouton légèrement plus clair */
+}
+
+/* --- Animation interne de balayage (Shine) --- */
+.btn-primary-shine {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.btn-primary-shine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.25) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+}
+
+.btn-hero-cta-premium:hover .btn-primary-shine::after {
+    animation: sweep-shine 6s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+}
+
+@keyframes sweep-shine {
+    0% { left: -100%; }
+    50%, 100% { left: 250%; } /* S'arrête un peu pour ne pas être trop répétitif */
+}
+
+/* --- Bordure Glass 1px (Netteté maximale) --- */
+.blurred-border-black {
+    position: absolute;
+    inset: -1px;
+    opacity: .3;
+    z-index: 2;
+    background: linear-gradient(176.87deg, #ffffff80 8.56%, #fff0 85.04%);
+    border-radius: 8px;
+    padding: 1px;
+    -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+    mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+

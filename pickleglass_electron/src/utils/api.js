@@ -10,6 +10,8 @@ export const deleteSession = (uid, sessionId) => api()?.deleteSession?.(uid, ses
 export const startClaire = () => api()?.startClaire?.()
 export const onUserChanged = (cb) => api()?.onUserChanged?.(cb)
 export const removeUserChanged = (cb) => api()?.removeUserChanged?.(cb)
+export const startExternalAuth = () => window?.api?.common?.startFirebaseAuth?.()
+export const openExternal = (url) => window?.api?.common?.openExternal?.(url)
 
 const RAILWAY_URL = 'https://backend-production-ba2c.up.railway.app'
 

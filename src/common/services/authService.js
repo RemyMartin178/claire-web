@@ -171,7 +171,7 @@ class AuthService {
             const isPackaged = app.isPackaged;
             const webUrl = isPackaged
                 ? 'https://app.clairia.app'
-                : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
+                : (process.env.pickleglass_WEB_URL || 'https://app.clairia.app');
 
             // Generate unique session ID before opening browser
             const sessionId = 'sess-' + Math.random().toString(36).slice(2, 15);

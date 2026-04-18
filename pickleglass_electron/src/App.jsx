@@ -14,9 +14,11 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [route, setRoute] = useState({ page: 'activity', params: {} })
+  const [navHistory, setNavHistory] = useState([{ page: 'activity', params: {} }])
+  const [navIndex, setNavIndex] = useState(0)
 
   useEffect(() => {
-    getUser().then(res => {
+    Promise.resolve(getUser()).then(res => {
       setUser(res?.user || null)
       setLoading(false)
     }).catch(() => setLoading(false))
@@ -25,47 +27,129 @@ export default function App() {
       if (state?.isLoggedIn) setUser({ uid: state.uid, email: state.email, displayName: state.displayName })
       else setUser(null)
     }
+
     onUserChanged(handler)
     return () => removeUserChanged(handler)
   }, [])
 
-  const navigate = (page, params = {}) => setRoute({ page, params })
+  const navigate = (page, params = {}) => {
+    const newHistory = navHistory.slice(0, navIndex + 1)
+    const next = { page, params }
+    newHistory.push(next)
+    setNavHistory(newHistory)
+    setNavIndex(newHistory.length - 1)
+    setRoute(next)
+  }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-screen bg-white">
-      <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />
-    </div>
-  )
-
-  if (!user) return <Login onLogin={setUser} />
-
-  const activePage = route.page.startsWith('activity') ? 'activity'
-    : route.page.startsWith('calendar') ? 'calendar'
-    : route.page
-
-  const renderPage = () => {
-    switch (route.page) {
-      case 'activity':          return <Activity navigate={navigate} />
-      case 'activity-details':  return <ActivityDetails navigate={navigate} sessionId={route.params.sessionId} />
-      case 'calendar':          return <Calendar navigate={navigate} />
-      case 'calendar-details':  return <CalendarDetails navigate={navigate} event={route.params.event} />
-      default:                  return <Activity navigate={navigate} />
+  const goBack = () => {
+    if (navIndex > 0) {
+      const prev = navHistory[navIndex - 1]
+      setNavIndex(navIndex - 1)
+      setRoute(prev)
     }
   }
 
+  const goForward = () => {
+    if (navIndex < navHistory.length - 1) {
+      const next = navHistory[navIndex + 1]
+      setNavIndex(navIndex + 1)
+      setRoute(next)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) return <Login onLogin={setUser} />
+
+  const activePage = route.page.startsWith('activity')
+    ? 'activity'
+    : route.page.startsWith('calendar')
+      ? 'calendar'
+      : route.page
+
+  const renderPage = () => {
+    switch (route.page) {
+      case 'activity':
+        return <Activity navigate={navigate} />
+      case 'activity-details':
+        return <ActivityDetails navigate={navigate} sessionId={route.params.sessionId} />
+      case 'calendar':
+        return <Calendar navigate={navigate} />
+      case 'calendar-details':
+        return <CalendarDetails navigate={navigate} event={route.params.event} />
+      default:
+        return <Activity navigate={navigate} />
+    }
+  }
+
+  const userInitial = (user?.displayName || user?.email || '?').charAt(0).toUpperCase()
+  const canBack = navIndex > 0
+  const canForward = navIndex < navHistory.length - 1
+  const pageTitle = activePage === 'calendar' ? 'Calendrier' : 'Mon activite'
+
   return (
     <AuthCtx.Provider value={{ user }}>
-      <div className="flex flex-col h-screen bg-white overflow-hidden">
-        {/* Titlebar drag region — native controls overlay via titleBarOverlay */}
-        <div className="drag flex items-center h-[38px] shrink-0 border-b border-neutral-100 px-4">
-          <span className="no-drag text-[13px] font-semibold text-[#1d1d1f] tracking-tight">Claire</span>
-        </div>
+      <div className="flex h-screen bg-[#eef1f4] overflow-hidden">
+        <Sidebar activePage={activePage} navigate={navigate} user={user} />
 
-        <div className="flex flex-1 min-h-0">
-          <Sidebar activePage={activePage} navigate={navigate} user={user} />
-          <main className="no-drag flex-1 overflow-y-auto bg-white">
-            {renderPage()}
-          </main>
+        <div className="flex flex-1 min-w-0 p-3">
+          <div className="flex flex-1 min-w-0 flex-col overflow-hidden rounded-[24px] border border-black/5 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+            <div className="drag flex items-center h-[38px] shrink-0 border-b border-neutral-200/80 bg-white px-3">
+              <div className="no-drag flex items-center gap-2 w-full min-w-0">
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={goBack}
+                    disabled={!canBack}
+                    className="flex items-center justify-center w-7 h-7 rounded-full disabled:opacity-25"
+                    style={{ WebkitAppRegion: 'no-drag', cursor: canBack ? 'pointer' : 'default' }}
+                    onMouseEnter={e => { if (canBack) e.currentTarget.style.background = '#f0f0f2' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={goForward}
+                    disabled={!canForward}
+                    className="flex items-center justify-center w-7 h-7 rounded-full disabled:opacity-25"
+                    style={{ WebkitAppRegion: 'no-drag', cursor: canForward ? 'pointer' : 'default' }}
+                    onMouseEnter={e => { if (canForward) e.currentTarget.style.background = '#f0f0f2' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="min-w-0 flex-1 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold text-[#111827] leading-none">{pageTitle}</p>
+                    <p className="text-[11px] text-[#6b7280] mt-1 truncate">Renderer dedie a Electron sur renderer.clairia.app</p>
+                  </div>
+
+                  <div
+                    className="w-[28px] h-[28px] rounded-full bg-neutral-900 flex items-center justify-center text-[11px] font-semibold text-white shrink-0 select-none"
+                    style={{ WebkitAppRegion: 'no-drag' }}
+                    title={user?.displayName || user?.email}
+                  >
+                    {userInitial}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <main className="no-drag flex-1 overflow-y-auto bg-white">
+              {renderPage()}
+            </main>
+          </div>
         </div>
       </div>
     </AuthCtx.Provider>

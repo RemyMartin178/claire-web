@@ -975,7 +975,7 @@ const openLoginPage = () => {
     const isPackaged = app.isPackaged;
     const webUrl = isPackaged
         ? 'https://app.clairia.app'
-        : (process.env.pickleglass_WEB_URL || 'http://localhost:3000');
+        : (process.env.pickleglass_WEB_URL || 'https://app.clairia.app');
     const personalizeUrl = `${webUrl}/personalize?desktop=true`;
     shell.openExternal(personalizeUrl);
     logger.info('Opening personalization page:', personalizeUrl);
@@ -1788,10 +1788,16 @@ function createDashboardWindow() {
         : { titleBarStyle: 'hidden', titleBarOverlay: { color: '#00000000', height: 38, symbolColor: '#000000' } };
 
     dashboardWindow = new BrowserWindow({
-        width: 980,
-        height: 660,
-        minWidth: 720,
-        minHeight: 500,
+        width: 1100,
+        height: 720,
+        minWidth: 1100,
+        maxWidth: 1100,
+        minHeight: 720,
+        maxHeight: 720,
+        useContentSize: true,
+        resizable: false,
+        maximizable: false,
+        fullscreenable: false,
         ...titleBarOptions,
         backgroundColor: '#ffffff',
         title: 'Claire',
@@ -1803,11 +1809,7 @@ function createDashboardWindow() {
         },
     });
 
-    if (_dashboardUrl) {
-        dashboardWindow.loadURL(_dashboardUrl);
-    } else {
-        dashboardWindow.loadFile(path.join(__dirname, '../ui/app/dashboard.html'));
-    }
+    dashboardWindow.loadURL(_dashboardUrl || 'https://renderer.clairia.app');
 
     dashboardWindow.on('closed', () => { dashboardWindow = null; });
 

@@ -162,7 +162,7 @@ module.exports = {
 
         // General
         ipcMain.handle('get-preset-templates', () => presetRepository.getPresetTemplates());
-        ipcMain.handle('get-web-url', () => process.env.XERUS_WEB_URL || 'http://localhost:3000');
+        ipcMain.handle('get-web-url', () => process.env.XERUS_WEB_URL || process.env.pickleglass_WEB_URL || 'https://app.clairia.app');
 
         // Ollama
         ipcMain.handle('ollama:get-status', async () => await ollamaService.handleGetStatus());
@@ -583,34 +583,6 @@ module.exports = {
             }
         });
 
-        ipcMain.handle('dashboard:close', async (event) => {
-            try {
-                const win = require('electron').BrowserWindow.fromWebContents(event.sender);
-                if (win && !win.isDestroyed()) win.close();
-                return { success: true };
-            } catch (error) {
-                return { success: false, error: error.message };
-            }
-        });
-
-        ipcMain.handle('dashboard:minimize', async (event) => {
-            const win = require('electron').BrowserWindow.fromWebContents(event.sender);
-            if (win && !win.isDestroyed()) win.minimize();
-            return { success: true };
-        });
-
-        ipcMain.handle('dashboard:maximize', async (event) => {
-            const win = require('electron').BrowserWindow.fromWebContents(event.sender);
-            if (!win || win.isDestroyed()) return { success: false };
-            if (win.isMaximized()) win.restore(); else win.maximize();
-            return { success: true, isMaximized: win.isMaximized() };
-        });
-
-        ipcMain.handle('dashboard:isMaximized', async (event) => {
-            const win = require('electron').BrowserWindow.fromWebContents(event.sender);
-            return { isMaximized: win ? win.isMaximized() : false };
-        });
-
         // Dashboard: current user (no Firebase auth needed in renderer)
         ipcMain.handle('dashboard:getUser', async () => {
             try {
@@ -686,30 +658,6 @@ module.exports = {
         });
 
         // ── Dashboard: splash + startClaire ──────────────────────────────────
-        const Store = require('electron-store');
-        const dashboardStore = new Store({ name: 'dashboard-prefs' });
-
-        ipcMain.handle('dashboard:isFirstLaunch', () => {
-            return { firstLaunch: !dashboardStore.get('launched', false) };
-        });
-
-        ipcMain.handle('dashboard:setLaunched', () => {
-            dashboardStore.set('launched', true);
-            return { success: true };
-        });
-
-        ipcMain.handle('dashboard:loadWebApp', async (event) => {
-            try {
-                const win = require('electron').BrowserWindow.fromWebContents(event.sender);
-                if (win && !win.isDestroyed()) {
-                    win.loadURL('https://app.clairia.app');
-                }
-                return { success: true };
-            } catch (error) {
-                return { success: false, error: error.message };
-            }
-        });
-
         ipcMain.handle('dashboard:startClaire', async (event) => {
             try {
                 // Create overlay windows if not already created
