@@ -56,11 +56,11 @@ export default function Login({ onLogin }) {
           </div>
 
           <h1 className="mb-3 text-center text-[2.65rem] font-medium leading-[1.08] tracking-[-0.06em]">
-            Bienvenue sur Claire
+            Ouvrir Claire sur le web
           </h1>
 
           <p className="mb-8 text-center text-[1rem] leading-7 text-[#6e6e73]">
-            Votre assistant de réunion, dans une interface plus légère pour le desktop.
+            Cette fenetre Electron ne gere pas l'authentification. Elle sert seulement de passerelle vers le flow web principal.
           </p>
 
           <motion.div
@@ -92,7 +92,7 @@ export default function Login({ onLogin }) {
                   />
                 ) : (
                   <>
-                    <span>Continuer</span>
+                    <span>Continuer sur le web</span>
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                   </>
                 )}
@@ -101,7 +101,7 @@ export default function Login({ onLogin }) {
           </motion.div>
 
           <p className="mt-8 text-center text-[12px] leading-6 text-[#a1a1aa]">
-            En continuant, vous ouvrez la connexion dans votre navigateur.
+            Le login et l'inscription s'ouvrent uniquement dans votre navigateur sur `pickleglass_web`.
             <br />
             <span
               onClick={() => openLegal('https://www.clairia.app/conditions')}
@@ -114,7 +114,7 @@ export default function Login({ onLogin }) {
               onClick={() => openLegal('https://www.clairia.app/confidentialite')}
               className="cursor-pointer font-semibold text-[#636366]"
             >
-              Politique de confidentialité
+              Politique de confidentialite
             </span>
             .
           </p>
@@ -138,15 +138,11 @@ export default function Login({ onLogin }) {
         />
 
         <div className="relative z-10 flex w-full max-w-[560px] flex-col items-center gap-7">
-          <div
-            className="inline-flex h-[40px] items-center rounded-full border border-white/15 bg-[rgba(24,23,28,0.56)] px-4 text-[12px] font-medium text-white/85 shadow-[0_8px_32px_rgba(0,0,0,0.22)] backdrop-blur-[14px]"
-          >
-            Claire reste au-dessus de votre réunion pour répondre en direct.
+          <div className="inline-flex h-[40px] items-center rounded-full border border-white/15 bg-[rgba(24,23,28,0.56)] px-4 text-[12px] font-medium text-white/85 shadow-[0_8px_32px_rgba(0,0,0,0.22)] backdrop-blur-[14px]">
+            Le renderer Electron reste separe du flow d'auth web.
           </div>
 
-          <div
-            className="w-full overflow-hidden rounded-[18px] border border-[rgba(207,226,255,0.24)] bg-[rgba(24,23,28,0.56)] text-white shadow-[0_24px_56px_rgba(0,0,0,0.22)] backdrop-blur-[18px]"
-          >
+          <div className="w-full overflow-hidden rounded-[18px] border border-[rgba(207,226,255,0.24)] bg-[rgba(24,23,28,0.56)] text-white shadow-[0_24px_56px_rgba(0,0,0,0.22)] backdrop-blur-[18px]">
             <div className="border-b border-white/8 px-5 py-4">
               <div className="mb-3 flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-white/70" />
@@ -154,23 +150,22 @@ export default function Login({ onLogin }) {
                 <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
               </div>
               <div className="rounded-[14px] bg-[radial-gradient(179.05%_132.83%_at_46.18%_-23.44%,_#1562df_0,_#0c26a8_100%)] px-4 py-3 text-[13px] font-medium text-[#dbeafe] shadow-[0_0_0_.678px_#0c44a1,inset_0_-1.355px_#022c70,inset_0_.678px_#81b6ff]">
-                Claire peut-elle résumer ma réunion en direct ?
+                Claire peut vous assister pendant la reunion, mais le compte se connecte sur le web principal.
               </div>
             </div>
 
             <div className="space-y-3 px-5 py-5">
               <p className="text-[13.5px] leading-6 text-white/78">
-                Oui. Claire écoute votre réunion en temps réel et prépare un résumé avec les décisions,
-                les points clés et les actions à suivre.
+                Le renderer Electron affiche seulement l'interface desktop et n'embarque aucune page login ou register.
               </p>
               <p className="text-[13.5px] leading-6 text-white/78">
-                Vous pouvez aussi demander une reformulation, une traduction ou un rappel de ce qui vient d&apos;être dit.
+                Quand vous continuez, le navigateur ouvre le flow externe puis revient via le deeplink de l'application.
               </p>
             </div>
 
             <div className="flex items-center gap-3 border-t border-white/8 px-5 py-4">
               <span className="flex-1 text-[12.5px] text-white/30">
-                Posez une question sur la conversation ou votre écran...
+                Desktop d'un cote, authentification web de l'autre.
               </span>
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[radial-gradient(179.05%_132.83%_at_46.18%_-23.44%,_#1562df_0,_#0c26a8_100%)] shadow-[0_0_0_.678px_#0c44a1,inset_0_-1.355px_#022c70,inset_0_.678px_#81b6ff]">
                 <ArrowRight className="h-4 w-4 text-[#dbeafe]" />
