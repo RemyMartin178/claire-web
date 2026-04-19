@@ -586,7 +586,8 @@ module.exports = {
         ipcMain.handle('dashboard:getUser', async () => {
             try {
                 const user = authService.getCurrentUser();
-                return user ? { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL } : null;
+                if (user?.isLoggedIn) return { user: { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL } };
+                return null;
             } catch (e) {
                 return null;
             }
