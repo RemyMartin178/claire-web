@@ -131,6 +131,7 @@ export default function Login({ onLogin }) {
                 maxWidth: 320,
                 opacity: busy ? 0.7 : 1,
                 cursor: busy ? 'not-allowed' : 'pointer',
+                pointerEvents: busy ? 'none' : 'auto',
               }}
             >
               <div className="btn-primary-shine" />
@@ -157,11 +158,6 @@ export default function Login({ onLogin }) {
                 )}
               </span>
             </button>
-            {waiting && (
-              <p style={{ fontSize: 12, color: '#8e8e93', textAlign: 'center', margin: 0 }}>
-                Connectez-vous dans le navigateur, puis revenez ici.
-              </p>
-            )}
           </motion.div>
         </div>
 

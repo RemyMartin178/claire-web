@@ -1785,10 +1785,10 @@ function createDashboardWindow() {
     const RENDERER_URL = process.env.RENDERER_DEV_URL || 'https://renderer.clairia.app';
 
     dashboardWindow = new BrowserWindow({
-        width: 920,
-        height: 640,
-        minWidth: 760,
-        minHeight: 500,
+        width: 1200,
+        height: 700,
+        minWidth: 960,
+        minHeight: 560,
         center: true,
         frame: false,
         backgroundColor: '#eef1f4',
@@ -1797,7 +1797,7 @@ function createDashboardWindow() {
             nodeIntegration: false,
             contextIsolation: true,
             preload: path.join(__dirname, '../preload.js'),
-            devTools: isDev,
+            devTools: false,
             spellcheck: false,
             webSecurity: false,
         },
