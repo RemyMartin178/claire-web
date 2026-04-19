@@ -457,12 +457,12 @@ contextBridge.exposeInMainWorld('api', {
       minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
       maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
       closeWindow: () => ipcRenderer.invoke('dashboard:close'),
-      onUserChanged: (cb) => ipcRenderer.on('user-state-changed', cb),
-      removeUserChanged: (cb) => ipcRenderer.removeListener('user-state-changed', cb),
-      onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', cb),
-      removeOnNavigateToSession: (cb) => ipcRenderer.removeListener('dashboard:navigateToSession', cb),
-      onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', cb),
-      removeOnShowDashboard: (cb) => ipcRenderer.removeListener('dashboard:show', cb),
+      onUserChanged: (cb) => ipcRenderer.on('user-state-changed', (_e, state) => cb(state)),
+      removeUserChanged: () => ipcRenderer.removeAllListeners('user-state-changed'),
+      onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', (_e, data) => cb(data)),
+      removeOnNavigateToSession: () => ipcRenderer.removeAllListeners('dashboard:navigateToSession'),
+      onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', (_e, data) => cb(data)),
+      removeOnShowDashboard: () => ipcRenderer.removeAllListeners('dashboard:show'),
     }
   }
 });

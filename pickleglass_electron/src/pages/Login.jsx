@@ -16,19 +16,17 @@ export default function Login({ onLogin }) {
 
   useEffect(() => {
     if (authState !== 'waitingDeepLink') return
-    const handler = (_e, state) => {
+    const handler = (state) => {
       if (state?.isLoggedIn) {
         setAuthState('success')
         setTimeout(() => onLogin?.({ uid: state.uid, email: state.email, displayName: state.displayName }), 600)
       } else if (state?.isLoggedIn === false) {
-        // auth broadcast received but not logged in → reset
         setAuthState('idle')
       }
     }
     onUserChanged(handler)
-    // Safety timeout — if no deeplink after 3 min, reset spinner
     const timeout = setTimeout(() => setAuthState('idle'), 3 * 60 * 1000)
-    return () => { removeUserChanged(handler); clearTimeout(timeout) }
+    return () => { removeUserChanged(); clearTimeout(timeout) }
   }, [authState, onLogin])
 
   const handleStart = async () => {

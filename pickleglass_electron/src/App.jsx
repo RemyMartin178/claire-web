@@ -77,7 +77,7 @@ export default function App() {
       setLoading(false)
     }).catch(() => setLoading(false))
 
-    const handler = (_e, state) => {
+    const handler = (state) => {
       if (state?.isLoggedIn) setUser({ uid: state.uid, email: state.email, displayName: state.displayName })
       else setUser(null)
     }
@@ -89,8 +89,8 @@ export default function App() {
     onNavigateToSession(navHandler)
 
     return () => {
-      removeUserChanged(handler)
-      removeOnNavigateToSession(navHandler)
+      removeUserChanged()
+      removeOnNavigateToSession()
     }
   }, [])
 
