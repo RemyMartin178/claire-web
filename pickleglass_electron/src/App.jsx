@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
 import { getUser, onUserChanged, removeUserChanged, minimizeWindow, maximizeWindow, closeWindow, onNavigateToSession, removeOnNavigateToSession } from './utils/api.js'
 import Sidebar from './components/Sidebar.jsx'
-import Loader from './components/Loader.jsx'
 import Login from './pages/Login.jsx'
 import Activity from './pages/Activity.jsx'
 import ActivityDetails from './pages/ActivityDetails.jsx'
@@ -111,7 +110,7 @@ export default function App() {
     }
   }
 
-  if (loading) return <Loader />
+  if (loading) return null
 
   if (!user) return <Login onLogin={setUser} />
 
