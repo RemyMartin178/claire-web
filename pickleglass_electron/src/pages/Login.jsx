@@ -16,17 +16,19 @@ export default function Login({ onLogin }) {
 
   useEffect(() => {
     if (authState !== 'waitingDeepLink') return
-    const handler = (state) => {
-      if (state?.isLoggedIn) {
+    let done = false
+    const check = async () => {
+      if (done) return
+      const res = await getUser().catch(() => null)
+      if (res?.user) {
+        done = true
         setAuthState('success')
-        setTimeout(() => onLogin?.({ uid: state.uid, email: state.email, displayName: state.displayName }), 600)
-      } else if (state?.isLoggedIn === false) {
-        setAuthState('idle')
+        setTimeout(() => onLogin?.(res.user), 600)
       }
     }
-    onUserChanged(handler)
-    const timeout = setTimeout(() => setAuthState('idle'), 3 * 60 * 1000)
-    return () => { removeUserChanged(); clearTimeout(timeout) }
+    const interval = setInterval(check, 1000)
+    const timeout = setTimeout(() => { done = true; setAuthState('idle') }, 3 * 60 * 1000)
+    return () => { done = true; clearInterval(interval); clearTimeout(timeout) }
   }, [authState, onLogin])
 
   const handleStart = async () => {
