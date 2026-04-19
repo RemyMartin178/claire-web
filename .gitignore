@@ -59,7 +59,7 @@ typings/
 .yarn-integrity
 
 # dotenv environment variables file
-# .env - Now tracked for glass-main distribution (excluded in glass-clean)
+.env
 .env.test
 .env.local
 **/.env.local

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
 import { getUser, onUserChanged, removeUserChanged, minimizeWindow, maximizeWindow, closeWindow, onNavigateToSession, removeOnNavigateToSession } from './utils/api.js'
 import Sidebar from './components/Sidebar.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 import Login from './pages/Login.jsx'
 import Activity from './pages/Activity.jsx'
 import ActivityDetails from './pages/ActivityDetails.jsx'
@@ -110,9 +111,16 @@ export default function App() {
     }
   }
 
-  if (loading) return null
+  if (loading) return (
+    <div className="flex h-screen items-center justify-center bg-[#eef1f4]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-6 h-6 rounded-full border-2 border-[#111827]/15 border-t-[#111827]/70 animate-spin" />
+        <p className="text-[12px] text-[#6b7280] font-medium">Chargement...</p>
+      </div>
+    </div>
+  )
 
-  if (!user) return <Login onLogin={setUser} />
+  if (!user) return <ErrorBoundary pageName="connexion"><Login onLogin={setUser} /></ErrorBoundary>
 
   const activePage = route.page.startsWith('activity')
     ? 'activity'
@@ -197,7 +205,9 @@ export default function App() {
             </div>
 
             <main className="no-drag flex-1 overflow-y-auto bg-white">
-              {renderPage()}
+              <ErrorBoundary pageName={pageTitle} key={route.page}>
+                {renderPage()}
+              </ErrorBoundary>
             </main>
           </div>
         </div>

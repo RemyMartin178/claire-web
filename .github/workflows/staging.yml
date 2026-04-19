@@ -1,0 +1,31 @@
+name: Staging Build Check
+
+on:
+  push:
+    branches:
+      - staging
+
+jobs:
+  build-check:
+    name: Build web (staging)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install deps
+        run: cd pickleglass_web && npm install
+
+      - name: Build web
+        run: cd pickleglass_web && npm run build
+        env:
+          # Variables staging — à configurer dans GitHub Secrets (préfixées STAGING_)
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.STAGING_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.STAGING_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.STAGING_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STAGING_STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_API_URL }}

@@ -1,0 +1,33 @@
+name: Database Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Tous les jours à 3h UTC
+  workflow_dispatch:       # Déclenchement manuel possible
+
+jobs:
+  backup:
+    name: Backup Neon DB
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pg_dump
+        run: sudo apt-get install -y postgresql-client
+
+      - name: Run backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p backups
+          FILENAME="backup_$(date +%Y%m%d_%H%M%S).sql.gz"
+          pg_dump "$DATABASE_URL" | gzip > "$FILENAME"
+          echo "Backup créé : $FILENAME ($(du -sh "$FILENAME" | cut -f1))"
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: "*.sql.gz"
+          retention-days: 30
