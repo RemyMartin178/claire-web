@@ -1482,6 +1482,19 @@ class AgentOrchestrator {
         );
       }
 
+      // Conversational fallback — missing in streaming version, present in non-streaming
+      if (!useScreenshot && !hasKnowledge) {
+        console.log('💬 [STREAMING BUFFERED] No screenshot/knowledge — starting conversational fallback...');
+        const convStartTime = Date.now();
+        individualPromises.push(
+          this.generateConversationalResponse(agent, query, memoryContext, context.conversationHistory)
+            .then(response => {
+              console.log(`[OK] [STREAMING BUFFERED] Conversational completed in ${Date.now() - convStartTime}ms`);
+              return { type: 'conversational', response, score: this.quickScore(response, query, 'basic') };
+            })
+        );
+      }
+
       // Wait for individual analyses to complete
       const individualResults = await Promise.all(individualPromises);
       console.log(`[FAST] [BUFFERED PERFORMANCE] Individual analyses completed in ${Date.now() - analysisStartTime}ms`);
