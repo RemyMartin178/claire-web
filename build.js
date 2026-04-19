@@ -1,5 +1,4 @@
 const esbuild = require('esbuild');
-const path = require('path');
 const fs = require('fs');
 
 const isDev = process.argv.includes('--watch') || process.env.NODE_ENV === 'development';
@@ -28,24 +27,22 @@ const entryPoints = [
     { in: 'src/ui/app/OverlayController.js', out: 'public/build/overlay' },
 ];
 
-// Copy shader files to maintain the working shader loading
 function copyShaders() {
-    // Keep the shaders in the original marble directory where they were working
-    console.log('ℹ️ Shaders maintained in original location');
+    console.log('Shaders maintained in original location');
 }
 
 async function obfuscateBundle(filePath) {
     let JavaScriptObfuscator;
     try {
-        // Suppress promotional console output from javascript-obfuscator on require
-        const _log = console.log;
+        const originalLog = console.log;
         console.log = () => {};
         JavaScriptObfuscator = require('javascript-obfuscator');
-        console.log = _log;
+        console.log = originalLog;
     } catch {
-        console.warn('⚠️  javascript-obfuscator not installed — skipping obfuscation');
+        console.warn('javascript-obfuscator not installed - skipping obfuscation');
         return;
     }
+
     const code = fs.readFileSync(filePath, 'utf8');
     const result = JavaScriptObfuscator.obfuscate(code, {
         compact: true,
@@ -59,31 +56,30 @@ async function obfuscateBundle(filePath) {
         splitStringsChunkLength: 10,
         selfDefending: false,
     });
+
     fs.writeFileSync(filePath, result.getObfuscatedCode());
-    console.log(`🔒 Obfuscated: ${filePath}`);
+    console.log(`Obfuscated: ${filePath}`);
 }
 
 async function build() {
     try {
-        console.log('Building renderer process code...');
+        console.log('Building UI bundles...');
         await Promise.all(entryPoints.map(point => esbuild.build({
             ...baseConfig,
             entryPoints: [point.in],
             outfile: `${point.out}.js`,
         })));
 
-        // Copy shader files after build
         copyShaders();
 
-        // Obfuscate renderer bundles in production
         if (!isDev) {
-            console.log('🔒 Obfuscating renderer bundles...');
+            console.log('Obfuscating UI bundles...');
             await Promise.all(entryPoints.map(point => obfuscateBundle(`${point.out}.js`)));
         }
 
-        console.log('✅ Renderer builds successful!');
-    } catch (e) {
-        console.error('Renderer build failed:', e);
+        console.log('UI builds successful.');
+    } catch (error) {
+        console.error('UI build failed:', error);
         process.exit(1);
     }
 }
@@ -95,12 +91,11 @@ async function watch() {
             entryPoints: [point.in],
             outfile: `${point.out}.js`,
         })));
-        
-        console.log('Watching for changes...');
-        await Promise.all(contexts.map(context => context.watch()));
 
-    } catch (e) {
-        console.error('Watch mode failed:', e);
+        console.log('Watching UI bundles for changes...');
+        await Promise.all(contexts.map(context => context.watch()));
+    } catch (error) {
+        console.error('Watch mode failed:', error);
         process.exit(1);
     }
 }
@@ -109,4 +104,4 @@ if (process.argv.includes('--watch')) {
     watch();
 } else {
     build();
-} 
+}

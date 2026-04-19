@@ -6,12 +6,12 @@
     "main": "src/index.js",
     "scripts": {
         "setup": "npm install && cd pickleglass_web && npm install && npm run build && cd .. && npm start",
-        "start": "npm run build:renderer && electron .",
-        "dev": "npm run watch:renderer & electron .",
+        "start": "npm run build:ui && electron .",
+        "dev": "npm run watch:ui & electron .",
         "dev-tools": "node dev-with-devtools.js",
-        "start:dev": "npm run build:renderer && cross-env NODE_ENV=development node node_modules/electron/cli.js ./src/index.js",
+        "start:dev": "npm run build:ui && cross-env NODE_ENV=development node node_modules/electron/cli.js ./src/index.js",
         "package": "npm run build:all && electron-builder --dir",
-        "make": "npm run build:renderer && electron-forge make",
+        "make": "npm run build:ui && electron-forge make",
         "prebuild": "rimraf dist",
         "build": "npm run build:all && electron-builder --config electron-builder.yml --publish never && node copy-env.js",
         "build:win": "npm run build:all && electron-builder --win --x64 --publish never && node copy-env.js",
@@ -22,10 +22,10 @@
         "publish": "npm run build:all && electron-builder --config electron-builder.yml --publish always",
         "lint": "eslint --ext .ts,.tsx,.js .",
         "postinstall": "node scripts/postinstall.js",
-        "build:renderer": "node build.js",
+        "build:ui": "node build.js",
         "build:web": "cd pickleglass_web && npm run build && cd ..",
-        "build:all": "npm run build:renderer && npm run build:web",
-        "watch:renderer": "node build.js --watch"
+        "build:all": "npm run build:ui && npm run build:web",
+        "watch:ui": "node build.js --watch"
     },
     "keywords": [
         "claire",

@@ -970,6 +970,23 @@ class AskService {
                     try {
                         const { agentsApiClient } = require('../../domains/agents');
 
+                        // Ensure auth context is set on agentsApiClient before each request
+                        try {
+                            const firebaseUser = authService.currentUser;
+                            const currentUid = authService.getCurrentUserId();
+                            if (firebaseUser && currentUid) {
+                                const token = firebaseUser.accessToken || (firebaseUser.getIdToken ? await firebaseUser.getIdToken() : null);
+                                agentsApiClient.setAuthContext({
+                                    token,
+                                    userId: currentUid,
+                                    isGuest: false,
+                                    permissions: ['authenticated']
+                                });
+                            }
+                        } catch (authErr) {
+                            logger.warn('[AskService] Could not set auth context for agentsApiClient:', authErr.message);
+                        }
+
                         // Switch to streaming state immediately so UI shows activity
                         this.state.isLoading = false;
                         this.state.isStreaming = true;
@@ -992,6 +1009,7 @@ class AskService {
                         });
 
                         // Check if we have a valid response
+                        logger.info('[AskService] Agent response received:', { success: agentResponse?.success, responsePreview: agentResponse?.response?.substring(0, 80), length: agentResponse?.response?.length });
                         if (agentResponse && agentResponse.success && agentResponse.response) {
                             const askWin = getWindowPool()?.get('ask');
 
@@ -1065,14 +1083,14 @@ class AskService {
                             error: backendError.message || backendError,
                             stack: backendError.stack
                         });
-                        throw backendError; // Re-throw instead of falling back to local AI
+                        throw backendError;
                     }
                 }
             }
             
             // Only create local LLM if not using backend agent execution
             // This code should only run if we haven't returned yet (shouldn't happen for premium users)
-            
+
             // Determine optimal provider for this request
             selectedProvider = this.determineOptimalProvider(userPrompt, screenshotResult);
             if (selectedProvider) {

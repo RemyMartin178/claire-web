@@ -19,9 +19,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build renderer + web
+      - name: Build UI + web
         run: |
-          npm run build:renderer
+          npm run build:ui
           cd pickleglass_web && npm install && npm run build && cd ..
 
       - name: Build Windows installer
@@ -53,9 +53,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build renderer + web
+      - name: Build UI + web
         run: |
-          npm run build:renderer
+          npm run build:ui
           cd pickleglass_web && npm install && npm run build && cd ..
 
       - name: Build macOS DMG

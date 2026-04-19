@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Renderer only (header + overlay + content) — le plus courant
-npm run build:renderer
+npm run build:ui
 
 # Build complet (renderer + web + packaging Electron)
 npm run build
@@ -16,7 +16,7 @@ npm run build
 
 **Important : l'utilisateur lance TOUJOURS le build manuellement. Ne jamais le lancer automatiquement.**
 
-Tout changement dans `src/ui/react/*.jsx` nécessite un rebuild du renderer avant d'être visible.
+Tout changement dans `src/ui/react/*.jsx` nécessite un rebuild UI avant d'être visible.
 
 ---
 
@@ -27,7 +27,7 @@ Tout changement dans `src/ui/react/*.jsx` nécessite un rebuild du renderer avan
 | Processus | Rôle | Fichiers clés |
 |-----------|------|---------------|
 | **Main** | Logique métier, IPC, accès OS | `src/bridge/featureBridge.js`, `src/features/`, `src/common/` |
-| **Renderer** | UI React, overlay transparent | `src/ui/react/*.jsx` compilés → `public/build/content.js` |
+| **UI** | UI React, overlay transparent | `src/ui/react/*.jsx` compilés → `public/build/content.js` |
 
 ### Pattern IPC strict
 
