@@ -1797,7 +1797,7 @@ function createDashboardWindow() {
             nodeIntegration: false,
             contextIsolation: true,
             preload: path.join(__dirname, '../preload.js'),
-            devTools: false,
+            devTools: true,
             spellcheck: false,
             webSecurity: false,
         },
@@ -1812,6 +1812,7 @@ function createDashboardWindow() {
 
     dashboardWindow.once('ready-to-show', () => {
         dashboardWindow.show();
+        dashboardWindow.webContents.openDevTools({ mode: 'detach' });
     });
 
     dashboardWindow.on('closed', () => {

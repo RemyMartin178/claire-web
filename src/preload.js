@@ -449,7 +449,10 @@ contextBridge.exposeInMainWorld('api', {
 
     // Dashboard renderer window
     dashboard: {
-      getUser: () => ipcRenderer.invoke('dashboard:getUser'),
+      getUser: () => {
+        console.log('[PRELOAD] dashboard:getUser called');
+        return ipcRenderer.invoke('dashboard:getUser').then(r => { console.log('[PRELOAD] dashboard:getUser result:', JSON.stringify(r)); return r; });
+      },
       getSessions: (uid) => ipcRenderer.invoke('dashboard:getSessions', uid),
       getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
       deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
