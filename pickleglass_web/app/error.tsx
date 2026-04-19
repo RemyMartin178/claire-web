@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import Link from 'next/link'
 import { motion, Variants } from 'framer-motion'
 import { Page } from '@/components/Page'
 
@@ -94,12 +95,12 @@ export default function GlobalError({
             >
               Réessayer
             </button>
-            <a
+            <Link
               href="/"
               className="text-[13px] font-medium text-[#1D1D1F] underline underline-offset-4 hover:opacity-60 transition-opacity"
             >
               Retour à l'accueil
-            </a>
+            </Link>
           </motion.div>
 
           {error.digest && (
