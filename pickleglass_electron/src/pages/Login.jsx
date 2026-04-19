@@ -1,29 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, Check } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import claireLogo from '../assets/claire-logo.ico'
 import zoomMockup from '../assets/zoom-mockup.jpg'
 import { getUser, startExternalAuth, openExternal, onUserChanged, removeUserChanged } from '../utils/api.js'
 
-const brandCircle = {
-  width: 48,
-  height: 48,
-  borderRadius: 14,
-  display: 'grid',
-  placeItems: 'center',
-  background: 'radial-gradient(circle at 30% 20%, #2b76ff 0%, #0d3aa9 70%, #081c5c 100%)',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.35), 0 14px 32px rgba(13,58,169,0.28)',
-  color: '#fff',
-  fontWeight: 700,
-  fontSize: 18,
-  letterSpacing: '-0.04em',
-}
-
 function openLegal(url) {
-  if (openExternal) {
-    openExternal(url)
-  } else {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
+  if (openExternal) openExternal(url)
+  else window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 // authState: 'idle' | 'loading' | 'waitingDeepLink' | 'success'
@@ -42,7 +26,7 @@ export default function Login({ onLogin }) {
     return () => removeUserChanged(handler)
   }, [authState, onLogin])
 
-  const handleContinue = async () => {
+  const handleStart = async () => {
     if (authState !== 'idle') return
     setAuthState('loading')
     try {
@@ -54,8 +38,7 @@ export default function Login({ onLogin }) {
       }
       await startExternalAuth()
       setAuthState('waitingDeepLink')
-    } catch (error) {
-      console.error(error)
+    } catch (_) {
       setAuthState('idle')
     }
   }
@@ -66,151 +49,291 @@ export default function Login({ onLogin }) {
   const busy = loading || waiting || success
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white text-[#1d1d1f]">
-      <section className="relative flex w-[45%] min-w-[420px] flex-col justify-center px-10 py-10">
-        <div className="mx-auto flex w-full max-w-[360px] flex-col items-center">
-          <div className="mb-7 flex items-center gap-3">
-            <div style={brandCircle}>C</div>
-            <span className="text-[1.25rem] font-medium tracking-[-0.03em]">Claire</span>
+    <div style={{
+      display: 'flex',
+      height: '100vh',
+      width: '100vw',
+      overflow: 'hidden',
+      fontFamily: '"Google Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
+      background: '#ffffff',
+    }}>
+      {/* ── Left Panel ── */}
+      <div style={{
+        flex: '50%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '3rem 2rem',
+        position: 'relative',
+        background: '#ffffff',
+      }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: '100%',
+          maxWidth: 420,
+        }}>
+          {/* Logo & Brand */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+            <img src={claireLogo} alt="Claire Logo" style={{ width: 56, height: 56 }} />
+            <span style={{
+              fontSize: '1.4rem',
+              fontWeight: 500,
+              color: '#1d1d1f',
+              letterSpacing: '-0.02em',
+              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              transform: 'translateY(-0.5px)',
+              lineHeight: 1
+            }}>Claire</span>
           </div>
 
-          <h1 className="mb-3 text-center text-[2.65rem] font-medium leading-[1.08] tracking-[-0.06em]">
-            Ouvrir Claire sur le web
+          <h1 style={{
+            fontSize: '3.5rem',
+            fontWeight: 500,
+            textAlign: 'center',
+            lineHeight: 1.25,
+            letterSpacing: '-1.28px',
+            margin: '0 0 12px',
+            color: '#1d1d1f',
+            whiteSpace: 'nowrap'
+          }}>
+            Bienvenue sur{' '}
+            <span style={{ color: '#1d1d1f' }}>Claire</span>
           </h1>
 
-          <p className="mb-8 text-center text-[1rem] leading-7 text-[#6e6e73]">
-            Cette fenetre Electron ne gere pas l'authentification. Elle sert seulement de passerelle vers le flow web principal.
+          <p style={{
+            fontSize: '1.25rem',
+            fontWeight: 400,
+            color: '#86868b',
+            textAlign: 'center',
+            lineHeight: 1.5,
+            letterSpacing: '-0.01em',
+            margin: '0 0 44px',
+            whiteSpace: 'nowrap'
+          }}>
+            Votre assistant de réunion.
           </p>
 
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: 'easeOut' }}
-            className="w-full"
+            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
+            style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}
           >
             <button
-              onClick={handleContinue}
+              onClick={handleStart}
               disabled={busy}
-              className="btn-apple-premium btn-hero-cta-premium group w-full px-8"
-              style={{ opacity: busy ? 0.72 : 1, cursor: busy ? 'not-allowed' : 'pointer' }}
+              className="btn-apple-premium btn-hero-cta-premium px-10 group"
+              style={{
+                width: '100%',
+                maxWidth: 320,
+                opacity: busy ? 0.7 : 1,
+                cursor: busy ? 'not-allowed' : 'pointer',
+              }}
             >
               <div className="btn-primary-shine" />
               <div className="blurred-border-black" />
               <span className="relative z-10 flex items-center justify-center">
                 {success ? (
-                  <Check className="h-4 w-4 text-white" />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
                 ) : (loading || waiting) ? (
-                  <span
-                    style={{
-                      width: 16,
-                      height: 16,
-                      border: '2px solid rgba(255,255,255,0.35)',
-                      borderTopColor: 'white',
-                      borderRadius: '50%',
-                      animation: 'spin 0.8s linear infinite',
-                      display: 'inline-block',
-                    }}
-                  />
+                  <span style={{
+                    width: 16, height: 16,
+                    border: '2px solid rgba(255,255,255,0.35)',
+                    borderTopColor: 'white',
+                    borderRadius: '50%',
+                    animation: 'spin 0.8s linear infinite',
+                    display: 'inline-block',
+                  }} />
                 ) : (
                   <>
-                    <span>Continuer sur le web</span>
-                    <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                    <span style={{ fontFamily: 'inherit' }}>Continuer</span>
+                    <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
                   </>
                 )}
               </span>
             </button>
             {waiting && (
-              <p className="mt-3 text-center text-[12px] text-[#6e6e73]">
+              <p style={{ fontSize: 12, color: '#8e8e93', textAlign: 'center', margin: 0 }}>
                 Connectez-vous dans le navigateur, puis revenez ici.
               </p>
             )}
           </motion.div>
+        </div>
 
-          <p className="mt-8 text-center text-[12px] leading-6 text-[#a1a1aa]">
-            Le login et l'inscription s'ouvrent uniquement dans votre navigateur sur `pickleglass_web`.
-            <br />
+        {/* Footer */}
+        <div style={{
+          position: 'absolute',
+          bottom: '2.5rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '100%',
+          maxWidth: 400,
+          textAlign: 'center',
+          padding: '0 1rem'
+        }}>
+          <p style={{ fontSize: '0.8125rem', color: '#a1a1aa', lineHeight: 1.6 }}>
+            En vous inscrivant, vous acceptez nos{' '}
             <span
               onClick={() => openLegal('https://www.clairia.app/conditions')}
-              className="cursor-pointer font-semibold text-[#636366]"
+              style={{ fontWeight: 600, color: '#636366', cursor: 'pointer' }}
             >
               Conditions d&apos;utilisation
             </span>
-            {' '}et{' '}
+            {' '}et notre{' '}
             <span
               onClick={() => openLegal('https://www.clairia.app/confidentialite')}
-              className="cursor-pointer font-semibold text-[#636366]"
+              style={{ fontWeight: 600, color: '#636366', cursor: 'pointer' }}
             >
-              Politique de confidentialite
-            </span>
-            .
+              Politique de confidentialité
+            </span>.
           </p>
         </div>
-      </section>
+      </div>
 
-      <section
-        className="relative flex flex-1 items-start justify-center overflow-hidden border-l border-[#e5e7eb] px-5 pt-[9%]"
-        style={{ background: 'linear-gradient(160deg, #edf1f6 0%, #e3e8f0 100%)' }}
-      >
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.035) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        />
-        <div
-          className="pointer-events-none absolute right-[-70px] top-[-70px] h-[280px] w-[280px]"
-          style={{ background: 'radial-gradient(circle, rgba(21,98,223,0.12) 0%, transparent 72%)' }}
-        />
+      {/* ── Right Panel (Product Preview) ── */}
+      <div style={{
+        flex: '50%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        paddingTop: '12%',
+        position: 'relative',
+        background: 'linear-gradient(160deg, #e8ebf0 0%, #dde1e8 100%)',
+        borderLeft: '1px solid #e0e3e8',
+        overflow: 'hidden',
+        userSelect: 'none',
+      }}>
+        {/* Dot grid */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+        }} />
+        {/* Blue glow */}
+        <div style={{
+          position: 'absolute', top: -60, right: -60, width: 300, height: 300,
+          background: 'radial-gradient(circle, rgba(21,98,223,0.09) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
 
-        <div className="relative z-10 flex w-full max-w-[560px] flex-col items-center gap-7">
-          <div className="inline-flex h-[40px] items-center rounded-full border border-white/15 bg-[rgba(24,23,28,0.56)] px-4 text-[12px] font-medium text-white/85 shadow-[0_8px_32px_rgba(0,0,0,0.22)] backdrop-blur-[14px]">
-            Le renderer Electron reste separe du flow d'auth web.
+        {/* Zoom meeting photo */}
+        <div style={{
+          position: 'absolute',
+          top: '42%', left: '50%',
+          transform: 'translateX(-50%)',
+          width: '92%', maxWidth: 580,
+          borderRadius: 14,
+          boxShadow: '0 16px 48px rgba(0,0,0,0.22)',
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          zIndex: 0,
+          aspectRatio: '16/9',
+        }}>
+          <img
+            src={zoomMockup}
+            alt=""
+            style={{ width: '100%', height: '140%', objectFit: 'cover', objectPosition: 'center 75%', marginTop: '-4%' }}
+          />
+        </div>
+
+        {/* Mockup overlay */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          pointerEvents: 'none', width: '100%', padding: '0 16px', gap: 8,
+          position: 'relative', zIndex: 1,
+        }}>
+          {/* Pill */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center',
+            height: 42, padding: '0 6px 0 4px', borderRadius: 100,
+            background: 'rgba(24,23,28,0.55)',
+            border: '1px solid rgba(207,226,255,0.24)',
+            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+            gap: 0, position: 'relative',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10)',
+          }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 12, right: 12, height: 1, borderRadius: 1, pointerEvents: 'none',
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.18) 30%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0.18) 70%, transparent)',
+            }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '0 2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.90)' }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="3" width="5" height="18" rx="1.5"/><rect x="14" y="3" width="5" height="18" rx="1.5"/></svg>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.10)', background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.75)' }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2.5"/></svg>
+              </div>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, height: 14, marginLeft: 6, marginRight: 4 }}>
+              {[0.35, 1, 0.6, 0.85, 0.4].map((s, i) => (
+                <div key={i} style={{ width: 2.5, height: 14, borderRadius: 99, background: 'rgba(255,255,255,0.72)', transform: `scaleY(${s})`, transformOrigin: 'center' }} />
+              ))}
+            </div>
+            <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.13)', margin: '0 4px', borderRadius: 1 }} />
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 28, padding: '0 10px 0 8px', borderRadius: 100, background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.95)', fontSize: 12, fontWeight: 500, margin: '0 2px', letterSpacing: '0.01em', whiteSpace: 'nowrap' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" style={{ opacity: 0.75 }}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              IA
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', color: 'rgba(255,255,255,0.90)' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.13)', margin: '0 4px', borderRadius: 1 }} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: '50%', color: 'rgba(255,255,255,0.90)' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </div>
           </div>
 
-          <div className="w-full overflow-hidden rounded-[18px] border border-[rgba(207,226,255,0.24)] bg-[rgba(24,23,28,0.56)] text-white shadow-[0_24px_56px_rgba(0,0,0,0.22)] backdrop-blur-[18px]">
-            <div className="border-b border-white/8 px-5 py-4">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-white/70" />
-                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
-                <span className="h-2.5 w-2.5 rounded-full bg-white/25" />
-              </div>
-              <div className="rounded-[14px] bg-[radial-gradient(179.05%_132.83%_at_46.18%_-23.44%,_#1562df_0,_#0c26a8_100%)] px-4 py-3 text-[13px] font-medium text-[#dbeafe] shadow-[0_0_0_.678px_#0c44a1,inset_0_-1.355px_#022c70,inset_0_.678px_#81b6ff]">
-                Claire peut vous assister pendant la reunion, mais le compte se connecte sur le web principal.
+          {/* Ask panel mockup */}
+          <div style={{
+            width: '96%', maxWidth: 560,
+            background: 'rgba(24,23,28,0.55)',
+            border: '1px solid rgba(207,226,255,0.24)',
+            backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+            borderRadius: 16, color: 'white',
+            fontFamily: '"Plus Jakarta Sans", -apple-system, sans-serif',
+            boxShadow: '0 24px 56px rgba(0,0,0,0.20), 0 4px 16px rgba(0,0,0,0.10)',
+            overflow: 'hidden', position: 'relative',
+          }}>
+            <div style={{ position: 'absolute', top: 0, left: 14, right: 14, height: 1, pointerEvents: 'none', zIndex: 2, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.13) 40%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.13) 60%, transparent)' }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px 16px 8px' }}>
+              <div style={{ background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0, #0c26a8 100%)', color: '#CBE3FF', boxShadow: '0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6ff', borderRadius: '14px 14px 4px 14px', padding: '8px 13px', fontSize: 13, fontWeight: 500, maxWidth: '78%' }}>
+                Claire peut-elle résumer ma réunion en direct ?
               </div>
             </div>
-
-            <div className="space-y-3 px-5 py-5">
-              <p className="text-[13.5px] leading-6 text-white/78">
-                Le renderer Electron affiche seulement l'interface desktop et n'embarque aucune page login ou register.
+            <div style={{ padding: '8px 16px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+              <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'rgba(255,255,255,0.78)', margin: '0 0 10px' }}>
+                Oui — Claire écoute votre réunion en temps réel et génère un{' '}
+                <strong style={{ color: 'rgba(255,255,255,0.92)', fontWeight: 600 }}>résumé live</strong>{' '}
+                avec les décisions, actions à suivre et points clés.
               </p>
-              <p className="text-[13.5px] leading-6 text-white/78">
-                Quand vous continuez, le navigateur ouvre le flow externe puis revient via le deeplink de l'application.
+              <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'rgba(255,255,255,0.78)', margin: 0 }}>
+                Vous pouvez aussi poser des questions sur ce qui vient d&apos;être dit, demander une{' '}
+                <strong style={{ color: 'rgba(255,255,255,0.92)', fontWeight: 600 }}>traduction</strong>{' '}
+                ou obtenir une reformulation.
               </p>
             </div>
-
-            <div className="flex items-center gap-3 border-t border-white/8 px-5 py-4">
-              <span className="flex-1 text-[12.5px] text-white/30">
-                Desktop d'un cote, authentification web de l'autre.
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px 14px 16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+              <span style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.28)', fontFamily: '"Plus Jakarta Sans", -apple-system, sans-serif', fontWeight: 400, userSelect: 'none' }}>
+                Posez une question sur votre écran ou la conversation...
               </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[radial-gradient(179.05%_132.83%_at_46.18%_-23.44%,_#1562df_0,_#0c26a8_100%)] shadow-[0_0_0_.678px_#0c44a1,inset_0_-1.355px_#022c70,inset_0_.678px_#81b6ff]">
-                <ArrowRight className="h-4 w-4 text-[#dbeafe]" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, padding: '5px 7px', color: 'rgba(255,255,255,0.50)', flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9.663 17h4.673M12 3v1m6.364 1.636-.707.707M21 12h-1M4 12H3m1.636-6.364.707.707M6.343 17.657l-.707.707"/><circle cx="12" cy="12" r="4"/></svg>
+              </div>
+              <div style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0, #0c26a8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6ff' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#CBE3FF" strokeWidth="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
               </div>
             </div>
-          </div>
-
-          <div className="relative w-full max-w-[560px] overflow-hidden rounded-[18px] shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
-            <img
-              src={zoomMockup}
-              alt=""
-              className="pointer-events-none h-[220px] w-full object-cover"
-              style={{ objectPosition: 'center 74%' }}
-            />
           </div>
         </div>
-      </section>
+      </div>
 
-      <style>{'@keyframes spin { to { transform: rotate(360deg); } }'}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
