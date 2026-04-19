@@ -225,11 +225,19 @@ function setupProtocolHandling() {
     logger.info('[Protocol] Registering pickleglass:// and claire:// custom URL schemes...');
 
     try {
-        // Always force re-register to ensure registry points to current exe (handles post-update stale paths)
-        const pgSuccess = app.setAsDefaultProtocolClient('pickleglass');
+        // In dev mode on Windows, must pass execPath + argv[1] explicitly or registry
+        // points to wrong electron.exe and second-instance never fires.
+        const extraArgs = !app.isPackaged ? [path.resolve(process.argv[1])] : [];
+        const execPath = !app.isPackaged ? process.execPath : undefined;
+
+        const pgSuccess = execPath
+            ? app.setAsDefaultProtocolClient('pickleglass', execPath, extraArgs)
+            : app.setAsDefaultProtocolClient('pickleglass');
         logger.info(`[Protocol] pickleglass:// registration: ${pgSuccess ? 'OK' : 'FAILED (may need admin rights)'}`);
 
-        const claireSuccess = app.setAsDefaultProtocolClient('claire');
+        const claireSuccess = execPath
+            ? app.setAsDefaultProtocolClient('claire', execPath, extraArgs)
+            : app.setAsDefaultProtocolClient('claire');
         logger.info(`[Protocol] claire:// registration: ${claireSuccess ? 'OK' : 'FAILED (may need admin rights)'}`);
     } catch (error) {
         logger.error('[Protocol] Error registering protocol:', { error: error.message });
