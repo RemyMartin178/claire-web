@@ -1,7 +1,7 @@
 {
     "name": "claire-app",
     "productName": "Claire",
-    "version": "0.2.5",
+    "version": "1.0.0",
     "description": "Claire AI Assistant",
     "main": "src/index.js",
     "scripts": {
