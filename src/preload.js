@@ -445,18 +445,25 @@ contextBridge.exposeInMainWorld('api', {
     setSubdued: (viewId, subdued) => ipcRenderer.invoke('liquid-glass:set-subdued', viewId, subdued),
 
     // Platform Detection
-    getPlatformInfo: () => ipcRenderer.invoke('get-platform-info')
-  },
-  // Minimal dashboard bridge used by pickleglass_electron / renderer.clairia.app
-  dashboard: {
-    open: () => ipcRenderer.invoke('dashboard:open'),
-    getUser: () => ipcRenderer.invoke('dashboard:getUser'),
-    getSessions: (uid) => ipcRenderer.invoke('dashboard:getSessions', uid),
-    getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
-    deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
-    onUserChanged: (cb) => ipcRenderer.on('user-state-changed', cb),
-    removeUserChanged: (cb) => ipcRenderer.removeListener('user-state-changed', cb),
-    startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
+    getPlatformInfo: () => ipcRenderer.invoke('get-platform-info'),
+
+    // Dashboard renderer window
+    dashboard: {
+      getUser: () => ipcRenderer.invoke('dashboard:getUser'),
+      getSessions: (uid) => ipcRenderer.invoke('dashboard:getSessions', uid),
+      getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
+      deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
+      startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
+      minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
+      maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
+      closeWindow: () => ipcRenderer.invoke('dashboard:close'),
+      onUserChanged: (cb) => ipcRenderer.on('user-state-changed', cb),
+      removeUserChanged: (cb) => ipcRenderer.removeListener('user-state-changed', cb),
+      onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', cb),
+      removeOnNavigateToSession: (cb) => ipcRenderer.removeListener('dashboard:navigateToSession', cb),
+      onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', cb),
+      removeOnShowDashboard: (cb) => ipcRenderer.removeListener('dashboard:show', cb),
+    }
   }
 });
 

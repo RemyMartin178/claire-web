@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import zoomMockup from '../assets/zoom-mockup.jpg'
-import { getUser, startExternalAuth, openExternal } from '../utils/api.js'
+import { getUser, startExternalAuth, openExternal, onUserChanged, removeUserChanged } from '../utils/api.js'
 
 const brandCircle = {
   width: 48,
@@ -26,25 +26,44 @@ function openLegal(url) {
   }
 }
 
+// authState: 'idle' | 'loading' | 'waitingDeepLink' | 'success'
 export default function Login({ onLogin }) {
-  const [loading, setLoading] = useState(false)
+  const [authState, setAuthState] = useState('idle')
+
+  useEffect(() => {
+    if (authState !== 'waitingDeepLink') return
+    const handler = (_e, state) => {
+      if (state?.isLoggedIn) {
+        setAuthState('success')
+        setTimeout(() => onLogin?.({ uid: state.uid, email: state.email, displayName: state.displayName }), 600)
+      }
+    }
+    onUserChanged(handler)
+    return () => removeUserChanged(handler)
+  }, [authState, onLogin])
 
   const handleContinue = async () => {
-    setLoading(true)
+    if (authState !== 'idle') return
+    setAuthState('loading')
     try {
       const res = await getUser()
       if (res?.user) {
-        onLogin?.(res.user)
+        setAuthState('success')
+        setTimeout(() => onLogin?.(res.user), 600)
         return
       }
-
       await startExternalAuth()
+      setAuthState('waitingDeepLink')
     } catch (error) {
       console.error(error)
-    } finally {
-      setLoading(false)
+      setAuthState('idle')
     }
   }
+
+  const loading = authState === 'loading'
+  const waiting = authState === 'waitingDeepLink'
+  const success = authState === 'success'
+  const busy = loading || waiting || success
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-white text-[#1d1d1f]">
@@ -71,14 +90,16 @@ export default function Login({ onLogin }) {
           >
             <button
               onClick={handleContinue}
-              disabled={loading}
+              disabled={busy}
               className="btn-apple-premium btn-hero-cta-premium group w-full px-8"
-              style={{ opacity: loading ? 0.72 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+              style={{ opacity: busy ? 0.72 : 1, cursor: busy ? 'not-allowed' : 'pointer' }}
             >
               <div className="btn-primary-shine" />
               <div className="blurred-border-black" />
               <span className="relative z-10 flex items-center justify-center">
-                {loading ? (
+                {success ? (
+                  <Check className="h-4 w-4 text-white" />
+                ) : (loading || waiting) ? (
                   <span
                     style={{
                       width: 16,
@@ -98,6 +119,11 @@ export default function Login({ onLogin }) {
                 )}
               </span>
             </button>
+            {waiting && (
+              <p className="mt-3 text-center text-[12px] text-[#6e6e73]">
+                Connectez-vous dans le navigateur, puis revenez ici.
+              </p>
+            )}
           </motion.div>
 
           <p className="mt-8 text-center text-[12px] leading-6 text-[#a1a1aa]">

@@ -362,8 +362,16 @@ module.exports = {
                 logger.warn('[FeatureBridge] listen:changeSession rejected invalid listenButtonText', listenButtonText);
                 return { success: false, error: 'Invalid listenButtonText' };
             }
+            const sessionIdBeforeStop = (listenButtonText === 'Stop') ? listenService.currentSessionId : null;
             try {
                 await listenService.handleListenRequest(listenButtonText);
+                if (sessionIdBeforeStop) {
+                    const dashWin = windowManager.getDashboardWindow();
+                    if (dashWin && !dashWin.isDestroyed()) {
+                        dashWin.show();
+                        dashWin.webContents.send('dashboard:navigateToSession', { sessionId: sessionIdBeforeStop });
+                    }
+                }
                 return { success: true };
             } catch (error) {
                 logger.error('listen:changeSession failed', { message: error.message });
@@ -572,107 +580,84 @@ module.exports = {
             }
         });
 
-        // Dashboard Window
-        ipcMain.handle('dashboard:open', async () => {
-            try {
-                windowManager.showDashboardWindow();
-                return { success: true };
-            } catch (error) {
-                logger.error('[FeatureBridge] dashboard:open failed:', { error });
-                return { success: false, error: error.message };
-            }
-        });
 
-        // Dashboard: current user (no Firebase auth needed in renderer)
+
+        // Dashboard window IPC handlers
         ipcMain.handle('dashboard:getUser', async () => {
             try {
-                const u = authService.getCurrentUser();
-                if (!u || !u.isLoggedIn) return { success: true, user: null };
-                let token = null;
-                try { token = await authService.currentUser?.getIdToken?.(); } catch {}
-                return { success: true, user: { uid: u.uid, email: u.email, displayName: u.displayName }, token };
-            } catch (error) {
-                return { success: false, user: null };
+                const user = authService.getCurrentUser();
+                return user ? { uid: user.uid, email: user.email, displayName: user.displayName, photoURL: user.photoURL } : null;
+            } catch (e) {
+                return null;
             }
         });
 
-        // Dashboard: Firestore helpers (main process is already authenticated)
         ipcMain.handle('dashboard:getSessions', async (event, uid) => {
             try {
                 const db = getFirestoreInstance();
                 const snap = await getDocs(collection(db, 'users', uid, 'sessions'));
-                const docs = snap.docs
-                    .map(d => _serializeFsDoc({ id: d.id, ...d.data() }))
-                    .filter(s => s.session_type !== 'ask')
-                    .sort((a, b) => (b._startMs || 0) - (a._startMs || 0));
-                return { success: true, sessions: docs };
-            } catch (error) {
-                logger.error('[FeatureBridge] dashboard:getSessions failed', { error: error.message });
-                return { success: true, sessions: [] };
+                return snap.docs.map(d => ({ id: d.id, ..._serializeFsDoc(d.data()) }));
+            } catch (e) {
+                logger.error('[FeatureBridge] dashboard:getSessions failed', { message: e.message });
+                return [];
             }
         });
 
         ipcMain.handle('dashboard:getSession', async (event, uid, sessionId) => {
             try {
                 const db = getFirestoreInstance();
-                const [sessionSnap, summarySnap, transcriptsSnap, aiSnap] = await Promise.all([
-                    getDoc(doc(db, 'users', uid, 'sessions', sessionId)),
-                    getDoc(doc(db, 'users', uid, 'sessions', sessionId, 'summary', 'data')),
-                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'transcripts')),
-                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'ai_messages')),
-                ]);
-                if (!sessionSnap.exists()) return { success: true, data: null };
-                const session = _serializeFsDoc({ id: sessionId, ...sessionSnap.data() });
-                const summary = summarySnap.exists() ? _serializeFsDoc(summarySnap.data()) : null;
-                const transcripts = transcriptsSnap.docs
-                    .map(d => _serializeFsDoc({ id: d.id, ...d.data() }))
-                    .sort((a, b) => (a._startAtMs || 0) - (b._startAtMs || 0));
-                const aiMessages = aiSnap.docs
-                    .map(d => _serializeFsDoc({ id: d.id, ...d.data() }))
-                    .sort((a, b) => (a._sentAtMs || 0) - (b._sentAtMs || 0));
-                return { success: true, data: { session, summary, transcripts, aiMessages } };
-            } catch (error) {
-                logger.error('[FeatureBridge] dashboard:getSession failed', { error: error.message });
-                return { success: false, data: null };
+                const snap = await getDoc(doc(db, 'users', uid, 'sessions', sessionId));
+                if (!snap.exists()) return null;
+                return { id: snap.id, ..._serializeFsDoc(snap.data()) };
+            } catch (e) {
+                logger.error('[FeatureBridge] dashboard:getSession failed', { message: e.message });
+                return null;
             }
         });
 
         ipcMain.handle('dashboard:deleteSession', async (event, uid, sessionId) => {
             try {
                 const db = getFirestoreInstance();
-                const batch = writeBatch(db);
-                const [trSnap, aiSnap] = await Promise.all([
-                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'transcripts')),
-                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'ai_messages')),
-                ]);
-                trSnap.docs.forEach(d => batch.delete(d.ref));
-                aiSnap.docs.forEach(d => batch.delete(d.ref));
-                batch.delete(doc(db, 'users', uid, 'sessions', sessionId, 'summary', 'data'));
-                batch.delete(doc(db, 'users', uid, 'sessions', sessionId));
-                await batch.commit();
+                await deleteDoc(doc(db, 'users', uid, 'sessions', sessionId));
                 return { success: true };
-            } catch (error) {
-                logger.error('[FeatureBridge] dashboard:deleteSession failed', { error: error.message });
-                return { success: false, error: error.message };
+            } catch (e) {
+                logger.error('[FeatureBridge] dashboard:deleteSession failed', { message: e.message });
+                return { success: false, error: e.message };
             }
         });
 
-        // ── Dashboard: splash + startClaire ──────────────────────────────────
-        ipcMain.handle('dashboard:startClaire', async (event) => {
+        ipcMain.handle('dashboard:startClaire', async () => {
             try {
-                // Create overlay windows if not already created
-                windowManager.createWindows();
-                // Small delay to let windows render
-                await new Promise(r => setTimeout(r, 300));
-                // Start listening
+                // Lazy-init the floating bar on first use
+                if (!windowManager.windowPool.has('header')) {
+                    windowManager.createWindows();
+                }
+                const dashWin = windowManager.getDashboardWindow();
+                if (dashWin && !dashWin.isDestroyed()) dashWin.hide();
+                windowManager.ensureListenWindow();
                 await listenService.handleListenRequest('Listen');
-                // Hide dashboard
-                windowManager.hideDashboardWindow();
                 return { success: true };
-            } catch (error) {
-                logger.error('[FeatureBridge] dashboard:startClaire failed:', { error: error.message });
-                return { success: false, error: error.message };
+            } catch (e) {
+                logger.error('[FeatureBridge] dashboard:startClaire failed', { message: e.message });
+                return { success: false, error: e.message };
             }
+        });
+
+        ipcMain.handle('dashboard:minimize', () => {
+            const dashWin = windowManager.getDashboardWindow();
+            if (dashWin && !dashWin.isDestroyed()) dashWin.minimize();
+        });
+
+        ipcMain.handle('dashboard:maximize', () => {
+            const dashWin = windowManager.getDashboardWindow();
+            if (dashWin && !dashWin.isDestroyed()) {
+                dashWin.isMaximized() ? dashWin.unmaximize() : dashWin.maximize();
+            }
+        });
+
+        ipcMain.handle('dashboard:close', () => {
+            const dashWin = windowManager.getDashboardWindow();
+            if (dashWin && !dashWin.isDestroyed()) dashWin.close();
         });
 
         logger.info('[FeatureBridge] Initialized with all feature handlers including memory system.');

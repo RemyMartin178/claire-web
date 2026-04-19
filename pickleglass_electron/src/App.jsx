@@ -1,6 +1,7 @@
-import React, { useState, useEffect, createContext, useContext } from 'react'
-import { getUser, onUserChanged, removeUserChanged } from './utils/api.js'
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react'
+import { getUser, onUserChanged, removeUserChanged, minimizeWindow, maximizeWindow, closeWindow, onNavigateToSession, removeOnNavigateToSession } from './utils/api.js'
 import Sidebar from './components/Sidebar.jsx'
+import Loader from './components/Loader.jsx'
 import Login from './pages/Login.jsx'
 import Activity from './pages/Activity.jsx'
 import ActivityDetails from './pages/ActivityDetails.jsx'
@@ -10,12 +11,66 @@ import CalendarDetails from './pages/CalendarDetails.jsx'
 export const AuthCtx = createContext(null)
 export const useAuth = () => useContext(AuthCtx)
 
+function WinBtn({ onClick, title, children }) {
+  const [hovered, setHovered] = React.useState(false)
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        WebkitAppRegion: 'no-drag',
+        width: 22, height: 22,
+        borderRadius: '50%',
+        border: 'none',
+        cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: hovered ? 'rgba(0,0,0,0.08)' : 'transparent',
+        color: '#6b7280',
+        transition: 'background 0.15s',
+        padding: 0,
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function WinControls() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2, WebkitAppRegion: 'no-drag' }}>
+      <WinBtn onClick={minimizeWindow} title="Réduire">
+        <svg width="10" height="2" viewBox="0 0 10 2" fill="none"><rect width="10" height="1.5" rx=".75" fill="currentColor"/></svg>
+      </WinBtn>
+      <WinBtn onClick={maximizeWindow} title="Agrandir">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x=".75" y=".75" width="8.5" height="8.5" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+      </WinBtn>
+      <WinBtn onClick={closeWindow} title="Fermer">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+      </WinBtn>
+    </div>
+  )
+}
+
 export default function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [route, setRoute] = useState({ page: 'activity', params: {} })
   const [navHistory, setNavHistory] = useState([{ page: 'activity', params: {} }])
   const [navIndex, setNavIndex] = useState(0)
+  const navigateRef = useRef(null)
+
+  const navigate = (page, params = {}) => {
+    const newHistory = navHistory.slice(0, navIndex + 1)
+    const next = { page, params }
+    newHistory.push(next)
+    setNavHistory(newHistory)
+    setNavIndex(newHistory.length - 1)
+    setRoute(next)
+  }
+  navigateRef.current = navigate
 
   useEffect(() => {
     Promise.resolve(getUser()).then(res => {
@@ -27,19 +82,18 @@ export default function App() {
       if (state?.isLoggedIn) setUser({ uid: state.uid, email: state.email, displayName: state.displayName })
       else setUser(null)
     }
-
     onUserChanged(handler)
-    return () => removeUserChanged(handler)
-  }, [])
 
-  const navigate = (page, params = {}) => {
-    const newHistory = navHistory.slice(0, navIndex + 1)
-    const next = { page, params }
-    newHistory.push(next)
-    setNavHistory(newHistory)
-    setNavIndex(newHistory.length - 1)
-    setRoute(next)
-  }
+    const navHandler = (_e, { sessionId }) => {
+      navigateRef.current?.('activity-details', { sessionId })
+    }
+    onNavigateToSession(navHandler)
+
+    return () => {
+      removeUserChanged(handler)
+      removeOnNavigateToSession(navHandler)
+    }
+  }, [])
 
   const goBack = () => {
     if (navIndex > 0) {
@@ -57,13 +111,7 @@ export default function App() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />
-      </div>
-    )
-  }
+  if (loading) return <Loader />
 
   if (!user) return <Login onLogin={setUser} />
 
@@ -135,12 +183,15 @@ export default function App() {
                     <p className="text-[11px] text-[#6b7280] mt-1 truncate">Renderer dedie a Electron sur renderer.clairia.app</p>
                   </div>
 
-                  <div
-                    className="w-[28px] h-[28px] rounded-full bg-neutral-900 flex items-center justify-center text-[11px] font-semibold text-white shrink-0 select-none"
-                    style={{ WebkitAppRegion: 'no-drag' }}
-                    title={user?.displayName || user?.email}
-                  >
-                    {userInitial}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div
+                      className="w-[28px] h-[28px] rounded-full bg-neutral-900 flex items-center justify-center text-[11px] font-semibold text-white select-none"
+                      style={{ WebkitAppRegion: 'no-drag' }}
+                      title={user?.displayName || user?.email}
+                    >
+                      {userInitial}
+                    </div>
+                    <WinControls />
                   </div>
                 </div>
               </div>

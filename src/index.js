@@ -70,7 +70,7 @@ console.log('[STARTUP] Detected API keys:', {
     geminiKeyLength: process.env.GEMINI_API_KEY?.length || 0
 });
 
-const { createWindows, createDashboardWindow, setDashboardUrl } = require('./window/windowManager.js');
+const { createDashboardWindow } = require('./window/windowManager.js');
 
 const listenService = require('./features/listen/listenService');
 
@@ -130,37 +130,8 @@ const ollamaModelRepository = require('./common/repositories/ollamaModel');
 const { createLogger } = require('./common/services/logger.js');
 
 const logger = createLogger('Index');
-const REMOTE_DASHBOARD_URL = 'https://renderer.clairia.app';
-const LOCAL_DASHBOARD_URL = 'http://127.0.0.1:5174';
 const DEFAULT_WEB_APP_URL = 'https://app.clairia.app';
 let auxiliaryWebStackPromise = null;
-
-async function resolveDashboardUrl() {
-    const explicitUrl = process.env.CLAIRE_DASHBOARD_URL || process.env.CLAIRE_RENDERER_URL;
-    if (explicitUrl) {
-        return explicitUrl;
-    }
-
-    if (app.isPackaged) {
-        return REMOTE_DASHBOARD_URL;
-    }
-
-    try {
-        const response = await fetch(LOCAL_DASHBOARD_URL, {
-            method: 'GET',
-            headers: { Accept: 'text/html' }
-        });
-
-        if (response.ok) {
-            logger.info(`[Dashboard] Using local renderer from ${LOCAL_DASHBOARD_URL}`);
-            return LOCAL_DASHBOARD_URL;
-        }
-    } catch (error) {
-        logger.info('[Dashboard] Local renderer not detected - falling back to remote renderer');
-    }
-
-    return REMOTE_DASHBOARD_URL;
-}
 
 function ensureAuxiliaryWebStackStarted() {
     if (auxiliaryWebStackPromise) {
@@ -501,14 +472,10 @@ app.whenReady().then(async () => {
             }
         }, 2000); // Wait 2 seconds after app start
 
-        // Start web server and create windows ONLY after all initializations are successful
-        const dashboardUrl = await resolveDashboardUrl();
-
-        // Only open the dashboard on launch — overlay windows are created lazily via dashboard:startClaire
-        setDashboardUrl(dashboardUrl);
-        createDashboardWindow();
-
         ensureAuxiliaryWebStackStarted().catch(() => {});
+
+        // Only create the dashboard — floating bar launches on "Démarrer Claire"
+        createDashboardWindow();
 
     } catch (err) {
         logger.error('>>> [index.js] Database initialization failed - some features may not work', {
@@ -620,7 +587,7 @@ app.on('before-quit', async (event) => {
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWindows();
+        createDashboardWindow();
     }
 });
 
@@ -1151,12 +1118,16 @@ async function startWebStack() {
             process.env.XERUS_WEB_URL = defaultWebUrl;
         }
     } else {
-        // In local development, always prefer the Electron-managed localhost stack.
-        // Remote values from .env break the auth flow by sending the browser to production,
-        // where the success page falls back to the old deeplink handler.
-        process.env.pickleglass_API_URL = defaultApiUrl;
+        // In local development, override the WEB URL to localhost so the auth callback
+        // returns to the Electron deeplink handler instead of production.
+        // The API URL is preserved from .env if already set (it points to Railway backend).
+        if (!process.env.pickleglass_API_URL) {
+            process.env.pickleglass_API_URL = defaultApiUrl;
+        }
         process.env.pickleglass_WEB_URL = defaultWebUrl;
-        process.env.xerus_API_URL = defaultApiUrl;
+        if (!process.env.xerus_API_URL) {
+            process.env.xerus_API_URL = process.env.pickleglass_API_URL;
+        }
         process.env.XERUS_WEB_URL = defaultWebUrl;
     }
 

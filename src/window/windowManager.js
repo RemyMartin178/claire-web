@@ -137,6 +137,9 @@ let lastVisibleWindows = new Set(['header']);
 let currentHeaderState = 'apikey';
 const windowPool = new Map();
 
+// Dashboard desktop window (renderer.clairia.app)
+let dashboardWindow = null;
+
 let settingsHideTimer = null;
 let agentSelectorHideTimer = null;
 
@@ -1769,28 +1772,7 @@ const setWindowOpacity = (opacity) => {
 };
 
 
-// ── Dashboard Window ──────────────────────────────────────────
-let dashboardWindow = null;
-let _dashboardUrl = null;
-
-function getDashboardBaseUrl() {
-    return _dashboardUrl || 'https://renderer.clairia.app';
-}
-
-function isDashboardAuthUrl(url) {
-    try {
-        const target = new URL(url);
-        return target.pathname === '/auth/login'
-            || target.pathname === '/auth/register'
-            || target.pathname.startsWith('/auth/');
-    } catch {
-        return false;
-    }
-}
-
-function setDashboardUrl(url) {
-    _dashboardUrl = url;
-}
+// ─── Dashboard window (renderer desktop) ────────────────────────────────────
 
 function createDashboardWindow() {
     if (dashboardWindow && !dashboardWindow.isDestroyed()) {
@@ -1798,53 +1780,43 @@ function createDashboardWindow() {
         return dashboardWindow;
     }
 
-    const titleBarOptions = process.platform === 'darwin'
-        ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 12 } }
-        : { titleBarStyle: 'hidden', titleBarOverlay: { color: '#00000000', height: 38, symbolColor: '#000000' } };
+    const isDev = !app.isPackaged;
+    // TODO: set RENDERER_DEV_URL=http://localhost:5174 in .env to load local Vite dev server
+    const RENDERER_URL = process.env.RENDERER_DEV_URL || 'https://renderer.clairia.app';
 
     dashboardWindow = new BrowserWindow({
-        width: 1100,
-        height: 720,
-        minWidth: 1100,
-        maxWidth: 1100,
-        minHeight: 720,
-        maxHeight: 720,
-        useContentSize: true,
-        resizable: false,
-        maximizable: false,
-        fullscreenable: false,
-        ...titleBarOptions,
-        backgroundColor: '#ffffff',
-        title: 'Claire',
+        width: 920,
+        height: 640,
+        minWidth: 760,
+        minHeight: 500,
+        center: true,
+        frame: false,
+        backgroundColor: '#eef1f4',
+        show: false,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
             preload: path.join(__dirname, '../preload.js'),
+            devTools: isDev,
+            spellcheck: false,
             webSecurity: false,
         },
+        icon: path.join(__dirname, '../../build/icon.ico'),
     });
 
-    const dashboardBaseUrl = getDashboardBaseUrl();
+    if (process.platform === 'darwin') {
+        dashboardWindow.setWindowButtonVisibility(false);
+    }
 
-    dashboardWindow.webContents.on('will-navigate', (event, url) => {
-        if (!isDashboardAuthUrl(url)) return;
-        event.preventDefault();
-        dashboardWindow.loadURL(dashboardBaseUrl);
+    dashboardWindow.loadURL(RENDERER_URL);
+
+    dashboardWindow.once('ready-to-show', () => {
+        dashboardWindow.show();
     });
 
-    dashboardWindow.webContents.on('did-navigate', (_event, url) => {
-        if (!isDashboardAuthUrl(url)) return;
-        dashboardWindow.loadURL(dashboardBaseUrl);
+    dashboardWindow.on('closed', () => {
+        dashboardWindow = null;
     });
-
-    dashboardWindow.webContents.on('did-redirect-navigation', (_event, url) => {
-        if (!isDashboardAuthUrl(url)) return;
-        dashboardWindow.loadURL(dashboardBaseUrl);
-    });
-
-    dashboardWindow.loadURL(dashboardBaseUrl);
-
-    dashboardWindow.on('closed', () => { dashboardWindow = null; });
 
     return dashboardWindow;
 }
@@ -1853,25 +1825,22 @@ function getDashboardWindow() {
     return dashboardWindow && !dashboardWindow.isDestroyed() ? dashboardWindow : null;
 }
 
-function showDashboardWindow() {
-    const win = getDashboardWindow();
-    if (win) { win.show(); win.focus(); }
-    else createDashboardWindow();
+/**
+ * Ensures the listen window exists in the pool (created lazily).
+ * Required before calling listenService.handleListenRequest('Listen').
+ */
+function ensureListenWindow() {
+    if (!windowPool.has('listen')) {
+        createFeatureWindow('listen');
+    }
+    return windowPool.get('listen');
 }
 
-function hideDashboardWindow() {
-    const win = getDashboardWindow();
-    if (win) win.hide();
-}
+// ────────────────────────────────────────────────────────────────────────────
 
 module.exports = {
     updateLayout,
     createWindows,
-    createDashboardWindow,
-    setDashboardUrl,
-    getDashboardWindow,
-    showDashboardWindow,
-    hideDashboardWindow,
     windowPool,
     toggleContentProtection,
     resizeHeaderWindow,
@@ -1915,4 +1884,7 @@ module.exports = {
     setOverlayDragging,
     stopOverlayPolling: _stopOverlayPolling,
     startOverlayPolling: _startOverlayPolling,
+    createDashboardWindow,
+    getDashboardWindow,
+    ensureListenWindow,
 };
