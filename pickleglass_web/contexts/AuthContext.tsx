@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, type User } from "firebase/auth"
+import { onAuthStateChanged, signInWithCustomToken, type User } from "firebase/auth"
 import { auth } from "../utils/firebase"
 import { getUserProfile, type UserProfile } from "../utils/api"
 
@@ -33,6 +33,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__claireElectronSignIn = async (customToken: string) => {
+        await signInWithCustomToken(auth, customToken)
+      }
+    }
+    return () => {
+      if (typeof window !== 'undefined') delete (window as any).__claireElectronSignIn
+    }
+  }, [])
 
   useEffect(() => {
     const wasManuallyLoggedOut = sessionStorage.getItem('manuallyLoggedOut')

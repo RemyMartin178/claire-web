@@ -341,91 +341,38 @@ class AuthService {
         return `
             (async () => {
                 const action = ${JSON.stringify(action)};
-                const config = ${JSON.stringify(this._getFirebaseConfig())};
                 const customToken = ${JSON.stringify(customToken || null)};
                 const expectedUid = ${JSON.stringify(expectedUid || null)};
-                const syncState = {
-                    action,
-                    href: window.location.href,
-                    origin: window.location.origin,
-                    expectedUid,
-                };
+                const syncState = { action, href: window.location.href, expectedUid };
 
                 try {
-                    const [{ initializeApp, getApps, getApp }, authMod] = await Promise.all([
-                        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
-                        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
-                    ]);
-                    const {
-                        browserLocalPersistence,
-                        getAuth,
-                        onAuthStateChanged,
-                        setPersistence,
-                        signInWithCustomToken,
-                        signOut,
-                    } = authMod;
-
-                    const firebaseApp = getApps().length ? getApp() : initializeApp(config);
-                    const auth = getAuth(firebaseApp);
-
-                    if (typeof auth.authStateReady === 'function') {
-                        await auth.authStateReady();
-                    } else {
-                        await new Promise((resolve) => {
-                            let settled = false;
-                            const finish = () => {
-                                if (settled) return;
-                                settled = true;
-                                clearTimeout(timer);
-                                resolve();
-                            };
-                            const timer = setTimeout(finish, 1500);
-                            const unsub = onAuthStateChanged(auth, () => {
-                                try { unsub(); } catch (_) {}
-                                finish();
-                            }, finish);
-                        });
+                    // Wait up to 5s for pickleglass_web to expose the sign-in bridge
+                    let attempts = 0;
+                    while (typeof window.__claireElectronSignIn !== 'function' && attempts < 50) {
+                        await new Promise(r => setTimeout(r, 100));
+                        attempts++;
                     }
-
-                    syncState.beforeUid = auth.currentUser ? auth.currentUser.uid : null;
 
                     if (action === 'signOut') {
-                        if (auth.currentUser) {
-                            await signOut(auth);
-                            syncState.changed = true;
-                        } else {
-                            syncState.changed = false;
-                        }
-                        syncState.afterUid = auth.currentUser ? auth.currentUser.uid : null;
-                        window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
-                        return { success: true, ...syncState };
-                    }
-
-                    await setPersistence(auth, browserLocalPersistence);
-
-                    if (expectedUid && syncState.beforeUid === expectedUid) {
+                        // No CDN needed — bridge handles signOut via auth state change
                         syncState.changed = false;
-                        syncState.afterUid = syncState.beforeUid;
-                        window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
                         return { success: true, ...syncState };
                     }
 
                     if (!customToken) {
-                        throw new Error('Missing custom token for dashboard auth sync');
+                        return { success: false, reason: 'no-custom-token', ...syncState };
                     }
 
-                    const credential = await signInWithCustomToken(auth, customToken);
-                    syncState.changed = syncState.beforeUid !== credential.user.uid;
-                    syncState.afterUid = credential.user.uid;
-                    syncState.email = credential.user.email || null;
+                    if (typeof window.__claireElectronSignIn !== 'function') {
+                        return { success: false, reason: 'bridge-not-ready', ...syncState };
+                    }
 
-                    window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
+                    await window.__claireElectronSignIn(customToken);
+                    syncState.changed = true;
                     window.dispatchEvent(new CustomEvent('claire-electron-auth-synced', { detail: syncState }));
-
                     return { success: true, ...syncState };
                 } catch (error) {
                     syncState.error = error && error.message ? error.message : String(error);
-                    syncState.stack = error && error.stack ? error.stack : null;
                     window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
                     return { success: false, ...syncState };
                 }
