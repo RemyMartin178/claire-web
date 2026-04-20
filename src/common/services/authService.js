@@ -823,7 +823,7 @@ class AuthService {
     broadcastUserState() {
         const userState = this.getCurrentUser();
         logger.info('[AuthService] Broadcasting user state change:', userState);
-        // Include nested `user` field so renderer.clairia.app gets same format as dashboard:getUser
+        // Include nested `user` field so dashboard:getUser and user-state-changed share the same format
         const payload = {
             ...userState,
             user: userState.isLoggedIn ? { uid: userState.uid, email: userState.email, displayName: userState.displayName, photoURL: null } : null,

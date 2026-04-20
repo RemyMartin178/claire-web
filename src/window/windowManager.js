@@ -137,24 +137,8 @@ let lastVisibleWindows = new Set(['header']);
 let currentHeaderState = 'apikey';
 const windowPool = new Map();
 
-// Dashboard desktop window (renderer.clairia.app)
 let dashboardWindow = null;
-const DASHBOARD_REMOTE_URL = 'https://renderer.clairia.app';
-
-function getDashboardRendererCandidates() {
-    const candidates = [];
-    const envUrl = typeof process.env.RENDERER_DEV_URL === 'string'
-        ? process.env.RENDERER_DEV_URL.trim()
-        : '';
-
-    if (envUrl) {
-        candidates.push(envUrl);
-    }
-
-    candidates.push(DASHBOARD_REMOTE_URL);
-
-    return [...new Set(candidates.filter(Boolean))];
-}
+const DASHBOARD_URL = process.env.DASHBOARD_DEV_URL || 'https://app.clairia.app';
 
 let settingsHideTimer = null;
 let agentSelectorHideTimer = null;
@@ -1821,23 +1805,6 @@ function createDashboardWindow() {
         dashboardWindow.setWindowButtonVisibility(false);
     }
 
-    const rendererCandidates = getDashboardRendererCandidates();
-    let rendererCandidateIndex = 0;
-    const loadDashboardRenderer = () => {
-        const rendererUrl = rendererCandidates[rendererCandidateIndex];
-        logger.info('[Dashboard] Loading renderer URL', {
-            rendererUrl,
-            rendererCandidateIndex,
-            rendererCandidates,
-            isPackaged: app.isPackaged,
-        });
-        return dashboardWindow.loadURL(rendererUrl).catch((error) => {
-            logger.error('[Dashboard] loadURL failed', {
-                rendererUrl,
-                error: error.message,
-            });
-        });
-    };
     dashboardWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
         if (level >= 3) {
             logger.error('[DashboardConsole] Renderer error', { message, line, sourceId });
@@ -1845,35 +1812,11 @@ function createDashboardWindow() {
             logger.warn('[DashboardConsole] Renderer warning', { message, line, sourceId });
         }
     });
-    dashboardWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-        if (!isMainFrame) return;
-        const currentRendererUrl = rendererCandidates[rendererCandidateIndex] || validatedURL;
-        const normalizedValidatedURL = typeof validatedURL === 'string'
-            ? validatedURL.replace(/\/+$/, '')
-            : validatedURL;
-        const normalizedCurrentRendererUrl = typeof currentRendererUrl === 'string'
-            ? currentRendererUrl.replace(/\/+$/, '')
-            : currentRendererUrl;
-        logger.error('[Dashboard] did-fail-load', {
-            errorCode,
-            errorDescription,
-            validatedURL,
-            currentRendererUrl,
-        });
-
-        if (
-            normalizedValidatedURL === normalizedCurrentRendererUrl &&
-            rendererCandidateIndex < rendererCandidates.length - 1
-        ) {
-            rendererCandidateIndex += 1;
-            logger.warn('[Dashboard] Falling back to next renderer URL', {
-                from: currentRendererUrl,
-                to: rendererCandidates[rendererCandidateIndex],
-            });
-            void loadDashboardRenderer();
-        }
+    dashboardWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+        logger.error('[Dashboard] did-fail-load', { errorCode, errorDescription, validatedURL });
     });
-    void loadDashboardRenderer();
+    logger.info('[Dashboard] Loading dashboard URL', { url: DASHBOARD_URL });
+    void dashboardWindow.loadURL(DASHBOARD_URL);
 
     dashboardWindow.once('ready-to-show', () => {
         dashboardWindow.show();
