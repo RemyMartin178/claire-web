@@ -640,7 +640,19 @@ export const getBatchData = async (includes: ('profile' | 'presets' | 'sessions'
 };
 
 export const logout = async () => {
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('manuallyLoggedOut', 'true');
+    sessionStorage.removeItem('authChecked');
+    sessionStorage.removeItem('authUserId');
+    setUserInfo(null, true);
+  }
+
   if (isFirebaseMode()) {
+    if (typeof window !== 'undefined' && window.api?.common?.firebaseLogout) {
+      await window.api.common.firebaseLogout();
+      return;
+    }
+
     await auth.signOut();
   } else {
     const response = await apiCall('/api/auth/logout', { method: 'POST' });

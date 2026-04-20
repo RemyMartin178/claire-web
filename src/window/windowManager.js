@@ -139,6 +139,22 @@ const windowPool = new Map();
 
 // Dashboard desktop window (renderer.clairia.app)
 let dashboardWindow = null;
+const DASHBOARD_REMOTE_URL = 'https://renderer.clairia.app';
+
+function getDashboardRendererCandidates() {
+    const candidates = [];
+    const envUrl = typeof process.env.RENDERER_DEV_URL === 'string'
+        ? process.env.RENDERER_DEV_URL.trim()
+        : '';
+
+    if (envUrl) {
+        candidates.push(envUrl);
+    }
+
+    candidates.push(DASHBOARD_REMOTE_URL);
+
+    return [...new Set(candidates.filter(Boolean))];
+}
 
 let settingsHideTimer = null;
 let agentSelectorHideTimer = null;
@@ -1793,9 +1809,10 @@ function createDashboardWindow() {
             nodeIntegration: false,
             contextIsolation: true,
             preload: path.join(__dirname, '../preload.js'),
-            devTools: true,
+            devTools: !app.isPackaged,
             spellcheck: false,
-            webSecurity: false,
+            webSecurity: true,
+            allowRunningInsecureContent: false,
         },
         icon: path.join(__dirname, '../../build/icon.ico'),
     });
@@ -1804,12 +1821,81 @@ function createDashboardWindow() {
         dashboardWindow.setWindowButtonVisibility(false);
     }
 
-    const RENDERER_URL = process.env.RENDERER_DEV_URL || 'https://renderer.clairia.app';
-    dashboardWindow.loadURL(RENDERER_URL);
+    const rendererCandidates = getDashboardRendererCandidates();
+    let rendererCandidateIndex = 0;
+    const loadDashboardRenderer = () => {
+        const rendererUrl = rendererCandidates[rendererCandidateIndex];
+        logger.info('[Dashboard] Loading renderer URL', {
+            rendererUrl,
+            rendererCandidateIndex,
+            rendererCandidates,
+            isPackaged: app.isPackaged,
+        });
+        return dashboardWindow.loadURL(rendererUrl).catch((error) => {
+            logger.error('[Dashboard] loadURL failed', {
+                rendererUrl,
+                error: error.message,
+            });
+        });
+    };
+    dashboardWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+        if (level >= 3) {
+            logger.error('[DashboardConsole] Renderer error', { message, line, sourceId });
+        } else if (level >= 2) {
+            logger.warn('[DashboardConsole] Renderer warning', { message, line, sourceId });
+        }
+    });
+    dashboardWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+        if (!isMainFrame) return;
+        const currentRendererUrl = rendererCandidates[rendererCandidateIndex] || validatedURL;
+        const normalizedValidatedURL = typeof validatedURL === 'string'
+            ? validatedURL.replace(/\/+$/, '')
+            : validatedURL;
+        const normalizedCurrentRendererUrl = typeof currentRendererUrl === 'string'
+            ? currentRendererUrl.replace(/\/+$/, '')
+            : currentRendererUrl;
+        logger.error('[Dashboard] did-fail-load', {
+            errorCode,
+            errorDescription,
+            validatedURL,
+            currentRendererUrl,
+        });
+
+        if (
+            normalizedValidatedURL === normalizedCurrentRendererUrl &&
+            rendererCandidateIndex < rendererCandidates.length - 1
+        ) {
+            rendererCandidateIndex += 1;
+            logger.warn('[Dashboard] Falling back to next renderer URL', {
+                from: currentRendererUrl,
+                to: rendererCandidates[rendererCandidateIndex],
+            });
+            void loadDashboardRenderer();
+        }
+    });
+    void loadDashboardRenderer();
 
     dashboardWindow.once('ready-to-show', () => {
         dashboardWindow.show();
-        dashboardWindow.webContents.openDevTools({ mode: 'detach' });
+    });
+
+    // Push current auth state once the page has fully loaded, so the renderer
+    // gets the user even if it missed the broadcast that fired before the window existed.
+    dashboardWindow.webContents.on('did-finish-load', () => {
+        try {
+            const authService = require('../common/services/authService');
+            const userState = authService.getCurrentUser();
+            const payload = {
+                ...userState,
+                user: userState.isLoggedIn ? { uid: userState.uid, email: userState.email, displayName: userState.displayName, photoURL: null } : null,
+            };
+            dashboardWindow.webContents.send('user-state-changed', payload);
+            authService.handleDashboardDidFinishLoad(dashboardWindow).catch((error) => {
+                logger.warn('[Dashboard] Auth sync after load failed', { error: error.message });
+            });
+        } catch (e) {
+            // non-critical
+        }
     });
 
     dashboardWindow.on('closed', () => {

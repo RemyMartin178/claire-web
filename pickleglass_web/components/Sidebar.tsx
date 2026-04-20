@@ -12,12 +12,14 @@ import { logout } from '@/utils/api';
 import Avatar from '@/components/Avatar';
 import { usePathname } from "next/navigation";
 import { trackLogout } from '@/lib/gtag';
+import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron';
 
 export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     const pathname = usePathname();
     const { user: userInfo, loading: authLoading } = useAuth();
     const subscription = useSubscription();
     const [open, setOpen] = useState(false);
+    const isElectronRuntime = useElectronRuntime();
 
     const isFirebaseUser = userInfo && userInfo.uid !== 'default_user';
 
@@ -35,15 +37,15 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
         try {
             trackLogout()
             await logout();
-            window.location.href = '/auth/login';
+            window.location.href = isElectronRuntime === true ? getElectronLoginPath() : '/auth/login';
         } catch (error) {
             console.error('An error occurred during logout:', error);
         }
-    }, []);
+    }, [isElectronRuntime]);
 
     const getUserDisplayName = useCallback(() => {
         if (authLoading) return 'Chargement...';
-        if (!userInfo) return 'Invité';
+        if (!userInfo) return 'Invite';
         if (userInfo.display_name) {
             const names = userInfo.display_name.split(' ');
             return names.length >= 2
@@ -63,7 +65,7 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                 onClick: onSearchClick
             },
             {
-                label: "Mon activité",
+                label: "Mon activite",
                 href: "/activity",
                 icon: <Image src="/activity.svg" width={20} height={20} alt="Activity" className="dark:invert w-5 h-5 shrink-0" />
             },
@@ -73,7 +75,7 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                 icon: <Calendar className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
             },
             {
-                label: "Paramètres",
+                label: "Parametres",
                 href: "/settings",
                 icon: <Settings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
             },
@@ -84,8 +86,20 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
             }
         ];
 
-        return baseLinks;
-    }, [onSearchClick, userInfo?.email]);
+        if (isElectronRuntime === true) {
+            return baseLinks;
+        }
+
+        return [
+            ...baseLinks,
+            {
+                label: "Telecharger Claire",
+                href: "/api/download",
+                icon: <Image src="/download.svg" width={20} height={20} alt="Download" className="dark:invert w-5 h-5 shrink-0" />,
+                onClick: handleDownloadClick
+            }
+        ];
+    }, [handleDownloadClick, isElectronRuntime, onSearchClick]);
 
     return (
         <ShadcnSidebar open={open} setOpen={setOpen}>
@@ -109,23 +123,11 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <SidebarLink
-                        link={{
-                            label: "Télécharger Claire",
-                            href: "/api/download",
-                            icon: <Image src="/download.svg" width={20} height={20} alt="Download" className="dark:invert w-5 h-5 shrink-0" />
-                        }}
-                        onClick={handleDownloadClick}
-                        prefetch={false}
-                        download
-                    />
-
-                    {/* Logout Link */}
                     {isFirebaseUser ? (
                         <div onClick={handleLogout} className="cursor-pointer">
                             <SidebarLink
                                 link={{
-                                    label: "Déconnexion",
+                                    label: "Deconnexion",
                                     href: "#",
                                     icon: <LogOut className="text-red-500 h-5 w-5 shrink-0" />
                                 }}
@@ -136,13 +138,12 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                         <SidebarLink
                             link={{
                                 label: "Connexion",
-                                href: "/auth/login",
+                                href: isElectronRuntime === true ? getElectronLoginPath() : "/auth/login",
                                 icon: <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0 transform -scale-x-100" />
                             }}
                         />
                     )}
 
-                    {/* Profile Section */}
                     <div className="mt-2 border-t border-neutral-200 dark:border-neutral-800 pt-4">
                         <div className="flex items-center justify-start gap-4 px-2 rounded-md h-[52px]">
                             <div className="flex items-center justify-center min-w-[24px] shrink-0">

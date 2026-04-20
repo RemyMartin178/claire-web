@@ -3,26 +3,26 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron'
 
 export default function HomePage() {
   const router = useRouter()
   const { user, isAuthenticated, loading } = useAuth()
+  const isElectronRuntime = useElectronRuntime()
 
   useEffect(() => {
-    // Rediriger vers l'activité seulement si l'utilisateur est authentifié
+    if (isElectronRuntime === null) return
+
     if (isAuthenticated && user && !loading) {
       router.replace('/activity')
+    } else if (!loading && !isAuthenticated) {
+      router.replace(isElectronRuntime ? getElectronLoginPath() : '/auth/login')
     }
-    // Rediriger vers le login si pas authentifié et pas en cours de chargement
-    else if (!loading && !isAuthenticated) {
-      router.replace('/auth/login')
-    }
-  }, [user, isAuthenticated, loading, router])
+  }, [user, isAuthenticated, loading, isElectronRuntime, router])
 
-  // Pendant le chargement ou si pas authentifié, ne rien afficher (redirection en cours)
-  if (loading || !isAuthenticated) {
+  if (loading || !isAuthenticated || isElectronRuntime === null) {
     return null
   }
 
   return null
-} 
+}

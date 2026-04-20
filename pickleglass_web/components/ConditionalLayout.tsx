@@ -3,13 +3,15 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import ClientLayout from './ClientLayout'
+import ElectronClientLayout from './ElectronClientLayout'
+import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron'
 import { useEffect } from 'react'
 
 const PAGE_TITLES: Record<string, string> = {
   '': 'Claire',
-  activity: 'Activité',
+  activity: 'Activite',
   calendar: 'Calendrier',
-  settings: 'Paramètres',
+  settings: 'Parametres',
   'knowledge-base': 'Base de connaissances',
   tools: 'Outils',
   chat: 'Chat',
@@ -25,10 +27,11 @@ const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
   account: 'Compte',
   notifications: 'Notifications',
-  integrations: 'Intégrations',
+  integrations: 'Integrations',
   documents: 'Documents',
-  meetings: 'Réunions',
-  inbox: 'Boîte de réception',
+  meetings: 'Reunions',
+  inbox: 'Boite de reception',
+  electron: 'Electron',
 }
 
 function getDocumentTitle(pathname: string | null) {
@@ -63,31 +66,37 @@ export default function ConditionalLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { loading, isAuthenticated } = useAuth()
+  const isElectronRuntime = useElectronRuntime()
 
-  // Check if current path is an auth page
-  const isAuthPage = pathname?.startsWith('/auth/') || pathname === '/login' || pathname === '/register'
+  const electronLoginPath = getElectronLoginPath()
+  const isAuthPage =
+    pathname?.startsWith('/auth/') ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === electronLoginPath
   const isDebugPage = pathname === '/fettywapdebug'
 
-  // Rediriger vers le login si pas authentifié et pas sur une page d'auth
   useEffect(() => {
+    if (isElectronRuntime === null) return
     if (isDebugPage) return
     if (!loading && !isAuthenticated && !isAuthPage) {
-      // Donner un délai supplémentaire pour Firebase Auth après retour de Stripe
       const timer = setTimeout(() => {
-        // Vérifier à nouveau l'authentification après le délai
         if (!isAuthenticated && !isAuthPage) {
-          // Sauvegarder l'URL actuelle avant de rediriger vers login
           const currentPath = window.location.pathname + window.location.search
-          if (currentPath !== '/auth/login' && !currentPath.startsWith('/auth/')) {
+          if (
+            currentPath !== '/auth/login' &&
+            currentPath !== electronLoginPath &&
+            !currentPath.startsWith('/auth/')
+          ) {
             sessionStorage.setItem('redirect_after_login', currentPath)
           }
-          router.replace('/auth/login')
+          router.replace(isElectronRuntime ? electronLoginPath : '/auth/login')
         }
-      }, 500) // Délai de 500ms pour laisser Firebase Auth se réinitialiser
+      }, 500)
 
       return () => clearTimeout(timer)
     }
-  }, [loading, isAuthenticated, isAuthPage, isDebugPage, router])
+  }, [loading, isAuthenticated, isAuthPage, isDebugPage, isElectronRuntime, electronLoginPath, router])
 
   useEffect(() => {
     document.title = getDocumentTitle(pathname)
@@ -101,17 +110,18 @@ export default function ConditionalLayout({
     )
   }
 
-  // Allow the debug page to render (AdminGuard inside the page will control access)
   if (isDebugPage) {
-    if (loading) return null
-    return <ClientLayout>{children}</ClientLayout>
+    if (loading || isElectronRuntime === null) return null
+    return isElectronRuntime
+      ? <ElectronClientLayout>{children}</ElectronClientLayout>
+      : <ClientLayout>{children}</ClientLayout>
   }
 
-  // Si on n'est pas authentifié OU en cours de chargement, ne rien afficher (redirection en cours)
-  if (!isAuthenticated || loading) {
+  if (!isAuthenticated || loading || isElectronRuntime === null) {
     return null
   }
 
-  // For all other pages, use the full ClientLayout with sidebar
-  return <ClientLayout>{children}</ClientLayout>
+  return isElectronRuntime
+    ? <ElectronClientLayout>{children}</ElectronClientLayout>
+    : <ClientLayout>{children}</ClientLayout>
 }

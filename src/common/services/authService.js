@@ -1,5 +1,5 @@
 const { onAuthStateChanged, signInWithCustomToken, signOut } = require('firebase/auth');
-const { BrowserWindow, shell } = require('electron');
+const { BrowserWindow, shell, app } = require('electron');
 const { getFirebaseAuth } = require('./firebaseClient');
 const fetch = require('node-fetch');
 const crypto = require('crypto');
@@ -12,6 +12,8 @@ const { createLogger } = require('./logger.js');
 const { resourcePoolManager } = require('./resource-pool-manager.js');
 
 const logger = createLogger('AuthService');
+const DEFAULT_WEB_APP_URL = 'https://app.clairia.app';
+const DASHBOARD_CUSTOM_TOKEN_TTL_MS = 50 * 60 * 1000;
 
 // CSRF state storage: maps sessionId -> expected state token
 const pendingAuthStates = new Map();
@@ -26,6 +28,9 @@ class AuthService {
         this.authPollingInterval = null;
         this.isFirebaseClientReady = false; // Track Firebase client readiness
         this._stateChangeCallbacks = [];
+        this._lastCustomToken = null;
+        this._lastCustomTokenAt = 0;
+        this._lastDashboardReloadAt = 0;
 
         // This ensures the key is ready before any login/logout state change.
         encryptionService.initializeKey(this.currentUserId);
@@ -214,6 +219,314 @@ class AuthService {
         return true;
     }
 
+    _getWebAppUrl() {
+        return app.isPackaged
+            ? DEFAULT_WEB_APP_URL
+            : (process.env.pickleglass_WEB_URL || DEFAULT_WEB_APP_URL);
+    }
+
+    _getFirebaseConfig() {
+        return {
+            apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDZz5iEcMo6eBpt5cZ4Hz4TaE4aDiWMqho',
+            authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'auth.clairia.app',
+            projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dedale-database',
+            storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dedale-database.appspot.com',
+            messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '100635676468',
+            appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:100635676468:web:46fdecfad3133fef4b5f61',
+        };
+    }
+
+    _rememberCustomToken(token) {
+        if (!token || typeof token !== 'string') return;
+        this._lastCustomToken = token;
+        this._lastCustomTokenAt = Date.now();
+    }
+
+    async _getDashboardWindow(targetWindow = null) {
+        if (targetWindow && !targetWindow.isDestroyed()) {
+            return targetWindow;
+        }
+
+        const windowManager = require('../../window/windowManager');
+        return windowManager.getDashboardWindow();
+    }
+
+    async _waitForWindowLoad(win, timeoutMs = 10000) {
+        if (!win || win.isDestroyed()) return false;
+
+        const webContents = win.webContents;
+        if (!webContents || webContents.isDestroyed()) return false;
+
+        const isLoading = typeof webContents.isLoadingMainFrame === 'function'
+            ? webContents.isLoadingMainFrame()
+            : webContents.isLoading();
+
+        if (!isLoading) return true;
+
+        return new Promise((resolve) => {
+            let settled = false;
+            const finish = (value) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                webContents.removeListener('did-finish-load', onLoad);
+                webContents.removeListener('did-fail-load', onFail);
+                resolve(value);
+            };
+            const onLoad = () => finish(true);
+            const onFail = (_event, _errorCode, _errorDescription, _validatedURL, isMainFrame) => {
+                if (typeof isMainFrame === 'boolean' && !isMainFrame) return;
+                finish(false);
+            };
+            const timer = setTimeout(() => finish(false), timeoutMs);
+
+            webContents.once('did-finish-load', onLoad);
+            webContents.once('did-fail-load', onFail);
+        });
+    }
+
+    async _fetchFreshCustomTokenForDashboardSync() {
+        if (!this.currentUser || typeof this.currentUser.getIdToken !== 'function') {
+            logger.warn('[Auth] Cannot mint dashboard custom token without an authenticated Firebase user');
+            return null;
+        }
+
+        const idToken = await this.currentUser.getIdToken();
+        if (!idToken) {
+            logger.warn('[Auth] getIdToken() returned an empty token during dashboard sync');
+            return null;
+        }
+
+        const associateUrl = `${this._getWebAppUrl()}/api/mobile-auth/associate`;
+        logger.info('[Auth] Minting fresh dashboard custom token via associate endpoint');
+
+        const response = await fetch(associateUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: idToken }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Dashboard associate failed: ${response.status} ${errorText}`);
+        }
+
+        const data = await response.json();
+        const customToken = data.customToken || data.custom_token;
+        if (!customToken) {
+            throw new Error('Associate endpoint did not return a custom token');
+        }
+
+        this._rememberCustomToken(customToken);
+        return customToken;
+    }
+
+    async _getCustomTokenForDashboardSync(explicitToken = null) {
+        if (explicitToken) {
+            this._rememberCustomToken(explicitToken);
+            return explicitToken;
+        }
+
+        if (
+            this._lastCustomToken &&
+            (Date.now() - this._lastCustomTokenAt) < DASHBOARD_CUSTOM_TOKEN_TTL_MS
+        ) {
+            return this._lastCustomToken;
+        }
+
+        return this._fetchFreshCustomTokenForDashboardSync();
+    }
+
+    _buildDashboardAuthSyncScript({ action, customToken, expectedUid }) {
+        return `
+            (async () => {
+                const action = ${JSON.stringify(action)};
+                const config = ${JSON.stringify(this._getFirebaseConfig())};
+                const customToken = ${JSON.stringify(customToken || null)};
+                const expectedUid = ${JSON.stringify(expectedUid || null)};
+                const syncState = {
+                    action,
+                    href: window.location.href,
+                    origin: window.location.origin,
+                    expectedUid,
+                };
+
+                try {
+                    const [{ initializeApp, getApps, getApp }, authMod] = await Promise.all([
+                        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+                        import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
+                    ]);
+                    const {
+                        browserLocalPersistence,
+                        getAuth,
+                        onAuthStateChanged,
+                        setPersistence,
+                        signInWithCustomToken,
+                        signOut,
+                    } = authMod;
+
+                    const firebaseApp = getApps().length ? getApp() : initializeApp(config);
+                    const auth = getAuth(firebaseApp);
+
+                    if (typeof auth.authStateReady === 'function') {
+                        await auth.authStateReady();
+                    } else {
+                        await new Promise((resolve) => {
+                            let settled = false;
+                            const finish = () => {
+                                if (settled) return;
+                                settled = true;
+                                clearTimeout(timer);
+                                resolve();
+                            };
+                            const timer = setTimeout(finish, 1500);
+                            const unsub = onAuthStateChanged(auth, () => {
+                                try { unsub(); } catch (_) {}
+                                finish();
+                            }, finish);
+                        });
+                    }
+
+                    syncState.beforeUid = auth.currentUser ? auth.currentUser.uid : null;
+
+                    if (action === 'signOut') {
+                        if (auth.currentUser) {
+                            await signOut(auth);
+                            syncState.changed = true;
+                        } else {
+                            syncState.changed = false;
+                        }
+                        syncState.afterUid = auth.currentUser ? auth.currentUser.uid : null;
+                        window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
+                        return { success: true, ...syncState };
+                    }
+
+                    await setPersistence(auth, browserLocalPersistence);
+
+                    if (expectedUid && syncState.beforeUid === expectedUid) {
+                        syncState.changed = false;
+                        syncState.afterUid = syncState.beforeUid;
+                        window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
+                        return { success: true, ...syncState };
+                    }
+
+                    if (!customToken) {
+                        throw new Error('Missing custom token for dashboard auth sync');
+                    }
+
+                    const credential = await signInWithCustomToken(auth, customToken);
+                    syncState.changed = syncState.beforeUid !== credential.user.uid;
+                    syncState.afterUid = credential.user.uid;
+                    syncState.email = credential.user.email || null;
+
+                    window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
+                    window.dispatchEvent(new CustomEvent('claire-electron-auth-synced', { detail: syncState }));
+
+                    return { success: true, ...syncState };
+                } catch (error) {
+                    syncState.error = error && error.message ? error.message : String(error);
+                    syncState.stack = error && error.stack ? error.stack : null;
+                    window.__CLAIRE_ELECTRON_DASHBOARD_AUTH_SYNC__ = syncState;
+                    return { success: false, ...syncState };
+                }
+            })();
+        `;
+    }
+
+    async syncDashboardBrowserAuth(options = {}) {
+        const {
+            action = 'signIn',
+            customToken = null,
+            reloadOnChange = false,
+            reason = 'unspecified',
+            targetWindow = null,
+        } = options;
+
+        const dashboardWindow = await this._getDashboardWindow(targetWindow);
+        if (!dashboardWindow || dashboardWindow.isDestroyed()) {
+            logger.info('[Auth] Dashboard auth sync skipped - dashboard window is unavailable');
+            return { skipped: true, reason: 'no-dashboard-window' };
+        }
+
+        const loaded = await this._waitForWindowLoad(dashboardWindow);
+        if (!loaded) {
+            logger.warn('[Auth] Dashboard auth sync skipped - dashboard window did not finish loading in time');
+            return { skipped: true, reason: 'dashboard-not-ready' };
+        }
+
+        let tokenForSync = null;
+        const expectedUid = this.currentUser && this.currentUser.uid ? this.currentUser.uid : null;
+
+        if (action === 'signIn') {
+            tokenForSync = await this._getCustomTokenForDashboardSync(customToken);
+            if (!tokenForSync) {
+                logger.warn('[Auth] Dashboard auth sync skipped - no custom token available');
+                return { skipped: true, reason: 'no-custom-token' };
+            }
+        }
+
+        const result = await dashboardWindow.webContents.executeJavaScript(
+            this._buildDashboardAuthSyncScript({
+                action,
+                customToken: tokenForSync,
+                expectedUid,
+            }),
+            true
+        );
+
+        if (result && result.success) {
+            logger.info('[Auth] Dashboard browser auth sync completed', {
+                action,
+                reason,
+                beforeUid: result.beforeUid,
+                afterUid: result.afterUid,
+                changed: result.changed,
+            });
+
+            if (
+                reloadOnChange &&
+                action === 'signOut' &&
+                result.changed &&
+                (Date.now() - this._lastDashboardReloadAt) > 3000
+            ) {
+                // Sign-in must stay in the current page context so the remote dashboard
+                // can react to Firebase auth listeners without being reset mid-flow.
+                this._lastDashboardReloadAt = Date.now();
+                logger.info('[Auth] Reloading dashboard after browser auth sync', { action, reason });
+                dashboardWindow.webContents.reloadIgnoringCache();
+            }
+
+            return result;
+        }
+
+        logger.warn('[Auth] Dashboard browser auth sync failed', {
+            action,
+            reason,
+            error: result && result.error ? result.error : 'unknown',
+        });
+        return result || { success: false, error: 'unknown dashboard auth sync failure' };
+    }
+
+    async handleDashboardDidFinishLoad(targetWindow = null) {
+        const userState = this.getCurrentUser();
+
+        if (!userState.isLoggedIn) {
+            await this.syncDashboardBrowserAuth({
+                action: 'signOut',
+                reloadOnChange: true,
+                reason: 'dashboard-load-no-user',
+                targetWindow,
+            });
+            return;
+        }
+
+        await this.syncDashboardBrowserAuth({
+            action: 'signIn',
+            reason: 'dashboard-load-authenticated-user',
+            targetWindow,
+        });
+    }
+
     startAuthPolling(webUrl) {
         if (this.authPollingInterval) {
             clearInterval(this.authPollingInterval);
@@ -294,6 +607,7 @@ class AuthService {
         const auth = getFirebaseAuth();
         try {
             logger.info('[Auth] Signing in with custom token...');
+            this._rememberCustomToken(token);
             const userCredential = await signInWithCustomToken(auth, token);
             logger.info('[Auth] signInWithCustomToken completed, user:', { uid: userCredential.user.uid, email: userCredential.user.email });
 
@@ -315,6 +629,16 @@ class AuthService {
                 logger.info('[Auth] Sessions cleaned up');
             } catch (sessionError) {
                 logger.warn('[Auth] Session cleanup failed (non-critical):', sessionError.message);
+            }
+
+            try {
+                await this.syncDashboardBrowserAuth({
+                    action: 'signIn',
+                    customToken: token,
+                    reason: 'main-signInWithCustomToken',
+                });
+            } catch (syncError) {
+                logger.warn('[Auth] Dashboard browser auth sync failed after main sign-in:', syncError.message);
             }
 
             logger.info('[Auth] signInWithCustomToken completed successfully');
@@ -358,6 +682,14 @@ class AuthService {
         }
 
         this.broadcastUserState();
+        try {
+            await this.syncDashboardBrowserAuth({
+                action: 'signIn',
+                reason: 'applyAuthenticatedUser',
+            });
+        } catch (syncError) {
+            logger.warn('[Auth] Dashboard browser auth sync failed after applyAuthenticatedUser:', syncError.message);
+        }
     }
 
     async handleIdTokenAuthentication(authData) {
@@ -413,6 +745,14 @@ class AuthService {
 
             logger.info('[Auth] [SIGNAL] Step 5: Broadcasting user state');
             this.broadcastUserState();
+            try {
+                await this.syncDashboardBrowserAuth({
+                    action: 'signIn',
+                    reason: 'handleIdTokenAuthentication-fallback',
+                });
+            } catch (syncError) {
+                logger.warn('[Auth] Dashboard browser auth sync failed after fallback auth context:', syncError.message);
+            }
             logger.info('[Auth] [OK] User state broadcast completed');
 
             logger.info('[Auth] ID token authentication completed successfully');
@@ -450,6 +790,18 @@ class AuthService {
             this.currentUserId = 'default_user';
             this.currentUserMode = 'local';
             this.isFirebaseClientReady = false;
+            this._lastCustomToken = null;
+            this._lastCustomTokenAt = 0;
+
+            try {
+                await this.syncDashboardBrowserAuth({
+                    action: 'signOut',
+                    reloadOnChange: true,
+                    reason: 'main-signOut',
+                });
+            } catch (syncError) {
+                logger.warn('[AuthService] Dashboard browser sign-out sync failed:', syncError.message);
+            }
 
             // Broadcast the state change (will trigger HeaderController)
             this.broadcastUserState();
@@ -462,6 +814,8 @@ class AuthService {
             this.currentUserId = 'default_user';
             this.currentUserMode = 'local';
             this.isFirebaseClientReady = false;
+            this._lastCustomToken = null;
+            this._lastCustomTokenAt = 0;
             this.broadcastUserState();
         }
     }
@@ -469,9 +823,14 @@ class AuthService {
     broadcastUserState() {
         const userState = this.getCurrentUser();
         logger.info('[AuthService] Broadcasting user state change:', userState);
+        // Include nested `user` field so renderer.clairia.app gets same format as dashboard:getUser
+        const payload = {
+            ...userState,
+            user: userState.isLoggedIn ? { uid: userState.uid, email: userState.email, displayName: userState.displayName, photoURL: null } : null,
+        };
         BrowserWindow.getAllWindows().forEach(win => {
             if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
-                win.webContents.send('user-state-changed', userState);
+                win.webContents.send('user-state-changed', payload);
             }
         });
 

@@ -1,6 +1,29 @@
 // src/preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
+const dashboardApi = {
+  getUser: () => {
+    console.log('[PRELOAD] dashboard:getUser called');
+    return ipcRenderer.invoke('dashboard:getUser').then(r => {
+      console.log('[PRELOAD] dashboard:getUser result:', JSON.stringify(r));
+      return r;
+    });
+  },
+  getSessions: (uid) => ipcRenderer.invoke('dashboard:getSessions', uid),
+  getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
+  deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
+  startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
+  minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
+  closeWindow: () => ipcRenderer.invoke('dashboard:close'),
+  onUserChanged: (cb) => ipcRenderer.on('user-state-changed', (_e, state) => cb(state, state)),
+  removeUserChanged: () => ipcRenderer.removeAllListeners('user-state-changed'),
+  onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', (_e, data) => cb(data)),
+  removeOnNavigateToSession: () => ipcRenderer.removeAllListeners('dashboard:navigateToSession'),
+  onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', (_e, data) => cb(data)),
+  removeOnShowDashboard: () => ipcRenderer.removeAllListeners('dashboard:show'),
+};
+
 contextBridge.exposeInMainWorld('api', {
   // Platform information for renderer processes
   platform: {
@@ -111,6 +134,8 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   // UI Component specific namespaces
+  dashboard: dashboardApi,
+
   // src/ui/app/ApiKeyHeader.js
   apiKeyHeader: {
     // Model & Provider Management
@@ -447,26 +472,8 @@ contextBridge.exposeInMainWorld('api', {
     // Platform Detection
     getPlatformInfo: () => ipcRenderer.invoke('get-platform-info'),
 
-    // Dashboard renderer window
-    dashboard: {
-      getUser: () => {
-        console.log('[PRELOAD] dashboard:getUser called');
-        return ipcRenderer.invoke('dashboard:getUser').then(r => { console.log('[PRELOAD] dashboard:getUser result:', JSON.stringify(r)); return r; });
-      },
-      getSessions: (uid) => ipcRenderer.invoke('dashboard:getSessions', uid),
-      getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
-      deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
-      startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
-      minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
-      maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
-      closeWindow: () => ipcRenderer.invoke('dashboard:close'),
-      onUserChanged: (cb) => ipcRenderer.on('user-state-changed', (_e, state) => cb(state, state)),
-      removeUserChanged: () => ipcRenderer.removeAllListeners('user-state-changed'),
-      onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', (_e, data) => cb(data)),
-      removeOnNavigateToSession: () => ipcRenderer.removeAllListeners('dashboard:navigateToSession'),
-      onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', (_e, data) => cb(data)),
-      removeOnShowDashboard: () => ipcRenderer.removeAllListeners('dashboard:show'),
-    }
+    // Backward-compatible alias for older renderer code paths.
+    dashboard: dashboardApi
   }
 });
 
