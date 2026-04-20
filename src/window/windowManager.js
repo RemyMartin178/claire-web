@@ -1820,6 +1820,9 @@ function createDashboardWindow() {
 
     dashboardWindow.once('ready-to-show', () => {
         dashboardWindow.show();
+        if (!app.isPackaged) {
+            dashboardWindow.webContents.openDevTools({ mode: 'detach' });
+        }
     });
 
     // Push current auth state once the page has fully loaded, so the renderer
