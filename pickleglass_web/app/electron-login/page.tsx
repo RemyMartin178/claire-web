@@ -37,42 +37,22 @@ export default function ElectronLoginPage() {
 
   useEffect(() => {
     if (isElectronRuntime !== true) return
-    let cancelled = false
 
-    const syncCurrentUser = async () => {
-      try {
-        const result = await window.api?.dashboard?.getUser?.()
-        if (!cancelled && (result as { user?: unknown } | null)?.user) {
-          router.replace('/activity')
-        }
-      } catch {
-        // noop
-      }
-    }
-
-    const handleUserChanged = (state: { isLoggedIn?: boolean }) => {
-      if (!state?.isLoggedIn || cancelled) return
-      router.replace('/activity')
-    }
-
-    void syncCurrentUser()
-    window.api?.dashboard?.onUserChanged?.(handleUserChanged)
+    // Do NOT navigate here — wait for Firebase Web auth (isAuthenticated effect above).
+    // Navigating via IPC state before signInWithCustomToken completes causes a
+    // redirect loop: /electron-login → /activity → ConditionalLayout (no Firebase auth)
+    // → /electron-login → …
+    window.api?.dashboard?.onUserChanged?.(() => {})
 
     return () => {
-      cancelled = true
       window.api?.dashboard?.removeUserChanged?.()
     }
-  }, [isElectronRuntime, router])
+  }, [isElectronRuntime])
 
   const handleStart = async () => {
     if (isLoading) return
     setIsLoading(true)
     try {
-      const res = await window.api?.dashboard?.getUser?.()
-      if ((res as { user?: unknown } | null)?.user) {
-        router.replace('/activity')
-        return
-      }
       await window.api?.common?.startFirebaseAuth?.()
     } catch {
       // noop
