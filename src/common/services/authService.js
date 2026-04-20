@@ -456,22 +456,32 @@ class AuthService {
 
     async handleDashboardDidFinishLoad(targetWindow = null) {
         const userState = this.getCurrentUser();
+        if (!userState.isLoggedIn) return;
 
-        if (!userState.isLoggedIn) {
-            await this.syncDashboardBrowserAuth({
-                action: 'signOut',
-                reloadOnChange: true,
-                reason: 'dashboard-load-no-user',
-                targetWindow,
-            });
+        const win = await this._getDashboardWindow(targetWindow);
+        if (!win || win.isDestroyed()) return;
+
+        let tokenForSync = null;
+        try {
+            tokenForSync = await this._getCustomTokenForDashboardSync(null);
+        } catch (_) {}
+        if (!tokenForSync) {
+            logger.warn('[Auth] handleDashboardDidFinishLoad: no custom token available, skipping sync');
             return;
         }
 
-        await this.syncDashboardBrowserAuth({
+        const script = this._buildDashboardAuthSyncScript({
             action: 'signIn',
-            reason: 'dashboard-load-authenticated-user',
-            targetWindow,
+            customToken: tokenForSync,
+            expectedUid: userState.uid || null,
         });
+
+        try {
+            const result = await win.webContents.executeJavaScript(script, true);
+            logger.info('[Auth] Dashboard auth sync completed on did-finish-load', { result });
+        } catch (e) {
+            logger.warn('[Auth] Dashboard auth sync executeJavaScript failed', { error: e.message });
+        }
     }
 
     startAuthPolling(webUrl) {
