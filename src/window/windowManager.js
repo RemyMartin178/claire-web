@@ -1780,10 +1780,6 @@ function createDashboardWindow() {
         return dashboardWindow;
     }
 
-    const isDev = !app.isPackaged;
-    // TODO: set RENDERER_DEV_URL=http://localhost:5174 in .env to load local Vite dev server
-    const RENDERER_URL = process.env.RENDERER_DEV_URL || 'https://renderer.clairia.app';
-
     dashboardWindow = new BrowserWindow({
         width: 1200,
         height: 700,
@@ -1808,7 +1804,14 @@ function createDashboardWindow() {
         dashboardWindow.setWindowButtonVisibility(false);
     }
 
-    dashboardWindow.loadURL(RENDERER_URL);
+    if (process.env.RENDERER_DEV_URL) {
+        dashboardWindow.loadURL(process.env.RENDERER_DEV_URL);
+    } else {
+        const rendererDist = app.isPackaged
+            ? path.join(app.getAppPath(), 'pickleglass_electron/dist/index.html')
+            : path.join(__dirname, '../../pickleglass_electron/dist/index.html');
+        dashboardWindow.loadFile(rendererDist);
+    }
 
     dashboardWindow.once('ready-to-show', () => {
         dashboardWindow.show();

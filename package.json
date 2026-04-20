@@ -24,7 +24,8 @@
         "postinstall": "node scripts/postinstall.js",
         "build:ui": "node build.js",
         "build:web": "cd pickleglass_web && npm run build && cd ..",
-        "build:all": "npm run build:ui && npm run build:web",
+        "build:renderer": "cd pickleglass_electron && npm install && npm run build",
+        "build:all": "npm run build:ui && npm run build:web && npm run build:renderer",
         "watch:ui": "node build.js --watch"
     },
     "keywords": [
