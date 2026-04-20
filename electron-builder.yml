@@ -36,7 +36,6 @@ files:
     - '!**/.env.local'
     - '!**/test-db-connection.js'
     - public/build/**/*
-    - pickleglass_electron/dist/**/*
 
 # Additional resources to be copied into the app's resources directory
 extraResources:

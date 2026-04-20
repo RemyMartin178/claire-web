@@ -1804,14 +1804,8 @@ function createDashboardWindow() {
         dashboardWindow.setWindowButtonVisibility(false);
     }
 
-    if (process.env.RENDERER_DEV_URL) {
-        dashboardWindow.loadURL(process.env.RENDERER_DEV_URL);
-    } else {
-        const rendererDist = app.isPackaged
-            ? path.join(app.getAppPath(), 'pickleglass_electron/dist/index.html')
-            : path.join(__dirname, '../../pickleglass_electron/dist/index.html');
-        dashboardWindow.loadFile(rendererDist);
-    }
+    const RENDERER_URL = process.env.RENDERER_DEV_URL || 'https://renderer.clairia.app';
+    dashboardWindow.loadURL(RENDERER_URL);
 
     dashboardWindow.once('ready-to-show', () => {
         dashboardWindow.show();
