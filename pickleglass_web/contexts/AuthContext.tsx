@@ -70,9 +70,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (firebaseUser) {
         await handleUserAuthentication(firebaseUser)
       } else {
-        setUser(null)
-        setIsAuthenticated(false)
-        setLoading(false)
+        // In Electron, hold loading=true for up to 4s so the main process has
+        // time to inject auth via window.__claireElectronSignIn before we
+        // redirect to /electron-login (avoids the onboarding flash).
+        const isElectron = typeof window !== 'undefined' && Boolean((window as any).api?.dashboard?.getUser)
+        if (isElectron) {
+          setTimeout(() => {
+            if (!auth.currentUser) {
+              setUser(null)
+              setIsAuthenticated(false)
+              setLoading(false)
+            }
+          }, 4000)
+        } else {
+          setUser(null)
+          setIsAuthenticated(false)
+          setLoading(false)
+        }
       }
     })
 
