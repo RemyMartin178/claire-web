@@ -117,7 +117,15 @@ export default function ConditionalLayout({
       : <ClientLayout>{children}</ClientLayout>
   }
 
-  if (!isAuthenticated || loading || isElectronRuntime === null) {
+  if (loading || isElectronRuntime === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="w-6 h-6 rounded-full border-2 border-foreground/15 border-t-foreground/70 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
     return null
   }
 

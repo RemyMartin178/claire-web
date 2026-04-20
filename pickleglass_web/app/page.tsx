@@ -20,9 +20,5 @@ export default function HomePage() {
     }
   }, [user, isAuthenticated, loading, isElectronRuntime, router])
 
-  if (loading || !isAuthenticated || isElectronRuntime === null) {
-    return null
-  }
-
   return null
 }
