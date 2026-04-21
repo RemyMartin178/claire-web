@@ -220,6 +220,61 @@
                 contain: layout style paint;
                 transition: transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.25s ease-out;
             }
+
+            /* ── Login button classes ── */
+            @keyframes spin { to { transform: rotate(360deg); } }
+
+            .btn-apple-premium {
+                position: relative;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                height: 48px;
+                padding: 0 32px;
+                border: none;
+                border-radius: 14px;
+                background: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%);
+                color: #cbe3ff;
+                font-family: "Google Sans", "Plus Jakarta Sans", -apple-system, sans-serif;
+                font-size: 15px;
+                font-weight: 500;
+                letter-spacing: -0.01em;
+                overflow: hidden;
+                cursor: pointer;
+                transition: opacity 0.2s ease, transform 0.15s ease;
+                box-shadow: 0 0 0 0.678px #0c44a1, inset 0 -1.355px 0 #022c70, inset 0 0.678px 0 #81b6ff;
+            }
+
+            .btn-hero-cta-premium {
+                height: 52px;
+                font-size: 15.5px;
+            }
+
+            .btn-apple-premium:not(:disabled):hover {
+                opacity: 0.92;
+                transform: translateY(-1px);
+            }
+
+            .btn-apple-premium:not(:disabled):active {
+                transform: translateY(0);
+                opacity: 0.85;
+            }
+
+            .btn-primary-shine {
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, transparent 55%);
+                border-radius: inherit;
+                pointer-events: none;
+            }
+
+            .blurred-border-black {
+                position: absolute;
+                inset: 0;
+                border-radius: inherit;
+                box-shadow: inset 0 0 0 1px rgba(0,0,0,0.18);
+                pointer-events: none;
+            }
         </style>
     </head>
     <body>
