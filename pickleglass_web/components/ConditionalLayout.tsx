@@ -34,6 +34,11 @@ const PAGE_TITLES: Record<string, string> = {
   electron: 'Electron',
 }
 
+function normalizePath(pathname: string | null | undefined) {
+  if (!pathname || pathname === '/') return '/'
+  return pathname.split('?')[0].split('#')[0].replace(/\/+$/, '')
+}
+
 function getDocumentTitle(pathname: string | null) {
   if (!pathname) {
     return 'Claire'
@@ -69,12 +74,13 @@ export default function ConditionalLayout({
   const isElectronRuntime = useElectronRuntime()
 
   const electronLoginPath = getElectronLoginPath()
+  const normalizedPathname = normalizePath(pathname)
   const isAuthPage =
-    pathname?.startsWith('/auth/') ||
-    pathname === '/login' ||
-    pathname === '/register' ||
-    pathname === electronLoginPath
-  const isDebugPage = pathname === '/fettywapdebug'
+    normalizedPathname.startsWith('/auth/') ||
+    normalizedPathname === '/login' ||
+    normalizedPathname === '/register' ||
+    normalizedPathname === electronLoginPath
+  const isDebugPage = normalizedPathname === '/fettywapdebug'
 
   useEffect(() => {
     if (isElectronRuntime === null) return
@@ -82,7 +88,7 @@ export default function ConditionalLayout({
     if (!loading && !isAuthenticated && !isAuthPage) {
       const timer = setTimeout(() => {
         if (!isAuthenticated && !isAuthPage) {
-          const currentPath = window.location.pathname + window.location.search
+          const currentPath = normalizePath(window.location.pathname) + window.location.search
           if (
             currentPath !== '/auth/login' &&
             currentPath !== electronLoginPath &&

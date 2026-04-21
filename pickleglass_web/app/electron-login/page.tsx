@@ -16,6 +16,16 @@ function openLegal(url: string) {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
+function normalizePathname(pathname: string) {
+  if (!pathname || pathname === '/') return '/'
+  return pathname.replace(/\/+$/, '')
+}
+
+function toElectronAbsoluteUrl(target: string) {
+  const normalizedTarget = target.endsWith('/') ? target : `${target}/`
+  return new URL(normalizedTarget, window.location.origin).toString()
+}
+
 export default function ElectronLoginPage() {
   const router = useRouter()
   const { isAuthenticated, loading: authLoading } = useAuth()
@@ -52,8 +62,8 @@ export default function ElectronLoginPage() {
     redirectTimerRef.current = setTimeout(() => {
       router.replace(target)
       window.setTimeout(() => {
-        if (window.location.pathname === '/electron-login') {
-          window.location.href = target
+        if (normalizePathname(window.location.pathname) === '/electron-login') {
+          window.location.replace(toElectronAbsoluteUrl(target))
         }
       }, 450)
     }, 650)
@@ -214,12 +224,7 @@ export default function ElectronLoginPage() {
             Votre assistant de réunion.
           </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-            style={{ width: '100%', display: 'flex', justifyContent: 'center' }}
-          >
+          <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
             <button
               onClick={() => { void handleStart() }}
               disabled={buttonState !== 'idle'}
@@ -279,7 +284,7 @@ export default function ElectronLoginPage() {
                 </AnimatePresence>
               </span>
             </button>
-          </motion.div>
+          </div>
         </div>
 
         {/* Footer */}

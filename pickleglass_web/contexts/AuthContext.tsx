@@ -46,29 +46,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [])
 
   useEffect(() => {
-    const wasManuallyLoggedOut = sessionStorage.getItem('manuallyLoggedOut')
+    const wasManuallyLoggedOut = () => {
+      if (typeof window === 'undefined') return false
+      return sessionStorage.getItem('manuallyLoggedOut') === 'true'
+    }
+
+    const clearManualLogoutFlag = () => {
+      if (typeof window === 'undefined') return
+      sessionStorage.removeItem('manuallyLoggedOut')
+    }
 
     const initTimer = setTimeout(() => {
       const currentUser = auth.currentUser
-      if (currentUser && wasManuallyLoggedOut !== 'true') {
+      if (currentUser) {
+        clearManualLogoutFlag()
+        setLoading(true)
         handleUserAuthentication(currentUser)
-      } else if (wasManuallyLoggedOut === 'true') {
+      } else if (wasManuallyLoggedOut()) {
         setUser(null)
         setIsAuthenticated(false)
+        setIsAdmin(false)
         setLoading(false)
       }
     }, 100)
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (wasManuallyLoggedOut === 'true') {
-        setUser(null)
-        setIsAuthenticated(false)
-        setLoading(false)
+      if (firebaseUser) {
+        clearManualLogoutFlag()
+        setLoading(true)
+        await handleUserAuthentication(firebaseUser)
         return
       }
 
-      if (firebaseUser) {
-        await handleUserAuthentication(firebaseUser)
+      if (wasManuallyLoggedOut()) {
+        setUser(null)
+        setIsAuthenticated(false)
+        setIsAdmin(false)
+        setLoading(false)
+        return
       } else {
         // In Electron, hold loading=true for up to 4s so the main process has
         // time to inject auth via window.__claireElectronSignIn before we

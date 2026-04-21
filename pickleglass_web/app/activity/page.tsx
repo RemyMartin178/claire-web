@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import {
-  UserProfile,
   Session,
   getSessions,
   deleteSession,
@@ -20,7 +18,6 @@ import GettingStartedChecklist from '@/components/GettingStartedChecklist'
 import { getEventStartDate, getEventEndDate, getEventTitle } from '../calendar/event-utils'
 
 export default function ActivityPage() {
-  const router = useRouter();
   const { user: userInfo, loading } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([])
   const [allSessions, setAllSessions] = useState<Session[]>([])
@@ -30,7 +27,8 @@ export default function ActivityPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [upcomingMeeting, setUpcomingMeeting] = useState<any>(null)
   const [meetingBrief, setMeetingBrief] = useState<string | null>(null)
-  const [currentTime, setCurrentTime] = useState(() => new Date())
+  const [currentTime, setCurrentTime] = useState<Date | null>(null)
+  const [canStartClaire, setCanStartClaire] = useState(false)
 
   const fetchSessions = async () => {
     try {
@@ -93,6 +91,8 @@ export default function ActivityPage() {
 
   // Clock tick to auto-hide past meetings
   useEffect(() => {
+    setCurrentTime(new Date())
+    setCanStartClaire(Boolean((window as any).api?.dashboard?.startClaire))
     const timer = setInterval(() => setCurrentTime(new Date()), 60_000)
     return () => clearInterval(timer)
   }, [])
@@ -158,8 +158,9 @@ export default function ActivityPage() {
     return null
   }
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
+  const getGreeting = (date: Date | null) => {
+    if (!date) return 'Bienvenue';
+    const hour = date.getHours();
     if (hour < 12) return 'Bonjour';
     if (hour < 18) return 'Bon après-midi';
     return 'Bonsoir';
@@ -259,11 +260,11 @@ export default function ActivityPage() {
     <div className="min-h-screen bg-white text-[#282828] font-body selection:bg-primary/30">
       <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-3xl font-heading font-semibold text-black mb-2">
-          {getGreeting()}, {userInfo.display_name}
+          {getGreeting(currentTime)}, {userInfo.display_name}
         </h1>
 
         {/* Démarrez Claire — visible uniquement dans l'app Electron */}
-        {typeof window !== 'undefined' && (window as any).api?.dashboard?.startClaire && (
+        {canStartClaire && (
           <button
             onClick={() => (window as any).api.dashboard.startClaire()}
             className="mt-4 mb-6 flex items-center gap-2.5 px-5 py-3 rounded-xl text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
@@ -277,7 +278,7 @@ export default function ActivityPage() {
         )}
 
         {(() => {
-          if (!upcomingMeeting) return null
+          if (!upcomingMeeting || !currentTime) return null
           const start = getEventStartDate(upcomingMeeting)
           if (!start || start <= currentTime) return null
           const end = getEventEndDate(upcomingMeeting)
