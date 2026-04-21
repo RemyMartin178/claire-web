@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useElectronRuntime } from '@/utils/electron'
@@ -19,9 +18,9 @@ function openLegal(url: string) {
 
 export default function ElectronLoginPage() {
   const router = useRouter()
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading: authLoading } = useAuth()
   const isElectronRuntime = useElectronRuntime()
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (isElectronRuntime === false) {
@@ -30,31 +29,29 @@ export default function ElectronLoginPage() {
   }, [isElectronRuntime, router])
 
   useEffect(() => {
-    if (isAuthenticated && !loading) {
+    if (isAuthenticated && !authLoading) {
       router.replace('/activity')
     }
-  }, [isAuthenticated, loading, router])
+  }, [isAuthenticated, authLoading, router])
 
   useEffect(() => {
     if (isElectronRuntime !== true) return
-    // Navigation handled by isAuthenticated effect below (after Firebase Web auth completes).
-    // onUserChanged fires before executeJavaScript injects the token — navigating here
-    // causes ConditionalLayout to bounce back because isAuthenticated is still false.
     window.api?.dashboard?.onUserChanged?.(() => {})
-    return () => {
-      window.api?.dashboard?.removeUserChanged?.()
-    }
+    return () => { window.api?.dashboard?.removeUserChanged?.() }
   }, [isElectronRuntime])
 
   const handleStart = async () => {
-    if (isLoading) return
-    setIsLoading(true)
+    if (loading) return
+    setLoading(true)
     try {
-      await window.api?.common?.startFirebaseAuth?.()
-      // Keep spinner — redirect unmounts this component when auth completes
-    } catch {
-      setIsLoading(false)
-    }
+      const res = await window?.api?.dashboard?.getUser?.()
+      if (res?.user) {
+        router.replace('/activity')
+        return
+      }
+      await window?.api?.common?.startFirebaseAuth?.()
+    } catch (_) {}
+    setLoading(false)
   }
 
   return (
@@ -63,7 +60,7 @@ export default function ElectronLoginPage() {
       height: '100vh',
       width: '100vw',
       overflow: 'hidden',
-      fontFamily: '"Google Sans", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
+      fontFamily: '"Google Sans", var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
       background: '#ffffff',
     }}>
       {/* ── Left Panel ── */}
@@ -85,20 +82,14 @@ export default function ElectronLoginPage() {
           maxWidth: 420,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
-            <Image
-              src="/claire_logo-removebg-preview.png"
-              alt="Claire Logo"
-              width={56}
-              height={56}
-              priority
-              style={{ width: 56, height: 56 }}
-            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/claire_logo-removebg-preview.png" alt="Claire Logo" style={{ width: 56, height: 56 }} />
             <span style={{
               fontSize: '1.4rem',
               fontWeight: 500,
               color: '#1d1d1f',
               letterSpacing: '-0.02em',
-              fontFamily: '"Plus Jakarta Sans", sans-serif',
+              fontFamily: 'var(--font-plus-jakarta), sans-serif',
               transform: 'translateY(-0.5px)',
               lineHeight: 1,
             }}>Claire</span>
@@ -139,19 +130,19 @@ export default function ElectronLoginPage() {
           >
             <button
               onClick={() => { void handleStart() }}
-              disabled={isLoading}
+              disabled={loading}
               className="btn-apple-premium btn-hero-cta-premium px-10 group"
               style={{
                 width: '100%',
                 maxWidth: 320,
-                opacity: isLoading ? 0.7 : 1,
-                cursor: isLoading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
               }}
             >
               <div className="btn-primary-shine" />
               <div className="blurred-border-black" />
               <span className="relative z-10 flex items-center justify-center">
-                {isLoading ? (
+                {loading ? (
                   <span style={{
                     width: 16, height: 16,
                     border: '2px solid rgba(255,255,255,0.35)',
@@ -238,12 +229,11 @@ export default function ElectronLoginPage() {
           zIndex: 0,
           aspectRatio: '16/9',
         }}>
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/zoom-mockup.jpg"
             alt=""
-            fill
-            sizes="50vw"
-            style={{ objectFit: 'cover', objectPosition: 'center 75%', transform: 'scale(1.04) translateY(-4%)' }}
+            style={{ width: '100%', height: '140%', objectFit: 'cover', objectPosition: 'center 75%', marginTop: '-4%' }}
           />
         </div>
 
@@ -300,7 +290,7 @@ export default function ElectronLoginPage() {
             border: '1px solid rgba(207,226,255,0.24)',
             backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             borderRadius: 16, color: 'white',
-            fontFamily: '"Plus Jakarta Sans", -apple-system, sans-serif',
+            fontFamily: 'var(--font-plus-jakarta), -apple-system, sans-serif',
             boxShadow: '0 24px 56px rgba(0,0,0,0.20), 0 4px 16px rgba(0,0,0,0.10)',
             overflow: 'hidden', position: 'relative',
           }}>
@@ -314,7 +304,7 @@ export default function ElectronLoginPage() {
               <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'rgba(255,255,255,0.78)', margin: '0 0 10px' }}>
                 Oui — Claire écoute votre réunion en temps réel et génère un{' '}
                 <strong style={{ color: 'rgba(255,255,255,0.92)', fontWeight: 600 }}>résumé live</strong>{' '}
-                avec les décisions, actions à suivre et points clés.
+                avec les décisions, actions à suivre et points clés. Tout se passe en silence, sans interrompre la conversation.
               </p>
               <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'rgba(255,255,255,0.78)', margin: 0 }}>
                 Vous pouvez aussi poser des questions sur ce qui vient d&apos;être dit, demander une{' '}
@@ -323,7 +313,7 @@ export default function ElectronLoginPage() {
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px 14px 16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <span style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.28)', fontFamily: '"Plus Jakarta Sans", -apple-system, sans-serif', fontWeight: 400, userSelect: 'none' }}>
+              <span style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--font-plus-jakarta), -apple-system, sans-serif', fontWeight: 400, userSelect: 'none' }}>
                 Posez une question sur votre écran ou la conversation...
               </span>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, padding: '5px 7px', color: 'rgba(255,255,255,0.50)', flexShrink: 0 }}>

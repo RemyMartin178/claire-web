@@ -750,7 +750,7 @@ a:hover {
   border-radius: 14px;
   background: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%);
   color: #cbe3ff;
-  font-family: inherit;
+  font-family: "Google Sans", var(--font-plus-jakarta), -apple-system, sans-serif;
   font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.01em;

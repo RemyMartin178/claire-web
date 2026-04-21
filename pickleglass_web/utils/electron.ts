@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from 'react'
 
+type ElectronDashboardUserResult = {
+  user?: unknown
+}
+
 declare global {
   interface Window {
     api?: {
       dashboard?: {
-        getUser?: () => Promise<unknown>
+        getUser?: () => Promise<ElectronDashboardUserResult | undefined>
         startClaire?: () => Promise<unknown>
         minimizeWindow?: () => Promise<unknown>
         maximizeWindow?: () => Promise<unknown>
