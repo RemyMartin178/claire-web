@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Check } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useElectronRuntime } from '@/utils/electron'
 
@@ -20,7 +20,37 @@ export default function ElectronLoginPage() {
   const router = useRouter()
   const { isAuthenticated, loading: authLoading } = useAuth()
   const isElectronRuntime = useElectronRuntime()
-  const [loading, setLoading] = useState(false)
+  const [buttonState, setButtonState] = useState<'idle' | 'loading' | 'success'>('idle')
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const clearRedirectTimer = useCallback(() => {
+    if (redirectTimerRef.current) {
+      clearTimeout(redirectTimerRef.current)
+      redirectTimerRef.current = null
+    }
+  }, [])
+
+  const clearPollTimer = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current)
+      pollTimerRef.current = null
+    }
+  }, [])
+
+  const completeLogin = useCallback((target = '/activity') => {
+    clearRedirectTimer()
+    clearPollTimer()
+    setButtonState('success')
+    redirectTimerRef.current = setTimeout(() => {
+      router.replace(target)
+      window.setTimeout(() => {
+        if (window.location.pathname === '/electron-login') {
+          window.location.href = target
+        }
+      }, 450)
+    }, 650)
+  }, [clearPollTimer, clearRedirectTimer, router])
 
   useEffect(() => {
     if (isElectronRuntime === false) {
@@ -30,28 +60,61 @@ export default function ElectronLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      router.replace('/activity')
+      completeLogin('/activity')
     }
-  }, [isAuthenticated, authLoading, router])
+  }, [isAuthenticated, authLoading])
 
   useEffect(() => {
     if (isElectronRuntime !== true) return
-    window.api?.dashboard?.onUserChanged?.(() => {})
-    return () => { window.api?.dashboard?.removeUserChanged?.() }
+    const handleUserChanged = (state?: { user?: unknown; isLoggedIn?: boolean }) => {
+      if (state?.user || state?.isLoggedIn) {
+        completeLogin('/activity')
+      }
+    }
+
+    window.api?.dashboard?.onUserChanged?.(handleUserChanged)
+
+    void window.api?.dashboard?.getUser?.().then((res) => {
+      if (res?.user) {
+        completeLogin('/activity')
+      }
+    }).catch(() => {})
+
+    return () => {
+      window.api?.dashboard?.removeUserChanged?.()
+      clearRedirectTimer()
+      clearPollTimer()
+    }
   }, [isElectronRuntime])
 
   const handleStart = async () => {
-    if (loading) return
-    setLoading(true)
+    if (buttonState !== 'idle') return
+    setButtonState('loading')
+
+    clearPollTimer()
+    pollTimerRef.current = setInterval(() => {
+      void window?.api?.dashboard?.getUser?.().then((res) => {
+        if (res?.user) {
+          completeLogin('/activity')
+        }
+      }).catch(() => {})
+    }, 1200)
+
     try {
       const res = await window?.api?.dashboard?.getUser?.()
       if (res?.user) {
-        router.replace('/activity')
+        completeLogin('/activity')
         return
       }
-      await window?.api?.common?.startFirebaseAuth?.()
-    } catch (_) {}
-    setLoading(false)
+      const startResult = await window?.api?.common?.startFirebaseAuth?.()
+      if (startResult && typeof startResult === 'object' && 'success' in startResult && startResult.success === false) {
+        clearPollTimer()
+        setButtonState('idle')
+      }
+    } catch (_) {
+      clearPollTimer()
+      setButtonState('idle')
+    }
   }
 
   return (
@@ -130,19 +193,19 @@ export default function ElectronLoginPage() {
           >
             <button
               onClick={() => { void handleStart() }}
-              disabled={loading}
+              disabled={buttonState !== 'idle'}
               className="btn-apple-premium btn-hero-cta-premium px-10 group"
               style={{
                 width: '100%',
                 maxWidth: 320,
-                opacity: loading ? 0.7 : 1,
-                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: buttonState === 'idle' ? 1 : 0.92,
+                cursor: buttonState === 'idle' ? 'pointer' : 'not-allowed',
               }}
             >
               <div className="btn-primary-shine" />
               <div className="blurred-border-black" />
               <span className="relative z-10 flex items-center justify-center">
-                {loading ? (
+                {buttonState === 'loading' ? (
                   <span style={{
                     width: 16, height: 16,
                     border: '2px solid rgba(255,255,255,0.35)',
@@ -151,6 +214,10 @@ export default function ElectronLoginPage() {
                     animation: 'spin 0.8s linear infinite',
                     display: 'inline-block',
                   }} />
+                ) : buttonState === 'success' ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Check className="w-4 h-4" />
+                  </span>
                 ) : (
                   <>
                     <span style={{ fontFamily: 'inherit' }}>Continuer</span>
