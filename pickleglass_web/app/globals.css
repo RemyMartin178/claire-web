@@ -744,49 +744,129 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 48px;
-  padding: 0 32px;
-  border: none;
-  border-radius: 14px;
-  background: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%);
-  color: #cbe3ff;
+  background: radial-gradient(85.44% 85.44% at 50% 14.56%, #3a3a3c 0%, #1c1c1e 100%);
+  box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.28);
+  color: white !important;
+  border-radius: 8px;
   font-family: "Google Sans", var(--font-plus-jakarta), -apple-system, sans-serif;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  overflow: hidden;
+  font-size: 16px;
+  font-weight: 550;
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.15s ease;
-  box-shadow: 0 0 0 0.678px #0c44a1, inset 0 -1.355px 0 #022c70, inset 0 0.678px 0 #81b6ff;
+  border: none;
+  min-height: 48px;
+  overflow: hidden;
+}
+
+.btn-apple-premium::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: calc(100% + 2px);
+  height: 55%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.13) 0%,
+    rgba(255, 255, 255, 0.04) 60%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  filter: blur(1px);
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-apple-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 65%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.btn-apple-premium:hover::after,
+.btn-apple-premium:hover::before {
+  opacity: 1;
+}
+
+.btn-apple-premium:hover {
+  transform: none;
+  box-shadow: 0px 1px 1px rgba(255, 255, 255, 0.2) inset, 0px 8px 24px rgba(0, 0, 0, 0.28);
+  filter: brightness(1.35) !important;
 }
 
 .btn-hero-cta-premium {
-  height: 52px;
-  font-size: 15.5px;
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s cubic-bezier(0.2, 0, 0, 1) !important;
 }
 
-.btn-apple-premium:not(:disabled):hover {
-  opacity: 0.92;
-  transform: translateY(-1px);
+.btn-hero-cta-premium:hover {
+  transform: translateY(-4px) scale(1.02) !important;
+  box-shadow:
+    0px 1px 1px rgba(255, 255, 255, 0.3) inset,
+    0px 20px 40px rgba(0, 0, 0, 0.28),
+    0px 10px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
-.btn-apple-premium:not(:disabled):active {
-  transform: translateY(0);
-  opacity: 0.85;
+.btn-hero-cta-premium:hover .btn-primary-shine::after {
+  animation: sweep-shine 4s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
 }
 
 .btn-primary-shine {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, transparent 55%);
-  border-radius: inherit;
+  overflow: hidden;
+  z-index: 1;
   pointer-events: none;
+  border-radius: inherit;
+}
+
+.btn-primary-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: skewX(-25deg);
+  pointer-events: none;
+}
+
+@keyframes sweep-shine {
+  0% { left: -100%; }
+  100% { left: 200%; }
 }
 
 .blurred-border-black {
   position: absolute;
-  inset: 0;
+  inset: -1.5px;
+  opacity: 0.85;
+  z-index: 2;
+  background: linear-gradient(176.87deg, #ffffffcc 8.56%, #ffffff10 85.04%);
   border-radius: inherit;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+  padding: 3px;
+  -webkit-mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  mask-image: linear-gradient(#fff 0 0), linear-gradient(#fff 0 0);
+  -webkit-mask-clip: content-box, border-box;
+  mask-clip: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
   pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.btn-apple-premium:hover .blurred-border-black {
+  opacity: 1;
 }
