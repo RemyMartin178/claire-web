@@ -1,10 +1,15 @@
 /** @type {import('next').NextConfig} */
 const { withSentryConfig } = require('@sentry/nextjs')
 
+const isElectronBuild = process.env.ELECTRON_BUILD === 'true'
+
 const nextConfig = {
   reactStrictMode: true,
+  output: isElectronBuild ? 'export' : undefined,
+  trailingSlash: isElectronBuild ? true : undefined,
   images: { unoptimized: true },
   async headers() {
+    if (isElectronBuild) return []
     return [
       {
         source: "/(.*)",
@@ -23,18 +28,20 @@ const nextConfig = {
           }
         ]
       }
-    ];
+    ]
   },
   async redirects() {
+    if (isElectronBuild) return []
     return [
       {
         source: '/download',
         destination: '/api/download',
         permanent: false,
       },
-    ];
+    ]
   },
   async rewrites() {
+    if (isElectronBuild) return []
     return [
       {
         source: '/api/v1/:path((?!tools(?:/|$)|knowledge(?:/|$)).*)',
@@ -43,10 +50,10 @@ const nextConfig = {
           : 'https://claire-web-production.up.railway.app/api/v1/:path*',
       },
     ]
-  }
+  },
 }
 
-module.exports = withSentryConfig(nextConfig, {
+const sentryOptions = {
   org: 'claire-t5',
   project: 'claire-web',
   silent: !process.env.CI,
@@ -54,4 +61,8 @@ module.exports = withSentryConfig(nextConfig, {
   hideSourceMaps: true,
   disableLogger: true,
   automaticVercelMonitors: true,
-})
+}
+
+module.exports = isElectronBuild
+  ? nextConfig
+  : withSentryConfig(nextConfig, sentryOptions)

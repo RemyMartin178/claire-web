@@ -1,6 +1,13 @@
 import config from '../env.config.js';
 
+const VERCEL_BASE = 'https://app.clairia.app';
+
 export function getApiBase(): string {
+	// When running as local Electron bundle (app://renderer), always use Vercel for APIs
+	if (typeof window !== 'undefined' && window.location?.protocol === 'app:') {
+		return VERCEL_BASE;
+	}
+
 	// Priorité 1: même origine (serveur local embarqué)
 	if (typeof window !== 'undefined' && window.location?.origin) {
 		return window.location.origin.replace(/\/$/, '');

@@ -28,7 +28,12 @@ if (require('electron-squirrel-startup')) {
     process.exit(0);
 }
 
-const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, dialog, desktopCapturer, session, protocol, net } = require('electron');
+
+// Register app://renderer as a privileged scheme BEFORE app is ready (required by Electron)
+protocol.registerSchemesAsPrivileged([
+    { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
+]);
 
 // Disable Windows text suggestions / ink UI / IME candidate bar that shows below inputs
 app.commandLine.appendSwitch('disable-features', 'TextInputUI,TextInputKeyboard,IMEInputContextInBrowser,AutofillServerTypePredictions,AutofillUseConsistentPopupSettings,AutofillPopupStays');
@@ -371,6 +376,45 @@ app.on('web-contents-created', (_, contents) => {
 });
 
 app.whenReady().then(async () => {
+
+    // Serve the static Next.js export via app://renderer/
+    const rendererDir = app.isPackaged
+        ? path.join(process.resourcesPath, 'out')
+        : path.join(__dirname, '..', 'pickleglass_web', 'out');
+
+    protocol.handle('app', (request) => {
+        const url = new URL(request.url);
+        if (url.hostname !== 'renderer') return new Response('Not found', { status: 404 });
+        let filePath = decodeURIComponent(url.pathname);
+        // Map / → /electron-login (default entry point for dashboard)
+        if (filePath === '/' || filePath === '') filePath = '/electron-login';
+        // Try exact path first, then with .html extension, then index.html inside dir
+        const candidates = [
+            path.join(rendererDir, filePath),
+            path.join(rendererDir, filePath + '.html'),
+            path.join(rendererDir, filePath.replace(/\/$/, ''), 'index.html'),
+        ];
+        for (const candidate of candidates) {
+            if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                return net.fetch('file://' + candidate);
+            }
+        }
+        // SPA fallback: return the requested page HTML (Next.js static export)
+        const pageHtml = path.join(rendererDir, filePath.replace(/\/$/, '') + '.html');
+        if (fs.existsSync(pageHtml)) return net.fetch('file://' + pageHtml);
+        return net.fetch('file://' + path.join(rendererDir, 'electron-login.html'));
+    });
+
+    // Allow app://renderer to call app.clairia.app APIs without CORS errors
+    session.defaultSession.webRequest.onHeadersReceived({ urls: ['https://app.clairia.app/*'] }, (details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Access-Control-Allow-Origin': ['app://renderer'],
+                'Access-Control-Allow-Credentials': ['true'],
+            },
+        });
+    });
 
     // Setup native loopback audio capture for Windows
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
