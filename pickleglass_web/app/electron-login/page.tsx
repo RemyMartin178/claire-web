@@ -37,17 +37,14 @@ export default function ElectronLoginPage() {
 
   useEffect(() => {
     if (isElectronRuntime !== true) return
-    let cancelled = false
-    const handleUserChanged = (state: { isLoggedIn?: boolean }) => {
-      if (!state?.isLoggedIn || cancelled) return
-      router.replace('/activity')
-    }
-    window.api?.dashboard?.onUserChanged?.(handleUserChanged)
+    // Navigation handled by isAuthenticated effect below (after Firebase Web auth completes).
+    // onUserChanged fires before executeJavaScript injects the token — navigating here
+    // causes ConditionalLayout to bounce back because isAuthenticated is still false.
+    window.api?.dashboard?.onUserChanged?.(() => {})
     return () => {
-      cancelled = true
       window.api?.dashboard?.removeUserChanged?.()
     }
-  }, [isElectronRuntime, router])
+  }, [isElectronRuntime])
 
   const handleStart = async () => {
     if (isLoading) return
