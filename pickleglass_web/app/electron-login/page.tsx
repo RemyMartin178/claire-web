@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowRight, Check } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useElectronRuntime } from '@/utils/electron'
@@ -23,6 +23,7 @@ export default function ElectronLoginPage() {
   const [buttonState, setButtonState] = useState<'idle' | 'loading' | 'success'>('idle')
   const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const authFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const clearRedirectTimer = useCallback(() => {
     if (redirectTimerRef.current) {
@@ -38,10 +39,16 @@ export default function ElectronLoginPage() {
     }
   }, [])
 
-  const completeLogin = useCallback((target = '/activity') => {
+  const clearAuthFallbackTimer = useCallback(() => {
+    if (authFallbackTimerRef.current) {
+      clearTimeout(authFallbackTimerRef.current)
+      authFallbackTimerRef.current = null
+    }
+  }, [])
+
+  const navigateToActivity = useCallback((target = '/activity') => {
     clearRedirectTimer()
     clearPollTimer()
-    setButtonState('success')
     redirectTimerRef.current = setTimeout(() => {
       router.replace(target)
       window.setTimeout(() => {
@@ -52,6 +59,11 @@ export default function ElectronLoginPage() {
     }, 650)
   }, [clearPollTimer, clearRedirectTimer, router])
 
+  const markLoginApproved = useCallback(() => {
+    clearPollTimer()
+    setButtonState((current) => (current === 'success' ? current : 'success'))
+  }, [clearPollTimer])
+
   useEffect(() => {
     if (isElectronRuntime === false) {
       router.replace('/auth/login')
@@ -60,15 +72,31 @@ export default function ElectronLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      completeLogin('/activity')
+      clearAuthFallbackTimer()
+      navigateToActivity('/activity')
     }
-  }, [isAuthenticated, authLoading])
+  }, [authLoading, clearAuthFallbackTimer, isAuthenticated, navigateToActivity])
+
+  useEffect(() => {
+    if (buttonState !== 'success' || (isAuthenticated && !authLoading)) return
+
+    clearAuthFallbackTimer()
+    authFallbackTimerRef.current = setTimeout(() => {
+      void window?.api?.dashboard?.getUser?.().then((res) => {
+        if (res?.user) {
+          navigateToActivity('/activity')
+        }
+      }).catch(() => {})
+    }, 2400)
+
+    return () => clearAuthFallbackTimer()
+  }, [authLoading, buttonState, clearAuthFallbackTimer, isAuthenticated, navigateToActivity])
 
   useEffect(() => {
     if (isElectronRuntime !== true) return
     const handleUserChanged = (state?: { user?: unknown; isLoggedIn?: boolean }) => {
       if (state?.user || state?.isLoggedIn) {
-        completeLogin('/activity')
+        markLoginApproved()
       }
     }
 
@@ -76,7 +104,7 @@ export default function ElectronLoginPage() {
 
     void window.api?.dashboard?.getUser?.().then((res) => {
       if (res?.user) {
-        completeLogin('/activity')
+        markLoginApproved()
       }
     }).catch(() => {})
 
@@ -84,8 +112,9 @@ export default function ElectronLoginPage() {
       window.api?.dashboard?.removeUserChanged?.()
       clearRedirectTimer()
       clearPollTimer()
+      clearAuthFallbackTimer()
     }
-  }, [isElectronRuntime])
+  }, [clearAuthFallbackTimer, clearPollTimer, clearRedirectTimer, isElectronRuntime, markLoginApproved])
 
   const handleStart = async () => {
     if (buttonState !== 'idle') return
@@ -95,7 +124,7 @@ export default function ElectronLoginPage() {
     pollTimerRef.current = setInterval(() => {
       void window?.api?.dashboard?.getUser?.().then((res) => {
         if (res?.user) {
-          completeLogin('/activity')
+          markLoginApproved()
         }
       }).catch(() => {})
     }, 1200)
@@ -103,7 +132,7 @@ export default function ElectronLoginPage() {
     try {
       const res = await window?.api?.dashboard?.getUser?.()
       if (res?.user) {
-        completeLogin('/activity')
+        markLoginApproved()
         return
       }
       const startResult = await window?.api?.common?.startFirebaseAuth?.()
@@ -199,31 +228,55 @@ export default function ElectronLoginPage() {
                 width: '100%',
                 maxWidth: 320,
                 opacity: buttonState === 'idle' ? 1 : 0.92,
-                cursor: buttonState === 'idle' ? 'pointer' : 'not-allowed',
+                cursor: 'pointer',
               }}
             >
               <div className="btn-primary-shine" />
               <div className="blurred-border-black" />
               <span className="relative z-10 flex items-center justify-center">
-                {buttonState === 'loading' ? (
-                  <span style={{
-                    width: 16, height: 16,
-                    border: '2px solid rgba(255,255,255,0.35)',
-                    borderTopColor: 'white',
-                    borderRadius: '50%',
-                    animation: 'spin 0.8s linear infinite',
-                    display: 'inline-block',
-                  }} />
-                ) : buttonState === 'success' ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Check className="w-4 h-4" />
-                  </span>
-                ) : (
-                  <>
-                    <span style={{ fontFamily: 'inherit' }}>Continuer</span>
-                    <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
-                  </>
-                )}
+                <AnimatePresence mode="wait" initial={false}>
+                  {buttonState === 'loading' ? (
+                    <motion.span
+                      key="loading"
+                      initial={{ opacity: 0, scale: 0.86, y: 3 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.78, y: -3 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        border: '2px solid rgba(255,255,255,0.35)',
+                        borderTopColor: 'white',
+                        borderRadius: '50%',
+                        animation: 'spin 0.8s linear infinite',
+                        display: 'inline-block',
+                      }}
+                    />
+                  ) : buttonState === 'success' ? (
+                    <motion.span
+                      key="success"
+                      initial={{ opacity: 0, scale: 0.7, rotate: -12 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                      exit={{ opacity: 0, scale: 0.86 }}
+                      transition={{ duration: 0.24, ease: 'easeOut' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Check className="w-4 h-4" />
+                    </motion.span>
+                  ) : (
+                    <motion.span
+                      key="idle"
+                      initial={{ opacity: 0, y: 3 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <span style={{ fontFamily: 'inherit' }}>Continuer</span>
+                      <ArrowRight className="w-4 h-4 ml-2 transition-transform duration-300 group-hover:translate-x-1" />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </span>
             </button>
           </motion.div>
