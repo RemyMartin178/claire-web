@@ -1,25 +1,9 @@
 'use client'
 
-import { useMemo, useState, type CSSProperties } from 'react'
-import { usePathname } from 'next/navigation'
+import { useState, type CSSProperties } from 'react'
 import Sidebar from '@/components/Sidebar'
 import SearchPopup from '@/components/SearchPopup'
 import PasswordModal from '@/components/PasswordModal'
-
-const PAGE_TITLES: Record<string, string> = {
-  activity: 'Activite',
-  calendar: 'Calendrier',
-  settings: 'Parametres',
-  tools: 'Outils',
-  help: 'Aide',
-  'knowledge-base': 'Base de connaissances',
-  chat: 'Chat',
-}
-
-function getTitle(pathname: string | null) {
-  const segment = pathname?.split('/').filter(Boolean)[0] || ''
-  return PAGE_TITLES[segment] || 'Claire'
-}
 
 function WinButton({
   title,
@@ -34,7 +18,7 @@ function WinButton({
     <button
       title={title}
       onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-full text-[#6b7280] transition hover:bg-black/5"
+      className="flex h-7 w-7 items-center justify-center rounded-full text-[#9ca3af] transition hover:bg-black/5 hover:text-[#6b7280]"
       style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
     >
       {children}
@@ -47,29 +31,18 @@ export default function ElectronClientLayout({
 }: {
   children: React.ReactNode
 }) {
-  const pathname = usePathname()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
-
-  const pageTitle = useMemo(() => getTitle(pathname), [pathname])
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#eef1f4] text-neutral-900">
+      {/* Minimal frameless drag bar — no title, just window controls */}
       <div
-        className="flex h-10 shrink-0 items-center border-b border-black/5 bg-white/95 px-3 backdrop-blur"
+        className="flex h-8 shrink-0 items-center justify-end border-b border-black/5 bg-white/95 px-2 backdrop-blur"
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
       >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-[#111827]">
-            {pageTitle}
-          </p>
-          <p className="truncate text-[11px] text-[#6b7280]">
-            Dashboard web optimise pour Electron
-          </p>
-        </div>
-
-        <div className="ml-3 flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <WinButton
-            title="Reduire"
+            title="Réduire"
             onClick={() => { void window.api?.dashboard?.minimizeWindow?.() }}
           >
             <svg width="10" height="2" viewBox="0 0 10 2" fill="none">
