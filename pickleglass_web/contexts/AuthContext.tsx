@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { onAuthStateChanged, signInWithCustomToken, type User } from "firebase/auth"
+import { onAuthStateChanged, signInWithCustomToken, signOut, type User } from "firebase/auth"
 import { auth } from "../utils/firebase"
 import { getUserProfile, type UserProfile } from "../utils/api"
 
@@ -39,9 +39,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (window as any).__claireElectronSignIn = async (customToken: string) => {
         await signInWithCustomToken(auth, customToken)
       }
+      ;(window as any).__claireElectronSignOut = async () => {
+        await signOut(auth)
+      }
     }
     return () => {
-      if (typeof window !== 'undefined') delete (window as any).__claireElectronSignIn
+      if (typeof window !== 'undefined') {
+        delete (window as any).__claireElectronSignIn
+        delete (window as any).__claireElectronSignOut
+      }
     }
   }, [])
 

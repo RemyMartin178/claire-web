@@ -344,18 +344,27 @@ class AuthService {
                 const customToken = ${JSON.stringify(customToken || null)};
                 const expectedUid = ${JSON.stringify(expectedUid || null)};
                 const syncState = { action, href: window.location.href, expectedUid };
+                const bridgeName = action === 'signOut'
+                    ? '__claireElectronSignOut'
+                    : '__claireElectronSignIn';
 
                 try {
-                    // Wait up to 5s for pickleglass_web to expose the sign-in bridge
+                    // Wait up to 5s for pickleglass_web to expose the required auth bridge.
                     let attempts = 0;
-                    while (typeof window.__claireElectronSignIn !== 'function' && attempts < 50) {
+                    while (typeof window[bridgeName] !== 'function' && attempts < 50) {
                         await new Promise(r => setTimeout(r, 100));
                         attempts++;
                     }
 
                     if (action === 'signOut') {
                         // No CDN needed — bridge handles signOut via auth state change
-                        syncState.changed = false;
+                        if (typeof window.__claireElectronSignOut !== 'function') {
+                            return { success: false, reason: 'bridge-not-ready', ...syncState };
+                        }
+
+                        await window.__claireElectronSignOut();
+                        syncState.changed = true;
+                        window.dispatchEvent(new CustomEvent('claire-electron-auth-synced', { detail: syncState }));
                         return { success: true, ...syncState };
                     }
 
