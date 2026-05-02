@@ -188,9 +188,9 @@ Un seul mot parmi : Réunion | Appel | Visio | Entretien | Présentation | Forma
 ## Résumé
 [2-3 phrases d'introduction : contexte général, participants si mentionnés, sujet principal abordé]
 
-- **[Premier grand thème]** : explication détaillée en 1-2 phrases avec les informations spécifiques mentionnées
-- **[Deuxième thème]** : explication détaillée en 1-2 phrases
-- **[Troisième thème si pertinent]** : explication détaillée
+- Phrase directe sur le premier point clé, avec les infos spécifiques mentionnées (noms, chiffres, contexte)
+- Phrase directe sur le deuxième point clé
+- Phrase directe sur le troisième point si pertinent
 
 ## À retenir
 - [Décision, engagement ou date clé — avec assez de contexte pour être compris seul]

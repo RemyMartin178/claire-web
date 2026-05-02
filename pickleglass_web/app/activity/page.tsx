@@ -263,7 +263,7 @@ export default function ActivityPage() {
           {getGreeting(currentTime)}, {userInfo.display_name}
         </h1>
 
-        {/* Démarrez Claire — visible uniquement dans l'app Electron */}
+        {/* Démarrer Claire — visible uniquement dans l'app Electron */}
         {canStartClaire && (
           <button
             onClick={() => (window as any).api.dashboard.startClaire()}
@@ -273,7 +273,7 @@ export default function ActivityPage() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/><polyline points="10 8 16 12 10 16 10 8"/>
             </svg>
-            Démarrez Claire
+            Démarrer Claire
           </button>
         )}
 

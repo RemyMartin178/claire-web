@@ -139,12 +139,11 @@ function normalizeDisplayText(text) {
 
 function renderFormattedText(text) {
   const normalized = normalizeDisplayText(text || '');
-  return normalized.split(/(\*\*.*?\*\*)/g).filter(Boolean).map((segment, index) => {
-    if (segment.startsWith('**') && segment.endsWith('**')) {
-      return <strong key={index}>{segment.slice(2, -2)}</strong>;
-    }
-    return <React.Fragment key={index}>{segment}</React.Fragment>;
-  });
+  // Strip any "**label** : " prefix and inline bold markers — bullets must be plain
+  const plain = normalized
+    .replace(/^\*\*[^*]+\*\*\s*:\s*/, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1');
+  return plain;
 }
 
 const SummaryView = forwardRef(function SummaryView({ isVisible, hasCompletedRecording }, ref) {

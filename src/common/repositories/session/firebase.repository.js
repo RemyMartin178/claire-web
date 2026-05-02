@@ -123,14 +123,16 @@ async function getOrCreateActive(uid, requestedType = 'ask') {
         const activeSession = activeSessionDoc.data();
 
         logger.info('Found active Firebase session');
-        
-        const updates = { updatedAt: Timestamp.now() };
+
+        // If an 'ask' session is active but we need a 'listen' session, end it and create a fresh one.
+        // This prevents Ask question timestamps from inflating listen session duration.
         if (activeSession.sessionType === 'ask' && requestedType === 'listen') {
-            updates.sessionType = 'listen';
-            logger.info(`Promoted Firebase session ${activeSessionDoc.id} to 'listen' type.`);
+            await updateDoc(sessionRef, { endedAt: Timestamp.now(), updatedAt: Timestamp.now() });
+            logger.info(`Ended 'ask' session ${activeSessionDoc.id} to start fresh 'listen' session.`);
+            return create(uid, 'listen');
         }
-        
-        await updateDoc(sessionRef, updates);
+
+        await updateDoc(sessionRef, { updatedAt: Timestamp.now() });
         return activeSessionDoc.id;
     } else {
         logger.info('No active Firebase session for user. Creating new.');

@@ -121,6 +121,26 @@ module.exports = {
     ipcMain.handle('liquid-glass:set-subdued', (event, viewId, subdued) => windowManager.liquidGlassAPI.setSubdued(viewId, subdued));
     ipcMain.removeHandler('get-platform-info');
     ipcMain.handle('get-platform-info', () => windowManager.getPlatformInfo());
+
+    // Dashboard in-app navigation (back / forward)
+    ipcMain.removeHandler('nav:canGoBack');
+    ipcMain.handle('nav:canGoBack', () => {
+      const d = windowManager.getDashboardWindow();
+      return d && !d.isDestroyed() ? d.webContents.canGoBack() : false;
+    });
+    ipcMain.removeHandler('nav:canGoForward');
+    ipcMain.handle('nav:canGoForward', () => {
+      const d = windowManager.getDashboardWindow();
+      return d && !d.isDestroyed() ? d.webContents.canGoForward() : false;
+    });
+    ipcMain.on('nav:back', () => {
+      const d = windowManager.getDashboardWindow();
+      if (d && !d.isDestroyed() && d.webContents.canGoBack()) d.webContents.goBack();
+    });
+    ipcMain.on('nav:forward', () => {
+      const d = windowManager.getDashboardWindow();
+      if (d && !d.isDestroyed() && d.webContents.canGoForward()) d.webContents.goForward();
+    });
   },
 
   notifyFocusChange(win, isFocused) {

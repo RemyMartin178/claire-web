@@ -336,9 +336,20 @@ async function setupMicProcessing(micStream) {
     let audioBuffer = [];
     const samplesPerChunk = SAMPLE_RATE * AUDIO_CHUNK_DURATION;
 
+    let audioLevelThrottle = 0;
     micProcessor.onaudioprocess = (e) => {
         const inputData = e.inputBuffer.getChannelData(0);
         audioBuffer.push(...inputData);
+
+        // Dispatch audio level for waveform animation (throttled to ~15fps)
+        const now = Date.now();
+        if (now - audioLevelThrottle > 66) {
+            audioLevelThrottle = now;
+            let sum = 0;
+            for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
+            const rms = Math.sqrt(sum / inputData.length);
+            window.dispatchEvent(new CustomEvent('audio-level', { detail: { rms } }));
+        }
 
         // Process chunks when we have enough samples
         while (audioBuffer.length >= samplesPerChunk) {

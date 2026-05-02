@@ -471,6 +471,10 @@ export default function MainHeader({
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [animClass, setAnimClass] = useState('sliding-in');
+  const waveBar0 = useRef(null);
+  const waveBar1 = useRef(null);
+  const waveBar2 = useRef(null);
+  const waveBarRefs = [waveBar0, waveBar1, waveBar2];
 
   const hostRef = useRef(null);
   const wasJustDraggedRef = useRef(false);
@@ -506,6 +510,35 @@ export default function MainHeader({
 
   useEffect(() => { listenStatusRef.current = listenSessionStatus; }, [listenSessionStatus]);
   useEffect(() => { agentModeRef.current = agentModeActive; }, [agentModeActive]);
+
+  // ── Audio level → waveform bars ────────────────────────
+  useEffect(() => {
+    const HEIGHTS = [0.28, 0.28, 0.28]; // resting scale per bar
+    const PHASES  = [0, 0.32, 0.16];    // animation phase offsets (seconds)
+    let animFrameId = null;
+
+    const handleAudioLevel = (e) => {
+      const rms = e.detail?.rms ?? 0;
+      // Map RMS (0–0.15 typical) to a 0–1 range and boost it visually
+      const level = Math.min(1, rms / 0.08);
+      const now = performance.now() / 1000;
+
+      waveBarRefs.forEach((ref, i) => {
+        if (!ref.current) return;
+        // Add a slow sine wobble + the live audio level
+        const wobble = Math.sin((now + PHASES[i]) * 2.5) * 0.2;
+        const scale = HEIGHTS[i] + level * 0.72 + Math.max(0, wobble) * level;
+        ref.current.style.transform = `scaleY(${Math.max(0.12, Math.min(1, scale))})`;
+        ref.current.style.opacity = (0.35 + level * 0.55).toFixed(2);
+      });
+    };
+
+    window.addEventListener('audio-level', handleAudioLevel);
+    return () => {
+      window.removeEventListener('audio-level', handleAudioLevel);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+    };
+  }, []);
 
   // ── Drag ──────────────────────────────────────────────
   const handleMouseMove = useCallback((e) => {
@@ -695,8 +728,6 @@ export default function MainHeader({
   const handleAsk = useCallback(async () => {
     if (wasJustDraggedRef.current) return;
     try {
-      const ok = await window.api.apiKeyHeader.hasConfiguredProviders();
-      if (!ok) { window.api.mainHeader.showSettingsWindow(); return; }
       await window.api.mainHeader.sendAskButtonClick();
     } catch {}
   }, []);
@@ -860,7 +891,9 @@ export default function MainHeader({
 
           {isListening && (
             <div className={`mh-rec-wave${isPaused ? ' paused' : ''}`} style={{ marginLeft: 6, marginRight: 4 }}>
-              <span /><span /><span />
+              <span ref={waveBarRefs[0]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
+              <span ref={waveBarRefs[1]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
+              <span ref={waveBarRefs[2]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
             </div>
           )}
 

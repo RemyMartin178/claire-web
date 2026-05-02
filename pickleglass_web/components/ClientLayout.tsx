@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
+
 import SearchPopup from '@/components/SearchPopup'
 import PasswordModal from '@/components/PasswordModal'
 

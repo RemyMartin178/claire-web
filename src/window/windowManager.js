@@ -1777,6 +1777,7 @@ const setWindowOpacity = (opacity) => {
 
 function createDashboardWindow() {
     if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+        if (!dashboardWindow.isVisible()) dashboardWindow.show();
         dashboardWindow.focus();
         return dashboardWindow;
     }
@@ -1842,6 +1843,14 @@ function createDashboardWindow() {
             });
         } catch (e) {
             // non-critical
+        }
+    });
+
+    // Hide instead of close when user presses X (keep app alive in background)
+    dashboardWindow.on('close', (e) => {
+        if (!global.isQuitting) {
+            e.preventDefault();
+            dashboardWindow.hide();
         }
     });
 

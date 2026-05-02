@@ -12,6 +12,7 @@ const authService = require('./authService');
 const { createLogger } = require('./logger.js');
 
 const logger = createLogger('ModelStateService');
+const APP_MANAGED_PROVIDERS = new Set(['openai', 'gemini', 'anthropic', 'deepgram', 'assemblyai']);
 
 class ModelStateService extends EventEmitter {
     constructor() {
@@ -463,6 +464,9 @@ class ModelStateService extends EventEmitter {
         if (!provider) {
             throw new Error('Provider is required');
         }
+        if (APP_MANAGED_PROVIDERS.has(provider)) {
+            throw new Error(`${provider} API key is managed by the app environment`);
+        }
 
         // API keys will be encrypted by the repository layer
         this.state.apiKeys[provider] = key;
@@ -475,14 +479,31 @@ class ModelStateService extends EventEmitter {
     }
 
     getApiKey(provider) {
+        if (APP_MANAGED_PROVIDERS.has(provider)) {
+            const envMapping = {
+                openai: process.env.OPENAI_API_KEY,
+                gemini: process.env.GEMINI_API_KEY,
+                anthropic: process.env.ANTHROPIC_API_KEY,
+                deepgram: process.env.DEEPGRAM_API_KEY,
+                assemblyai: process.env.ASSEMBLYAI_API_KEY
+            };
+            return envMapping[provider] || null;
+        }
         return this.state.apiKeys[provider];
     }
 
     getAllApiKeys() {
-        return this.state.apiKeys;
+        return Object.keys(this.state.apiKeys || {}).reduce((acc, provider) => {
+            acc[provider] = this.getApiKey(provider);
+            return acc;
+        }, {});
     }
 
     async removeApiKey(provider) {
+        if (APP_MANAGED_PROVIDERS.has(provider)) {
+            logger.info(`[ModelStateService] Ignoring removeApiKey for app-managed provider: ${provider}`);
+            return false;
+        }
         if (this.state.apiKeys[provider]) {
             this.state.apiKeys[provider] = null;
             await providerSettingsRepository.remove(provider);
@@ -575,7 +596,7 @@ class ModelStateService extends EventEmitter {
             return result;
         });
 
-        const result = hasLlmKey && hasSttKey;
+        const result = hasLlmKey;
         logger.info(`hasConfiguredProviders: LLM=${hasLlmKey}, STT=${hasSttKey}, result=${result}`);
         return result;
     }
@@ -742,6 +763,12 @@ class ModelStateService extends EventEmitter {
     }
 
     async handleValidateKey(provider, key) {
+        if (APP_MANAGED_PROVIDERS.has(provider)) {
+            return {
+                success: false,
+                error: `${provider} API key is managed by the app and cannot be overridden by the user`
+            };
+        }
         const result = await this.validateApiKey(provider, key);
         if (result.success) {
             // Use 'local' as placeholder for local services

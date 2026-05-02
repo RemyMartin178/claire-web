@@ -641,9 +641,8 @@ class AskService {
             await askRepository.addAiMessage({ sessionId, role: 'user', content: userPrompt.trim() });
             logger.info('DB: Saved user prompt to session');
             
-            // Backend Railway mode: Skip local API key check
-            // The backend has the API keys configured in Railway environment variables
-            logger.info('[AskService] Using backend Railway API - API keys managed server-side');
+            // Local app-managed mode: use the provider keys already loaded in the desktop app.
+            logger.info('[AskService] Using local LLM execution with app-managed API keys');
             
             // SMART OPTIMIZATION: Analyze prompt to decide if screenshot is needed
             // Use original prompt (not enriched context) to avoid false positives
@@ -911,6 +910,8 @@ class AskService {
             }
             // Language preference — French by default, adapt to user's language
             enhancedSystemPrompt += '\n\nPréférence de langue : Réponds de préférence en français. Si l\'utilisateur écrit dans une autre langue supportée, adapte-toi à sa langue.';
+            // Math formatting — avoid LaTeX since it can't be rendered in the UI
+            enhancedSystemPrompt += '\n\n⚠️ FORMATAGE MATH : N\'utilise JAMAIS la notation LaTeX (\\frac, \\rho, \\[ \\], \\( \\), etc.). Pour les formules mathématiques, utilise du texte Unicode simple : ρ (rho), × (fois), ² (carré), ÷ (diviser), → (implique). Écris les formules en texte lisible, pas en LaTeX.';
             if (options.maxMode) {
                 enhancedSystemPrompt += '\n\n⚠️ MODE RÉFLEXION : Donne une réponse complète, structurée et développée. Tu peux utiliser des bullet points, des titres et plusieurs paragraphes si nécessaire. Explique ton raisonnement en détail. Sois exhaustif et précis.';
             } else {
@@ -950,22 +951,18 @@ class AskService {
             
             // Check user subscription plan
             const subscription = await subscriptionService.getUserSubscription();
-            const plan = subscription.plan; // 'free', 'plus', 'enterprise'
-            const isPremium = subscription.isPremium;
-            const isActive = subscription.isActive;
-            
             logger.info('[AskService] User subscription plan:', {
-                plan: plan,
-                isPremium: isPremium,
-                isActive: isActive
+                plan: subscription.plan,
+                isPremium: subscription.isPremium,
+                isActive: subscription.isActive
             });
             
-            // All requests go through Railway backend
+            // Keep the legacy backend block disabled and use local execution below.
             {
-                logger.info('[AskService] Using Railway backend');
+                logger.info('[AskService] Railway backend execution disabled');
                 const agentIdToUse = this.selectedAgentId || 1;
                 
-                if (agentIdToUse) {
+                if (false && agentIdToUse) {
                     logger.info('[AskService] Using backend agent execution (streaming) for agent ID:', agentIdToUse);
                     try {
                         const { agentsApiClient } = require('../../domains/agents');
@@ -1088,16 +1085,28 @@ class AskService {
                 }
             }
             
-            // Only create local LLM if not using backend agent execution
-            // This code should only run if we haven't returned yet (shouldn't happen for premium users)
+            // Local execution path with app-managed provider keys from .env
+            let modelInfo = modelStateService.getCurrentModelInfo('llm');
+            if (!modelInfo?.provider || !modelInfo?.apiKey || !modelInfo?.model) {
+                throw new Error('No app-managed LLM key/model configured. Check your .env provider keys and selected model.');
+            }
 
             // Determine optimal provider for this request
-            selectedProvider = this.determineOptimalProvider(userPrompt, screenshotResult);
+            selectedProvider = await Promise.resolve(this.determineOptimalProvider(userPrompt, screenshotResult));
             if (selectedProvider) {
-                logger.info('Selected optimal provider:', selectedProvider);
-                this.state.currentProvider = selectedProvider;
-                this._broadcastState();
+                const optimizedModelInfo = this.getModelInfoForProvider('llm', selectedProvider);
+                if (optimizedModelInfo) {
+                    modelInfo = optimizedModelInfo;
+                    logger.info('Selected optimal provider:', selectedProvider);
+                } else {
+                    logger.warn('[AskService] Optimal provider has no configured local model, keeping current selection:', {
+                        selectedProvider,
+                        fallbackProvider: modelInfo.provider
+                    });
+                }
             }
+            this.state.currentProvider = modelInfo.provider;
+            this._broadcastState();
             
             logger.info('Creating streaming LLM for local execution:', {
                 provider: modelInfo.provider,
@@ -1576,6 +1585,32 @@ class AskService {
             logger.warn('Provider selection failed, using default:', { error });
             return null;
         }
+    }
+
+    getModelInfoForProvider(type, provider) {
+        if (!provider) {
+            return null;
+        }
+
+        const availableModels = modelStateService.getAvailableModels(type);
+        const providerModel = availableModels.find((model) =>
+            modelStateService.getProviderForModel(type, model.id) === provider
+        );
+
+        if (!providerModel) {
+            return null;
+        }
+
+        const apiKey = modelStateService.getApiKey(provider);
+        if (!apiKey) {
+            return null;
+        }
+
+        return {
+            provider,
+            model: providerModel.id,
+            apiKey
+        };
     }
 
     /**

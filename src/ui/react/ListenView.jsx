@@ -105,9 +105,9 @@ const CSS = `
   position: relative;
   overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
-  max-width: 200px;
 }
 .lv-bar-left-text-content {
   display: inline-block;

@@ -460,6 +460,14 @@ contextBridge.exposeInMainWorld('api', {
     setDragging: (dragging) => ipcRenderer.send('overlay:dragging', { dragging }),
   },
 
+  // Dashboard in-app navigation
+  nav: {
+    back: () => ipcRenderer.send('nav:back'),
+    forward: () => ipcRenderer.send('nav:forward'),
+    canGoBack: () => ipcRenderer.invoke('nav:canGoBack'),
+    canGoForward: () => ipcRenderer.invoke('nav:canGoForward'),
+  },
+
   // Platform Glass System - Cross-platform glass UI support
   liquidGlass: {
     // Liquid Glass Management (macOS native)
