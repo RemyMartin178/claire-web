@@ -817,6 +817,34 @@ export const updateAssistant = async (id: string, data: Partial<Assistant>): Pro
   return response.json()
 }
 
+// ── USER SETTINGS ─────────────────────────────────────────────────────────────
+
+export interface UserSettings {
+  detectable?: boolean
+  ambient?: boolean
+  colorTheme?: 'Système' | 'Clair' | 'Sombre'
+  screenUse?: boolean
+  hideWidget?: boolean
+  transcriptionLang?: string
+  outputLang?: string
+  shortcuts?: Array<{ id: string; group: string; label: string; keys: string[] }>
+}
+
+export const getUserSettings = async (): Promise<UserSettings> => {
+  const uid = auth.currentUser?.uid
+  if (!uid) return {}
+  const userData = await FirestoreUserService.getUser(uid)
+  return (userData as any)?.settings || {}
+}
+
+export const updateUserSettings = async (data: Partial<UserSettings>): Promise<void> => {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('No authenticated user')
+  const userData = await FirestoreUserService.getUser(uid)
+  const currentSettings: UserSettings = (userData as any)?.settings || {}
+  await FirestoreUserService.updateUser(uid, { settings: { ...currentSettings, ...data } } as any)
+}
+
 export const deleteAssistant = async (id: string): Promise<void> => {
   const apiBase = await getApiBase()
   const response = await fetch(`${apiBase}/assistants/${id}`, {
