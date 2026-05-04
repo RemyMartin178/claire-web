@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Sidebar as ShadcnSidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { HelpCircle, LogOut, Calendar, Settings, User, Palette } from "lucide-react";
+import { HelpCircle, LogOut, Calendar, Settings } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -10,40 +10,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription, getSubscriptionDisplayName } from '@/hooks/useSubscription';
 import { logout } from '@/utils/api';
 import Avatar from '@/components/Avatar';
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { trackLogout } from '@/lib/gtag';
 import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron';
 
 export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     const pathname = usePathname();
-    const router = useRouter();
     const { user: userInfo, loading: authLoading } = useAuth();
     const subscription = useSubscription();
     const [open, setOpen] = useState(false);
-    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-    const profileMenuRef = useRef<HTMLDivElement>(null);
     const isElectronRuntime = useElectronRuntime();
 
     const isFirebaseUser = userInfo && userInfo.uid !== 'default_user';
-
-    // Close profile menu on outside click or ESC
-    useEffect(() => {
-        if (!profileMenuOpen) return;
-        const handleClick = (e: MouseEvent) => {
-            if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
-                setProfileMenuOpen(false);
-            }
-        };
-        const handleKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setProfileMenuOpen(false);
-        };
-        document.addEventListener('mousedown', handleClick);
-        document.addEventListener('keydown', handleKey);
-        return () => {
-            document.removeEventListener('mousedown', handleClick);
-            document.removeEventListener('keydown', handleKey);
-        };
-    }, [profileMenuOpen]);
 
     const handleDownloadClick = useCallback(() => {
         const scopedUserIds = Array.from(new Set([userInfo?.uid, userInfo?.email, 'anonymous'].filter(Boolean)));
@@ -145,65 +123,29 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                 </div>
 
                 <div className="flex flex-col gap-2">
-                    <div className="mt-2 border-t border-neutral-200 dark:border-neutral-800 pt-2 relative" ref={profileMenuRef}>
-                        {/* Profile dropdown menu */}
-                        {profileMenuOpen && (
-                            <div className="absolute bottom-full left-0 mb-1 w-52 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg z-50 overflow-hidden"
-                                style={{ animation: 'profileMenuIn 0.12s ease-out' }}
-                            >
-                                <style>{`@keyframes profileMenuIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
-                                <button
-                                    onClick={() => { setProfileMenuOpen(false); router.push('/profile'); }}
-                                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-left"
-                                >
-                                    <User className="h-4 w-4 shrink-0 text-neutral-500" />
-                                    Profil
-                                </button>
-                                <button
-                                    onClick={() => { setProfileMenuOpen(false); window.dispatchEvent(new CustomEvent('claire:open-settings', { detail: { tab: 'profile' } })); }}
-                                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-left"
-                                >
-                                    <Settings className="h-4 w-4 shrink-0 text-neutral-500" />
-                                    Paramètres
-                                </button>
-                                <button
-                                    onClick={() => { setProfileMenuOpen(false); router.push('/settings/personalize'); }}
-                                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-left"
-                                >
-                                    <Palette className="h-4 w-4 shrink-0 text-neutral-500" />
-                                    Personnalisation
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setProfileMenuOpen(false);
-                                        const api = (window as any).api;
-                                        if (api?.common?.openExternal) {
-                                            void api.common.openExternal('https://support.clairia.app');
-                                        } else {
-                                            window.open('https://support.clairia.app', '_blank', 'noopener,noreferrer');
-                                        }
-                                    }}
-                                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors text-left"
-                                >
-                                    <HelpCircle className="h-4 w-4 shrink-0 text-neutral-500" />
-                                    Aide
-                                </button>
-                                <div className="h-px bg-neutral-100 dark:bg-neutral-800 mx-2" />
-                                <button
-                                    onClick={() => { setProfileMenuOpen(false); void handleLogout(); }}
-                                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
-                                >
-                                    <LogOut className="h-4 w-4 shrink-0" />
-                                    Déconnexion
-                                </button>
-                            </div>
-                        )}
+                    {isFirebaseUser ? (
+                        <div onClick={handleLogout} className="cursor-pointer">
+                            <SidebarLink
+                                link={{
+                                    label: "Deconnexion",
+                                    href: "#",
+                                    icon: <LogOut className="text-red-500 h-5 w-5 shrink-0" />
+                                }}
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30"
+                            />
+                        </div>
+                    ) : (
+                        <SidebarLink
+                            link={{
+                                label: "Connexion",
+                                href: isElectronRuntime === true ? getElectronLoginPath() : "/auth/login",
+                                icon: <LogOut className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0 transform -scale-x-100" />
+                            }}
+                        />
+                    )}
 
-                        {/* Avatar trigger */}
-                        <button
-                            onClick={() => setProfileMenuOpen(v => !v)}
-                            className="flex items-center justify-start gap-4 px-2 rounded-md h-[52px] w-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors"
-                        >
+                    <div className="mt-2 border-t border-neutral-200 dark:border-neutral-800 pt-4">
+                        <div className="flex items-center justify-start gap-4 px-2 rounded-md h-[52px]">
                             <div className="flex items-center justify-center min-w-[24px] shrink-0">
                                 <Avatar name={getUserDisplayName()} size="sm" />
                             </div>
@@ -213,7 +155,7 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                                     opacity: open ? 1 : 0,
                                     width: open ? "auto" : 0,
                                 }}
-                                className="flex-1 min-w-0 overflow-hidden text-left"
+                                className="flex-1 min-w-0 overflow-hidden"
                             >
                                 <div className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate pr-2">
                                     {getUserDisplayName()}
@@ -222,7 +164,7 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                                     {subscription?.isLoading ? '...' : getSubscriptionDisplayName(subscription?.plan)}
                                 </div>
                             </motion.div>
-                        </button>
+                        </div>
                     </div>
                 </div>
             </SidebarBody>
