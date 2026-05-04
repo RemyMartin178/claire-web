@@ -578,6 +578,16 @@ a:hover {
   }
 }
 
+/* Hide all scrollbars globally */
+*::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 /* Hide scrollbar universally for the UI */
 .custom-scrollbar::-webkit-scrollbar {
   display: none;

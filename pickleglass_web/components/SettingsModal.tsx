@@ -16,7 +16,7 @@ import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron';
 import { usePasswordModal } from '@/contexts/PasswordModalContext';
 import toast from 'react-hot-toast';
 import { auth } from '@/utils/firebase';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential } from 'firebase/auth';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential, updateProfile } from 'firebase/auth';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -199,10 +199,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       if (s.shortcuts?.length) setShortcutsList(s.shortcuts);
     }).catch(() => {});
 
-    // Load version
-    fetch('/api/version').then(r => r.json()).then(d => {
-      setVersion(d.version || d.tag || d.current_version || null);
-    }).catch(() => {});
+    // Load version with 3s timeout
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    fetch('/api/version', { signal: ctrl.signal })
+      .then(r => r.json())
+      .then(d => setVersion(d.version || d.tag || d.current_version || null))
+      .catch(() => setVersion(null))
+      .finally(() => clearTimeout(timer));
 
     // Load connected providers + detect if user has a password
     getAuthType().then(info => {
@@ -370,13 +374,24 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     return 'Utilisateur';
   };
 
+  const openInBrowser = (url: string) => {
+    if (typeof window !== 'undefined' && (window as any).api?.common?.openExternal) {
+      (window as any).api.common.openExternal(url);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const persistToggle = (key: string, value: boolean) => updateUserSettings({ [key]: value } as any).catch(() => {});
   const persistSelect = (key: string, value: string) => updateUserSettings({ [key]: value } as any).catch(() => {});
 
   const handleCheckVersion = async () => {
     setIsCheckingVersion(true);
     try {
-      const r = await fetch('/api/version');
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const r = await fetch('/api/version', { signal: ctrl.signal });
+      clearTimeout(timer);
       const d = await r.json();
       const v = d.version || d.tag || d.current_version || null;
       setVersion(v);
@@ -442,6 +457,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!displayName) return;
     setIsSavingProfile(true);
     try {
+      const user = auth.currentUser;
+      if (user) await updateProfile(user, { displayName });
       await updateUserProfile({ displayName });
       setIsEditingProfile(false);
       toast.success('Profil mis à jour.');
@@ -686,6 +703,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     <div>
       <h2 className="text-[22px] font-bold text-neutral-900 tracking-tight mb-2">Calendrier</h2>
       <p className="text-[14px] text-neutral-500 mb-8">Gérez le compte calendrier que Claire utilise pour les réunions et rappels.</p>
+      {isElectronRuntime && (
+        <div className="mb-6 px-4 py-3 bg-blue-50 border border-blue-100 rounded-[8px] text-[13px] text-blue-700">
+          Pour connecter Google Agenda, rendez-vous dans l'onglet <strong>Calendrier</strong> de l'application.
+        </div>
+      )}
       {isLoadingCalendar ? (
         <p className="text-[13px] text-neutral-500">Chargement...</p>
       ) : (
@@ -839,10 +861,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <div>
                       <div className="flex items-center gap-3 mb-1.5">
                         <button type="button" className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-900 text-white text-[12px] font-bold rounded-[6px] transition-colors">
-                          Upload
+                          Choisir
                         </button>
                         <button type="button" className="px-3 py-1.5 text-red-500 hover:text-red-600 text-[12px] font-bold transition-colors">
-                          Remove
+                          Retirer
                         </button>
                       </div>
                       <p className="text-[12px] text-neutral-500">Recommended size 1:1, up to 10MB.</p>
@@ -1389,7 +1411,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <NavItem tabId="notes" icon={FileText} label="Notes de version" />
                 <button
                   type="button"
-                  onClick={() => window.open('https://support.clairia.app', '_blank', 'noopener,noreferrer')}
+                  onClick={() => openInBrowser('https://support.clairia.app')}
                   className="flex items-center gap-3 px-3 py-2 rounded-[6px] w-full text-left font-medium transition-all duration-200 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
                   style={{ fontSize: '13.5px' }}
                 >
@@ -1398,7 +1420,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.open('mailto:support@clairia.app', '_blank')}
+                  onClick={() => openInBrowser('mailto:support@clairia.app')}
                   className="flex items-center gap-3 px-3 py-2 rounded-[6px] w-full text-left font-medium transition-all duration-200 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
                   style={{ fontSize: '13.5px' }}
                 >
@@ -1416,7 +1438,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <span>Se déconnecter</span>
                 </button>
                 <button
-                  onClick={onClose}
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && (window as any).api?.common?.quitApplication) {
+                      (window as any).api.common.quitApplication();
+                    } else {
+                      onClose();
+                    }
+                  }}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] w-full text-left font-medium text-neutral-500 hover:bg-neutral-200/50 hover:text-neutral-800 transition-colors"
                   style={{ fontSize: '13.5px' }}
                 >
