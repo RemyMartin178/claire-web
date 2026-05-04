@@ -3,8 +3,9 @@
 import { useState, useEffect, type CSSProperties } from 'react'
 import SearchPopup from '@/components/SearchPopup'
 import PasswordModal from '@/components/PasswordModal'
-import SettingsModal from '@/components/SettingsModal'
+import SettingsModalElectron from '@/components/SettingsModalElectron'
 import Avatar from '@/components/Avatar'
+import DashboardHeader from '@/components/DashboardHeader'
 import { useAuth } from '@/contexts/AuthContext'
 import { X } from 'lucide-react'
 
@@ -73,7 +74,7 @@ export default function ElectronClientLayout({
     <div className="flex h-screen flex-col overflow-hidden bg-[#eef1f4] text-neutral-900 relative">
       {/* Frameless drag bar — nav arrows left, window controls right */}
       <div
-        className="flex h-8 shrink-0 items-center justify-between border-b border-black/5 bg-white/95 px-2 backdrop-blur relative z-50"
+        className="flex h-8 shrink-0 items-center justify-between border-b border-black/5 bg-white/95 px-2 backdrop-blur relative z-[200]"
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
       >
         {/* Back / Forward */}
@@ -128,18 +129,10 @@ export default function ElectronClientLayout({
         </div>
       </div>
 
-      {/* Header Area with Top Right Avatar Trigger */}
-      <header className="absolute top-8 right-0 p-4 md:p-6 flex justify-end z-40 pointer-events-none">
-         <div className="pointer-events-auto">
-            <button 
-              onClick={() => setSettingsOpen(true)}
-              className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-neutral-200 dark:hover:ring-neutral-700 transition-all shadow-sm"
-              title="Ouvrir le menu"
-            >
-              <Avatar name={getUserDisplayName()} size="sm" />
-            </button>
-         </div>
-      </header>
+      <DashboardHeader 
+        onSearchClick={() => setIsSearchOpen(true)}
+        onSettingsClick={() => setSettingsOpen(true)}
+      />
 
       {/* Main Content Area filling the entire screen */}
       <div className="flex min-h-0 flex-1 overflow-hidden rounded-none border-0 bg-background">
@@ -156,7 +149,7 @@ export default function ElectronClientLayout({
       />
       <PasswordModal />
 
-      <SettingsModal 
+      <SettingsModalElectron 
         isOpen={settingsOpen} 
         onClose={() => setSettingsOpen(false)} 
         onSearchClick={() => {
