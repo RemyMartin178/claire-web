@@ -1,0 +1,883 @@
+import { auth } from './firebase'
+import { signOut } from 'firebase/auth'
+import { getApiBase } from './http'
+import { FirestoreUserService, FirestoreSessionService, FirestoreTranscriptService, FirestoreAiMessageService, FirestoreSummaryService, FirestorePromptPresetService } from './firestore'
+import { Timestamp } from 'firebase/firestore'
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+
+declare global {
+  interface Window {
+    __API_URL__?: string;
+  }
+}
+
+export interface UserProfile {
+  uid: string;
+  display_name: string;
+  email: string;
+  isAdmin?: boolean;
+}
+
+export interface Session {
+  id: string;
+  uid: string;
+  title: string;
+  session_type: string;
+  started_at: number;
+  ended_at?: number;
+  sync_state: 'clean' | 'dirty';
+  updated_at: number;
+}
+
+export interface Transcript {
+  id: string;
+  session_id: string;
+  start_at: number;
+  end_at?: number;
+  speaker?: string;
+  text: string;
+  lang?: string;
+  created_at: number;
+  sync_state: 'clean' | 'dirty';
+}
+
+export interface AiMessage {
+  id: string;
+  session_id: string;
+  sent_at: number;
+  role: 'user' | 'assistant';
+  content: string;
+  tokens?: number;
+  model?: string;
+  created_at: number;
+  sync_state: 'clean' | 'dirty';
+}
+
+export interface Summary {
+  session_id: string;
+  generated_at: number;
+  model?: string;
+  text: string;
+  tldr: string;
+  bullet_json: string;
+  action_json: string;
+  tokens_used?: number;
+  updated_at: number;
+  sync_state: 'clean' | 'dirty';
+}
+
+export interface PromptPreset {
+  id: string;
+  uid: string;
+  title: string;
+  prompt: string;
+  is_default: 0 | 1;
+  created_at: number;
+  sync_state: 'clean' | 'dirty';
+}
+
+export interface SessionDetails {
+  session: Session;
+  transcripts: Transcript[];
+  ai_messages: AiMessage[];
+  summary: Summary | null;
+}
+
+const isFirebaseMode = (): boolean => {
+  return true; // Always use Firebase mode
+};
+
+const timestampToUnix = (timestamp: Timestamp | any): number => {
+  if (!timestamp) return 0;
+  // If it's a firebase Timestamp, toMillis exists
+  if (typeof timestamp.toMillis === 'function') {
+    return timestamp.toMillis();
+  }
+  // If it's already a number (unix ms), return it
+  if (typeof timestamp === 'number') {
+    // Check if it looks like seconds instead of ms
+    if (timestamp < 1000000000000) return timestamp * 1000;
+    return timestamp;
+  }
+  // If it's a seconds/nanoseconds object
+  if (timestamp.seconds) {
+    return timestamp.seconds * 1000 + Math.floor((timestamp.nanoseconds || 0) / 1000000);
+  }
+  return 0;
+};
+
+const unixToTimestamp = (unix: number): Timestamp => {
+  return Timestamp.fromMillis(unix);
+};
+
+const convertFirestoreSession = (session: { id: string } & any, uid: string): Session => {
+  return {
+    id: session.id,
+    uid,
+    title: session.title,
+    session_type: session.sessionType || session.session_type, // ✅ Support both camelCase (new) and snake_case (old)
+    started_at: timestampToUnix(session.startedAt || session.started_at), // ✅ Support both formats
+    ended_at: (session.endedAt || session.ended_at) ? timestampToUnix(session.endedAt || session.ended_at) : undefined,
+    sync_state: 'clean',
+    updated_at: timestampToUnix(session.updatedAt || session.startedAt || session.started_at)
+  };
+};
+
+const convertFirestoreTranscript = (transcript: { id: string } & any): Transcript => {
+  return {
+    id: transcript.id,
+    session_id: transcript.sessionId || transcript.session_id || transcript.id,
+    start_at: timestampToUnix(transcript.startAt || transcript.start_at),
+    end_at: timestampToUnix(transcript.endAt || transcript.end_at),
+    speaker: transcript.speaker,
+    text: transcript.text,
+    lang: transcript.lang,
+    created_at: timestampToUnix(transcript.createdAt || transcript.created_at),
+    sync_state: 'clean'
+  };
+};
+
+const convertFirestoreAiMessage = (message: { id: string } & any): AiMessage => {
+  return {
+    id: message.id,
+    session_id: message.sessionId || message.session_id || message.id,
+    sent_at: timestampToUnix(message.sentAt || message.sent_at),
+    role: message.role,
+    content: message.content,
+    tokens: message.tokens,
+    model: message.model,
+    created_at: timestampToUnix(message.createdAt || message.created_at),
+    sync_state: 'clean'
+  };
+};
+
+const convertFirestoreSummary = (summary: any, sessionId: string): Summary => {
+  const bulletPoints = summary.bulletPoints || summary.bullet_points || summary.bullet_json;
+  const actionItems = summary.actionItems || summary.action_items || summary.action_json;
+
+  return {
+    session_id: sessionId,
+    generated_at: timestampToUnix(summary.generatedAt || summary.generated_at),
+    model: summary.model,
+    text: summary.text,
+    tldr: summary.tldr,
+    bullet_json: typeof bulletPoints === 'string' ? bulletPoints : JSON.stringify(bulletPoints || []),
+    action_json: typeof actionItems === 'string' ? actionItems : JSON.stringify(actionItems || []),
+    tokens_used: summary.tokensUsed || summary.tokens_used,
+    updated_at: timestampToUnix(summary.updatedAt || summary.updated_at || summary.generatedAt || summary.generated_at),
+    sync_state: 'clean'
+  };
+};
+
+const convertFirestorePreset = (preset: { id: string } & any, uid: string): PromptPreset => {
+  return {
+    id: preset.id,
+    uid,
+    title: preset.title,
+    prompt: preset.prompt,
+    is_default: preset.isDefault ? 1 : 0,
+    created_at: timestampToUnix(preset.createdAt),
+    sync_state: 'clean'
+  };
+};
+
+// In prod, rely on NEXT_PUBLIC_API_URL; fallback to host-based heuristic
+const initializeApiUrl = async () => { };
+
+export const getUserInfo = (): UserProfile | null => {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem('userInfo');
+  return stored ? JSON.parse(stored) : null;
+};
+
+export const setUserInfo = (userInfo: UserProfile | null, skipEvents: boolean = false) => {
+  if (typeof window === 'undefined') return;
+
+  if (userInfo) {
+    localStorage.setItem('userInfo', JSON.stringify(userInfo));
+  } else {
+    localStorage.removeItem('userInfo');
+  }
+
+  if (!skipEvents) {
+    window.dispatchEvent(new CustomEvent('userInfoChanged', { detail: userInfo }));
+  }
+};
+
+export const onUserInfoChange = (listener: (userInfo: UserProfile | null) => void) => {
+  if (typeof window === 'undefined') return () => { };
+
+  const handler = (event: CustomEvent) => listener(event.detail);
+  window.addEventListener('userInfoChanged', handler as EventListener);
+  return () => window.removeEventListener('userInfoChanged', handler as EventListener);
+};
+
+export const getApiHeaders = async (): Promise<HeadersInit> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (typeof window !== 'undefined' && window.__API_URL__) {
+    headers['X-API-URL'] = window.__API_URL__;
+  }
+
+  // Add Firebase auth token if available
+  const user = auth.currentUser
+  if (user) {
+    try {
+      const token = await user.getIdToken()
+      headers['Authorization'] = `Bearer ${token}`
+    } catch (error) {
+      console.error('Failed to get auth token:', error)
+    }
+  }
+
+  return headers;
+};
+
+export const apiCall = async (path: string, options: RequestInit = {}) => {
+  const baseUrl = getApiBase();
+
+  const url = `${baseUrl}${path}`;
+  const config: RequestInit = {
+    ...options,
+    headers: {
+      ...(await getApiHeaders()),
+      ...options.headers,
+    },
+  };
+
+  return fetch(url, config);
+};
+
+export const searchConversations = async (query: string): Promise<Session[]> => {
+  if (isFirebaseMode()) {
+    const sessions = await getSessions();
+    return sessions.filter(session =>
+      session.title.toLowerCase().includes(query.toLowerCase())
+    );
+  } else {
+    const response = await apiCall(`/api/sessions/search?q=${encodeURIComponent(query)}`);
+    if (!response.ok) throw new Error('Failed to search conversations');
+    return response.json();
+  }
+};
+
+export const getSessions = async (): Promise<Session[]> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    const firestoreSessions = await FirestoreSessionService.getSessions(uid);
+    const sessions = firestoreSessions.map(session => convertFirestoreSession(session, uid));
+
+    // Enrich with fallback titles from Summary if needed
+    await Promise.all(sessions.map(async (session) => {
+      let displayTitle = session.title;
+      const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'La discussion porte sur', 'La conversation porte sur'];
+      const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
+
+      if (isGeneric) {
+        try {
+          const summary = await FirestoreSummaryService.getSummary(uid, session.id);
+          if (summary && summary.tldr) {
+            const firstLine = summary.tldr.split('\n')[0].trim();
+            let cleanTldr = firstLine.replace(/^(La discussion porte sur|La conversation porte sur|Ce \w+ porte sur|Le sujet est)\s*/i, '').replace(/\*\*/g, '').trim();
+            session.title = cleanTldr.length > 40 ? cleanTldr.substring(0, 40).trimEnd() + '…' : cleanTldr || 'Discussion avec Claire';
+          } else {
+            session.title = 'Discussion avec Claire';
+          }
+        } catch (e) {
+          session.title = 'Discussion avec Claire';
+        }
+      }
+    }));
+
+    return sessions;
+  } else {
+    const response = await apiCall('/api/sessions');
+    if (!response.ok) throw new Error('Failed to fetch sessions');
+    return response.json();
+  }
+};
+
+export const getSessionDetails = async (sessionId: string): Promise<SessionDetails> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    const session = await FirestoreSessionService.getSession(uid, sessionId);
+    if (!session) throw new Error('Session not found');
+
+    const transcripts = await FirestoreTranscriptService.getTranscripts(uid, sessionId);
+    const aiMessages = await FirestoreAiMessageService.getAiMessages(uid, sessionId);
+    const summary = await FirestoreSummaryService.getSummary(uid, sessionId);
+
+    return {
+      session: convertFirestoreSession({ id: sessionId, ...session }, uid),
+      transcripts: transcripts.map(convertFirestoreTranscript),
+      ai_messages: aiMessages.map(convertFirestoreAiMessage),
+      summary: summary ? convertFirestoreSummary(summary, sessionId) : null
+    };
+  } else {
+    const response = await apiCall(`/api/sessions/${sessionId}`);
+    if (!response.ok) throw new Error('Failed to fetch session details');
+    return response.json();
+  }
+};
+
+export const createSession = async (title?: string): Promise<{ id: string }> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    const sessionId = await FirestoreSessionService.createSession(uid, {
+      title: title || 'New Session',
+      session_type: 'conversation'
+    });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('claire:session-created', {
+        detail: {
+          id: sessionId,
+          uid,
+          title: title || 'New Session',
+          session_type: 'conversation',
+        },
+      }));
+    }
+    return { id: sessionId };
+  } else {
+    const response = await apiCall('/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ title: title || 'New Session' }),
+    });
+    if (!response.ok) throw new Error('Failed to create session');
+    const createdSession = await response.json();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('claire:session-created', {
+        detail: createdSession,
+      }));
+    }
+    return createdSession;
+  }
+};
+
+export const deleteSession = async (sessionId: string): Promise<void> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    await FirestoreSessionService.deleteSession(uid, sessionId);
+  } else {
+    const response = await apiCall(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete session');
+  }
+};
+
+export const getUserProfile = async (): Promise<UserProfile | null> => {
+  if (isFirebaseMode()) {
+    const user = auth.currentUser;
+    if (!user) {
+      return null;
+    }
+
+    try {
+      const firestoreProfile = await FirestoreUserService.getUser(user.uid);
+
+      if (!firestoreProfile) {
+        return null;
+      }
+
+      const userProfile = {
+        uid: user.uid,
+        display_name: firestoreProfile.displayName || user.displayName || 'User',
+        email: firestoreProfile.email || user.email || 'no-email@example.com',
+        isAdmin: (firestoreProfile as any)?.isAdmin === true
+      };
+
+      return userProfile;
+    } catch (error: any) {
+      console.error('Error fetching profile:', error);
+      return null;
+    }
+  } else {
+    try {
+      const response = await apiCall('/api/user/profile', { method: 'GET' });
+      if (!response.ok) return null;
+      return response.json();
+    } catch (error) {
+      console.error('getUserProfile: API call failed:', error);
+      return null;
+    }
+  }
+};
+
+export const updateUserProfile = async (data: { displayName: string }): Promise<void> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    await FirestoreUserService.updateUser(uid, { displayName: data.displayName });
+  } else {
+    const response = await apiCall('/api/user/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to update user profile');
+  }
+};
+
+export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    try {
+      // Attendre que l'utilisateur soit complètement authentifié
+      await auth.currentUser?.getIdToken(true);
+
+      console.log('Creating Firestore profile for existing user:', uid);
+
+      // Create Firestore profile immediately
+      await FirestoreUserService.createUser(uid, {
+        displayName: user.display_name,
+        email: user.email
+      });
+
+      console.log('Firestore profile created successfully for existing user');
+
+      return {
+        uid,
+        display_name: user.display_name,
+        email: user.email
+      };
+    } catch (error: any) {
+      console.error('findOrCreateUser: Error creating user:', error);
+      throw error;
+    }
+  } else {
+    const response = await apiCall('/api/user/find-or-create', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    });
+    if (!response.ok) throw new Error('Failed to find or create user');
+    return response.json();
+  }
+};
+
+export const saveApiKey = async (apiKey: string): Promise<void> => {
+  if (isFirebaseMode()) {
+    return;
+  } else {
+    const response = await apiCall('/api/user/api-key', {
+      method: 'POST',
+      body: JSON.stringify({ apiKey }),
+    });
+    if (!response.ok) throw new Error('Failed to save API key');
+  }
+};
+
+export const checkApiKeyStatus = async (): Promise<{ hasApiKey: boolean }> => {
+  if (isFirebaseMode()) {
+    return { hasApiKey: false };
+  } else {
+    const response = await apiCall('/api/user/api-key-status', { method: 'GET' });
+    if (!response.ok) throw new Error('Failed to check API key status');
+    return response.json();
+  }
+};
+
+export const deleteAccount = async (): Promise<void> => {
+  if (isFirebaseMode()) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No authenticated user');
+
+    const uid = currentUser.uid;
+
+    try {
+      // 1. Supprimer toutes les données Firestore
+      await FirestoreUserService.deleteUser(uid);
+
+      // 2. Supprimer le compte Firebase Authentication
+      await currentUser.delete();
+
+      // 3. Nettoyer toutes les données locales
+      sessionStorage.clear();
+      localStorage.clear();
+
+      // 4. Déconnecter l'utilisateur immédiatement
+      await signOut(auth);
+
+      console.log('Account deleted successfully from both Firestore and Firebase Auth, user signed out and local data cleared');
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+
+      // Si la suppression du compte Auth échoue, on peut avoir besoin de réauthentifier
+      if (error.code === 'auth/requires-recent-login') {
+        throw new Error('requires-recent-login');
+      } else if (error.code === 'auth/network-request-failed') {
+        throw new Error('network');
+      } else if (error.code === 'permission-denied') {
+        throw new Error('permission');
+      }
+
+      throw error;
+    }
+  } else {
+    const response = await apiCall('/api/auth/delete-account', { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete account');
+
+    // Nettoyer toutes les données locales
+    sessionStorage.clear();
+    localStorage.clear();
+
+    // Déconnecter l'utilisateur après suppression réussie
+    await signOut(auth);
+  }
+};
+
+export const getPresets = async (): Promise<PromptPreset[]> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    const firestorePresets = await FirestorePromptPresetService.getPresets(uid);
+    return firestorePresets.map(preset => convertFirestorePreset(preset, uid));
+  } else {
+    const response = await apiCall('/api/presets');
+    if (!response.ok) throw new Error('Failed to fetch presets');
+    return response.json();
+  }
+};
+
+export const createPreset = async (data: { title: string, prompt: string }): Promise<{ id: string }> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    const presetId = await FirestorePromptPresetService.createPreset(uid, {
+      title: data.title,
+      prompt: data.prompt,
+      isDefault: false
+    });
+    return { id: presetId };
+  } else {
+    const response = await apiCall('/api/presets', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to create preset');
+    return response.json();
+  }
+};
+
+export const updatePreset = async (id: string, data: { title: string, prompt: string }): Promise<void> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    await FirestorePromptPresetService.updatePreset(uid, id, {
+      title: data.title,
+      prompt: data.prompt
+    });
+  } else {
+    const response = await apiCall(`/api/presets/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Failed to update preset');
+  }
+};
+
+export const deletePreset = async (id: string): Promise<void> => {
+  if (isFirebaseMode()) {
+    const uid = auth.currentUser?.uid;
+    if (!uid) throw new Error('No authenticated user');
+
+    await FirestorePromptPresetService.deletePreset(uid, id);
+  } else {
+    const response = await apiCall(`/api/presets/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete preset');
+  }
+};
+
+export interface BatchData {
+  profile?: UserProfile;
+  presets?: PromptPreset[];
+  sessions?: Session[];
+}
+
+export const getBatchData = async (includes: ('profile' | 'presets' | 'sessions')[]): Promise<BatchData> => {
+  if (isFirebaseMode()) {
+    const promises: Promise<any>[] = [];
+
+    if (includes.includes('profile')) {
+      promises.push(getUserProfile().then(profile => ({ type: 'profile', data: profile })));
+    }
+    if (includes.includes('presets')) {
+      promises.push(getPresets().then(presets => ({ type: 'presets', data: presets })));
+    }
+    if (includes.includes('sessions')) {
+      promises.push(getSessions().then(sessions => ({ type: 'sessions', data: sessions })));
+    }
+
+    const results = await Promise.allSettled(promises);
+    const batchData: BatchData = {};
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        const { type, data } = result.value;
+        batchData[type as keyof BatchData] = data;
+      }
+    });
+
+    return batchData;
+  } else {
+    const response = await apiCall(`/api/batch?includes=${includes.join(',')}`);
+    if (!response.ok) throw new Error('Failed to fetch batch data');
+    return response.json();
+  }
+};
+
+export const logout = async () => {
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('manuallyLoggedOut', 'true');
+    sessionStorage.removeItem('authChecked');
+    sessionStorage.removeItem('authUserId');
+    setUserInfo(null, true);
+  }
+
+  if (isFirebaseMode()) {
+    if (typeof window !== 'undefined' && window.api?.common?.firebaseLogout) {
+      await window.api.common.firebaseLogout();
+      return;
+    }
+
+    await auth.signOut();
+  } else {
+    const response = await apiCall('/api/auth/logout', { method: 'POST' });
+    if (!response.ok) throw new Error('Failed to logout');
+  }
+};
+
+export const createUserAndProfileSafely = async (email: string, password: string, uid: string, data: any) => {
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY = 500;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      let user = auth.currentUser;
+
+      if (!user) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        user = userCredential.user;
+      }
+
+      // Mettre à jour le displayName Firebase Auth (utilisé comme fallback par AuthContext)
+      if (data.displayName && data.displayName !== 'User') {
+        await updateProfile(user, { displayName: data.displayName });
+      }
+
+      // Attendre que l'utilisateur soit complètement authentifié
+      await user.getIdToken(true);
+
+      // Attendre un peu plus pour s'assurer que auth.currentUser est mis à jour
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Vérifier que l'utilisateur est bien authentifié avant d'écrire dans Firestore
+      if (!auth.currentUser) {
+        console.error('User not authenticated after creation');
+        throw new Error('Erreur d\'authentification');
+      }
+
+      console.log('Creating Firestore profile for user:', user.uid);
+
+      await FirestoreUserService.createUser(user.uid, {
+        displayName: data.displayName,
+        email: data.email
+      });
+
+      console.log('Firestore profile created successfully');
+
+      // Email de bienvenue (fire and forget)
+      fetch('/api/email/welcome', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: data.email, firstName: data.displayName?.split(' ')[0] || '' }),
+      }).catch(() => {})
+
+      // Attendre un peu plus pour s'assurer que Firestore est synchronisé
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      return user;
+    } catch (error: any) {
+      console.error(`Registration attempt ${attempt} failed:`, error);
+
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error('Cette adresse email est déjà utilisée');
+      }
+
+      if (attempt === MAX_RETRIES) {
+        throw new Error(`Échec de la création du compte après ${MAX_RETRIES} tentatives. Veuillez réessayer.`);
+      }
+
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
+    }
+  }
+};
+
+export const getAuthType = async (): Promise<{ authType: 'google' | 'email', email: string, providerId: string }> => {
+  if (isFirebaseMode()) {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('No authenticated user');
+
+    // Récupérer les informations du provider depuis Firebase
+    const providerData = currentUser.providerData;
+
+    // Détecter le type d'authentification
+    let authType: 'google' | 'email' = 'email'; // Par défaut
+
+    if (providerData && providerData.length > 0) {
+      const provider = providerData[0];
+
+      if (provider.providerId === 'google.com') {
+        authType = 'google';
+      } else if (provider.providerId === 'password') {
+        authType = 'email';
+      }
+    } else {
+      // Fallback basé sur l'email si pas de provider data
+      const email = currentUser.email || '';
+      if (email.includes('@gmail.com') ||
+        email.includes('@google.com') ||
+        email.includes('@googlemail.com')) {
+        authType = 'google';
+      } else {
+        authType = 'email';
+      }
+    }
+
+    return {
+      authType,
+      email: currentUser.email || '',
+      providerId: providerData?.[0]?.providerId || 'unknown'
+    };
+  } else {
+    const response = await apiCall('/api/auth/type', { method: 'GET' });
+    if (!response.ok) throw new Error('Failed to get auth type');
+    return response.json();
+  }
+};
+
+// --- ASSISTANTS (AI AGENTS) API ---
+export interface Assistant {
+  id: string
+  name: string
+  description: string
+  model: string
+  status: 'active' | 'inactive'
+  tools?: string[]
+  knowledgeBase?: string[]
+  created_at: string
+  updated_at: string
+}
+
+export const getAssistants = async (): Promise<Assistant[]> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants`, {
+    headers: await getApiHeaders(),
+  })
+  if (!response.ok) {
+    // Return empty array if endpoint not available
+    console.warn('Assistants endpoint not available')
+    return []
+  }
+  return response.json()
+}
+
+export const createAssistant = async (data: Partial<Assistant>): Promise<Assistant> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants`, {
+    method: 'POST',
+    headers: await getApiHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) throw new Error('Failed to create assistant')
+  return response.json()
+}
+
+export const updateAssistant = async (id: string, data: Partial<Assistant>): Promise<Assistant> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants/${id}`, {
+    method: 'PUT',
+    headers: await getApiHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) throw new Error('Failed to update assistant')
+  return response.json()
+}
+
+// ── USER SETTINGS ─────────────────────────────────────────────────────────────
+
+export interface UserSettings {
+  detectable?: boolean
+  ambient?: boolean
+  colorTheme?: 'Système' | 'Clair' | 'Sombre'
+  screenUse?: boolean
+  hideWidget?: boolean
+  transcriptionLang?: string
+  outputLang?: string
+  shortcuts?: Array<{ id: string; group: string; label: string; keys: string[] }>
+}
+
+export const getUserSettings = async (): Promise<UserSettings> => {
+  const uid = auth.currentUser?.uid
+  if (!uid) return {}
+  const userData = await FirestoreUserService.getUser(uid)
+  return (userData as any)?.settings || {}
+}
+
+export const updateUserSettings = async (data: Partial<UserSettings>): Promise<void> => {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('No authenticated user')
+  const userData = await FirestoreUserService.getUser(uid)
+  const currentSettings: UserSettings = (userData as any)?.settings || {}
+  await FirestoreUserService.updateUser(uid, { settings: { ...currentSettings, ...data } } as any)
+}
+
+export const deleteAssistant = async (id: string): Promise<void> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/assistants/${id}`, {
+    method: 'DELETE',
+    headers: await getApiHeaders(),
+  })
+  if (!response.ok) throw new Error('Failed to delete assistant')
+}
+
+// --- KNOWLEDGE BASE API ---
+export interface Folder {
+  id: string
+  name: string
+  parent_id?: string | null
+  color: string
+  icon_emoji: string
+  description?: string
+  document_count: number
+  total_words: number
+  created_at: string
+  updated_at: string
+}
+
+export const createKnowledgeFolder = async (data: { name: string; parent_id?: string }): Promise<Folder> => {
+  const apiBase = await getApiBase()
+  const response = await fetch(`${apiBase}/knowledge/folders`, {
+    method: 'POST',
+    headers: await getApiHeaders(),
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Failed to create folder' }))
+    throw new Error(error.message || 'Failed to create folder')
+  }
+  return response.json()
+} 

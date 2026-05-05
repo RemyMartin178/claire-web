@@ -2,8 +2,8 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import ClientLayout from './ClientLayout'
-import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron'
+import ElectronClientLayout from './ElectronClientLayout'
+import { getElectronLoginPath } from '@/utils/electron'
 import { useEffect } from 'react'
 
 const PAGE_TITLES: Record<string, string> = {
@@ -70,7 +70,7 @@ export default function ConditionalLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { loading, isAuthenticated } = useAuth()
-  const isElectronRuntime = useElectronRuntime()
+  const isElectronRuntime = true
 
   const electronLoginPath = getElectronLoginPath()
   const normalizedPathname = normalizePath(pathname)
@@ -116,11 +116,11 @@ export default function ConditionalLayout({
   }
 
   if (isDebugPage) {
-    if (loading || isElectronRuntime === null) return null
-    return <ClientLayout>{children}</ClientLayout>
+    if (loading) return null
+    return <ElectronClientLayout>{children}</ElectronClientLayout>
   }
 
-  if (loading || isElectronRuntime === null) {
+  if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="w-6 h-6 rounded-full border-2 border-foreground/15 border-t-foreground/70 animate-spin" />
@@ -132,5 +132,5 @@ export default function ConditionalLayout({
     return null
   }
 
-  return <ClientLayout>{children}</ClientLayout>
+  return <ElectronClientLayout>{children}</ElectronClientLayout>
 }

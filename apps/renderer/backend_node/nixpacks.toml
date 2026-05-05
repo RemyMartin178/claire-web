@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs"]
+
+[phases.install]
+cmds = ["npm install --no-audit --no-fund"]
+
+[phases.build]
+cmds = ["echo 'Backend build complete - no build step needed'"]
+
+[start]
+cmd = "node server.js"
