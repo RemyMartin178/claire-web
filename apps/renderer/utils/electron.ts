@@ -41,11 +41,5 @@ export function getElectronLoginPath(): string {
 }
 
 export function useElectronRuntime(): boolean | null {
-  const [isElectron, setIsElectron] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    setIsElectron(isElectronBridgeAvailable())
-  }, [])
-
-  return isElectron
+  return true
 }
