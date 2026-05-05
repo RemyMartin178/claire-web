@@ -71,7 +71,8 @@ export default function ConditionalLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { loading, isAuthenticated } = useAuth()
-  const isElectronRuntime = useElectronRuntime()
+  const isElectronRuntimeDetected = useElectronRuntime()
+  const isElectronRuntime = isElectronRuntimeDetected || process.env.NEXT_PUBLIC_FORCE_ELECTRON === 'true'
 
   const electronLoginPath = getElectronLoginPath()
   const normalizedPathname = normalizePath(pathname)

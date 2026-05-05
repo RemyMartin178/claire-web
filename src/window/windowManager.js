@@ -138,8 +138,8 @@ let currentHeaderState = 'apikey';
 const windowPool = new Map();
 
 let dashboardWindow = null;
-// In dev, allow override via env var. In prod, load from local static bundle.
-const DASHBOARD_URL = process.env.DASHBOARD_DEV_URL || 'app://renderer/electron-login';
+// Dev: override via DASHBOARD_DEV_URL. Prod: load from renderer.clairia.app.
+const DASHBOARD_URL = process.env.DASHBOARD_DEV_URL || 'https://renderer.clairia.app/electron-login';
 
 let settingsHideTimer = null;
 let agentSelectorHideTimer = null;
