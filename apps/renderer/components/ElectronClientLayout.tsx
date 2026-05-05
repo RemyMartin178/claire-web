@@ -5,9 +5,8 @@ import SearchPopup from '@/components/SearchPopup'
 import PasswordModal from '@/components/PasswordModal'
 import SettingsModalElectron from '@/components/SettingsModalElectron'
 import Avatar from '@/components/Avatar'
-import DashboardHeader from '@/components/DashboardHeader'
 import { useAuth } from '@/contexts/AuthContext'
-import { X } from 'lucide-react'
+import { Search } from 'lucide-react'
 
 function WinButton({
   title,
@@ -56,29 +55,27 @@ export default function ElectronClientLayout({
   }, [])
 
   useEffect(() => {
-    const handle = (e: Event) => {
-      setSettingsOpen(true)
-    }
+    const handle = () => setSettingsOpen(true)
     window.addEventListener('claire:open-settings', handle)
     return () => window.removeEventListener('claire:open-settings', handle)
   }, [])
 
   const getUserDisplayName = () => {
-    if (!userInfo) return 'I';
-    if (userInfo.display_name) return userInfo.display_name;
-    if (userInfo.email) return userInfo.email.split('@')[0];
-    return 'U';
-  };
+    if (!userInfo) return 'I'
+    if (userInfo.display_name) return userInfo.display_name
+    if (userInfo.email) return userInfo.email.split('@')[0]
+    return 'U'
+  }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#eef1f4] text-neutral-900 relative">
-      {/* Frameless drag bar — nav arrows left, window controls right */}
+      {/* Titlebar — back/forward | search | avatar + window controls */}
       <div
-        className="flex h-8 shrink-0 items-center justify-between border-b border-black/5 bg-white/95 px-2 backdrop-blur relative z-[200]"
+        className="flex h-11 shrink-0 items-center gap-2 border-b border-black/5 bg-white/95 px-2 backdrop-blur relative z-[200]"
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
       >
         {/* Back / Forward */}
-        <div className="flex items-center gap-0.5" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
+        <div className="flex items-center gap-0.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
           <WinButton
             title="Retour"
             onClick={() => { void (window as any).api?.nav?.back?.() }}
@@ -99,8 +96,26 @@ export default function ElectronClientLayout({
           </WinButton>
         </div>
 
-        {/* Window controls */}
-        <div className="flex items-center gap-0.5">
+        {/* Search bar — centred */}
+        <div className="flex-1 flex justify-center" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center gap-2 h-7 w-full max-w-sm px-3 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-400 text-[13px] transition-colors"
+          >
+            <Search size={13} className="shrink-0" />
+            <span>Rechercher dans vos conversations</span>
+          </button>
+        </div>
+
+        {/* Avatar + window controls */}
+        <div className="flex items-center gap-1.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-neutral-200 transition-all"
+            title="Paramètres"
+          >
+            <Avatar name={getUserDisplayName()} size="sm" />
+          </button>
           <WinButton
             title="Réduire"
             onClick={() => { void window.api?.dashboard?.minimizeWindow?.() }}
@@ -129,13 +144,8 @@ export default function ElectronClientLayout({
         </div>
       </div>
 
-      <DashboardHeader 
-        onSearchClick={() => setIsSearchOpen(true)}
-        onSettingsClick={() => setSettingsOpen(true)}
-      />
-
-      {/* Main Content Area filling the entire screen */}
-      <div className="flex min-h-0 flex-1 overflow-hidden rounded-none border-0 bg-background">
+      {/* Main Content */}
+      <div className="flex min-h-0 flex-1 overflow-hidden bg-background">
         <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden text-neutral-900">
           <div className="h-full w-full overflow-auto no-scrollbar px-2 py-4 md:px-8 md:py-8">
             {children}
@@ -149,12 +159,12 @@ export default function ElectronClientLayout({
       />
       <PasswordModal />
 
-      <SettingsModalElectron 
-        isOpen={settingsOpen} 
-        onClose={() => setSettingsOpen(false)} 
+      <SettingsModalElectron
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
         onSearchClick={() => {
-          setSettingsOpen(false);
-          setTimeout(() => setIsSearchOpen(true), 150);
+          setSettingsOpen(false)
+          setTimeout(() => setIsSearchOpen(true), 150)
         }}
       />
     </div>
