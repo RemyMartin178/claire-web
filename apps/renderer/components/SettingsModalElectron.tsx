@@ -703,11 +703,6 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
     <div>
       <h2 className="text-[22px] font-bold text-neutral-900 tracking-tight mb-2">Calendrier</h2>
       <p className="text-[14px] text-neutral-500 mb-8">Gérez le compte calendrier que Claire utilise pour les réunions et rappels.</p>
-      {isElectronRuntime && (
-        <div className="mb-6 px-4 py-3 bg-blue-50 border border-blue-100 rounded-[8px] text-[13px] text-blue-700">
-          Pour connecter Google Agenda, rendez-vous dans l'onglet <strong>Calendrier</strong> de l'application.
-        </div>
-      )}
       {isLoadingCalendar ? (
         <p className="text-[13px] text-neutral-500">Chargement...</p>
       ) : (
