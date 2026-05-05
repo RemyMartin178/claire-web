@@ -26,8 +26,11 @@
         "build:ui": "node build.js",
         "build:web": "cd pickleglass_web && npm run build && cd ..",
         "build:renderer": "cd pickleglass_web && node scripts/build-electron.js && cd ..",
-        "build:all": "npm run build:ui && npm run build:renderer",
-        "watch:ui": "node build.js --watch"
+        "build:all": "npm run build:ui",
+        "watch:ui": "node build.js --watch",
+        "release": "node scripts/release.js patch",
+        "release:minor": "node scripts/release.js minor",
+        "release:major": "node scripts/release.js major"
     },
     "keywords": [
         "claire",
