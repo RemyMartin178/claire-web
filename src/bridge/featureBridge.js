@@ -1,6 +1,7 @@
 // src/bridge/featureBridge.js
 const { ipcMain, app } = require('electron');
 const windowManager = require('../window/windowManager');
+const internalBridge = require('./internalBridge');
 const { getFirestoreInstance } = require('../common/services/firebaseClient');
 const { collection, doc, getDoc, getDocs, deleteDoc, writeBatch } = require('firebase/firestore');
 const settingsService = require('../features/settings/settingsService');
@@ -367,17 +368,27 @@ module.exports = {
                 await listenService.handleListenRequest(listenButtonText);
 
                 if (sessionIdBeforeStop) {
-                    // Hide the listen overlay so the dashboard isn't covered when it surfaces.
-                    // 'Done' is idempotent — a second call from the renderer is harmless.
-                    try { await listenService.handleListenRequest('Done'); }
-                    catch (e) { logger.warn('[FeatureBridge] hide-overlay on Stop failed:', e.message); }
-
                     const dashWin = windowManager.getDashboardWindow();
                     if (dashWin && !dashWin.isDestroyed()) {
+                        // 1. Tell the (still-hidden) dashboard to route to the just-ended session NOW,
+                        //    so React can re-render in the background while the overlay is still on top.
+                        dashWin.webContents.send('dashboard:navigateToSession', { sessionId: sessionIdBeforeStop });
+
+                        // 2. Give the renderer ~1 frame to start the route transition before we surface it.
+                        //    Without this, the user briefly sees /activity before /activity/details kicks in.
+                        await new Promise(r => setTimeout(r, 80));
+
+                        // 3. Surface the dashboard (already on the right page).
                         dashWin.show();
                         dashWin.focus();
-                        dashWin.webContents.send('dashboard:navigateToSession', { sessionId: sessionIdBeforeStop });
                     }
+
+                    // 4. Tear down the floating windows AFTER the dashboard is up — never have a
+                    //    moment where every Claire window is hidden (would expose the desktop briefly).
+                    try { await listenService.handleListenRequest('Done'); }
+                    catch (e) { logger.warn('[FeatureBridge] hide-overlay on Stop failed:', e.message); }
+                    try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: false }); }
+                    catch (e) { logger.warn('[FeatureBridge] hide-header on Stop failed:', e.message); }
                 }
                 return { success: true };
             } catch (error) {
@@ -640,6 +651,11 @@ module.exports = {
                 if (!windowManager.windowPool.has('header')) {
                     windowManager.createWindows();
                 }
+
+                // Make sure the floating bar is visible — it gets hidden after a previous Stop.
+                try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: true }); }
+                catch (e) { logger.warn('[FeatureBridge] show-header on Start failed:', e.message); }
+
                 const dashWin = windowManager.getDashboardWindow();
                 if (dashWin && !dashWin.isDestroyed()) dashWin.hide();
                 windowManager.ensureListenWindow();
