@@ -8,11 +8,12 @@ const RENDERER_URL = process.env.RENDERER_URL || 'https://renderer.clairia.app';
 
 async function getIdToken() {
   try {
-    const authService = require('../services/authService.js');
+    const authService = require('../../services/authService.js');
     const user = authService.currentUser;
     if (user && typeof user.getIdToken === 'function') {
       return await user.getIdToken();
     }
+    logger.warn('[ClaireAPI] No authenticated Firebase user — cannot mint ID token');
   } catch (e) {
     logger.warn('[ClaireAPI] Could not get Firebase ID token:', e.message);
   }
