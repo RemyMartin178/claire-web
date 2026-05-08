@@ -156,6 +156,20 @@ export default function ElectronLoginPage() {
     }
   }
 
+  // Firebase auth restoration takes ~1-2s on cold start. Without this guard,
+  // returning users see a flash of the onboarding before the redirect kicks in.
+  // Match the page's white background so the wait reads as a benign load,
+  // not a flicker.
+  if (authLoading || isAuthenticated) {
+    return (
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        background: '#ffffff',
+      }} />
+    )
+  }
+
   return (
     <div style={{
       display: 'flex',
