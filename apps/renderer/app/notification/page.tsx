@@ -116,7 +116,6 @@ export default function MeetingNotificationPage() {
         {meeting.meetingUrl && (
           <button
             onClick={handleJoin}
-            title="Rejoindre"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -141,7 +140,6 @@ export default function MeetingNotificationPage() {
 
         <button
           onClick={handleDismiss}
-          title="Fermer"
           style={{
             display: 'inline-flex',
             alignItems: 'center',

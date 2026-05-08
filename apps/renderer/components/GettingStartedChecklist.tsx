@@ -139,22 +139,21 @@ export default function GettingStartedChecklist({ allSessions, userId, userAlias
           animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
           exit={{ opacity: 0, y: -22, scale: 0.94, filter: 'blur(8px)', height: 0, marginBottom: 0, paddingTop: 0, paddingBottom: 0 }}
           transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-10 border border-neutral-200 rounded-2xl p-6 bg-neutral-50/50 select-none"
+          className="mb-10 border border-border rounded-2xl p-6 bg-muted/30 dark:bg-white/[0.03] select-none"
           style={{ overflow: 'hidden', transformOrigin: 'top center' }}
         >
           <div className="flex items-start justify-between mb-5">
             <div>
-              <h2 className="text-[15px] font-semibold text-[#1D1D1F] tracking-tight">
+              <h2 className="text-[15px] font-semibold text-foreground tracking-tight">
                 Demarrer avec Claire
               </h2>
-              <p className="text-[13px] text-[#86868B] mt-0.5">
+              <p className="text-[13px] text-muted-foreground mt-0.5">
                 {allDone ? 'Vous etes pret !' : `${completedCount} sur ${steps.length} completees`}
               </p>
             </div>
             <button
               onClick={handleDismiss}
-              className="text-neutral-400 hover:text-neutral-600 transition-colors p-1 -mt-1 -mr-1 rounded-lg hover:bg-neutral-100"
-              title="Masquer"
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 -mt-1 -mr-1 rounded-lg hover:bg-muted"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -162,7 +161,7 @@ export default function GettingStartedChecklist({ allSessions, userId, userAlias
             </button>
           </div>
 
-          <div className="h-1 bg-neutral-200 rounded-full mb-5 overflow-hidden">
+          <div className="h-1 bg-border rounded-full mb-5 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               style={{ background: '#1562df' }}
@@ -180,12 +179,12 @@ export default function GettingStartedChecklist({ allSessions, userId, userAlias
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 className={`flex items-center gap-3 py-2 px-3 rounded-xl transition-colors ${
-                  step.done ? 'opacity-50' : 'hover:bg-white'
+                  step.done ? 'opacity-50' : 'hover:bg-muted/60'
                 }`}
               >
                 <div
                   className={`w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                    step.done ? 'border-transparent' : 'border-neutral-300 bg-white'
+                    step.done ? 'border-transparent' : 'border-border bg-background'
                   }`}
                   style={step.done ? { background: '#1562df', borderColor: '#1562df' } : {}}
                 >
@@ -199,7 +198,7 @@ export default function GettingStartedChecklist({ allSessions, userId, userAlias
                 <div className="flex-1 min-w-0">
                   <span
                     className={`text-[14px] font-medium ${
-                      step.done ? 'text-[#86868B] line-through' : 'text-[#1D1D1F]'
+                      step.done ? 'text-muted-foreground line-through' : 'text-foreground'
                     }`}
                   >
                     {step.label}

@@ -12,7 +12,7 @@ const authService = require('./authService');
 const { createLogger } = require('./logger.js');
 
 const logger = createLogger('ModelStateService');
-const APP_MANAGED_PROVIDERS = new Set(['openai', 'gemini', 'anthropic', 'deepgram', 'assemblyai']);
+const APP_MANAGED_PROVIDERS = new Set(['claire-api', 'openai', 'gemini', 'anthropic', 'deepgram', 'assemblyai']);
 
 class ModelStateService extends EventEmitter {
     constructor() {
@@ -61,14 +61,13 @@ class ModelStateService extends EventEmitter {
 
     _autoSelectAvailableModels(forceReselectionForTypes = []) {
         logger.info('Running auto-selection for models. Force re-selection for:', forceReselectionForTypes);
-        // If AssemblyAI key is available (from env), always force STT re-selection to prefer it
-        if (this.getApiKey('assemblyai') && !forceReselectionForTypes.includes('stt')) {
-            const currentStt = this.state.selectedModels?.stt;
-            const currentSttProvider = currentStt ? this.getProviderForModel('stt', currentStt) : null;
-            if (currentSttProvider && currentSttProvider !== 'assemblyai') {
-                forceReselectionForTypes = [...forceReselectionForTypes, 'stt'];
-                logger.info('[ModelStateService] AssemblyAI key available — forcing STT re-selection to prefer AssemblyAI');
-            }
+        // claire-api est toujours le provider préféré — pas besoin de forcer la reselection
+        const currentSttProvider = this.state.selectedModels?.stt
+            ? this.getProviderForModel('stt', this.state.selectedModels.stt)
+            : null;
+        if (currentSttProvider && currentSttProvider !== 'claire-api' && !forceReselectionForTypes.includes('stt')) {
+            forceReselectionForTypes = [...forceReselectionForTypes, 'stt'];
+            logger.info('[ModelStateService] claire-api disponible — forcing STT re-selection');
         }
         const types = ['llm', 'stt'];
 
@@ -81,8 +80,7 @@ class ModelStateService extends EventEmitter {
             if (currentModelId && !forceReselection) {
                 const provider = this.getProviderForModel(type, currentModelId);
                 const apiKey = this.getApiKey(provider);
-                // For Ollama and Whisper, 'local' is a valid API key
-                if (provider && (apiKey || ((provider === 'ollama' || provider === 'whisper') && apiKey === 'local'))) {
+                if (provider && (provider === 'claire-api' || apiKey)) {
                     isCurrentModelValid = true;
                 }
             }
@@ -91,40 +89,20 @@ class ModelStateService extends EventEmitter {
                 logger.info(`No valid ${type} model selected or re-selection forced. Finding an alternative...`);
                 const availableModels = this.getAvailableModels(type);
                 if (availableModels.length > 0) {
-                    // PRIORITÉ STT: AssemblyAI (meilleur) > Deepgram > Gemini Live > Whisper local > OpenAI (dernier recours)
                     let apiModel = null;
+
+                    // 1⃣ Claire API toujours prioritaire (clés côté serveur, pas besoin de clé user)
+                    apiModel = availableModels.find(model => {
+                        const provider = this.getProviderForModel(type, model.id);
+                        return provider === 'claire-api';
+                    });
+
+                    if (!apiModel) {
                     if (type === 'stt') {
-                        // 1⃣ AssemblyAI (Meilleure précision, entity recognition, intelligent punctuation)
                         apiModel = availableModels.find(model => {
                             const provider = this.getProviderForModel(type, model.id);
                             return provider === 'assemblyai' && this.getApiKey(provider);
                         });
-
-                        // 2⃣ Deepgram (ultra-faible latence, meilleure précision FR/EN)
-                        if (!apiModel) {
-                            apiModel = availableModels.find(model => {
-                                const provider = this.getProviderForModel(type, model.id);
-                                return provider === 'deepgram' && this.getApiKey(provider);
-                            });
-                        }
-
-                        // 3⃣ Gemini Live (très bon pour STT multilingue)
-                        if (!apiModel) {
-                            apiModel = availableModels.find(model => {
-                                const provider = this.getProviderForModel(type, model.id);
-                                return provider === 'gemini' && this.getApiKey(provider);
-                            });
-                        }
-
-                        // 3⃣ Whisper local (gratuit, précis mais plus lent)
-                        if (!apiModel) {
-                            apiModel = availableModels.find(model => {
-                                const provider = this.getProviderForModel(type, model.id);
-                                return provider === 'whisper';
-                            });
-                        }
-
-                        // 4⃣ OpenAI en dernier (pas terrible pour STT temps réel)
                         if (!apiModel) {
                             apiModel = availableModels.find(model => {
                                 const provider = this.getProviderForModel(type, model.id);
@@ -132,7 +110,6 @@ class ModelStateService extends EventEmitter {
                             });
                         }
                     } else {
-                        // LLM priority: Anthropic (Claude) > Gemini > OpenAI > others
                         apiModel = availableModels.find(model => {
                             const provider = this.getProviderForModel(type, model.id);
                             return provider === 'anthropic' && this.getApiKey(provider);
@@ -140,22 +117,10 @@ class ModelStateService extends EventEmitter {
                         if (!apiModel) {
                             apiModel = availableModels.find(model => {
                                 const provider = this.getProviderForModel(type, model.id);
-                                return provider === 'gemini' && this.getApiKey(provider);
-                            });
-                        }
-                        if (!apiModel) {
-                            apiModel = availableModels.find(model => {
-                                const provider = this.getProviderForModel(type, model.id);
                                 return provider === 'openai' && this.getApiKey(provider);
                             });
                         }
-                        if (!apiModel) {
-                            apiModel = availableModels.find(model => {
-                                const provider = this.getProviderForModel(type, model.id);
-                                const hasApiKey = this.getApiKey(provider);
-                                return provider && provider !== 'ollama' && provider !== 'whisper' && hasApiKey;
-                            });
-                        }
+                    }
                     }
 
                     const selectedModel = apiModel || availableModels[0];
@@ -479,13 +444,14 @@ class ModelStateService extends EventEmitter {
     }
 
     getApiKey(provider) {
+        if (provider === 'claire-api') return 'server-managed';
         if (APP_MANAGED_PROVIDERS.has(provider)) {
             const envMapping = {
                 openai: process.env.OPENAI_API_KEY,
                 gemini: process.env.GEMINI_API_KEY,
                 anthropic: process.env.ANTHROPIC_API_KEY,
                 deepgram: process.env.DEEPGRAM_API_KEY,
-                assemblyai: process.env.ASSEMBLYAI_API_KEY
+                assemblyai: process.env.ASSEMBLYAI_API_KEY,
             };
             return envMapping[provider] || null;
         }

@@ -18,83 +18,46 @@
  * @type {Object.<string, Provider>}
  */
 const PROVIDERS = {
+  // Primary provider — all AI/STT routed through Claire's server-side keys
+  'claire-api': {
+      name: 'Claire',
+      handler: () => require("./providers/claire-api"),
+      llmModels: [
+          { id: 'gpt-4o', name: 'GPT-4o' },
+      ],
+      sttModels: [
+          { id: 'u3-rt-pro', name: 'Universal-3 RT Pro (Best)' },
+          { id: 'u3-rt',     name: 'Universal-3 RT' },
+          { id: 'nano',      name: 'Nano (Fast)' },
+      ],
+  },
+
+  // Legacy providers kept for BYOK (bring-your-own-key) fallback only
   'openai': {
-      name: 'OpenAI',
+      name: 'OpenAI (BYOK)',
       handler: () => require("./providers/openai"),
       llmModels: [
           { id: 'gpt-4.1', name: 'GPT-4.1' },
       ],
-      sttModels: [
-          { id: 'gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe' }
-      ],
-  },
-
-  'gemini': {
-      name: 'Gemini',
-      handler: () => require("./providers/gemini"),
-      llmModels: [
-          { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-      ],
-      sttModels: [
-          { id: 'gemini-live-2.5-flash-preview', name: 'Gemini Live 2.5 Flash' }
-      ],
-  },
-  'anthropic': {
-      name: 'Anthropic',
-      handler: () => require("./providers/anthropic"),
-      llmModels: [
-          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
-      ],
       sttModels: [],
   },
-  'deepgram': {
-      name: 'Deepgram',
-      handler: () => require("./providers/deepgram"),
-      llmModels: [], // Deepgram doesn't support LLM
-      sttModels: [
-          { id: 'nova-2', name: 'Nova 2 (Ultra-Low Latency)' },
-          { id: 'nova-3', name: 'Nova 3 (High Accuracy)' },
-          { id: 'whisper-cloud', name: 'Whisper Cloud' }
-      ],
-  },
   'assemblyai': {
-      name: 'AssemblyAI',
+      name: 'AssemblyAI (BYOK)',
       handler: () => require("./providers/assemblyai"),
       llmModels: [],
       sttModels: [
           { id: 'u3-rt-pro', name: 'Universal-3 RT Pro (Best)' },
           { id: 'u3-rt',     name: 'Universal-3 RT' },
-          { id: 'default',   name: 'Universal-1 (Default)' },
           { id: 'nano',      name: 'Nano (Fast)' },
       ],
   },
-  'ollama': {
-      name: 'Ollama (Local)',
-      handler: () => require("./providers/ollama"),
-      llmModels: [], // Dynamic models populated from installed Ollama models
-      sttModels: [], // Ollama doesn't support STT yet
-  },
-  'whisper': {
-      name: 'Whisper (Local)',
-      handler: () => {
-          // This needs to remain a function due to its conditional logic for renderer/main process
-          if (typeof window === 'undefined') {
-              const { WhisperProvider } = require("./providers/whisper");
-              return new WhisperProvider();
-          }
-          // Return a dummy object for the renderer process
-          return {
-              validateApiKey: async () => ({ success: true }), // Mock validate for renderer
-              createSTT: () => { throw new Error('Whisper STT is only available in main process'); },
-          };
-      },
-      llmModels: [],
-      sttModels: [
-          { id: 'whisper-tiny', name: 'Whisper Tiny (39M)' },
-          { id: 'whisper-base', name: 'Whisper Base (74M)' },
-          { id: 'whisper-small', name: 'Whisper Small (244M)' },
-          { id: 'whisper-medium', name: 'Whisper Medium (769M)' },
+  'anthropic': {
+      name: 'Anthropic (BYOK)',
+      handler: () => require("./providers/anthropic"),
+      llmModels: [
+          { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
       ],
+      sttModels: [],
   },
 };
 
@@ -144,13 +107,10 @@ function getProviderClass(providerId) {
     
     // Map provider IDs to their actual exported class names
     const classNameMap = {
+        'claire-api': null,
         'openai': 'OpenAIProvider',
         'anthropic': 'AnthropicProvider',
-        'gemini': 'GeminiProvider',
-        'ollama': 'OllamaProvider',
-        'whisper': 'WhisperProvider',
-        'deepgram': 'DeepgramProvider',
-        'assemblyai': 'AssemblyAIProvider'
+        'assemblyai': 'AssemblyAIProvider',
     };
     
     const className = classNameMap[providerId]; // Fixed: use providerId instead of undefined actualProviderId

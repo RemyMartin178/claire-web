@@ -11,7 +11,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import GettingStartedChecklist from '@/components/GettingStartedChecklist'
 import { getEventStartDate, getEventEndDate, getEventTitle } from '../calendar/event-utils'
 
@@ -22,7 +21,6 @@ export default function ActivityPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [upcomingMeeting, setUpcomingMeeting] = useState<any>(null)
   const [meetingBrief, setMeetingBrief] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
@@ -179,17 +177,11 @@ export default function ActivityPage() {
     if (!date) return 'Bienvenue';
     const hour = date.getHours();
     if (hour < 12) return 'Bonjour';
-    if (hour < 18) return 'Bon après-midi';
+    if (hour < 18) return 'Bonne après-midi';
     return 'Bonsoir';
   };
 
-  const handleDeleteClick = (sessionId: string) => {
-    setConfirmDeleteId(sessionId);
-  }
-
-  const handleConfirmDelete = async () => {
-    if (!confirmDeleteId) return;
-    const sessionId = confirmDeleteId;
+  const handleDeleteClick = async (sessionId: string) => {
     setDeletingId(sessionId);
     try {
       await deleteSession(sessionId);
@@ -199,7 +191,6 @@ export default function ActivityPage() {
       toast.error('Échec de la suppression de l\'activité.');
     } finally {
       setDeletingId(null);
-      setConfirmDeleteId(null);
     }
   }
 
@@ -253,23 +244,11 @@ export default function ActivityPage() {
         <div className="mx-auto w-full max-w-[52rem]">
           <div className="flex flex-wrap items-center justify-between gap-3">
 
-            {/* Left: title + refresh */}
+            {/* Left: greeting */}
             <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="mr-2 font-normal text-2xl text-muted-foreground/90 tracking-tight">
-                Claire
+              <h1 className="font-normal text-2xl text-muted-foreground/90 tracking-tight">
+                {getGreeting(currentTime)}{userInfo.display_name ? `, ${userInfo.display_name.split(' ')[0]}` : ''}
               </h1>
-              <button
-                aria-label="Actualiser"
-                onClick={fetchSessions}
-                className="h-8 w-8 rounded-full flex items-center justify-center border border-border text-muted-foreground/80 hover:text-muted-foreground transition-colors"
-              >
-                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                  <path d="M21 3v5h-5" />
-                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                  <path d="M8 16H3v5" />
-                </svg>
-              </button>
             </div>
 
             {/* Right: Start Claire */}
@@ -377,7 +356,7 @@ export default function ActivityPage() {
                             <Link
                               href={`/activity/details?sessionId=${session.id}`}
                               onClick={() => trackSessionViewed(session.id)}
-                              className="truncate pr-3 font-medium text-sm text-foreground hover:text-primary transition-colors flex-1 block"
+                              className="truncate pr-3 font-medium text-sm text-foreground flex-1 block"
                             >
                               {displayTitle}
                             </Link>
@@ -394,7 +373,6 @@ export default function ActivityPage() {
                                 variant="ghost"
                                 size="icon"
                                 className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-all"
-                                title="Supprimer"
                               >
                                 {deletingId === session.id ? (
                                   <div className="animate-spin h-3.5 w-3.5 border-2 border-red-500 rounded-full border-t-transparent" />
@@ -421,14 +399,6 @@ export default function ActivityPage() {
         </div>
       </div>
 
-      <ConfirmationModal
-        isOpen={!!confirmDeleteId}
-        title="Supprimer l'activité"
-        message="Êtes-vous sûr de vouloir supprimer cette activité ? Cette action est irréversible."
-        confirmText="Supprimer"
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setConfirmDeleteId(null)}
-      />
     </div>
   )
 }

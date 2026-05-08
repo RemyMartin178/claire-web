@@ -62,7 +62,6 @@ export default function DashboardHeader({ onSearchClick, onSettingsClick }: Dash
           <button
             onClick={onSettingsClick}
             className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-neutral-200 dark:hover:ring-neutral-700 transition-all shadow-sm overflow-hidden"
-            title="Ouvrir le menu"
           >
             <Avatar name={getUserDisplayName()} size="sm" />
           </button>

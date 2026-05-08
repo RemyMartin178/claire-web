@@ -12,76 +12,17 @@ import {
   getSessionDetails,
   deleteSession,
 } from '@/utils/api'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-  Mic,
-  Calendar,
-  Clock,
-  Trash2,
-  FileText,
-  MessageSquare,
-  ArrowLeft,
-  Copy,
-  Mail,
-  Phone,
-  Video,
-  Users,
-  UserCheck,
-  Monitor,
-  GraduationCap,
-  PhoneCall,
-} from 'lucide-react';
-import { TextShimmer } from '@/components/ui/text-shimmer'
+import { Mic, Trash2, ArrowLeft, Copy, Mail } from 'lucide-react';
 import { AiMessageWithActions } from '@/components/ui/ai-actions'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/conversation'
-import { Message, MessageContent } from '@/components/ui/message'
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
-import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import { LiquidGlassInput } from '@/components/ui/liquid-glass-input'
 import React from 'react'
 
 // Session context type detection
-const SESSION_TYPES: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  'Réunion':       { label: 'Réunion',       icon: Users },
-  'Reunion':       { label: 'Réunion',       icon: Users },
-  'Meeting':       { label: 'Réunion',       icon: Users },
-  'Appel':         { label: 'Appel',         icon: Phone },
-  'Call':          { label: 'Appel',         icon: Phone },
-  'Sales Call':    { label: 'Sales Call',    icon: PhoneCall },
-  'Visio':         { label: 'Visio',         icon: Video },
-  'Video Call':    { label: 'Visio',         icon: Video },
-  'Entretien':     { label: 'Entretien',     icon: UserCheck },
-  'Interview':     { label: 'Entretien',     icon: UserCheck },
-  'Présentation':  { label: 'Présentation',  icon: Monitor },
-  'Presentation':  { label: 'Présentation',  icon: Monitor },
-  'Formation':     { label: 'Formation',     icon: GraduationCap },
-  'Training':      { label: 'Formation',     icon: GraduationCap },
-  'Discussion':    { label: 'Discussion',    icon: MessageSquare },
-};
-
-const detectSessionType = (summaryText: string, title: string): { label: string; icon: React.ComponentType<{ className?: string }> } => {
-  // 1. Try to extract **Type** field from LLM-generated summary text
-  const typeMatch = summaryText?.match(/\*\*Type\*\*\s*\n([^\n]+)/i);
-  if (typeMatch) {
-    const raw = typeMatch[1].trim();
-    const found = Object.keys(SESSION_TYPES).find(k => raw.toLowerCase().includes(k.toLowerCase()));
-    if (found) return SESSION_TYPES[found];
-  }
-
-  // 2. Keyword inference from title + summary
-  const combined = ((title || '') + ' ' + (summaryText || '')).toLowerCase();
-  if (/sales|commercial|prospect|démo\b|demo\b/.test(combined)) return SESSION_TYPES['Sales Call'];
-  if (/visio|zoom|teams|google meet|meet\.google|video call|vidéo conférence/.test(combined)) return SESSION_TYPES['Visio'];
-  if (/entretien|interview|recrutement|candidat|embauche/.test(combined)) return SESSION_TYPES['Entretien'];
-  if (/présentation|présente|slide|pitch/.test(combined)) return SESSION_TYPES['Présentation'];
-  if (/formation|cours\b|atelier|workshop|apprentissage/.test(combined)) return SESSION_TYPES['Formation'];
-  if (/réunion|meeting|standup|stand-up|sprint|scrum|revue|bilan/.test(combined)) return SESSION_TYPES['Réunion'];
-  if (/appel|call\b|téléphone|phone/.test(combined)) return SESSION_TYPES['Appel'];
-  return SESSION_TYPES['Discussion'];
-};
 
 // Util function to format seconds to m:ss
 const formatTime = (seconds: number) => {
@@ -110,7 +51,7 @@ const parseMarkdown = (text: string, onCopySummary?: () => void) => {
       const pText = paragraphBuffer.join(' ');
       const pParts = pText.split(/(\*\*.*?\*\*)/g);
       elements.push(
-        <p key={`p-${elements.length}`} className="mb-4 text-[#1d1d1f] text-[15px] leading-relaxed">
+        <p key={`p-${elements.length}`} className="mb-4 text-foreground text-[15px] leading-relaxed">
           {pParts.map((p, k) => p.startsWith('**') && p.endsWith('**') ?
             <strong key={k} className="font-semibold">{p.slice(2, -2)}</strong> : p)}
         </p>
@@ -122,12 +63,12 @@ const parseMarkdown = (text: string, onCopySummary?: () => void) => {
   const flushList = () => {
     if (currentList) {
       elements.push(
-        <ul key={`ul-${elements.length}`} className="list-disc pl-4 space-y-4 mb-8 marker:text-[#86868b] text-[#1d1d1f]">
+        <ul key={`ul-${elements.length}`} className="list-disc pl-4 space-y-4 mb-8 marker:text-muted-foreground text-foreground">
           {currentList.items.map((item, idx) => (
             <li key={idx} className="text-[15px] leading-relaxed pl-1">
               {item.content.replace(/\*\*/g, '')}
               {item.subItems.length > 0 && (
-                <ul className="list-disc pl-5 mt-3 space-y-2 marker:text-[#86868b] text-[#86868b] text-[14px]">
+                <ul className="list-disc pl-5 mt-3 space-y-2 marker:text-muted-foreground text-muted-foreground text-[14px]">
                   {item.subItems.map((sub, sIdx) => (
                     <li key={sIdx} className="leading-relaxed">{sub.replace(/\*\*/g, '')}</li>
                   ))}
@@ -154,13 +95,13 @@ const parseMarkdown = (text: string, onCopySummary?: () => void) => {
 
       elements.push(
         <div key={`h2-w-${elements.length}`} className="flex items-center justify-between mt-8 mb-5">
-          <h2 className="text-[17px] font-semibold text-[#1d1d1f] font-sans">
+          <h2 className="text-[17px] font-semibold text-foreground font-sans">
             {headerText}
           </h2>
           {injectCopyBtn && (
             <button
               onClick={onCopySummary}
-              className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
+              className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <Copy className="h-3.5 w-3.5" /> Copier le résumé
             </button>
@@ -176,7 +117,7 @@ const parseMarkdown = (text: string, onCopySummary?: () => void) => {
       flushList();
       const headerText = line.replace('### ', '').trim();
       elements.push(
-        <h3 key={`h3-${elements.length}`} className="text-lg font-medium mt-6 mb-4 text-[#1d1d1f]">
+        <h3 key={`h3-${elements.length}`} className="text-lg font-medium mt-6 mb-4 text-foreground">
           {headerText}
         </h3>
       );
@@ -236,7 +177,6 @@ function SessionDetailsContent() {
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [confirmDeleteId, setConfirmDeleteId] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
@@ -268,11 +208,7 @@ function SessionDetailsContent() {
     }
   }, [userInfo, sessionId]);
 
-  const handleDeleteClick = () => {
-    setConfirmDeleteId(true);
-  }
-
-  const handleConfirmDelete = async () => {
+  const handleDeleteClick = async () => {
     if (!sessionId) return;
     setIsDeleting(true);
     try {
@@ -282,8 +218,6 @@ function SessionDetailsContent() {
     } catch (error) {
       toast.error('Échec de la suppression de l\'activité.');
       setIsDeleting(false);
-    } finally {
-      setConfirmDeleteId(false);
     }
   };
 
@@ -355,10 +289,10 @@ function SessionDetailsContent() {
 
   if (loading || isLoading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1d1d1f] mx-auto"></div>
-          <p className="mt-4 text-[#86868b] font-sans">Chargement de la session...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
+          <p className="mt-4 text-muted-foreground font-sans">Chargement de la session...</p>
         </div>
       </div>
     );
@@ -426,14 +360,14 @@ function SessionDetailsContent() {
 
   if (!sessionDetails) {
     return (
-      <div className="min-h-screen bg-white text-[#282828] flex flex-col items-center justify-center p-6">
-        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-neutral-100 flex items-center justify-center">
-          <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6">
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+          <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
           </svg>
         </div>
-        <h2 className="text-2xl font-semibold mb-4 text-[#1d1d1f]">Session introuvable</h2>
-        <p className="text-[#86868b] mb-8 font-sans">La session demandée n'a pas pu être trouvée.</p>
+        <h2 className="text-2xl font-semibold mb-4 text-foreground">Session introuvable</h2>
+        <p className="text-muted-foreground mb-8 font-sans">La session demandée n'a pas pu être trouvée.</p>
         <Button onClick={() => router.push('/activity')} className="bg-[#1d1d1f] text-white hover:bg-black">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Retour à l'activité
@@ -491,8 +425,6 @@ function SessionDetailsContent() {
     displayTitle = 'Discussion avec Claire';
   }
 
-  const sessionContext = detectSessionType(rawSummaryText, displayTitle);
-  const SessionTypeIcon = sessionContext.icon;
 
   // Helper to remove emojis and redundant prefixes from summary text
   const stripEmojisAndPrefixes = (str: string) => {
@@ -517,106 +449,58 @@ function SessionDetailsContent() {
 
   const missedOpportunitiesCount = 6;
 
+  const hasTranscript = sessionDetails.transcripts && sessionDetails.transcripts.length > 0;
+
   const renderContent = () => {
     switch (activeTab) {
       case 'summary':
-        return (
-          <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between mt-2 mb-5">
-              <h2 className="text-[17px] font-semibold text-[#1d1d1f] font-sans">Résumé</h2>
-              <button
-                onClick={handleCopySummary}
-                className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
-              >
-                <Copy className="h-3.5 w-3.5" /> Copier le résumé
-              </button>
-            </div>
-            {bulletPoints.length > 0 ? (
-              <ul className="list-disc pl-4 space-y-4 mb-8 marker:text-[#86868b] text-[#1d1d1f]">
-                {bulletPoints.map((item: string, i: number) => (
-                  <li key={i} className="text-[15px] leading-relaxed pl-1">
-                    {item.replace(/\*\*/g, '')}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="max-w-none">
-                {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
-              </div>
-            )}
+        return bulletPoints.length > 0 ? (
+          <ul className="list-disc pl-4 space-y-3 marker:text-muted-foreground">
+            {bulletPoints.map((item: string, i: number) => (
+              <li key={i} className="text-sm leading-relaxed text-foreground pl-1">
+                {item.replace(/\*\*/g, '')}
+              </li>
+            ))}
+          </ul>
+        ) : rawSummaryText ? (
+          <div className="max-w-none">
+            {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
+        ) : (
+          <p className="text-muted-foreground/80 text-sm">Aucun résumé disponible.</p>
         );
       case 'transcript':
-        const hasTranscript = sessionDetails.transcripts && sessionDetails.transcripts.length > 0;
+        if (!hasTranscript) return <p className="text-muted-foreground/80 text-sm">Pas de transcription disponible.</p>;
         return (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-[#1d1d1f]">Transcription</h2>
-              {hasTranscript && (
-                <button
-                  onClick={handleCopyTranscript}
-                  className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
-                >
-                  <Copy className="h-3.5 w-3.5" /> Copier la transcription
-                </button>
-              )}
-            </div>
-            {hasTranscript ? (
-              <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-sm space-y-6">
-                {sessionDetails.transcripts.map((t, idx) => {
-                  const isUser = t.speaker === 'user';
-                  const speakerName = isUser ? userInfo?.display_name || 'Vous' : 'Interlocuteur';
-                  let offsetText = "0:00";
-                  if (t.start_at && sessionDetails.session.started_at) {
-                    offsetText = formatTime(Math.floor((t.start_at - sessionDetails.session.started_at) / 1000));
-                  }
-                  return (
-                    <div key={t.id || idx} className="flex gap-6 pb-6 border-b border-[#f0f0f0] last:border-0">
-                      <div className="w-16 flex-shrink-0 text-[13px] font-medium text-[#94a3b8] pt-1">
-                        {offsetText}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[13px] font-bold text-[#8e8e93] uppercase tracking-wider mb-1">{speakerName}</p>
-                        <p className="text-[15px] leading-relaxed text-[#1d1d1f]">
-                          {t.text}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-[#86868b] italic text-[15px]">Pas de transcription disponible.</p>
-            )}
+          <div className="space-y-5">
+            {sessionDetails.transcripts.map((t, idx) => {
+              const isUser = t.speaker === 'user';
+              const speakerName = isUser ? userInfo?.display_name || 'Vous' : 'Interlocuteur';
+              let offsetText = '0:00';
+              if (t.start_at && sessionDetails.session.started_at) {
+                offsetText = formatTime(Math.floor((t.start_at - sessionDetails.session.started_at) / 1000));
+              }
+              return (
+                <article key={t.id || idx} className="space-y-0.5">
+                  <p className="flex items-center gap-2">
+                    <span className={`font-medium text-[11px] ${isUser ? 'text-[#1562df]' : 'text-foreground/75'}`}>{speakerName}</span>
+                    <span className="font-medium text-[10px] text-muted-foreground">{offsetText}</span>
+                  </p>
+                  <p className="text-foreground text-sm leading-snug">{t.text}</p>
+                </article>
+              );
+            })}
           </div>
         );
       case 'usage':
-        return (
-          <div className="space-y-12 animate-in fade-in duration-300">
-            <div>
-              <p className="text-[#1d1d1f] text-[15px] font-medium leading-relaxed">
-                Claire a été utilisée {chatHistory.filter(m => m.role === 'assistant').length || 0} fois au total.
-              </p>
-            </div>
-
-            {/* AI Exchange History inside Usage */}
-            <div>
-              <h2 className="text-xl font-semibold mb-8 text-[#1d1d1f]">Historique des échanges</h2>
-              {chatHistory.length > 0 ? (
-                <div className="space-y-2">
-                  {chatHistory.map((msg: any, idx: number) => (
-                    <AiMessageWithActions
-                      key={msg.id || idx}
-                      role={msg.role as 'user' | 'assistant'}
-                      content={msg.content}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[#8e8e93] text-[15px] italic">Aucun échange IA pour le moment.</p>
-              )}
-            </div>
+        return chatHistory.length > 0 ? (
+          <div className="space-y-2">
+            {chatHistory.map((msg: any, idx: number) => (
+              <AiMessageWithActions key={msg.id || idx} role={msg.role as 'user' | 'assistant'} content={msg.content} />
+            ))}
           </div>
+        ) : (
+          <p className="text-muted-foreground/80 text-sm">Aucun échange IA pour le moment.</p>
         );
       default:
         return null;
@@ -624,77 +508,42 @@ function SessionDetailsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-[#1d1d1f] font-sans selection:bg-[#007aff]/10 flex overflow-hidden">
+    <div className="bg-background text-foreground font-sans selection:bg-[#007aff]/10 flex overflow-hidden h-full">
       {/* Main Content Area */}
-      <div className={`flex-1 transition-all duration-500 ease-apple h-screen overflow-y-auto no-scrollbar ${isAiSidebarOpen ? 'mr-[400px]' : 'mr-0'}`}>
-        <div className="max-w-5xl mx-auto px-8 pt-4 pb-40">
-          {/* Navigation */}
-          <div className="mb-4">
-            <Link href="/activity" className="inline-flex items-center text-[#94a3b8] hover:text-[#1d1d1f] transition-all group">
-              <ArrowLeft className="h-4 w-4 mr-1.5 transition-transform group-hover:-translate-x-1" />
-              <span className="text-[14px] font-medium">Retour</span>
-            </Link>
-          </div>
+      <div className={`flex-1 min-h-0 overflow-y-auto pb-16 no-scrollbar transition-all duration-500 ${isAiSidebarOpen ? 'mr-[400px]' : 'mr-0'}`}>
+        <div className="mx-auto w-full max-w-[42rem] px-6 pt-7 pb-6">
 
-          {/* Title and Header Tags */}
-          <div className="mb-6">
-            <h1 className="text-3xl mb-4 font-semibold tracking-tight text-[#1d1d1f] font-sans">
-              {displayTitle}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center space-x-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
-                <SessionTypeIcon className="h-3.5 w-3.5 text-[#007aff]" />
-                <span className="text-[13px] font-medium text-[#1d1d1f]">{sessionContext.label}</span>
-              </div>
-              <div className="flex items-center space-x-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
-                <Calendar className="h-3.5 w-3.5 text-[#1d1d1f]/50" />
-                <span className="text-[13px] font-medium text-[#1d1d1f]">{formattedDate}</span>
-              </div>
-              <div className="flex items-center space-x-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5">
-                <Clock className="h-3.5 w-3.5 text-[#1d1d1f]/50" />
-                <span className="text-[13px] font-medium text-[#1d1d1f]">{durationFormatted}</span>
-              </div>
-              <button
-                type="button"
-                onClick={handleEmailSession}
-                disabled={isEmailing}
-                title="Envoyer par mail"
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 h-8 rounded-lg border border-gray-200 text-[#86868b] hover:text-[#1d1d1f] hover:bg-gray-50 transition-colors disabled:opacity-50 text-[12px] font-medium"
-              >
-                {isEmailing
-                  ? <div className="animate-spin w-3.5 h-3.5 border-2 border-current rounded-full border-t-transparent" />
-                  : <Mail className="w-3.5 h-3.5" strokeWidth={2} />}
-                <span>{isEmailing ? 'Génération...' : 'Mail de suivi'}</span>
+          {/* Header: metadata + actions */}
+          <div className="flex items-start justify-between gap-4">
+            <p className="font-medium text-muted-foreground text-sm">
+              {formattedDate}{durationFormatted ? ` · ${durationFormatted}` : ''}
+            </p>
+            <div className="flex items-center gap-0.5">
+              <button type="button" onClick={handleEmailSession} disabled={isEmailing}                 className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition disabled:opacity-50">
+                {isEmailing ? <div className="animate-spin w-3 h-3 border-2 border-current rounded-full border-t-transparent" /> : <Mail className="w-3.5 h-3.5" strokeWidth={2} />}
+                <span>{isEmailing ? 'Génération...' : 'Mail'}</span>
               </button>
-              <button
-                type="button"
-                onClick={handleDeleteClick}
-                title="Supprimer"
-                className="flex items-center justify-center w-8 h-8 rounded-lg border border-red-100 text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+              <button type="button" onClick={handleDeleteClick} disabled={isDeleting}                 className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-red-500 transition disabled:opacity-50">
+                {isDeleting ? <div className="animate-spin w-3.5 h-3.5 border-2 border-current rounded-full border-t-transparent" /> : <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />}
               </button>
             </div>
           </div>
 
-          {/* White Segmented Control Navigation */}
-          <div className="mb-6 mt-2">
-            <div className="inline-flex bg-white rounded-lg p-0.5 border border-gray-200 shadow-sm">
+          {/* Title */}
+          <h1 className="mt-2 font-medium text-3xl text-foreground leading-[1.03] tracking-tight">
+            {displayTitle}
+          </h1>
+
+          {/* Tabs row + copy button */}
+          <div className="mt-4 flex items-center justify-between gap-4">
+            <div className="inline-flex self-start rounded-lg border border-[#e4e4e7] dark:border-white/10 bg-[#ebebeb] dark:bg-[#1e1e21] p-1">
               {(['summary', 'transcript', 'usage'] as TabType[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-1.5 text-[12px] transition-all rounded-md whitespace-nowrap relative ${activeTab === tab
-                    ? 'text-[#1d1d1f] font-semibold'
-                    : 'text-[#8e8e93] hover:text-[#1d1d1f] font-medium'
-                    }`}
-                >
+                <button key={tab} type="button" onClick={() => setActiveTab(tab)}
+                  className={`relative rounded-md px-2 py-1 font-medium text-xs transition ${activeTab === tab ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                   {activeTab === tab && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 bg-white shadow-sm border border-gray-200/50 rounded-lg z-0"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
+                    <motion.span layoutId="session-tabs-active-pill"
+                      className="absolute inset-0 rounded-md bg-white dark:bg-[#09090b] shadow-sm"
+                      transition={{ type: 'spring', bounce: 0.22, damping: 18, mass: 0.28, stiffness: 560 }} />
                   )}
                   <span className="relative z-10">
                     {tab === 'summary' ? 'Résumé' : tab === 'transcript' ? 'Transcription' : 'Utilisation'}
@@ -702,32 +551,25 @@ function SessionDetailsContent() {
                 </button>
               ))}
             </div>
+            {activeTab === 'summary' && (
+              <button type="button" onClick={handleCopySummary}
+                className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition">
+                <Copy className="w-3 h-3" /> Copier
+              </button>
+            )}
+            {activeTab === 'transcript' && hasTranscript && (
+              <button type="button" onClick={handleCopyTranscript}
+                className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition">
+                <Copy className="w-3 h-3" /> Copier
+              </button>
+            )}
           </div>
 
-          {/* Tab Content Area with Slide Animation */}
-          <div className="relative mb-12">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-              >
-                {renderContent()}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+          {/* Content */}
+          <section className="mt-6">
+            {renderContent()}
+          </section>
 
-
-          <ConfirmationModal
-            isOpen={confirmDeleteId}
-            title="Supprimer l'activité"
-            message="Êtes-vous sûr de vouloir supprimer cette activité ?"
-            confirmText="Supprimer"
-            onCancel={() => setConfirmDeleteId(false)}
-            onConfirm={handleConfirmDelete}
-          />
         </div>
       </div>
 
@@ -742,14 +584,14 @@ function SessionDetailsContent() {
       </div>
 
       {/* AI Chat Sidebar */}
-      <div className={`fixed top-0 right-0 h-full w-[400px] bg-white shadow-2xl z-[60] transform transition-transform duration-500 ease-apple border-l border-gray-100 rounded-l-3xl ${isAiSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-[400px] bg-background shadow-2xl z-[60] transform transition-transform duration-500 ease-apple border-l border-border rounded-l-3xl ${isAiSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className="flex items-center justify-between px-6 py-8 border-b border-gray-100">
-            <h2 className="text-xl font-semibold tracking-tight text-[#1d1d1f] uppercase">Claire</h2>
+          <div className="flex items-center justify-between px-6 py-8 border-b border-border">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground uppercase">Claire</h2>
             <button
               onClick={() => setIsAiSidebarOpen(false)}
-              className="p-2.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors z-[70] shadow-sm bg-white border border-gray-100"
+              className="p-2.5 rounded-full hover:bg-muted text-muted-foreground transition-colors z-[70] shadow-sm bg-muted/50 border border-border"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M18 6L6 18M6 6l12 12" /></svg>
             </button>
@@ -761,11 +603,11 @@ function SessionDetailsContent() {
               <ConversationContent>
                 {chatHistory.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 pt-20">
-                    <div className="w-16 h-16 bg-[#f2f2f7] rounded-2xl flex items-center justify-center mb-2">
+                    <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-2">
                       <Mic className="text-[#007aff] size-8" />
                     </div>
-                    <h3 className="text-xl font-semibold text-[#1d1d1f]">Posez vos questions</h3>
-                    <p className="text-[#8e8e93] text-[15px]">
+                    <h3 className="text-xl font-semibold text-foreground">Posez vos questions</h3>
+                    <p className="text-muted-foreground text-[15px]">
                       Je suis là pour vous aider à analyser cette session et répondre à toutes vos questions.
                     </p>
                   </div>
@@ -785,7 +627,7 @@ function SessionDetailsContent() {
             </Conversation>
           </div>
           {/* Local Sidebar Input */}
-          <div className="p-6 border-t border-gray-100">
+          <div className="p-6 border-t border-border">
             <div className="relative">
               <input
                 type="text"
@@ -798,7 +640,7 @@ function SessionDetailsContent() {
                   }
                 }}
                 placeholder="Répondre à Claire..."
-                className="w-full bg-[#f2f2f7] border-none rounded-2xl px-4 py-3 text-[14px] text-[#1d1d1f] focus:ring-2 focus:ring-[#007aff]/20 transition-all outline-none pr-10"
+                className="w-full bg-muted border-none rounded-2xl px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-[#007aff]/20 transition-all outline-none pr-10"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
                 <button
@@ -826,7 +668,7 @@ function SessionDetailsContent() {
 export default function SessionDetailsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
       </div>
     }>

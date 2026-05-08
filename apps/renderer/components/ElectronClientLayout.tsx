@@ -107,7 +107,6 @@ export default function ElectronClientLayout({
             <button
               onClick={() => setSettingsOpen(true)}
               className="group inline-flex size-[30px] items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted text-muted-foreground text-xs font-medium outline-none transition hover:bg-muted-foreground/15"
-              title="Paramètres"
             >
               <Avatar name={getUserDisplayName()} size="sm" />
             </button>

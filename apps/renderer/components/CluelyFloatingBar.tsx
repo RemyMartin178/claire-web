@@ -57,7 +57,6 @@ export default function CluelyFloatingBar() {
         <button
           className="cluely-floating-btn !w-auto px-2.5 gap-1.5 text-xs font-medium text-white"
           onClick={() => setHidden((h) => !h)}
-          title="Toggle visibility (Ctrl+\\)"
         >
           <span className="cluely-glow-dot !size-4" />
           <span>Claire</span>
@@ -68,7 +67,6 @@ export default function CluelyFloatingBar() {
           <button
             className="cluely-floating-btn text-white"
             onClick={() => setListening(true)}
-            title="Start listening"
           >
             <Mic size={14} strokeWidth={2.2} />
           </button>
@@ -97,7 +95,6 @@ export default function CluelyFloatingBar() {
         <button
           className="cluely-floating-btn text-white"
           onClick={() => setHidden((h) => !h)}
-          title="Hide"
         >
           {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
         </button>
@@ -105,7 +102,6 @@ export default function CluelyFloatingBar() {
         {/* More menu */}
         <button
           className="cluely-floating-btn text-white"
-          title="More"
         >
           <MoreHorizontal size={14} />
         </button>
@@ -113,7 +109,6 @@ export default function CluelyFloatingBar() {
         {/* Close (smaller utility variant) */}
         <button
           className="cluely-floating-btn-sm ml-0.5"
-          title="Close"
         >
           <X size={12} />
         </button>

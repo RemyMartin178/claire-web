@@ -184,6 +184,18 @@
   -webkit-app-region: no-drag;
 }
 
+button, a {
+  cursor: default;
+}
+
+input, select, textarea, button {
+  outline: none !important;
+  box-shadow: none;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+}
+
 body {
   font-family: var(--theme-font-body);
   -webkit-font-smoothing: antialiased;
@@ -276,8 +288,7 @@ a {
 }
 
 a:hover {
-  color: var(--primary-hover);
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 @layer utilities {
@@ -408,8 +419,7 @@ a:hover {
 
   .form-input:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    border-color: var(--border-color);
   }
 
   /* Badge Styles */

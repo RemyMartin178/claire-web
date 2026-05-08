@@ -76,39 +76,47 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 function CustomSelect({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
-    const close = () => setOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
   }, [open]);
+
   return (
-    <div className="relative w-[200px]" onClick={e => e.stopPropagation()}>
+    <div ref={ref} className="relative w-[200px]">
       <button
         type="button"
-        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(o => !o); }}
-        className={`w-full flex items-center justify-between bg-white dark:bg-neutral-800 border transition-all duration-200 text-neutral-900 dark:text-neutral-100 text-[13px] font-medium py-1.5 pl-3 pr-2 rounded-[8px] outline-none shadow-sm
-          ${open ? 'border-[#007AFF] ring-2 ring-[#007AFF]/10' : 'border-neutral-200 dark:border-white/10 hover:border-neutral-300 dark:hover:border-neutral-600'}`}
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between bg-[#f4f4f5] dark:bg-[#27272a] border border-[#e4e4e7] dark:border-white/10 text-foreground text-[13px] font-medium py-1.5 pl-3 pr-2 rounded-[8px] outline-none transition-colors hover:bg-[#ebebeb] dark:hover:bg-[#3f3f46]"
       >
         <span className="truncate">{value}</span>
-        <ChevronDown size={14} className={`text-neutral-400 dark:text-neutral-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
+
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.98 }}
+            initial={{ opacity: 0, y: -4, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.98 }}
-            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute top-full left-0 w-full mt-1.5 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-white/10 rounded-[10px] shadow-2xl shadow-black/10 overflow-hidden z-[200] p-1"
+            exit={{ opacity: 0, y: -4, scale: 0.97 }}
+            transition={{ duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute top-full left-0 w-full mt-1 bg-white dark:bg-[#1c1c1e] border border-[#e4e4e7] dark:border-white/10 rounded-[10px] shadow-xl shadow-black/10 dark:shadow-black/40 overflow-hidden z-[200] p-1"
           >
             {options.map(opt => (
               <button
-                key={opt} type="button"
-                onClick={e => { e.preventDefault(); e.stopPropagation(); onChange(opt); setOpen(false); }}
-                className={`w-full text-left px-3 py-2 text-[13px] font-medium rounded-[6px] transition-colors
-                  ${value === opt ? 'bg-[#007AFF]/5 text-[#007AFF]' : 'text-neutral-600 dark:text-neutral-400 hover:bg-[#f4f4f5] dark:hover:bg-neutral-700/50 hover:text-neutral-900 dark:text-neutral-100 dark:hover:text-white'}`}
-              >{opt}</button>
+                key={opt}
+                type="button"
+                onClick={() => { onChange(opt); setOpen(false); }}
+                className="w-full flex items-center justify-between px-3 py-1.5 text-[13px] rounded-[6px] transition-colors text-foreground hover:bg-[#f4f4f5] dark:hover:bg-white/[0.06]"
+              >
+                <span>{opt}</span>
+                {value === opt && <Check size={13} className="text-foreground shrink-0" />}
+              </button>
             ))}
           </motion.div>
         )}
@@ -598,7 +606,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
           <button
             onClick={handleCheckVersion}
             disabled={isCheckingVersion}
-            className="px-3 py-1.5 bg-[#f4f4f5] dark:bg-white/8 hover:bg-[#e4e4e7] dark:hover:bg-[#27272a] border border-[#e4e4e7] dark:border-white/10 text-[#18181b] dark:text-[#fafafa] transition rounded-md text-[13px] font-medium disabled:opacity-60"
+            className="px-3 py-1.5 bg-[#f4f4f5] dark:bg-[#27272a] hover:bg-[#e4e4e7] dark:hover:bg-[#3f3f46] border border-[#e4e4e7] dark:border-white/10 text-[#18181b] dark:text-[#fafafa] transition rounded-md text-[13px] font-medium disabled:opacity-60"
           >
             {isCheckingVersion ? 'Vérification...' : 'Vérifier les MAJ'}
           </button>
@@ -817,9 +825,9 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                   <button
                     key={item.id} type="button"
                     onClick={e => { e.preventDefault(); e.stopPropagation(); setEditingShortcutId(item.id); }}
-                    className="w-full flex items-center justify-between py-3 px-2 -mx-2 rounded-[6px] cursor-pointer transition-colors outline-none hover:bg-[#f4f4f5] dark:bg-[#18181b]/50"
+                    className="w-full flex items-center justify-between py-3 px-2 -mx-2 rounded-[6px] cursor-pointer transition-colors outline-none hover:bg-[#f4f4f5] dark:hover:bg-white/5"
                   >
-                    <p className="text-[14px] text-neutral-700 font-medium">{item.label}</p>
+                    <p className="text-[14px] text-neutral-700 dark:text-neutral-300 font-medium">{item.label}</p>
                     <div className="flex gap-1.5 h-6 items-center overflow-hidden">
                       <AnimatePresence mode="wait">
                         {editingShortcutId === item.id ? (
@@ -829,7 +837,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                         ) : (
                           <motion.div key="keys" initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 15 }} transition={{ duration: 0.15 }} className="flex gap-1.5">
                             {item.keys.map((k, i) => (
-                              <span key={i} className="inline-flex items-center justify-center min-w-[24px] px-1.5 h-6 bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded text-[11px] font-semibold text-neutral-600 shadow-sm">{k}</span>
+                              <span key={i} className="inline-flex items-center justify-center min-w-[24px] px-1.5 h-6 bg-white dark:bg-white/10 border border-neutral-200 dark:border-white/10 rounded text-[11px] font-semibold text-neutral-600 dark:text-neutral-300 shadow-sm">{k}</span>
                             ))}
                           </motion.div>
                         )}
@@ -922,7 +930,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                     <Avatar name={getUserDisplayName()} avatarUrl={(userInfo as any)?.photoURL} size="lg" />
                     <span className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">{getUserDisplayName()}</span>
                   </div>
-                  <button onClick={() => setIsEditingProfile(true)} className="text-[13px] font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors">
+                  <button onClick={() => setIsEditingProfile(true)} className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
                     Mettre à jour le profil
                   </button>
                 </motion.div>
@@ -982,19 +990,19 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                     <div className="flex-1">
                       <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">First name</label>
                       <input type="text" value={profileFirstName} onChange={e => setProfileFirstName(e.target.value)} placeholder="Prénom"
-                        className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/20 focus:border-[#0ea5e9] transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
+                        className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
                     </div>
                     <div className="flex-1">
                       <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Last name</label>
                       <input type="text" value={profileLastName} onChange={e => setProfileLastName(e.target.value)} placeholder="Last name"
-                        className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/20 focus:border-[#0ea5e9] transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
+                        className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end gap-4 mt-4 pt-4 border-t border-[#e4e4e7] dark:border-white/10">
-                    <button type="button" onClick={() => setIsEditingProfile(false)} className="text-[13px] font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors">Cancel</button>
+                    <button type="button" onClick={() => setIsEditingProfile(false)} className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
                     <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile}
-                      className="px-5 py-1.5 bg-[#0ea5e9] hover:bg-[#0284c7] text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60">
+                      className="px-5 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60">
                       {isSavingProfile ? 'Saving...' : 'Save'}
                     </button>
                   </div>
@@ -1064,7 +1072,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                         value={newEmailInput}
                         onChange={e => setNewEmailInput(e.target.value)}
                         placeholder="Entrez la nouvelle adresse e-mail"
-                        className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/20 focus:border-[#0ea5e9] transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400"
+                        className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400"
                       />
                     </div>
 
@@ -1072,7 +1080,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       <button 
                         type="button" 
                         onClick={() => { setIsEditingEmail(false); setNewEmailInput(''); }}
-                        className="text-[13px] font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors"
+                        className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
                       >
                         Annuler
                       </button>
@@ -1080,7 +1088,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                         type="button"
                         onClick={() => { setIsSavingEmail(true); setTimeout(() => { setIsSavingEmail(false); setIsEditingEmail(false); setNewEmailInput(''); }, 1000); }}
                         disabled={!newEmailInput || isSavingEmail}
-                        className="px-4 py-1.5 bg-[#0ea5e9] hover:bg-[#0284c7] text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
+                        className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
                       >
                         {isSavingEmail ? 'Mise à jour...' : 'Mettre à jour'}
                       </button>
@@ -1107,7 +1115,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 </div>
                 <button className="text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 transition-colors"><MoreHorizontal size={18} /></button>
               </div>
-            <button className="flex items-center gap-2 text-[13px] font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors">
+            <button className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
               <Plus size={16} strokeWidth={2.5} /> Connecter un compte
             </button>
           </div>
@@ -1141,7 +1149,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       <button 
                         type="button" 
                         onClick={() => setIsEditingPassword(true)}
-                        className="text-[13px] font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors"
+                        className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
                       >
                         Mettre à jour le mot de passe
                       </button>
@@ -1150,7 +1158,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                     <button 
                       type="button" 
                       onClick={() => setIsEditingPassword(true)}
-                      className="text-[13px] font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors"
+                      className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Définir un mot de passe
                     </button>
@@ -1177,7 +1185,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                           type={showNewPassword ? "text" : "password"}
                           value={newPassword}
                           onChange={e => setNewPassword(e.target.value)}
-                          className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] pl-3 pr-10 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/20 focus:border-[#0ea5e9] transition-all shadow-sm"
+                          className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] pl-3 pr-10 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm"
                         />
                         <button 
                           type="button"
@@ -1207,7 +1215,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                           type={showConfirmPassword ? "text" : "password"}
                           value={confirmPassword}
                           onChange={e => setConfirmPassword(e.target.value)}
-                          className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] pl-3 pr-10 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/20 focus:border-[#0ea5e9] transition-all shadow-sm"
+                          className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] pl-3 pr-10 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm"
                         />
                         <button 
                           type="button"
@@ -1260,7 +1268,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                     <button 
                       type="button" 
                       onClick={() => setIsEditingPassword(false)}
-                      className="px-4 py-1.5 text-[13px] font-semibold text-[#0ea5e9] hover:text-[#0284c7] transition-colors"
+                      className="px-4 py-1.5 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
                     >
                       Annuler
                     </button>
@@ -1268,7 +1276,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       type="button"
                       onClick={handleSavePassword}
                       disabled={isSavingPassword}
-                      className="px-4 py-1.5 bg-[#0ea5e9] hover:bg-[#0284c7] text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
+                      className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
                     >
                       {isSavingPassword ? 'Sauvegarde...' : 'Sauvegarder'}
                     </button>
@@ -1300,7 +1308,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                         {device.isCurrent && <span className="text-[11px] font-semibold text-[#71717a] dark:text-[#a1a1aa] bg-[#f4f4f5] dark:bg-[#27272a] border border-[#e4e4e7] dark:border-white/10 px-2 py-0.5 rounded-md">Cet appareil</span>}
                       </div>
                       {!device.isCurrent && (
-                        <button onClick={() => handleRevokeDevice(device.id)} className="text-neutral-400 dark:text-neutral-400 hover:text-red-500 transition-colors" title="Déconnecter">
+                        <button onClick={() => handleRevokeDevice(device.id)} className="text-neutral-400 dark:text-neutral-400 hover:text-red-500 transition-colors" >
                           <MoreHorizontal size={16} />
                         </button>
                       )}
