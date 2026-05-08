@@ -80,7 +80,7 @@ function CustomSelect({ options, value, onChange }: { options: string[]; value: 
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => {
+    const close = (e: Event) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', close);
