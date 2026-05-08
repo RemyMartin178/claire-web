@@ -21,8 +21,19 @@ function runCapture(cmd) {
     return execSync(cmd, { encoding: 'utf8' }).trim();
 }
 
-// Ensure clean working tree
-const dirty = runCapture('git status --porcelain');
+// Ensure clean working tree — ignore submodule modifications (m/M on .claude/worktrees, xerus-master)
+// and untracked directories (??), which are never part of a release.
+const dirty = runCapture('git status --porcelain')
+    .split('\n')
+    .filter(line => {
+        if (!line.trim()) return false;
+        const file = line.slice(3);
+        if (file.startsWith('.claude/worktrees/')) return false;
+        if (file.startsWith('xerus-master/')) return false;
+        if (line.startsWith('??')) return false;
+        return true;
+    })
+    .join('\n');
 if (dirty) {
     console.error('\nUncommitted changes detected — commit or stash before releasing:\n');
     console.error(dirty);
