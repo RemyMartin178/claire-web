@@ -1,7 +1,7 @@
 {
     "name": "claire-app",
     "productName": "Claire",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "description": "Claire AI Assistant",
     "main": "src/index.js",
     "scripts": {
@@ -9,7 +9,7 @@
         "start": "npm run build:ui && electron .",
         "dev": "npm run watch:ui & electron .",
         "dev:web": "cd pickleglass_web && npm run dev",
-"dev-tools": "node dev-with-devtools.js",
+        "dev-tools": "node dev-with-devtools.js",
         "start:dev": "npm run build:ui && cross-env NODE_ENV=development node node_modules/electron/cli.js ./src/index.js",
         "package": "npm run build:all && electron-builder --dir",
         "make": "npm run build:ui && electron-forge make",
