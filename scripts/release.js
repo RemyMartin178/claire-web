@@ -49,9 +49,9 @@ if (branch !== 'main') {
     process.exit(1);
 }
 
-// Local build
+// Local build — produces the installer in dist/
 console.log('\nBuilding locally...');
-run('npm run build:all');
+run('npm run build:win');
 
 let version;
 
