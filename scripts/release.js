@@ -26,11 +26,11 @@ function runCapture(cmd) {
 const dirty = runCapture('git status --porcelain')
     .split('\n')
     .filter(line => {
-        if (!line.trim()) return false;
-        const file = line.slice(3);
-        if (file.startsWith('.claude/worktrees/')) return false;
-        if (file.startsWith('xerus-master/')) return false;
-        if (line.startsWith('??')) return false;
+        const l = line.trim();
+        if (!l) return false;
+        if (l.includes('.claude/')) return false;
+        if (l.includes('xerus-master/')) return false;
+        if (l.startsWith('??')) return false;
         return true;
     })
     .join('\n');
