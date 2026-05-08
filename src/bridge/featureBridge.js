@@ -1,7 +1,8 @@
 // src/bridge/featureBridge.js
-const { ipcMain, app } = require('electron');
+const { ipcMain, app, BrowserWindow } = require('electron');
 const windowManager = require('../window/windowManager');
 const internalBridge = require('./internalBridge');
+const sharedStateService = require('../common/services/sharedStateService');
 const { getFirestoreInstance } = require('../common/services/firebaseClient');
 const { collection, doc, getDoc, getDocs, deleteDoc, writeBatch } = require('firebase/firestore');
 const settingsService = require('../features/settings/settingsService');
@@ -64,6 +65,20 @@ function _serializeFsDoc(data) {
 module.exports = {
     // Renderer[Korean comment translated] Request[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
     initialize() {
+        // ── SharedState bridge (Cluely-style centralized state) ──────────────
+        // Renderers read it via window.api.sharedState.get()/.subscribe()/.patch().
+        // Every change is broadcast to every renderer process so they stay in sync.
+        ipcMain.handle('shared-state:get', () => sharedStateService.get());
+        ipcMain.handle('shared-state:patch', (_event, partial) => sharedStateService.patch(partial));
+
+        sharedStateService.on('change', ({ state }) => {
+            for (const win of BrowserWindow.getAllWindows()) {
+                if (win && !win.isDestroyed()) {
+                    try { win.webContents.send('shared-state:updated', state); } catch { /* renderer gone */ }
+                }
+            }
+        });
+
         // Settings Service
         ipcMain.handle('settings:getPresets', async () => await settingsService.getPresets());
         ipcMain.handle('settings:get-auto-update', async () => await settingsService.getAutoUpdateSetting());
@@ -365,7 +380,22 @@ module.exports = {
             }
             const sessionIdBeforeStop = (listenButtonText === 'Stop') ? listenService.currentSessionId : null;
             try {
+                if (listenButtonText === 'Listen') {
+                    // About to start — reflect intent in shared state for any subscriber.
+                    sharedStateService.patch({ isListenRunning: true, showListen: true });
+                }
+
                 await listenService.handleListenRequest(listenButtonText);
+
+                if (listenButtonText === 'Listen') {
+                    const newId = listenService.currentSessionId;
+                    if (newId) {
+                        sharedStateService.patch({
+                            session: { id: newId, startedAt: Date.now() },
+                            isListenRunning: true,
+                        });
+                    }
+                }
 
                 if (sessionIdBeforeStop) {
                     const dashWin = windowManager.getDashboardWindow();
@@ -389,6 +419,19 @@ module.exports = {
                     catch (e) { logger.warn('[FeatureBridge] hide-overlay on Stop failed:', e.message); }
                     try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: false }); }
                     catch (e) { logger.warn('[FeatureBridge] hide-header on Stop failed:', e.message); }
+
+                    // 5. Mirror the transition in shared state — Cluely uses session:null +
+                    //    showDashboard:true as the trigger that everything else reacts to.
+                    const prevFocus = sharedStateService.get().dashboardFocusCount || 0;
+                    sharedStateService.patch({
+                        session: null,
+                        lastSessionId: sessionIdBeforeStop,
+                        isListenRunning: false,
+                        showListen: false,
+                        showHeader: false,
+                        showDashboard: true,
+                        dashboardFocusCount: prevFocus + 1,
+                    });
                 }
                 return { success: true };
             } catch (error) {
@@ -660,6 +703,17 @@ module.exports = {
                 if (dashWin && !dashWin.isDestroyed()) dashWin.hide();
                 windowManager.ensureListenWindow();
                 await listenService.handleListenRequest('Listen');
+
+                // Mirror the transition in shared state.
+                const newId = listenService.currentSessionId;
+                sharedStateService.patch({
+                    showDashboard: false,
+                    showHeader: true,
+                    showListen: true,
+                    isListenRunning: true,
+                    session: newId ? { id: newId, startedAt: Date.now() } : null,
+                });
+
                 return { success: true };
             } catch (e) {
                 logger.error('[FeatureBridge] dashboard:startClaire failed', { message: e.message });

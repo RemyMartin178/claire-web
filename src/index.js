@@ -78,6 +78,7 @@ console.log('[STARTUP] Detected API keys:', {
 const { createDashboardWindow } = require('./window/windowManager.js');
 
 const listenService = require('./features/listen/listenService');
+const sharedStateService = require('./common/services/sharedStateService');
 
 const { initializeFirebase } = require('./common/services/firebaseClient');
 // const databaseInitializer = require('./common/services/databaseInitializer'); // Phase 1 Fix: SQLite removed
@@ -498,6 +499,15 @@ app.whenReady().then(async () => {
         logger.info('[Index] DEBUG: modelStateService.initialize() completed');
         //////// after_modelStateService ////////
 
+        // Init shared state BEFORE featureBridge — featureBridge subscribes to it
+        // and exposes get/patch IPC handlers that other services may use.
+        try {
+            await sharedStateService.init();
+            logger.info('[Index] DEBUG: sharedStateService.init() completed');
+        } catch (err) {
+            logger.warn('[Index] sharedStateService.init() failed (continuing):', err.message);
+        }
+
         logger.info('[Index] DEBUG: About to initialize featureBridge and windowBridge...');
         featureBridge.initialize();  // [Korean comment translated]: featureBridge Initialize
         windowBridge.initialize();
@@ -591,6 +601,11 @@ app.on('before-quit', async (event) => {
     try {
         // 0. Stop meeting notifier
         try { require('./main/meeting-notifier').stop(); } catch {}
+
+        // 0bis. Flush any pending shared-state write so we don't lose persisted flags
+        try { await sharedStateService.flush(); } catch (e) {
+            logger.warn('[Shutdown] sharedStateService.flush() failed:', e.message);
+        }
 
         // 1. Stop audio capture first (immediate)
         await listenService.closeSession();

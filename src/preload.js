@@ -140,6 +140,20 @@ contextBridge.exposeInMainWorld('api', {
     removeOnThemeInitialize: (callback) => ipcRenderer.removeListener('theme-initialize', callback),
   },
 
+  // ── Centralized shared state (Cluely-style) ──────────────────────────────
+  // get() pulls a snapshot, patch() applies a partial mutation, subscribe()
+  // returns an unsubscribe fn. Every renderer window stays in sync because
+  // featureBridge.js broadcasts shared-state:updated on every change.
+  sharedState: {
+    get: () => ipcRenderer.invoke('shared-state:get'),
+    patch: (partial) => ipcRenderer.invoke('shared-state:patch', partial),
+    subscribe: (callback) => {
+      const handler = (_event, state) => callback(state);
+      ipcRenderer.on('shared-state:updated', handler);
+      return () => ipcRenderer.removeListener('shared-state:updated', handler);
+    },
+  },
+
   // UI Component specific namespaces
   dashboard: dashboardApi,
 
