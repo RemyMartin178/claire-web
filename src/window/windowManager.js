@@ -673,6 +673,18 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
         }
     };
 
+    // 'header' is the floating control bar — no animation, just show/hide.
+    // featureBridge hides it on session end so the dashboard surfaces alone, à la Cluely.
+    if (name === 'header') {
+        if (shouldBeVisible) {
+            win.show();
+            try { win.focus(); } catch { /* focus may fail on some platforms */ }
+        } else {
+            win.hide();
+        }
+        return;
+    }
+
     if (name === 'settings') {
         if (shouldBeVisible) {
             if (settingsHideTimer) {
@@ -2011,10 +2023,19 @@ function hideMeetingNotification() {
 /**
  * Ensures the listen window exists in the pool (created lazily).
  * Required before calling listenService.handleListenRequest('Listen').
+ *
+ * NOTE: createFeatureWindow (singular) is a closure local to createWindows() —
+ * it isn't reachable here. Use the module-level createFeatureWindows (plural)
+ * which takes the header window as its anchor.
  */
 function ensureListenWindow() {
     if (!windowPool.has('listen')) {
-        createFeatureWindow('listen');
+        const header = windowPool.get('header');
+        if (header && !header.isDestroyed()) {
+            createFeatureWindows(header, ['listen']);
+        } else {
+            logger.warn('[ensureListenWindow] header window unavailable — cannot create listen');
+        }
     }
     return windowPool.get('listen');
 }

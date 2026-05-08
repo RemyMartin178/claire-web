@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import ElectronClientLayout from './ElectronClientLayout'
+import { SharedStateProvider } from '@/contexts/SharedStateContext'
 import { getElectronLoginPath } from '@/utils/electron'
 import { useEffect } from 'react'
 import { useTheme } from 'next-themes'
@@ -136,7 +137,11 @@ export default function ConditionalLayout({
 
   if (isDebugPage) {
     if (loading) return null
-    return <ElectronClientLayout>{children}</ElectronClientLayout>
+    return (
+      <SharedStateProvider>
+        <ElectronClientLayout>{children}</ElectronClientLayout>
+      </SharedStateProvider>
+    )
   }
 
   if (loading) {
@@ -151,5 +156,9 @@ export default function ConditionalLayout({
     return null
   }
 
-  return <ElectronClientLayout>{children}</ElectronClientLayout>
+  return (
+    <SharedStateProvider>
+      <ElectronClientLayout>{children}</ElectronClientLayout>
+    </SharedStateProvider>
+  )
 }

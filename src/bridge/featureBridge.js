@@ -413,9 +413,13 @@ module.exports = {
                         dashWin.focus();
                     }
 
-                    // 4. Tear down the floating windows AFTER the dashboard is up — never have a
-                    //    moment where every Claire window is hidden (would expose the desktop briefly).
-                    try { await listenService.handleListenRequest('Done'); }
+                    // 4. Tear down the floating windows AFTER the dashboard is up.
+                    //    IMPORTANT: emit visibility requests directly instead of calling
+                    //    handleListenRequest('Done'). The latter would broadcast another
+                    //    listen:changeSessionResult to the header, double-cycling
+                    //    MainHeader's session-button state machine (the user's own
+                    //    follow-up Done click is what's supposed to land that transition).
+                    try { internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false }); }
                     catch (e) { logger.warn('[FeatureBridge] hide-overlay on Stop failed:', e.message); }
                     try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: false }); }
                     catch (e) { logger.warn('[FeatureBridge] hide-header on Stop failed:', e.message); }

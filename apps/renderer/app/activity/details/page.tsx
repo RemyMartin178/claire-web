@@ -20,6 +20,7 @@ import { motion } from 'framer-motion';
 import { trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
 import { LiquidGlassInput } from '@/components/ui/liquid-glass-input'
+import ActivityDetailsLoading from './loading'
 import React from 'react'
 
 // Session context type detection
@@ -288,14 +289,9 @@ function SessionDetailsContent() {
   };
 
   if (loading || isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="flex flex-col items-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground mx-auto"></div>
-          <p className="mt-4 text-muted-foreground font-sans">Chargement de la session...</p>
-        </div>
-      </div>
-    );
+    // Reuse the route-level skeleton so the in-page loading state matches what
+    // Next.js shows during the route transition — no jarring swap.
+    return <ActivityDetailsLoading />
   }
 
   const handleAiQuestion = async (question: string) => {
