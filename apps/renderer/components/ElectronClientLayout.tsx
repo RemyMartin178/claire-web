@@ -6,7 +6,7 @@ import PasswordModal from '@/components/PasswordModal'
 import SettingsModalElectron from '@/components/SettingsModalElectron'
 import Avatar from '@/components/Avatar'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Search, ArrowLeft, ArrowRight } from 'lucide-react'
 
 const isWindows =
@@ -19,6 +19,7 @@ export default function ElectronClientLayout({
   children: React.ReactNode
 }) {
   const { user: userInfo } = useAuth()
+  const router = useRouter()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [canGoBack, setCanGoBack] = useState(false)
   const [canGoForward, setCanGoForward] = useState(false)
@@ -40,6 +41,26 @@ export default function ElectronClientLayout({
     window.addEventListener('claire:open-settings', handle)
     return () => window.removeEventListener('claire:open-settings', handle)
   }, [])
+
+  // Listen for "navigate to session" events fired by main process when
+  // a recording session ends — auto-route to the session details page.
+  useEffect(() => {
+    const api = (window as any).api
+    const onNavigate = api?.dashboard?.onNavigateToSession
+    const offNavigate = api?.dashboard?.removeOnNavigateToSession
+    if (typeof onNavigate !== 'function') return
+
+    onNavigate((data: { sessionId?: string } | undefined) => {
+      const id = data?.sessionId
+      if (typeof id === 'string' && id.length > 0) {
+        router.push(`/activity/details?sessionId=${id}`)
+      }
+    })
+
+    return () => {
+      try { offNavigate?.() } catch { /* noop */ }
+    }
+  }, [router])
 
   const pathname = usePathname()
   const isOnboarding = pathname?.startsWith('/onboarding')

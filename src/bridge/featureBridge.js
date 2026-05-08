@@ -365,10 +365,17 @@ module.exports = {
             const sessionIdBeforeStop = (listenButtonText === 'Stop') ? listenService.currentSessionId : null;
             try {
                 await listenService.handleListenRequest(listenButtonText);
+
                 if (sessionIdBeforeStop) {
+                    // Hide the listen overlay so the dashboard isn't covered when it surfaces.
+                    // 'Done' is idempotent — a second call from the renderer is harmless.
+                    try { await listenService.handleListenRequest('Done'); }
+                    catch (e) { logger.warn('[FeatureBridge] hide-overlay on Stop failed:', e.message); }
+
                     const dashWin = windowManager.getDashboardWindow();
                     if (dashWin && !dashWin.isDestroyed()) {
                         dashWin.show();
+                        dashWin.focus();
                         dashWin.webContents.send('dashboard:navigateToSession', { sessionId: sessionIdBeforeStop });
                     }
                 }
