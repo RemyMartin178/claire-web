@@ -177,3 +177,4 @@ scripts/update-icon.ps1
 .vercel
 cluely_extracted/
 apps/renderer/update-dark-mode.js
+.claude/worktrees/
