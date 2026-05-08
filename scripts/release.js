@@ -5,10 +5,12 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-const type = process.argv[2] || 'patch';
+const args = process.argv.slice(2);
+const noBump = args.includes('--no-bump');
+const type = args.find(a => ['patch', 'minor', 'major'].includes(a)) || 'patch';
 
-if (!['patch', 'minor', 'major'].includes(type)) {
-    console.error(`Usage: npm run release [patch|minor|major]\nGot: "${type}"`);
+if (!noBump && !['patch', 'minor', 'major'].includes(type)) {
+    console.error(`Usage: npm run release [patch|minor|major] [--no-bump]\nGot: "${type}"`);
     process.exit(1);
 }
 
@@ -47,23 +49,40 @@ if (branch !== 'main') {
     process.exit(1);
 }
 
-// Bump version in package.json (no git commit yet)
-run(`npm version ${type} --no-git-tag-version`);
+// Local build
+console.log('\nBuilding locally...');
+run('npm run build:all');
 
-const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
-const { version } = pkg;
+let version;
+
+if (noBump) {
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
+    version = pkg.version;
+    console.log(`\nRe-releasing v${version} (no version bump)...`);
+} else {
+    // Bump version in package.json (no git commit yet)
+    run(`npm version ${type} --no-git-tag-version`);
+    const pkg = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8'));
+    version = pkg.version;
+    console.log(`\nReleasing v${version}...`);
+}
+
 const tag = `v${version}`;
 
-console.log(`\nReleasing ${tag}...`);
-
-// Commit + tag
-run('git add package.json package-lock.json');
-run(`git commit -m "chore: release ${tag}"`);
-run(`git tag ${tag}`);
-
-// Push commit and tag → triggers GitHub Actions build
-run('git push');
-run(`git push origin ${tag}`);
+if (noBump) {
+    // Delete existing tag locally and remotely if re-releasing same version
+    try { runCapture(`git tag -d ${tag}`); } catch (_) {}
+    try { runCapture(`git push origin :refs/tags/${tag}`); } catch (_) {}
+    run(`git tag ${tag}`);
+    run(`git push origin ${tag}`);
+} else {
+    // Commit + tag
+    run('git add package.json package-lock.json');
+    run(`git commit -m "chore: release ${tag}"`);
+    run(`git tag ${tag}`);
+    run('git push');
+    run(`git push origin ${tag}`);
+}
 
 console.log(`\n✓ ${tag} pushed — GitHub Actions is building and publishing the release.`);
 console.log('Monitor progress at: https://github.com/pickle-com/claire/actions');

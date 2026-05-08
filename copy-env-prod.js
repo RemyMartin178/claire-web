@@ -14,12 +14,19 @@ exports.default = async function (context) {
   if (fs.existsSync(sourceEnv)) {
     const envContent = fs.readFileSync(sourceEnv, 'utf8');
 
+    // Strip dev-only overrides so the packaged app always hits production URLs
+    const prodEnvContent = envContent
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .filter(line => !/^\s*DASHBOARD_DEV_URL\s*=/.test(line))
+      .join('\n');
+
     const targetDir = path.dirname(targetEnv);
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    fs.writeFileSync(targetEnv, envContent.replace(/\r\n/g, '\n'), 'utf8');
+    fs.writeFileSync(targetEnv, prodEnvContent, 'utf8');
 
     console.log('[copy-env-prod] ✅ .env copied successfully');
     console.log('[copy-env-prod] File size:', fs.statSync(targetEnv).size, 'bytes');

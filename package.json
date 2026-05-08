@@ -30,7 +30,8 @@
     "watch:ui": "node build.js --watch",
     "release": "node scripts/release.js patch",
     "release:minor": "node scripts/release.js minor",
-    "release:major": "node scripts/release.js major"
+    "release:major": "node scripts/release.js major",
+    "release:nobump": "node scripts/release.js --no-bump"
   },
   "keywords": [
     "claire",
