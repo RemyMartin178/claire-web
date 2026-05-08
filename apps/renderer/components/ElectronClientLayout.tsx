@@ -6,31 +6,12 @@ import PasswordModal from '@/components/PasswordModal'
 import SettingsModalElectron from '@/components/SettingsModalElectron'
 import Avatar from '@/components/Avatar'
 import { useAuth } from '@/contexts/AuthContext'
-import { Search } from 'lucide-react'
+import { usePathname } from 'next/navigation'
+import { Search, ArrowLeft, ArrowRight } from 'lucide-react'
 
-function WinButton({
-  title,
-  onClick,
-  disabled,
-  children,
-}: {
-  title: string
-  onClick?: () => void
-  disabled?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      className="flex h-7 w-7 items-center justify-center rounded-full text-[#9ca3af] transition hover:bg-black/5 hover:text-[#6b7280] disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent"
-      style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
-    >
-      {children}
-    </button>
-  )
-}
+const isWindows =
+  typeof window !== 'undefined' &&
+  (window as any).api?.platform?.isWindows === true
 
 export default function ElectronClientLayout({
   children,
@@ -60,6 +41,10 @@ export default function ElectronClientLayout({
     return () => window.removeEventListener('claire:open-settings', handle)
   }, [])
 
+  const pathname = usePathname()
+  const isOnboarding = pathname?.startsWith('/onboarding')
+  const isAtRoot = pathname === '/' || pathname === '/activity'
+
   const getUserDisplayName = () => {
     if (!userInfo) return 'I'
     if (userInfo.display_name) return userInfo.display_name
@@ -68,89 +53,76 @@ export default function ElectronClientLayout({
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#eef1f4] text-neutral-900 relative">
-      {/* Titlebar — back/forward | search | avatar + window controls */}
-      <div
-        className="flex h-11 shrink-0 items-center gap-2 border-b border-black/5 bg-white/95 px-2 backdrop-blur relative z-[200]"
-        style={{ WebkitAppRegion: 'drag' } as CSSProperties}
-      >
-        {/* Back / Forward */}
-        <div className="flex items-center gap-0.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
-          <WinButton
-            title="Retour"
-            onClick={() => { void (window as any).api?.nav?.back?.() }}
-            disabled={!canGoBack}
-          >
-            <svg width="7" height="11" viewBox="0 0 7 11" fill="none">
-              <path d="M6 1L1.5 5.5L6 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </WinButton>
-          <WinButton
-            title="Suivant"
-            onClick={() => { void (window as any).api?.nav?.forward?.() }}
-            disabled={!canGoForward}
-          >
-            <svg width="7" height="11" viewBox="0 0 7 11" fill="none">
-              <path d="M1 1L5.5 5.5L1 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </WinButton>
-        </div>
+    <div className="relative h-screen bg-background text-foreground">
+      <div className="flex h-full flex-col bg-[#fafafa] dark:bg-[#18181b]">
+      {!isOnboarding && (
+        <header
+          className="app-region-drag relative flex h-9 shrink-0 items-center px-4 z-[100]"
+        >
+          {/* Overlay blur quand settings ouvert */}
+          {settingsOpen && (
+            <div className="absolute inset-0 bg-background/50 backdrop-blur-xl z-[150] pointer-events-none" />
+          )}
 
-        {/* Search bar — centred */}
-        <div className="flex-1 flex justify-center" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
-          <button
-            onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-2 h-7 w-full max-w-sm px-3 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-400 text-[13px] transition-colors"
-          >
-            <Search size={13} className="shrink-0" />
-            <span>Rechercher dans vos conversations</span>
-          </button>
-        </div>
+          {/* Back / Forward — marginLeft 0 Windows, 60px Mac (traffic lights) */}
+          <div className="app-region-no-drag flex items-center">
+            <button
+              aria-label="Go back"
+              onClick={() => { void (window as any).api?.nav?.back?.() }}
+              disabled={!canGoBack || isAtRoot}
+              className="app-region-no-drag mt-[3px] inline-flex h-[21px] items-center gap-1 rounded-md px-1 text-foreground/75 text-sm transition hover:bg-transparent hover:text-foreground active:bg-transparent disabled:text-muted-foreground disabled:opacity-50 disabled:cursor-default disabled:hover:bg-transparent"
+              style={{ marginLeft: isWindows ? 0 : 60 } as CSSProperties}
+            >
+              <ArrowLeft className="size-[18px]" />
+            </button>
+            {canGoForward && (
+              <button
+                aria-label="Go forward"
+                onClick={() => { void (window as any).api?.nav?.forward?.() }}
+                className="app-region-no-drag mt-[3px] ml-1 inline-flex h-[21px] items-center gap-1 rounded-md px-1 text-foreground/75 text-sm transition hover:bg-transparent hover:text-foreground active:bg-transparent"
+              >
+                <ArrowRight className="size-[18px]" />
+              </button>
+            )}
+          </div>
 
-        {/* Avatar + window controls */}
-        <div className="flex items-center gap-1.5 shrink-0" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-neutral-200 transition-all"
-            title="Paramètres"
-          >
-            <Avatar name={getUserDisplayName()} size="sm" />
-          </button>
-          <WinButton
-            title="Réduire"
-            onClick={() => { void window.api?.dashboard?.minimizeWindow?.() }}
-          >
-            <svg width="10" height="2" viewBox="0 0 10 2" fill="none">
-              <rect width="10" height="1.5" rx=".75" fill="currentColor" />
-            </svg>
-          </WinButton>
-          <WinButton
-            title="Agrandir"
-            onClick={() => { void window.api?.dashboard?.maximizeWindow?.() }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <rect x=".75" y=".75" width="8.5" height="8.5" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-          </WinButton>
-          <WinButton
-            title="Fermer"
-            onClick={() => { void window.api?.dashboard?.closeWindow?.() }}
-          >
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <line x1="1.5" y1="1.5" x2="8.5" y2="8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="8.5" y1="1.5" x2="1.5" y2="8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </WinButton>
-        </div>
-      </div>
+          {/* Search bar — absolutely centered, Cluely 1:1 */}
+          <div className="pointer-events-none absolute inset-x-0 top-1/2 mt-0.5 flex -translate-y-1/2 justify-center z-[160]">
+            <div className="app-region-no-drag pointer-events-auto w-[45vw] max-w-[440px]">
+              <button
+                onClick={() => setIsSearchOpen(true)}
+                className="flex h-[30px] w-full items-center gap-1.5 rounded-lg bg-input/50 px-3 text-muted-foreground/70 text-sm transition hover:bg-input/80 hover:text-muted-foreground"
+              >
+                <Search className="mr-0.5 size-3 shrink-0" />
+                <span className="truncate">Rechercher ou poser une question...</span>
+              </button>
+            </div>
+          </div>
 
-      {/* Main Content */}
-      <div className="flex min-h-0 flex-1 overflow-hidden bg-background">
-        <main className="relative flex h-full w-full flex-1 flex-col overflow-hidden text-neutral-900">
-          <div className="h-full w-full overflow-auto no-scrollbar px-2 py-4 md:px-8 md:py-8">
+          {/* Avatar — ml-auto + marginRight Cluely exact (129px Windows, -11px Mac) */}
+          <div
+            className="app-region-no-drag mt-[3px] ml-auto flex items-center gap-2 z-[170]"
+            style={{ marginRight: isWindows ? 'calc(-11px + 140px)' : '-11px' } as CSSProperties}
+          >
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="group inline-flex size-[30px] items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted text-muted-foreground text-xs font-medium outline-none transition hover:bg-muted-foreground/15"
+              title="Paramètres"
+            >
+              <Avatar name={getUserDisplayName()} size="sm" />
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* Content box — rounded border Cluely 1:1 */}
+      <div className="min-h-0 flex-1 p-1">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-[#e4e4e7] dark:border-white/10 bg-white dark:bg-[#09090b]">
+          <div className="h-full w-full overflow-auto no-scrollbar">
             {children}
           </div>
-        </main>
+        </div>
+      </div>
       </div>
 
       <SearchPopup

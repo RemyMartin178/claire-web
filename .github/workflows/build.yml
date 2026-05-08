@@ -1,9 +1,12 @@
-name: Build & Deploy to R2
+name: Build & Release
 
 on:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
@@ -24,12 +27,12 @@ jobs:
           npm run build:ui
           cd pickleglass_web && npm install && npm run build && cd ..
 
-      - name: Build Windows installer
-        run: npx electron-builder --win --x64 --publish never
+      - name: Build Windows installer & publish to GitHub Release
+        run: npx electron-builder --win --x64 --publish always
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload .exe to R2
+      - name: Upload .exe to R2 (download page)
         run: |
           $VERSION = node -p "require('./package.json').version"
           aws s3 cp "dist/Claire Setup $VERSION.exe" "s3://$env:R2_BUCKET/Claire Setup $VERSION.exe" --endpoint-url $env:R2_ENDPOINT
@@ -58,12 +61,12 @@ jobs:
           npm run build:ui
           cd pickleglass_web && npm install && npm run build && cd ..
 
-      - name: Build macOS DMG
-        run: npx electron-builder --mac --publish never
+      - name: Build macOS DMG & publish to GitHub Release
+        run: npx electron-builder --mac --publish always
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload .dmg to R2
+      - name: Upload .dmg to R2 (download page)
         run: |
           VERSION=$(node -p "require('./package.json').version")
           aws s3 cp "dist/Claire $VERSION.dmg" "s3://$R2_BUCKET/Claire $VERSION.dmg" --endpoint-url $R2_ENDPOINT
@@ -75,7 +78,7 @@ jobs:
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
 
   update-version-json:
-    name: Update version.json
+    name: Update version.json (download page)
     runs-on: ubuntu-latest
     needs: [build-windows, build-mac]
     steps:

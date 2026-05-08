@@ -211,7 +211,7 @@ function createLLM({ apiKey, model = "gemini-2.5-flash", temperature = 0.7, maxT
 /**
  * Creates a Gemini streaming LLM instance with text response fix
  */
-function createStreamingLLM({ apiKey, model = "gemini-2.5-flash", temperature = 0.7, maxTokens = 8192, ...config }) {
+function createStreamingLLM({ apiKey, model = "gemini-2.5-flash", temperature = 0.7, maxTokens = 8192, webSearch = false, ...config }) {
   const client = new GoogleGenerativeAI(apiKey)
 
   return {
@@ -245,9 +245,9 @@ function createStreamingLLM({ apiKey, model = "gemini-2.5-flash", temperature = 
         generationConfig: {
           temperature,
           maxOutputTokens: maxTokens || 8192,
-          // Force plain text responses
           responseMimeType: "text/plain",
         },
+        ...(webSearch && { tools: [{ googleSearch: {} }] }),
       })
 
       const stream = new ReadableStream({

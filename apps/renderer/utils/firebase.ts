@@ -4,6 +4,7 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getAuth } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
+import { getStorage } from "firebase/storage"
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDZz5iEcMo6eBpt5cZ4Hz4TaE4aDiWMqho',
@@ -29,6 +30,7 @@ if (!isConfigValid) {
 let app: any = null
 let auth: any = null
 let db: any = null
+let storage: any = null
 
 if (typeof window !== 'undefined') {
   // Only initialize on client side
@@ -40,7 +42,8 @@ if (typeof window !== 'undefined') {
 
   auth = getAuth(app)
   db = getFirestore(app)
+  storage = getStorage(app)
 }
 
-export { auth, db }
+export { auth, db, storage }
 export default app

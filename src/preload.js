@@ -16,6 +16,13 @@ const dashboardApi = {
   minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
   closeWindow: () => ipcRenderer.invoke('dashboard:close'),
+  setTitleBarOverlayVisible: (visible) => ipcRenderer.invoke('dashboard:setTitleBarOverlayVisible', visible),
+  setTheme: (theme) => ipcRenderer.invoke('dashboard:setTheme', theme),
+  setContentProtection: (enabled) => ipcRenderer.invoke('dashboard:setContentProtection', enabled),
+  setOnboardingMode: (enabled) => ipcRenderer.invoke('dashboard:setOnboardingMode', enabled),
+  showMeetingNotification: (meeting) => ipcRenderer.invoke('meeting:showNotification', meeting),
+  hideMeetingNotification: () => ipcRenderer.invoke('meeting:hideNotification'),
+  onMeetingNotificationData: (cb) => ipcRenderer.on('meeting-notification:data', (_e, data) => cb(data)),
   onUserChanged: (cb) => ipcRenderer.on('user-state-changed', (_e, state) => cb(state, state)),
   removeUserChanged: () => ipcRenderer.removeAllListeners('user-state-changed'),
   onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', (_e, data) => cb(data)),
@@ -482,7 +489,12 @@ contextBridge.exposeInMainWorld('api', {
 
     // Backward-compatible alias for older renderer code paths.
     dashboard: dashboardApi
-  }
+  },
+
+  updater: {
+    download: () => ipcRenderer.invoke('updater:download'),
+    install: () => ipcRenderer.invoke('updater:install'),
+  },
 });
 
 // Block right-click context menu in production (prevents "Inspect Element" access)

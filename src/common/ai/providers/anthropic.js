@@ -201,6 +201,7 @@ function createStreamingLLM({
   model = "claude-3-5-sonnet-20241022",
   temperature = 0.7,
   maxTokens = 4096,
+  webSearch = false,
   ...config
 }) {
   const client = new Anthropic({ apiKey })
@@ -273,6 +274,7 @@ function createStreamingLLM({
               system: systemPrompt || undefined,
               messages: anthropicMessages,
               stream: true,
+              ...(webSearch && { tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 5 }] }),
             })
 
             for await (const chunk of stream) {

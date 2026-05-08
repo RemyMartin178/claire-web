@@ -1,4 +1,14 @@
 /** @type {import('tailwindcss').Config} */
+
+// Supports opacity modifiers (bg-input/50, text-muted-foreground/70, border-border/60 …)
+// on CSS variables that hold full oklch() color values.
+const cssVar = (variable) => ({ opacityValue }) => {
+	if (opacityValue !== undefined) {
+		return `color-mix(in srgb, var(${variable}) ${Math.round(parseFloat(opacityValue) * 100)}%, transparent)`
+	}
+	return `var(${variable})`
+}
+
 module.exports = {
 	darkMode: ['class'],
 	content: [
@@ -9,9 +19,9 @@ module.exports = {
 	theme: {
 		extend: {
 			fontFamily: {
-				'heading': ['Lora', 'Georgia', 'Times New Roman', 'serif'],
-				'body': ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"SF Pro Icons"', '"Helvetica Neue"', 'Helvetica', 'Arial', 'sans-serif', 'Inter'],
-				'sans': ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"Inter"', 'sans-serif'],
+				'heading': ['"Geist Variable"', 'Inter', '-apple-system', 'sans-serif'],
+				'body': ['"Geist Variable"', 'Inter', '-apple-system', 'sans-serif'],
+				'sans': ['"Geist Variable"', 'Inter', '-apple-system', 'sans-serif'],
 				'serif': ['Lora', 'Georgia', 'Times New Roman', 'serif'],
 			},
 			letterSpacing: {
@@ -19,48 +29,51 @@ module.exports = {
 				apple: '-0.011em',
 			},
 			colors: {
-				primary: {
-					DEFAULT: 'hsl(var(--primary))',
-					foreground: 'hsl(var(--primary-foreground))'
+				// Cluely design tokens — via var() + color-mix pour opacity modifiers
+				background: cssVar('--background'),
+				foreground: cssVar('--foreground'),
+				muted: {
+					DEFAULT: cssVar('--muted'),
+					foreground: cssVar('--muted-foreground'),
 				},
-				secondary: {
-					DEFAULT: 'hsl(var(--secondary))',
-					foreground: 'hsl(var(--secondary-foreground))'
-				},
-				accent: {
-					DEFAULT: 'hsl(var(--accent))',
-					foreground: 'hsl(var(--accent-foreground))'
-				},
-				'subtle-bg': '#f8f7f4',
-				'subtle-active-bg': '#e7e5e4',
-				background: 'hsl(var(--background))',
-				foreground: 'hsl(var(--foreground))',
+				input: cssVar('--input'),
+				border: cssVar('--border'),
+				sidebar: cssVar('--sidebar'),
 				card: {
-					DEFAULT: 'hsl(var(--card))',
-					foreground: 'hsl(var(--card-foreground))'
+					DEFAULT: cssVar('--card'),
+					foreground: cssVar('--card-foreground'),
 				},
 				popover: {
-					DEFAULT: 'hsl(var(--popover))',
-					foreground: 'hsl(var(--popover-foreground))'
+					DEFAULT: cssVar('--popover'),
+					foreground: cssVar('--popover-foreground'),
 				},
-				muted: {
-					DEFAULT: 'hsl(var(--muted))',
-					foreground: 'hsl(var(--muted-foreground))'
+				accent: {
+					DEFAULT: cssVar('--accent'),
+					foreground: cssVar('--accent-foreground'),
+				},
+				secondary: {
+					DEFAULT: cssVar('--secondary'),
+					foreground: cssVar('--secondary-foreground'),
+				},
+				// hsl() gardé pour primary et destructive (non remplacés par Cluely)
+				primary: {
+					DEFAULT: 'hsl(var(--primary))',
+					foreground: 'hsl(var(--primary-foreground))',
 				},
 				destructive: {
 					DEFAULT: 'hsl(var(--destructive))',
-					foreground: 'hsl(var(--destructive-foreground))'
+					foreground: 'hsl(var(--destructive-foreground))',
 				},
-				border: 'hsl(var(--border))',
-				input: 'hsl(var(--input))',
-				ring: 'hsl(var(--ring))',
+				ring: cssVar('--ring'),
+				'subtle-bg': '#f8f7f4',
+				'subtle-active-bg': '#e7e5e4',
 				chart: {
 					'1': 'hsl(var(--chart-1))',
 					'2': 'hsl(var(--chart-2))',
 					'3': 'hsl(var(--chart-3))',
 					'4': 'hsl(var(--chart-4))',
-					'5': 'hsl(var(--chart-5))'
-				}
+					'5': 'hsl(var(--chart-5))',
+				},
 			},
 			spacing: {
 				'18': '4.5rem',

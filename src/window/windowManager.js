@@ -161,11 +161,11 @@ let overlayPillPos = null; // pill position tracked for layout calculations
 
 // Polling: hit-test rects sent by renderer; main process toggles setIgnoreMouseEvents
 // directly without any IPC round-trip latency.
-let _overlayHitRects    = [];   // [{x,y,width,height}] in logical screen pixels
+let _overlayHitRects = [];   // [{x,y,width,height}] in logical screen pixels
 let _overlayInteractive = false; // current state (true = NOT ignoring)
-let _overlayDragging    = false; // locked interactive during drag
-let _cursorTrackTimer   = null;
-let _dragSafetyTimer    = null;  // reset _overlayDragging si setDragging(false) n'arrive jamais
+let _overlayDragging = false; // locked interactive during drag
+let _cursorTrackTimer = null;
+let _dragSafetyTimer = null;  // reset _overlayDragging si setDragging(false) n'arrive jamais
 
 /**
  * Virtual window proxy — maps one of the named panels (ask, listen, settings…)
@@ -194,13 +194,13 @@ class OverlayPanel {
     }
     // Geometry: OverlayRoot handles layout — these are safe no-ops
     getBounds() { return { x: 0, y: 0, width: 600, height: 400 }; }
-    setBounds() {}
-    setPosition() {}
-    setOpacity() {}
-    setAlwaysOnTop() {}
-    moveTop() {}
+    setBounds() { }
+    setPosition() { }
+    setOpacity() { }
+    setAlwaysOnTop() { }
+    moveTop() { }
     focus() { if (!this._overlayWin.isDestroyed()) this._overlayWin.focus(); }
-    setIgnoreMouseEvents() {}
+    setIgnoreMouseEvents() { }
     // Height resize: tell OverlayRoot to resize the panel div
     setContentSize(w, h) {
         if (!this._overlayWin.isDestroyed())
@@ -210,12 +210,12 @@ class OverlayPanel {
     getMinimumSize() { return [200, 100]; }
     getMaximumSize() { return [1200, 900]; }
     isMinimized() { return false; }
-    restore() {}
+    restore() { }
     isResizable() { return true; }
-    setResizable() {}
-    setVisibleOnAllWorkspaces() {}
-    setContentProtection() {}
-    setWindowButtonVisibility() {}
+    setResizable() { }
+    setVisibleOnAllWorkspaces() { }
+    setContentProtection() { }
+    setWindowButtonVisibility() { }
     on(ev, fn) { if (!this._overlayWin.isDestroyed()) this._overlayWin.on(ev, fn); }
     once(ev, fn) { if (!this._overlayWin.isDestroyed()) this._overlayWin.once(ev, fn); }
 }
@@ -314,7 +314,7 @@ const setOverlayClickThrough = (enabled) => {
 // window in addition to restricting hit-testing, breaking transparent rendering.
 // Click-through is handled by setIgnoreMouseEvents(true,{forward:true}) +
 // CSS pointer-events in the renderer. No shape API needed.
-const setOverlayShape = (_rects) => {};
+const setOverlayShape = (_rects) => { };
 
 const setOverlayPillPosition = (x, y) => {
     overlayPillPos = { x, y };
@@ -387,9 +387,9 @@ const _startOverlayPolling = () => {
 const _stopOverlayPolling = () => {
     if (_cursorTrackTimer) { clearInterval(_cursorTrackTimer); _cursorTrackTimer = null; }
     if (_dragSafetyTimer) { clearTimeout(_dragSafetyTimer); _dragSafetyTimer = null; }
-    _overlayHitRects    = [];
+    _overlayHitRects = [];
     _overlayInteractive = false;
-    _overlayDragging    = false;
+    _overlayDragging = false;
 };
 
 /**
@@ -686,7 +686,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
                     try {
                         const px = Number.isFinite(position.x) ? Math.round(position.x) : win.getBounds().x;
                         const py = Number.isFinite(position.y) ? Math.round(position.y) : win.getBounds().y;
-                        
+
                         if (movementManager && movementManager.animateWindow) {
                             movementManager.animateWindow(win, px, py, {
                                 duration: 350,
@@ -1782,14 +1782,21 @@ function createDashboardWindow() {
         return dashboardWindow;
     }
 
+    const { nativeTheme } = require('electron');
+    const isDark = nativeTheme.shouldUseDarkColors;
     dashboardWindow = new BrowserWindow({
-        width: 1200,
+        width: 1050,
         height: 700,
-        minWidth: 960,
-        minHeight: 560,
+        minWidth: 800,
+        minHeight: 600,
         center: true,
-        frame: false,
-        backgroundColor: '#eef1f4',
+        titleBarStyle: 'hidden',
+        titleBarOverlay: {
+            color: '#00000000',
+            symbolColor: isDark ? '#FFFFFF' : '#000000',
+            height: 38,
+        },
+        backgroundColor: isDark ? '#09090B' : '#FFFFFF',
         show: false,
         webPreferences: {
             nodeIntegration: false,
@@ -1807,6 +1814,10 @@ function createDashboardWindow() {
         dashboardWindow.setWindowButtonVisibility(false);
     }
 
+    // Content protection: hide window from screen capture / recording by default.
+    // Toggle via dashboard:setContentProtection IPC (e.g. "détectable" setting).
+    try { dashboardWindow.setContentProtection(true); } catch (_) { }
+
     dashboardWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
         if (level >= 3) {
             logger.error('[DashboardConsole] Renderer error', { message, line, sourceId });
@@ -1819,6 +1830,33 @@ function createDashboardWindow() {
     });
     logger.info('[Dashboard] Loading dashboard URL', { url: DASHBOARD_URL });
     void dashboardWindow.loadURL(DASHBOARD_URL);
+
+    // Adapter dynamiquement le titleBarOverlay et les bounds selon la route,
+    // AVANT que React ne monte. Évite le flicker des boutons natifs.
+    const applyChromeForUrl = (url) => {
+        if (process.platform !== 'win32') return;
+        const isAuthPage = /\/(electron-login|auth|login|register)/.test(url);
+        try {
+            if (isAuthPage) {
+                dashboardWindow.setTitleBarOverlay({ color: '#00000000', symbolColor: '#00000000', height: 0 });
+                setDashboardOnboardingMode(true);
+            } else {
+                const { nativeTheme } = require('electron');
+                const isDark = nativeTheme.shouldUseDarkColors;
+                dashboardWindow.setTitleBarOverlay({
+                    color: '#00000000',
+                    symbolColor: isDark ? '#FFFFFF' : '#000000',
+                    height: 38,
+                });
+                setDashboardOnboardingMode(false);
+            }
+        } catch (e) {
+            logger.warn('[Dashboard] applyChromeForUrl failed', { error: e.message });
+        }
+    };
+    applyChromeForUrl(DASHBOARD_URL);
+    dashboardWindow.webContents.on('did-navigate', (_e, url) => applyChromeForUrl(url));
+    dashboardWindow.webContents.on('did-navigate-in-page', (_e, url) => applyChromeForUrl(url));
 
     dashboardWindow.once('ready-to-show', () => {
         dashboardWindow.show();
@@ -1863,6 +1901,112 @@ function createDashboardWindow() {
 
 function getDashboardWindow() {
     return dashboardWindow && !dashboardWindow.isDestroyed() ? dashboardWindow : null;
+}
+
+// ─── Onboarding mode (resize dashboard pour /electron-login) ────────────────
+let _previousDashboardBounds = null;
+
+function setDashboardOnboardingMode(enabled) {
+    const win = getDashboardWindow();
+    if (!win) return;
+    try {
+        if (enabled) {
+            if (!_previousDashboardBounds) {
+                _previousDashboardBounds = win.getBounds();
+            }
+            win.setResizable(false);
+            win.setMinimumSize(1100, 720);
+            win.setSize(1100, 720);
+            win.center();
+        } else {
+            win.setResizable(true);
+            win.setMinimumSize(800, 600);
+            if (_previousDashboardBounds) {
+                win.setBounds(_previousDashboardBounds);
+                _previousDashboardBounds = null;
+            } else {
+                win.setSize(1050, 700);
+                win.center();
+            }
+        }
+    } catch (e) {
+        logger.warn('[WindowManager] setDashboardOnboardingMode failed', { error: e.message });
+    }
+}
+
+// ─── Meeting notification (floating top-right panel) ────────────────────────
+let meetingNotificationWindow = null;
+
+function createMeetingNotificationWindow() {
+    if (meetingNotificationWindow && !meetingNotificationWindow.isDestroyed()) {
+        return meetingNotificationWindow;
+    }
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { workArea } = primaryDisplay;
+    const width = 360;
+    const height = 80;
+    const x = workArea.x + workArea.width - width - 16;
+    const y = workArea.y + 16;
+
+    meetingNotificationWindow = new BrowserWindow({
+        width,
+        height,
+        x,
+        y,
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        resizable: false,
+        movable: false,
+        minimizable: false,
+        maximizable: false,
+        closable: false,
+        skipTaskbar: true,
+        focusable: false,
+        show: false,
+        hasShadow: true,
+        type: process.platform === 'darwin' ? 'panel' : undefined,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, '../preload.js'),
+            devTools: !app.isPackaged,
+        },
+    });
+
+    const baseUrl = process.env.DASHBOARD_DEV_URL
+        ? new URL(process.env.DASHBOARD_DEV_URL).origin
+        : 'https://renderer.clairia.app';
+    void meetingNotificationWindow.loadURL(`${baseUrl}/notification`);
+
+    meetingNotificationWindow.setAlwaysOnTop(true, 'floating');
+    meetingNotificationWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+    meetingNotificationWindow.on('closed', () => {
+        meetingNotificationWindow = null;
+    });
+
+    return meetingNotificationWindow;
+}
+
+function showMeetingNotification(meeting) {
+    const win = createMeetingNotificationWindow();
+    if (!win) return;
+    const send = () => {
+        if (!win.isDestroyed()) win.webContents.send('meeting-notification:data', meeting);
+    };
+    if (win.webContents.isLoading()) {
+        win.webContents.once('did-finish-load', send);
+    } else {
+        send();
+    }
+    if (!win.isVisible()) win.showInactive();
+}
+
+function hideMeetingNotification() {
+    if (meetingNotificationWindow && !meetingNotificationWindow.isDestroyed()) {
+        meetingNotificationWindow.hide();
+    }
 }
 
 /**
@@ -1925,6 +2069,9 @@ module.exports = {
     stopOverlayPolling: _stopOverlayPolling,
     startOverlayPolling: _startOverlayPolling,
     createDashboardWindow,
+    setDashboardOnboardingMode,
+    showMeetingNotification,
+    hideMeetingNotification,
     getDashboardWindow,
     ensureListenWindow,
 };

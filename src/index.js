@@ -526,7 +526,8 @@ app.whenReady().then(async () => {
 
         ensureAuxiliaryWebStackStarted().catch(() => {});
 
-        // Only create the dashboard — floating bar launches on "Démarrer Claire"
+        // Onboarding window opens first (1100×720 frameless).
+        // It pre-warms the hidden dashboard window and closes itself once auth is done.
         createDashboardWindow();
 
     } catch (err) {
@@ -1433,17 +1434,22 @@ async function initAutoUpdaterOnAuth() {
             return;
         }
 
-        autoUpdater.setFeedURL({
-            provider: 'github',
-            owner: 'xerus',
-            repo: 'xerus-assistant',
-        });
+        // Feed URL comes from app-update.yml embedded by electron-builder at build time
+        // (configured via publish.owner/repo in electron-builder.yml)
 
-        // Immediately check for updates & notify
-        autoUpdater.checkForUpdatesAndNotify()
+        // Don't auto-download — let the user trigger it via the toast action button
+        autoUpdater.autoDownload = false;
+
+        autoUpdater.checkForUpdates()
             .catch(err => {
                 logger.error('Error checking for updates:', { err });
             });
+
+        const sendUpdateToast = (data) => {
+            BrowserWindow.getAllWindows().forEach(win => {
+                if (!win.isDestroyed()) win.webContents.send('show-toast', data);
+            });
+        };
 
         autoUpdater.on('checking-for-update', () => {
             logger.info('[AutoUpdater] Checking for updates…');
@@ -1451,6 +1457,13 @@ async function initAutoUpdaterOnAuth() {
 
         autoUpdater.on('update-available', (info) => {
             logger.info('[AutoUpdater] Update available:', info.version);
+            sendUpdateToast({
+                icon: 'info',
+                subtitle: 'Mise à jour disponible',
+                title: `v${info.version} est disponible`,
+                duration: 0,
+                action: { label: 'Télécharger', channel: 'updater:download' },
+            });
         });
 
         autoUpdater.on('update-not-available', () => {
@@ -1458,26 +1471,27 @@ async function initAutoUpdaterOnAuth() {
         });
 
         autoUpdater.on('error', (err) => {
-            logger.error('Error while updating:', { err });
+            logger.error('[AutoUpdater] Error:', { err });
+            sendUpdateToast({
+                icon: 'warn',
+                subtitle: 'Mise à jour',
+                title: 'Erreur lors de la vérification des mises à jour',
+                duration: 6000,
+            });
+        });
+
+        autoUpdater.on('download-progress', (progress) => {
+            logger.info(`[AutoUpdater] Downloading… ${Math.round(progress.percent)}%`);
         });
 
         autoUpdater.on('update-downloaded', (info) => {
-            logger.info('Update downloaded:');
-
-            const dialogOpts = {
-                type: 'info',
-                buttons: ['Install now', 'Install on next launch'],
-                title: 'Update Available',
-                message: 'A new version of Glass is ready to be installed.',
-                defaultId: 0,
-                cancelId: 1
-            };
-
-            dialog.showMessageBox(dialogOpts).then((returnValue) => {
-                // returnValue.response 0 is for 'Install Now'
-                if (returnValue.response === 0) {
-                    autoUpdater.quitAndInstall();
-                }
+            logger.info('[AutoUpdater] Update downloaded:', info.version);
+            sendUpdateToast({
+                icon: 'ok',
+                subtitle: 'Prêt à installer',
+                title: `v${info.version} téléchargée — redémarrez pour installer`,
+                duration: 0,
+                action: { label: 'Installer', channel: 'updater:install' },
             });
         });
 
@@ -1487,6 +1501,31 @@ async function initAutoUpdaterOnAuth() {
         logger.error('[AutoUpdater] [ERROR] Failed to initialize:', { e });
     }
 }
+
+// Updater IPC handlers (called from toast action buttons)
+ipcMain.handle('updater:download', () => {
+    autoUpdater.downloadUpdate().catch(err => logger.error('[AutoUpdater] Download error:', { err }));
+});
+
+ipcMain.handle('updater:install', () => {
+    autoUpdater.quitAndInstall();
+});
+
+// Dev-only: test update toasts from DevTools console
+// Usage: window.api.invoke('updater:test', 'available') or 'downloaded'
+ipcMain.handle('updater:test', (_event, type = 'available') => {
+    if (app.isPackaged) return;
+    const sendToast = (data) => BrowserWindow.getAllWindows().forEach(win => {
+        if (!win.isDestroyed()) win.webContents.send('show-toast', data);
+    });
+    if (type === 'available') {
+        sendToast({ icon: 'info', subtitle: 'Mise à jour disponible', title: 'v1.2.0 est disponible', duration: 0, action: { label: 'Télécharger', channel: 'updater:download' } });
+    } else if (type === 'downloaded') {
+        sendToast({ icon: 'ok', subtitle: 'Prêt à installer', title: 'v1.2.0 téléchargée — redémarrez pour installer', duration: 0, action: { label: 'Installer', channel: 'updater:install' } });
+    } else if (type === 'error') {
+        sendToast({ icon: 'warn', subtitle: 'Mise à jour', title: 'Erreur lors de la vérification des mises à jour', duration: 6000 });
+    }
+});
 
 // Multi-provider API key management for web dashboard
 ipcMain.handle('get-all-api-key-status', async (event, { userId }) => {

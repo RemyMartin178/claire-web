@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from 'next-themes'
-import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import ConditionalLayout from '@/components/ConditionalLayout'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -11,10 +11,6 @@ import { GA_TRACKING_ID } from '@/lib/gtag'
 import { Toaster } from 'react-hot-toast'
 
 const inter = Inter({ subsets: ['latin'] })
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  variable: '--font-plus-jakarta',
-})
 
 export const metadata: Metadata = {
   title: { default: 'Claire', template: '%s' },
@@ -68,8 +64,8 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} ${plusJakartaSans.variable} antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      <body className="antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             <PasswordModalProvider>
               <ConditionalLayout>

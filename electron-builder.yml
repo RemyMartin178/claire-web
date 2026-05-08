@@ -15,7 +15,7 @@ publish:
     provider: github
     owner: pickle-com
     repo: claire
-    releaseType: draft
+    releaseType: release
 
 # Protocols configuration for deep linking
 protocols:

@@ -97,7 +97,7 @@ module.exports = {
         ipcMain.handle('start-firebase-auth', async () => await authService.startFirebaseAuthFlow());
         ipcMain.handle('firebase-logout', async () => {
             // End active listen session (sets ended_at) before signing out
-            try { await listenService.closeSession(); } catch {}
+            try { await listenService.closeSession(); } catch { }
             await authService.signOut();
         });
 
@@ -146,10 +146,10 @@ module.exports = {
         // To truly quit, the user can use Task Manager.
         ipcMain.handle('quit-application', async () => {
             // End active listen session so ended_at is recorded before going to background
-            try { await listenService.closeSession(); } catch {}
+            try { await listenService.closeSession(); } catch { }
             const { getOverlayWindow, stopOverlayPolling } = require('../window/windowManager');
             // Stop the 60fps cursor-tracking loop — no UI visible, no need to poll
-            try { stopOverlayPolling(); } catch {}
+            try { stopOverlayPolling(); } catch { }
             const overlay = getOverlayWindow ? getOverlayWindow() : null;
             if (overlay && !overlay.isDestroyed()) {
                 overlay.hide();
@@ -659,6 +659,74 @@ module.exports = {
         ipcMain.handle('dashboard:close', () => {
             const dashWin = windowManager.getDashboardWindow();
             if (dashWin && !dashWin.isDestroyed()) dashWin.close();
+        });
+
+        ipcMain.handle('dashboard:setTitleBarOverlayVisible', (_event, visible) => {
+            if (process.platform !== 'win32') return;
+            const dashWin = windowManager.getDashboardWindow();
+            if (!dashWin || dashWin.isDestroyed()) return;
+            try {
+                const { nativeTheme } = require('electron');
+                const isDark = nativeTheme.shouldUseDarkColors;
+                if (visible) {
+                    dashWin.setTitleBarOverlay({
+                        color: '#00000000',
+                        symbolColor: isDark ? '#FFFFFF' : '#000000',
+                        height: 38,
+                    });
+                } else {
+                    dashWin.setTitleBarOverlay({
+                        color: '#00000000',
+                        symbolColor: '#00000000',
+                        height: 0,
+                    });
+                }
+            } catch (e) {
+                logger.warn('[FeatureBridge] setTitleBarOverlay failed', { error: e.message });
+            }
+        });
+
+        ipcMain.handle('dashboard:setOnboardingMode', (_event, enabled) => {
+            try { windowManager.setDashboardOnboardingMode?.(Boolean(enabled)); } catch (e) {
+                logger.warn('[FeatureBridge] setOnboardingMode failed', { error: e.message });
+            }
+        });
+
+        ipcMain.handle('meeting:showNotification', (_event, meeting) => {
+            try { windowManager.showMeetingNotification?.(meeting); } catch (e) {
+                logger.warn('[FeatureBridge] showMeetingNotification failed', { error: e.message });
+            }
+        });
+
+        ipcMain.handle('meeting:hideNotification', () => {
+            try { windowManager.hideMeetingNotification?.(); } catch (e) {
+                logger.warn('[FeatureBridge] hideMeetingNotification failed', { error: e.message });
+            }
+        });
+
+        ipcMain.handle('dashboard:setContentProtection', (_event, enabled) => {
+            const dashWin = windowManager.getDashboardWindow();
+            if (!dashWin || dashWin.isDestroyed()) return;
+            try { dashWin.setContentProtection(Boolean(enabled)); } catch (e) {
+                logger.warn('[FeatureBridge] setContentProtection failed', { error: e.message });
+            }
+        });
+
+        ipcMain.handle('dashboard:setTheme', (_event, theme) => {
+            if (process.platform !== 'win32') return;
+            const dashWin = windowManager.getDashboardWindow();
+            if (!dashWin || dashWin.isDestroyed()) return;
+            try {
+                const isDark = theme === 'dark';
+                dashWin.setTitleBarOverlay({
+                    color: '#00000000',
+                    symbolColor: isDark ? '#FFFFFF' : '#000000',
+                    height: 38,
+                });
+                dashWin.setBackgroundColor(isDark ? '#09090B' : '#FFFFFF');
+            } catch (e) {
+                logger.warn('[FeatureBridge] setTheme failed', { error: e.message });
+            }
         });
 
         logger.info('[FeatureBridge] Initialized with all feature handlers including memory system.');

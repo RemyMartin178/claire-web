@@ -130,8 +130,7 @@
   --color-white: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
+.dark {
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
@@ -157,7 +156,6 @@
     --color-darker-gray: #374151;
     --color-white: #ffffff;
   }
-}
 
 * {
   box-sizing: border-box;
@@ -167,11 +165,13 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #1d1d1f;
+  color: var(--text-color);
+  background-color: var(--bg-light);
   line-height: 1.6;
   margin: 0;
   padding: 0;
   letter-spacing: -0.011em;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Typography Hierarchy */
@@ -183,7 +183,7 @@ h5,
 h6 {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
   line-height: 1.1;
-  color: #1d1d1f;
+  color: var(--text-color);
   font-weight: 600;
   letter-spacing: -0.022em;
 }
@@ -479,7 +479,6 @@ a:hover {
 
   body {
     @apply bg-background text-foreground;
-    background-color: white !important;
     font-family: var(--theme-font-body);
     line-height: 1.6;
     color: var(--text-color);
@@ -487,7 +486,7 @@ a:hover {
 
   /* Utility override in case classes expect literal .bg-background */
   .bg-background {
-    background-color: white !important;
+    background-color: hsl(var(--background)) !important;
   }
 }
 

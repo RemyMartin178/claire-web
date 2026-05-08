@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import ElectronClientLayout from './ElectronClientLayout'
 import { getElectronLoginPath } from '@/utils/electron'
 import { useEffect } from 'react'
+import { useTheme } from 'next-themes'
 
 const PAGE_TITLES: Record<string, string> = {
   '': 'Claire',
@@ -70,7 +71,14 @@ export default function ConditionalLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { loading, isAuthenticated } = useAuth()
+  const { resolvedTheme } = useTheme()
   const isElectronRuntime = true
+
+  useEffect(() => {
+    if (!resolvedTheme) return
+    const api = (window as any).api
+    void api?.dashboard?.setTheme?.(resolvedTheme)
+  }, [resolvedTheme])
 
   const electronLoginPath = getElectronLoginPath()
   const normalizedPathname = normalizePath(pathname)
@@ -80,6 +88,11 @@ export default function ConditionalLayout({
     normalizedPathname === '/register' ||
     normalizedPathname === electronLoginPath
   const isDebugPage = normalizedPathname === '/fettywapdebug'
+  const isBareWindow = normalizedPathname === '/notification'
+
+  if (isBareWindow) {
+    return <>{children}</>
+  }
 
   useEffect(() => {
     if (isElectronRuntime === null) return
@@ -106,6 +119,12 @@ export default function ConditionalLayout({
   useEffect(() => {
     document.title = getDocumentTitle(pathname)
   }, [pathname])
+
+  useEffect(() => {
+    const api = (window as any).api
+    void api?.dashboard?.setTitleBarOverlayVisible?.(!isAuthPage)
+    void api?.dashboard?.setOnboardingMode?.(isAuthPage)
+  }, [isAuthPage])
 
   if (isAuthPage) {
     return (

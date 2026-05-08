@@ -16,6 +16,7 @@ import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import GettingStartedChecklist from '@/components/GettingStartedChecklist'
 import { getEventStartDate, getEventEndDate, getEventTitle } from '../calendar/event-utils'
+import { useElectronRuntime } from '@/utils/electron'
 
 export default function ActivityPage() {
   const { user: userInfo, loading } = useAuth();
@@ -256,9 +257,11 @@ export default function ActivityPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  const isElectronRuntime = useElectronRuntime()
+
   return (
     <div className="min-h-screen bg-white text-[#282828] font-body selection:bg-primary/30">
-      <div className="max-w-3xl mx-auto px-6 py-16">
+      <div className={`max-w-3xl mx-auto px-6 ${isElectronRuntime ? 'pt-12 pb-16' : 'py-16'}`}>
         <h1 className="text-3xl font-heading font-semibold text-black mb-2">
           {getGreeting(currentTime)}, {userInfo.display_name}
         </h1>

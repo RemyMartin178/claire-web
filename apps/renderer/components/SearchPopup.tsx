@@ -72,7 +72,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
       className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-start justify-center pt-16 z-50"
       onClick={handleBackgroundClick}
     >
-      <div className="bg-white/95 dark:bg-[#1E1E1E]/95 backdrop-blur-md rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden border border-neutral-200 dark:border-neutral-800">
+      <div className="bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden border border-neutral-200 dark:border-white/10">
         <div className="flex items-center px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
           <Search className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
           <input
@@ -107,7 +107,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
                   return (
                     <div
                       key={result.id}
-                      className="p-3 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 cursor-pointer transition-colors"
+                      className="p-3 hover:bg-[#f4f4f5] dark:hover:bg-[#27272a]/50 cursor-pointer transition-colors"
                       onClick={() => {
                         router.push(`/activity/${result.id}`)
                         onClose()

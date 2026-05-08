@@ -8,15 +8,12 @@ import {
   getSessions,
   deleteSession,
 } from '@/utils/api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
 import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 import GettingStartedChecklist from '@/components/GettingStartedChecklist'
 import { getEventStartDate, getEventEndDate, getEventTitle } from '../calendar/event-utils'
-import { useElectronRuntime } from '@/utils/electron'
 
 export default function ActivityPage() {
   const { user: userInfo, loading } = useAuth();
@@ -24,7 +21,7 @@ export default function ActivityPage() {
   const [allSessions, setAllSessions] = useState<Session[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [emailingId, setEmailingId] = useState<string | null>(null)
+
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [upcomingMeeting, setUpcomingMeeting] = useState<any>(null)
   const [meetingBrief, setMeetingBrief] = useState<string | null>(null)
@@ -98,6 +95,25 @@ export default function ActivityPage() {
     return () => clearInterval(timer)
   }, [])
 
+  // Auto-trigger meeting notification window when meeting is within 5 minutes
+  useEffect(() => {
+    if (!upcomingMeeting || !currentTime) return
+    const start = getEventStartDate(upcomingMeeting)
+    if (!start) return
+    const minutesUntil = (start.getTime() - currentTime.getTime()) / 60_000
+    const api = (window as any).api?.dashboard
+    if (!api) return
+    if (minutesUntil > 0 && minutesUntil <= 5) {
+      void api.showMeetingNotification?.({
+        title: getEventTitle(upcomingMeeting),
+        startTime: start.toISOString(),
+        meetingUrl: (upcomingMeeting as any)?.hangoutLink || (upcomingMeeting as any)?.meetingUrl,
+      })
+    } else if (minutesUntil <= 0) {
+      void api.hideMeetingNotification?.()
+    }
+  }, [upcomingMeeting, currentTime])
+
   // Load next upcoming meeting from sessionStorage (populated by the calendar page)
   useEffect(() => {
     if (!userInfo || typeof window === 'undefined') return
@@ -145,10 +161,10 @@ export default function ActivityPage() {
                 window.sessionStorage.setItem(cacheKey, data.paragraph)
               }
             })
-            .catch(() => {})
+            .catch(() => { })
         }
       }
-    } catch {}
+    } catch { }
   }, [userInfo])
 
   if (loading) {
@@ -187,36 +203,6 @@ export default function ActivityPage() {
     }
   }
 
-  const handleEmailClick = async (session: any) => {
-    setEmailingId(session.id)
-    const toastId = toast.loading("Génération du brouillon de l'email...")
-    try {
-      const response = await fetch('/api/activity/generate-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          context: session.summary || session.transcription?.substring(0, 1000) || session.title,
-          userName: userInfo?.display_name || userInfo?.email?.split('@')[0] || 'Utilisateur'
-        })
-      })
-
-      if (!response.ok) throw new Error('Erreur lors de la génération de l\'email')
-
-      const { subject, body } = await response.json()
-
-      // Open Gmail compose on the web (not the default mail app)
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-      window.open(gmailUrl, '_blank')
-
-      toast.success("Brouillon ouvert dans Gmail", { id: toastId })
-    } catch (e) {
-      toast.error("Impossible de générer l'email", { id: toastId })
-    } finally {
-      setEmailingId(null)
-    }
-  }
 
   // Group sessions by date
   const groupedSessions: { [date: string]: Session[] } = {};
@@ -257,147 +243,182 @@ export default function ActivityPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
-  const isElectronRuntime = useElectronRuntime()
+
 
   return (
-    <div className="min-h-screen bg-white text-[#282828] font-body selection:bg-primary/30">
-      <div className={`max-w-3xl mx-auto px-6 ${isElectronRuntime ? 'pt-12 pb-16' : 'py-16'}`}>
-        <h1 className="text-3xl font-heading font-semibold text-black mb-2">
-          {getGreeting(currentTime)}, {userInfo.display_name}
-        </h1>
+    <div className="flex flex-col min-h-full text-foreground font-body">
 
-        {/* Démarrer Claire — visible uniquement dans l'app Electron */}
-        {canStartClaire && (
-          <button
-            onClick={() => (window as any).api.dashboard.startClaire()}
-            className="mt-4 mb-6 flex items-center gap-2.5 px-5 py-3 rounded-xl text-[15px] font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #4f8ef7 0%, #1a63e8 100%)', boxShadow: '0 4px 16px rgba(79,142,247,0.35)' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/><polyline points="10 8 16 12 10 16 10 8"/>
-            </svg>
-            Démarrer Claire
-          </button>
-        )}
+      {/* ── Hero section (Cluely 1:1) ── */}
+      <div className="shrink-0 border-b border-border/30 bg-muted/50 px-6 py-5">
+        <div className="mx-auto w-full max-w-[52rem]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
 
-        {(() => {
-          if (!upcomingMeeting || !currentTime) return null
-          const start = getEventStartDate(upcomingMeeting)
-          if (!start || start <= currentTime) return null
-          const end = getEventEndDate(upcomingMeeting)
-          const isToday = start.toDateString() === currentTime.toDateString()
-          const isTomorrow = new Date(currentTime.getTime() + 86_400_000).toDateString() === start.toDateString()
-          const dayLabel = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : start.toLocaleDateString('fr-FR', { weekday: 'long' })
-          const fmt = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
-          const timeRange = end ? `${fmt(start)} – ${fmt(end)}` : fmt(start)
-          return (
-            <div className="mt-4 mb-6 border-l-[3px] border-blue-500 bg-blue-50/40 rounded-r-xl pl-4 pr-4 py-3">
-              <p className="text-xs font-medium text-gray-400 mb-0.5">{dayLabel} · {timeRange}</p>
-              <p className="text-[15px] font-semibold text-black">{getEventTitle(upcomingMeeting)}</p>
-              {meetingBrief && <p className="text-sm text-gray-500 mt-0.5">{meetingBrief}</p>}
+            {/* Left: title + refresh */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="mr-2 font-normal text-2xl text-muted-foreground/90 tracking-tight">
+                Claire
+              </h1>
+              <button
+                aria-label="Actualiser"
+                onClick={fetchSessions}
+                className="h-8 w-8 rounded-full flex items-center justify-center border border-border text-muted-foreground/80 hover:text-muted-foreground transition-colors"
+              >
+                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                  <path d="M8 16H3v5" />
+                </svg>
+              </button>
             </div>
-          )
-        })()}
 
-        {!isLoading && (
-          <GettingStartedChecklist
-            allSessions={allSessions}
-            userId={userInfo.uid || userInfo.email || 'anonymous'}
-            userAliases={[userInfo.uid, userInfo.email].filter(Boolean)}
-          />
-        )}
-
-        {sessions.length === 0 && !isLoading && (
-          <div className="text-center mb-12">
+            {/* Right: Start Claire */}
+            {canStartClaire && (
+              <button
+                onClick={() => (window as any).api.dashboard.startClaire()}
+                aria-label="Démarrer Claire"
+                className="relative inline-flex items-center gap-2 h-10 px-5 rounded-full text-[13px] font-semibold text-white transform-gpu transition-all duration-200 hover:scale-[1.04] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                style={{ background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%)', boxShadow: '0 0 0 0.678px #0c44a1, inset 0 -1.355px #022c70, inset 0 0.678px #81b6ff' }}
+              >
+                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
+                </svg>
+                Démarrer Claire
+              </button>
+            )}
           </div>
-        )}
+        </div>
+      </div>
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-gray-500 font-body">Chargement des conversations...</p>
-          </div>
-        ) : sessions.length > 0 ? (
-          <div className="space-y-10">
-            {sortedDates.map((dateStr) => (
-              <div key={dateStr} className="animate-fade-in">
-                <h3 className="text-sm font-semibold text-gray-500 mb-4 tracking-wide font-sans">{dateStr}</h3>
-                <div className="space-y-1">
-                  {groupedSessions[dateStr].map((session) => {
-                    const sessionDate = new Date(session.started_at);
-                    const timeStr = sessionDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h');
+      {/* ── List section ── */}
+      <div className="flex-1 px-6 pb-6">
+        <div className="mx-auto w-full max-w-[52rem]">
 
-                    let durationStr = "0:00";
-                    if (session.ended_at && session.started_at) {
-                      const diffSec = Math.floor((session.ended_at - session.started_at) / 1000);
-                      durationStr = formatDuration(Math.max(0, diffSec));
-                    } else {
-                      durationStr = "En cours";
-                    }
+          {/* Upcoming meeting */}
+          {(() => {
+            if (!upcomingMeeting || !currentTime) return null
+            const start = getEventStartDate(upcomingMeeting)
+            if (!start || start <= currentTime) return null
+            const end = getEventEndDate(upcomingMeeting)
+            const isToday = start.toDateString() === currentTime.toDateString()
+            const isTomorrow = new Date(currentTime.getTime() + 86_400_000).toDateString() === start.toDateString()
+            const dayLabel = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : start.toLocaleDateString('fr-FR', { weekday: 'long' })
+            const fmt = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+            const timeRange = end ? `${fmt(start)} – ${fmt(end)}` : fmt(start)
+            return (
+              <div className="mt-4 mb-2 border-l-[3px] border-blue-500 bg-blue-500/5 dark:bg-blue-500/10 rounded-r-lg pl-4 pr-4 py-3">
+                <p className="text-xs font-medium text-muted-foreground mb-0.5">{dayLabel} · {timeRange}</p>
+                <p className="text-sm font-semibold text-foreground">{getEventTitle(upcomingMeeting)}</p>
+                {meetingBrief && <p className="text-xs text-muted-foreground mt-0.5">{meetingBrief}</p>}
+              </div>
+            )
+          })()}
 
-                    let displayTitle = session.title;
-                    if (!displayTitle || displayTitle.includes('Session @') || displayTitle === 'Session Sans Titre') {
-                      displayTitle = 'Discussion avec Claire';
-                    }
-                    // Enforce max length: titles should be 3-6 words
-                    if (displayTitle && displayTitle.length > 45) {
-                      displayTitle = displayTitle.substring(0, 42).trimEnd() + '…';
-                    }
+          {/* Checklist */}
+          {!isLoading && (
+            <GettingStartedChecklist
+              allSessions={allSessions}
+              userId={userInfo.uid || userInfo.email || 'anonymous'}
+              userAliases={[userInfo.uid, userInfo.email].filter(Boolean)}
+            />
+          )}
 
-                    return (
-                      <div key={session.id} className="group flex items-center justify-between py-3 px-4 -mx-4 hover:bg-white rounded-xl transition-colors">
-                        <div className="flex-1 min-w-0 pr-4">
-                          <Link
-                            href={`/activity/details?sessionId=${session.id}`}
-                            onClick={() => trackSessionViewed(session.id)}
-                            className="text-[15px] font-medium text-black hover:text-primary transition-colors block truncate"
-                          >
-                            {displayTitle}
-                          </Link>
-                        </div>
-                        <div className="flex items-center gap-6 shrink-0">
-                          <div className="text-sm font-mono text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md hidden sm:block">
-                            {durationStr}
-                          </div>
-                          <div className="text-sm font-medium text-neutral-500 w-20 text-right">
-                            {timeStr}
-                          </div>
-                          <div className="flex gap-1">
-                            <Button
-                              onClick={(e) => { e.preventDefault(); handleDeleteClick(session.id); }}
-                              disabled={deletingId === session.id}
-                              variant="ghost"
-                              size="icon"
-                              className="opacity-0 group-hover:opacity-100 text-neutral-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 transition-all"
-                              title="Supprimer la session"
-                            >
-                              {deletingId === session.id ? (
-                                <div className="animate-spin h-4 w-4 border-2 border-red-500 rounded-full border-t-transparent"></div>
-                              ) : (
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                              )}
-                            </Button>
-                          </div>
+          {/* Sessions */}
+          {isLoading ? (
+            <div className="space-y-6 pt-6">
+              {[0, 1].map(group => (
+                <div key={group} className="animate-pulse">
+                  <div className="h-3 w-20 bg-muted rounded mb-3" />
+                  <div className="space-y-1">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className="flex items-center justify-between rounded-lg px-3 py-2.5">
+                        <div className={`h-3.5 bg-muted rounded ${i === 0 ? 'w-[60%]' : i === 1 ? 'w-[45%]' : 'w-[52%]'}`} />
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="h-5 w-10 bg-muted rounded-full" />
+                          <div className="h-3 w-10 bg-muted rounded" />
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16 border border-dashed border-neutral-300 rounded-2xl bg-neutral-50/50">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-neutral-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
+              ))}
             </div>
-            <p className="text-gray-600 mb-4 px-4">
-              Aucune conversation pour l'instant. Démarrez une conversation dans l'application de bureau pour voir votre activité ici.
-            </p>
-          </div>
-        )}
+          ) : sessions.length > 0 ? (
+            <div className="space-y-4 pt-6">
+              {sortedDates.map((dateStr) => (
+                <section key={dateStr}>
+                  <h2 className="sticky top-0 z-10 mb-2 bg-background/80 py-2 font-semibold text-muted-foreground/70 text-xs backdrop-blur">
+                    {dateStr}
+                  </h2>
+                  <ul className="space-y-1">
+                    {groupedSessions[dateStr].map((session) => {
+                      const sessionDate = new Date(session.started_at)
+                      const timeStr = sessionDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+
+                      let durationStr = '0:00'
+                      if (session.ended_at && session.started_at) {
+                        const diffSec = Math.floor((session.ended_at - session.started_at) / 1000)
+                        durationStr = formatDuration(Math.max(0, diffSec))
+                      } else {
+                        durationStr = 'En cours'
+                      }
+
+                      let displayTitle = session.title
+                      if (!displayTitle || displayTitle.includes('Session @') || displayTitle === 'Session Sans Titre') {
+                        displayTitle = 'Discussion avec Claire'
+                      }
+                      if (displayTitle && displayTitle.length > 45) {
+                        displayTitle = displayTitle.substring(0, 42).trimEnd() + '…'
+                      }
+
+                      return (
+                        <li key={session.id} className="group/row relative">
+                          <div className="flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors group-hover/row:bg-muted/70">
+                            <Link
+                              href={`/activity/details?sessionId=${session.id}`}
+                              onClick={() => trackSessionViewed(session.id)}
+                              className="truncate pr-3 font-medium text-sm text-foreground hover:text-primary transition-colors flex-1 block"
+                            >
+                              {displayTitle}
+                            </Link>
+                            <span className="flex shrink-0 items-center gap-3">
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums bg-muted text-foreground">
+                                {durationStr}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground w-[5ch] text-right">
+                                {timeStr}
+                              </span>
+                              <Button
+                                onClick={(e) => { e.preventDefault(); handleDeleteClick(session.id) }}
+                                disabled={deletingId === session.id}
+                                variant="ghost"
+                                size="icon"
+                                className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-all"
+                                title="Supprimer"
+                              >
+                                {deletingId === session.id ? (
+                                  <div className="animate-spin h-3.5 w-3.5 border-2 border-red-500 rounded-full border-t-transparent" />
+                                ) : (
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                )}
+                              </Button>
+                            </span>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          ) : (
+            <div className="pt-16 text-center">
+              <p className="text-sm text-muted-foreground">
+                Aucune session pour l'instant. Démarrez Claire pour voir votre activité ici.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <ConfirmationModal
@@ -409,5 +430,5 @@ export default function ActivityPage() {
         onCancel={() => setConfirmDeleteId(null)}
       />
     </div>
-  );
+  )
 }

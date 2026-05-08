@@ -225,6 +225,17 @@ class AuthService {
             : (process.env.pickleglass_WEB_URL || DEFAULT_WEB_APP_URL);
     }
 
+    _getRendererUrl() {
+        if (!app.isPackaged) {
+            const devUrl = process.env.DASHBOARD_DEV_URL;
+            if (devUrl) {
+                try { return new URL(devUrl).origin; } catch {}
+            }
+            return process.env.pickleglass_WEB_URL || 'http://localhost:3000';
+        }
+        return 'https://renderer.clairia.app';
+    }
+
     _getFirebaseConfig() {
         return {
             apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDZz5iEcMo6eBpt5cZ4Hz4TaE4aDiWMqho',
@@ -297,7 +308,7 @@ class AuthService {
             return null;
         }
 
-        const associateUrl = `${this._getWebAppUrl()}/api/mobile-auth/associate`;
+        const associateUrl = `${this._getRendererUrl()}/api/mobile-auth/associate`;
         logger.info('[Auth] Minting fresh dashboard custom token via associate endpoint');
 
         const response = await fetch(associateUrl, {
@@ -606,6 +617,12 @@ class AuthService {
             } catch (syncError) {
                 logger.warn('[Auth] Dashboard browser auth sync failed after main sign-in:', syncError.message);
             }
+
+            // Auth via deep-link is done — swap onboarding → dashboard
+            try {
+                const { _showDashboardAfterAuth } = require('../window/windowManager');
+                if (_showDashboardAfterAuth) _showDashboardAfterAuth(null);
+            } catch (_) {}
 
             logger.info('[Auth] signInWithCustomToken completed successfully');
         } catch (error) {

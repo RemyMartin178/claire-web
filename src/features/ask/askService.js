@@ -912,7 +912,7 @@ class AskService {
             enhancedSystemPrompt += '\n\nPréférence de langue : Réponds de préférence en français. Si l\'utilisateur écrit dans une autre langue supportée, adapte-toi à sa langue.';
             // Math formatting — avoid LaTeX since it can't be rendered in the UI
             enhancedSystemPrompt += '\n\n⚠️ FORMATAGE MATH : N\'utilise JAMAIS la notation LaTeX (\\frac, \\rho, \\[ \\], \\( \\), etc.). Pour les formules mathématiques, utilise du texte Unicode simple : ρ (rho), × (fois), ² (carré), ÷ (diviser), → (implique). Écris les formules en texte lisible, pas en LaTeX.';
-            if (options.maxMode) {
+            if (options.maxMode || options.webSearch) {
                 enhancedSystemPrompt += '\n\n⚠️ MODE RÉFLEXION : Donne une réponse complète, structurée et développée. Tu peux utiliser des bullet points, des titres et plusieurs paragraphes si nécessaire. Explique ton raisonnement en détail. Sois exhaustif et précis.';
             } else {
                 enhancedSystemPrompt += '\n\n⚠️ STYLE ABSOLU : Réponds en 1 à 2 phrases MAXIMUM. Jamais de bullet points, jamais de titres, jamais d\'explication non demandée. Si la réponse est oui/non → juste oui/non + 1 phrase max. Comme un humain qui répond vite à voix haute.';
@@ -924,7 +924,7 @@ class AskService {
                 enhancedSystemPrompt += '\n\n⚠️ RÈGLE SPÉCIALE : L\'utilisateur demande quoi dire. Donne-lui UNIQUEMENT un script court et prêt à l\'emploi (2-4 phrases max). Commence directement par ce qu\'il peut dire, sans introduction ni explication. Format : texte direct, prêt à prononcer.';
             }
 
-            const userText = screenshotBase64 && screenshotResult.metadata?.persistent 
+            const userText = screenshotBase64 && screenshotResult.metadata?.persistent
                 ? `User Request: ${userPrompt.trim()}\n\nNote: I'm showing you my selected focus area (${screenshotContext}) which I want you to use for analysis instead of the full screen.`
                 : `User Request: ${userPrompt.trim()}`;
 
@@ -1105,25 +1105,31 @@ class AskService {
                     });
                 }
             }
+            // OpenAI native web search: swap model to search-preview
+            const useOpenAINativeSearch = options.webSearch && modelInfo.provider === 'openai';
+            if (useOpenAINativeSearch) {
+                modelInfo = { ...modelInfo, model: 'gpt-4o-search-preview' };
+                logger.info('[AskService] Web search: using OpenAI gpt-4o-search-preview');
+            }
+
             this.state.currentProvider = modelInfo.provider;
             this._broadcastState();
-            
+
             logger.info('Creating streaming LLM for local execution:', {
                 provider: modelInfo.provider,
                 model: modelInfo.model,
                 hasApiKey: !!modelInfo.apiKey,
                 optimizedProvider: selectedProvider || 'default'
             });
-            
-            
+
             const streamingLLM = createStreamingLLM(modelInfo.provider, {
                 apiKey: modelInfo.apiKey,
                 model: modelInfo.model,
-                temperature: 0.7,
+                temperature: useOpenAINativeSearch ? 1 : 0.7,
                 maxTokens: 2048,
                 usePortkey: false,
                 portkeyVirtualKey: undefined,
-                // tools: toolDefinitions, // Tool support not yet implemented
+                webSearch: !!options.webSearch && !useOpenAINativeSearch,
             });
 
             logger.info('Sending message to local LLM:', {
