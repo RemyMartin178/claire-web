@@ -1787,8 +1787,11 @@ function createDashboardWindow() {
     dashboardWindow = new BrowserWindow({
         width: 1050,
         height: 700,
-        minWidth: 800,
-        minHeight: 600,
+        minWidth: 1050,
+        minHeight: 700,
+        maxWidth: 1050,
+        maxHeight: 700,
+        resizable: false,
         center: true,
         titleBarStyle: 'hidden',
         titleBarOverlay: {
@@ -1837,19 +1840,15 @@ function createDashboardWindow() {
         if (process.platform !== 'win32') return;
         const isAuthPage = /\/(electron-login|auth|login|register)/.test(url);
         try {
-            if (isAuthPage) {
-                dashboardWindow.setTitleBarOverlay({ color: '#00000000', symbolColor: '#00000000', height: 0 });
-                setDashboardOnboardingMode(true);
-            } else {
-                const { nativeTheme } = require('electron');
-                const isDark = nativeTheme.shouldUseDarkColors;
-                dashboardWindow.setTitleBarOverlay({
-                    color: '#00000000',
-                    symbolColor: isDark ? '#FFFFFF' : '#000000',
-                    height: 38,
-                });
-                setDashboardOnboardingMode(false);
-            }
+            const { nativeTheme } = require('electron');
+            const isDark = nativeTheme.shouldUseDarkColors;
+            // Always keep buttons visible — user needs min/max/close even on login page
+            dashboardWindow.setTitleBarOverlay({
+                color: '#00000000',
+                symbolColor: isDark ? '#FFFFFF' : '#000000',
+                height: 38,
+            });
+            setDashboardOnboardingMode(isAuthPage);
         } catch (e) {
             logger.warn('[Dashboard] applyChromeForUrl failed', { error: e.message });
         }
