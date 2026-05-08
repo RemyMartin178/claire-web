@@ -30,6 +30,7 @@ export default function ActivityPage() {
   const [meetingBrief, setMeetingBrief] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const [canStartClaire, setCanStartClaire] = useState(false)
+  const isElectronRuntime = useElectronRuntime()
 
   const fetchSessions = async () => {
     try {
@@ -256,8 +257,6 @@ export default function ActivityPage() {
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
-
-  const isElectronRuntime = useElectronRuntime()
 
   return (
     <div className="min-h-screen bg-white text-[#282828] font-body selection:bg-primary/30">
