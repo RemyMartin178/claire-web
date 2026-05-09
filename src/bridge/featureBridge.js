@@ -7,8 +7,6 @@ const { getFirestoreInstance } = require('../common/services/firebaseClient');
 const { collection, doc, getDoc, getDocs, deleteDoc, writeBatch } = require('firebase/firestore');
 const settingsService = require('../features/settings/settingsService');
 const authService = require('../common/services/authService');
-const whisperService = require('../common/services/whisperService');
-const ollamaService = require('../common/services/ollamaService');
 const modelStateService = require('../common/services/modelStateService');
 const shortcutsService = require('../features/shortcuts/shortcutsService');
 const presetRepository = require('../common/repositories/preset');
@@ -95,10 +93,6 @@ module.exports = {
         ipcMain.handle('settings:clear-api-key', async (e, { provider }) => await settingsService.clearApiKey(provider));
         ipcMain.handle('settings:set-selected-model', async (e, { type, modelId }) => await settingsService.setSelectedModel(type, modelId));
 
-        ipcMain.handle('settings:get-ollama-status', async () => await settingsService.getOllamaStatus());
-        ipcMain.handle('settings:ensure-ollama-ready', async () => await settingsService.ensureOllamaReady());
-        ipcMain.handle('settings:shutdown-ollama', async () => await settingsService.shutdownOllama());
-
         // Shortcuts
         ipcMain.handle('settings:getCurrentShortcuts', async () => await shortcutsService.loadKeybinds());
         ipcMain.handle('shortcut:getDefaultShortcuts', async () => await shortcutsService.handleRestoreDefaults());
@@ -180,26 +174,9 @@ module.exports = {
         });
 
         // Whisper
-        ipcMain.handle('whisper:download-model', async (event, modelId) => await whisperService.handleDownloadModel(modelId));
-        ipcMain.handle('whisper:get-installed-models', async () => await whisperService.handleGetInstalledModels());
-
         // General
         ipcMain.handle('get-preset-templates', () => presetRepository.getPresetTemplates());
         ipcMain.handle('get-web-url', () => process.env.XERUS_WEB_URL || process.env.pickleglass_WEB_URL || 'https://app.clairia.app');
-
-        // Ollama
-        ipcMain.handle('ollama:get-status', async () => await ollamaService.handleGetStatus());
-        ipcMain.handle('ollama:install', async () => await ollamaService.handleInstall());
-        ipcMain.handle('ollama:start-service', async () => await ollamaService.handleStartService());
-        ipcMain.handle('ollama:ensure-ready', async () => await ollamaService.handleEnsureReady());
-        ipcMain.handle('ollama:get-models', async () => await ollamaService.handleGetModels());
-        ipcMain.handle('ollama:get-model-suggestions', async () => await ollamaService.handleGetModelSuggestions());
-        ipcMain.handle('ollama:pull-model', withModelName('ollama:pull-model', (m) => ollamaService.handlePullModel(m)));
-        ipcMain.handle('ollama:is-model-installed', withModelName('ollama:is-model-installed', (m) => ollamaService.handleIsModelInstalled(m)));
-        ipcMain.handle('ollama:warm-up-model', withModelName('ollama:warm-up-model', (m) => ollamaService.handleWarmUpModel(m)));
-        ipcMain.handle('ollama:auto-warm-up', async () => await ollamaService.handleAutoWarmUp());
-        ipcMain.handle('ollama:get-warm-up-status', async () => await ollamaService.handleGetWarmUpStatus());
-        ipcMain.handle('ollama:shutdown', async (event, force = false) => await ollamaService.handleShutdown(force));
 
         // Ask - Core handlers
         ipcMain.handle('ask:sendQuestionFromAsk', async (event, userPrompt, options = {}, askHistory = []) => {
@@ -718,12 +695,21 @@ module.exports = {
                 // Single state patch — the change subscription handles every side
                 // effect: dashboard hide, header show, listen show.
                 const newId = listenService.currentSessionId;
+                const startedAt = Date.now();
+                let recallSdkRecording = null;
+                if (newId && sharedStateService.get().autoMeetingDetectionEnabled) {
+                    try {
+                        recallSdkRecording = await recallService.prepareSessionRecording({ id: newId, startedAt });
+                    } catch (e) {
+                        logger.warn('[FeatureBridge] Recall session preparation failed', { error: e.message });
+                    }
+                }
                 sharedStateService.patch({
                     showDashboard: false,
                     showHeader: true,
                     showListen: true,
                     isListenRunning: true,
-                    session: newId ? { id: newId, startedAt: Date.now() } : null,
+                    session: newId ? { id: newId, startedAt, ...(recallSdkRecording && { recallSdkRecording }) } : null,
                 });
 
                 return { success: true };
@@ -761,15 +747,23 @@ module.exports = {
         });
 
         ipcMain.handle('meeting:showNotification', (_event, meeting) => {
-            try { windowManager.showMeetingNotification?.(meeting); } catch (e) {
-                logger.warn('[FeatureBridge] showMeetingNotification failed', { error: e.message });
-            }
+            sharedStateService.patch({ meetingNotification: meeting || null });
+            return { success: true };
         });
 
         ipcMain.handle('meeting:hideNotification', () => {
-            try { windowManager.hideMeetingNotification?.(); } catch (e) {
-                logger.warn('[FeatureBridge] hideMeetingNotification failed', { error: e.message });
-            }
+            const state = sharedStateService.get();
+            const currentId = state.meetingNotification?.id || state.meetingNotification?.recallWindow?.id;
+            const handled = Array.isArray(state.handledMeetingNotificationIds)
+                ? state.handledMeetingNotificationIds
+                : [];
+            sharedStateService.patch({
+                meetingNotification: null,
+                handledMeetingNotificationIds: currentId && !handled.includes(currentId)
+                    ? [...handled, currentId]
+                    : handled,
+            });
+            return { success: true };
         });
 
         ipcMain.handle('dashboard:setContentProtection', (_event, enabled) => {

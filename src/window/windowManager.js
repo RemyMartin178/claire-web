@@ -8,6 +8,7 @@ const shortcutsService = require('../features/shortcuts/shortcutsService');
 const internalBridge = require('../bridge/internalBridge');
 const permissionRepository = require('../common/repositories/permission');
 const { themeService } = require('../domains/ui');
+const sharedStateService = require('../common/services/sharedStateService');
 
 /* ────────────────[ ENHANCED GLASS SYSTEM ]─────────────── */
 const { platformManager } = require('../main/platform-manager');
@@ -267,6 +268,9 @@ function createOverlayWindow() {
     _startOverlayPolling();
 
     overlayWindow.loadFile(path.join(__dirname, '../ui/app/overlay.html'));
+    overlayWindow.webContents.once('did-finish-load', () => {
+        sharedStateService.patch({ isHeaderLoaded: true, isListenLoaded: true });
+    });
     overlayWindow.show();
 
     // Hide instead of close (keep process alive in background)
@@ -1071,11 +1075,15 @@ function createFeatureWindows(header, namesToCreate) {
                 const listenLoadOptions = { query: { view: 'listen' } };
                 if (!shouldUseLiquidGlass) {
                     listen.loadFile(path.join(__dirname, '../ui/app/content.html'), listenLoadOptions);
+                    listen.webContents.once('did-finish-load', () => {
+                        sharedStateService.patch({ isListenLoaded: true });
+                    });
                 }
                 else {
                     listenLoadOptions.query.glass = 'true';
                     listen.loadFile(path.join(__dirname, '../ui/app/content.html'), listenLoadOptions);
                     listen.webContents.once('did-finish-load', () => {
+                        sharedStateService.patch({ isListenLoaded: true });
                         const viewId = liquidGlass.addView(listen.getNativeWindowHandle());
                         if (viewId !== -1) {
                             liquidGlass.unstable_setVariant(viewId, liquidGlass.GlassMaterialVariant.bubbles);
@@ -1405,6 +1413,7 @@ function createWindows() {
     layoutManager = new WindowLayoutManager(windowPool, movementManager);
 
     header.webContents.once('dom-ready', () => {
+        sharedStateService.patch({ isHeaderLoaded: true });
         shortcutsService.initialize(windowPool);
         shortcutsService.registerShortcuts();
     });
@@ -1902,6 +1911,7 @@ function createDashboardWindow() {
     // Push current auth state once the page has fully loaded, so the renderer
     // gets the user even if it missed the broadcast that fired before the window existed.
     dashboardWindow.webContents.on('did-finish-load', () => {
+        sharedStateService.patch({ isDashboardLoaded: true });
         try {
             const authService = require('../common/services/authService');
             const userState = authService.getCurrentUser();

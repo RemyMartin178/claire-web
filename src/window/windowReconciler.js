@@ -47,6 +47,19 @@ function applyDashboardChrome(state) {
   }
 }
 
+function reconcileMeetingNotification(state, previous) {
+  if (state.meetingNotification === previous.meetingNotification) return;
+  try {
+    if (state.meetingNotification) {
+      windowManager.showMeetingNotification(state.meetingNotification);
+    } else {
+      windowManager.hideMeetingNotification();
+    }
+  } catch (e) {
+    logger.warn('[WindowReconciler] meeting notification reconcile failed', { error: e.message });
+  }
+}
+
 function reconcileSelectedModel(state, previous) {
   if (!isObject(state.selectedModel)) return;
   const previousModels = isObject(previous.selectedModel) ? previous.selectedModel : {};
@@ -132,6 +145,8 @@ function reconcile({ state, previous }) {
     applyDashboardChrome(state);
   }
 
+  reconcileMeetingNotification(state, previous);
+
   if (state.isOnboarding !== previous.isOnboarding) {
     try { windowManager.setDashboardOnboardingMode?.(Boolean(state.isOnboarding)); }
     catch (e) { logger.warn('[WindowReconciler] onboarding reconcile failed', { error: e.message }); }
@@ -156,6 +171,8 @@ function initialize() {
   if (unsubscribe) return;
   unsubscribe = sharedStateService.subscribe(reconcile);
   void recallService.setEnabled(Boolean(sharedStateService.get().autoMeetingDetectionEnabled));
+  void recallService.syncSharedState(sharedStateService.get())
+    .catch((e) => logger.warn('[WindowReconciler] initial Recall state sync failed', { error: e.message }));
   logger.info('[WindowReconciler] initialized');
 }
 

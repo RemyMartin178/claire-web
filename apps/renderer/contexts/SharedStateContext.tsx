@@ -26,6 +26,21 @@ export type SharedState = {
   isListenRunning: boolean
   isCapturingScreenshot: boolean
   showSessionDisconnectedModal: boolean
+  meetingNotification: {
+    id?: string
+    title?: string
+    startTime?: string
+    endTime?: string
+    meetingUrl?: string
+    source?: string
+    recallWindow?: {
+      id?: string | null
+      platform?: string | null
+      title?: string | null
+      url?: string | null
+    }
+  } | null
+  handledMeetingNotificationIds: string[]
   contentProtectionEnabled: boolean
   theme: 'light' | 'dark' | 'system'
   isOnboarding: boolean
@@ -37,6 +52,7 @@ export type SharedState = {
   googleSearchEnabled: boolean
   autoUpdate: boolean
   autoMeetingDetectionEnabled: boolean
+  recallSdkInitialized: boolean
   recallSdkStatus: 'idle' | 'ready' | 'recording' | 'error'
   recallRecording: { windowId: string; uploadId?: string; recordingId?: string; startedAt: number } | null
   lastRecallRecordingId: string | null
