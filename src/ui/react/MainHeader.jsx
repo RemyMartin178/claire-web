@@ -647,6 +647,28 @@ export default function MainHeader({
   // ── IPC ──────────────────────────────────────────────
   useEffect(() => {
     if (!window.api) return;
+
+    // Sync with SharedState on mount AND on every subsequent change.
+    // sharedState.get() is async (ipcRenderer.invoke), so we must .then().
+    let disposed = false;
+    const syncFromState = (state) => {
+      if (!state || disposed) return;
+      if (state.isListenRunning === true && listenStatusRef.current !== 'inSession') {
+        setListenSessionStatus('inSession');
+      }
+    };
+
+    try {
+      const result = window.api.sharedState?.get?.();
+      if (result && typeof result.then === 'function') {
+        result.then(syncFromState).catch(() => {});
+      } else if (result) {
+        syncFromState(result);
+      }
+    } catch { /* ignore */ }
+
+    const unsubscribeSharedState = window.api.sharedState?.subscribe?.(syncFromState);
+
     const onUserState = (_, s) => { setIsUserLoggedIn(s.isLoggedIn); setIsAuthenticating(false); };
     window.api.common?.onUserStateChanged?.(onUserState);
     window.api.common?.getCurrentUser?.().then(s => setIsUserLoggedIn(s?.isLoggedIn ?? false)).catch(() => {});
@@ -684,6 +706,8 @@ export default function MainHeader({
     window.addEventListener('pointerdown', onPointer, true);
 
     return () => {
+      disposed = true;
+      if (typeof unsubscribeSharedState === 'function') unsubscribeSharedState();
       window.api.common?.removeOnUserStateChanged?.(onUserState);
       window.api.mainHeader?.removeOnListenChangeSessionResult?.(onSession);
       window.api.mainHeader?.removeOnShortcutsUpdated?.(onShortcuts);

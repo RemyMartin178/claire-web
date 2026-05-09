@@ -582,7 +582,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         className={`flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150
           ${isActive
             ? 'bg-[#f4f4f5] text-[#18181b] font-medium dark:bg-white/10 dark:text-white'
-            : 'text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#f4f4f5] hover:text-[#18181b] dark:hover:bg-[#27272a] dark:hover:text-white'}`}
+            : 'text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white'}`}
         style={{ fontSize: '13.5px' }}
       >
         <Icon size={14} className="shrink-0" strokeWidth={isActive ? 2.5 : 2} />
@@ -649,22 +649,6 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             </div>
           </div>
           <Toggle on={ambient} onToggle={() => { setAmbient(v => { persistToggle('ambient', !v); return !v; }); }} />
-        </div>
-
-        {/* Détection automatique des réunions */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-4 items-center">
-            <div className="w-12 h-12 rounded-md bg-[#f4f4f5] dark:bg-[#27272a] flex items-center justify-center shrink-0">
-              <Calendar size={24} className="text-[#71717a] dark:text-[#a1a1aa]" />
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">Détection auto réunion</p>
-              <p className="text-[12px] leading-[1.35] text-[#71717a] dark:text-[#a1a1aa] mt-0.5">
-                Lance l'enregistrement Recall quand Zoom, Meet ou Teams est détecté
-              </p>
-            </div>
-          </div>
-          <Toggle on={autoMeetingDetection} onToggle={() => { setAutoMeetingDetection(v => { persistToggle('autoMeetingDetection', !v); return !v; }); }} />
         </div>
 
         {/* Thème */}
