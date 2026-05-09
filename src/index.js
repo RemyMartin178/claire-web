@@ -65,7 +65,7 @@ if (isDev) {
     }
 }
 
-// Claire routes AI/STT through renderer.clairia.app (server-side keys),
+// Claire routes AI/STT through api.clairia.app (server-side keys),
 // so local .env keys are only used as a BYOK fallback for power users.
 console.log('[STARTUP] AI provider: claire-api (server-side, via Vercel proxy)');
 

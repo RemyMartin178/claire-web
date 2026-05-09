@@ -18,7 +18,7 @@ exports.default = async function (context) {
     const prodEnvContent = envContent
       .replace(/\r\n/g, '\n')
       .split('\n')
-      .filter(line => !/^\s*DASHBOARD_DEV_URL\s*=/.test(line))
+      .filter(line => !/^\s*(DASHBOARD_DEV_URL|CLAIRE_API_URL)\s*=/.test(line))
       .join('\n');
 
     const targetDir = path.dirname(targetEnv);
