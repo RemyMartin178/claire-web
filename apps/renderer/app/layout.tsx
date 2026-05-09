@@ -6,6 +6,7 @@ import Script from 'next/script'
 import ConditionalLayout from '@/components/ConditionalLayout'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { PasswordModalProvider } from '@/contexts/PasswordModalContext'
+import { RevenueCatProvider } from '@/contexts/RevenueCatContext'
 import Analytics from '@/components/Analytics'
 import { GA_TRACKING_ID } from '@/lib/gtag'
 import { Toaster } from 'react-hot-toast'
@@ -67,11 +68,12 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            <PasswordModalProvider>
-              <ConditionalLayout>
-                <Analytics />
-                {children}
-                <Toaster position="bottom-right" toastOptions={{
+            <RevenueCatProvider>
+              <PasswordModalProvider>
+                <ConditionalLayout>
+                  <Analytics />
+                  {children}
+                  <Toaster position="bottom-right" toastOptions={{
                   duration: 3000,
                   className: 'dark-toast',
                   style: {
@@ -97,9 +99,10 @@ export default function RootLayout({
                       secondary: '#ef4444',
                     },
                   },
-                }} />
-              </ConditionalLayout>
-            </PasswordModalProvider>
+                  }} />
+                </ConditionalLayout>
+              </PasswordModalProvider>
+            </RevenueCatProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -855,6 +855,25 @@ export const deleteAssistant = async (id: string): Promise<void> => {
   if (!response.ok) throw new Error('Failed to delete assistant')
 }
 
+// --- ANALYTICS / MONETIZATION ---
+export const captureAnalyticsEvent = async (event: string, properties: Record<string, unknown> = {}): Promise<void> => {
+  await apiCall('/api/analytics/capture', {
+    method: 'POST',
+    body: JSON.stringify({ event, properties }),
+  }).catch(() => undefined)
+}
+
+export const getRevenueCatStatus = async (): Promise<{
+  configured: boolean
+  hasPro: boolean
+  activeEntitlements: string[]
+  customer?: unknown
+}> => {
+  const response = await apiCall('/api/revenuecat/status')
+  if (!response.ok) throw new Error('Failed to fetch RevenueCat status')
+  return response.json()
+}
+
 // --- KNOWLEDGE BASE API ---
 export interface Folder {
   id: string

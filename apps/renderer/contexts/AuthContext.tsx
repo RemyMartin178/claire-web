@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, signInWithCustomToken, signOut, type User } from "firebase/auth"
 import { auth } from "../utils/firebase"
 import { getUserProfile, type UserProfile } from "../utils/api"
+import { identifyPostHog, resetPostHog } from "../lib/posthog"
 
 interface AuthContextType {
   user: UserProfile | null
@@ -88,6 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null)
         setIsAuthenticated(false)
         setIsAdmin(false)
+        resetPostHog()
         setLoading(false)
         return
       } else {
@@ -100,12 +102,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (!auth.currentUser) {
               setUser(null)
               setIsAuthenticated(false)
+              resetPostHog()
               setLoading(false)
             }
           }, 4000)
         } else {
           setUser(null)
           setIsAuthenticated(false)
+          resetPostHog()
           setLoading(false)
         }
       }
@@ -133,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Définir l'utilisateur immédiatement
       setUser(fallbackProfile)
       setIsAuthenticated(true)
+      identifyPostHog(fallbackProfile)
       // On garde loading à true jusqu'à la fin de la récupération du profil Firestore
       
       // Ensuite, essayer de récupérer le profil complet en arrière-plan
@@ -140,6 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userProfile = await getUserProfile()
         if (userProfile) {
           setUser(userProfile)
+          identifyPostHog(userProfile)
           const adminFlag = userProfile.isAdmin === true
           setIsAdmin(adminFlag)
         }
@@ -153,6 +159,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null)
       setIsAuthenticated(false)
       setIsAdmin(false)
+      resetPostHog()
       setLoading(false)
     }
   }

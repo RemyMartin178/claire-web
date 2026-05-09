@@ -18,7 +18,7 @@ exports.default = async function (context) {
     const prodEnvContent = envContent
       .replace(/\r\n/g, '\n')
       .split('\n')
-      .filter(line => !/^\s*(DASHBOARD_DEV_URL|CLAIRE_API_URL|OPENAI_API_KEY|ASSEMBLYAI_API_KEY|RECALL_API_KEY)\s*=/.test(line))
+      .filter(line => !/^\s*(DASHBOARD_DEV_URL|CLAIRE_API_URL|OPENAI_API_KEY|ASSEMBLYAI_API_KEY|RECALL_API_KEY|POSTHOG_API_KEY|REVENUECAT_SECRET_API_KEY)\s*=/.test(line))
       .join('\n');
 
     const targetDir = path.dirname(targetEnv);
