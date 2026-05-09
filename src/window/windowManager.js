@@ -616,6 +616,19 @@ function changeAllWindowsVisibility(windowPool, targetVisibility) {
  */
 async function handleWindowVisibilityRequest(windowPool, layoutManager, movementManager, name, shouldBeVisible) {
     logger.info('Request: set window visibility to', { name, shouldBeVisible });
+
+    // 'header' in overlay mode is a React panel rendered inside OverlayRoot,
+    // not a BrowserWindow. Skip the windowPool lookup and just dispatch the
+    // overlay:panel-visibility IPC that OverlayRoot listens for.
+    if (name === 'header' && overlayMode && overlayWindow && !overlayWindow.isDestroyed()) {
+        try {
+            overlayWindow.webContents.send('overlay:panel-visibility', { name: 'header', visible: shouldBeVisible });
+        } catch (e) {
+            logger.warn('[Overlay] header visibility IPC failed:', e.message);
+        }
+        return;
+    }
+
     let win = windowPool.get(name);
 
     if (!win || win.isDestroyed()) {
@@ -673,9 +686,19 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
         }
     };
 
-    // 'header' is the floating control bar — no animation, just show/hide.
-    // featureBridge hides it on session end so the dashboard surfaces alone.
+    // 'header' is the floating control bar. In overlay mode it's a React
+    // panel rendered inside OverlayRoot (not its own BrowserWindow), so we
+    // send the same overlay:panel-visibility IPC OverlayPanel.show()/hide()
+    // would send. In window mode we just toggle the BrowserWindow.
     if (name === 'header') {
+        if (overlayMode && overlayWindow && !overlayWindow.isDestroyed()) {
+            try {
+                overlayWindow.webContents.send('overlay:panel-visibility', { name: 'header', visible: shouldBeVisible });
+            } catch (e) {
+                logger.warn('[Overlay] header visibility IPC failed:', e.message);
+            }
+            return;
+        }
         if (shouldBeVisible) {
             win.show();
             try { win.focus(); } catch { /* focus may fail on some platforms */ }

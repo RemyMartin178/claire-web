@@ -157,16 +157,53 @@ export default function ElectronLoginPage() {
   }
 
   // Firebase auth restoration takes ~1-2s on cold start. Without this guard,
-  // returning users see a flash of the onboarding before the redirect kicks in.
-  // Match the page's white background so the wait reads as a benign load,
-  // not a flicker.
+  // returning users see a flash of onboarding before the redirect kicks in.
+  // Render a dashboard-shaped skeleton so the wait reads as "loading the app"
+  // instead of "blank screen for 4 seconds".
   if (authLoading || isAuthenticated) {
     return (
-      <div style={{
-        width: '100vw',
-        height: '100vh',
-        background: '#ffffff',
-      }} />
+      <div className="bg-background min-h-screen w-screen flex flex-col">
+        {/* Title-bar placeholder (matches ElectronClientLayout's header) */}
+        <div className="flex h-9 items-center px-4 shrink-0 bg-[#fafafa] dark:bg-[#18181b]">
+          <div className="h-[18px] w-[18px] rounded-md bg-muted/70 dark:bg-white/[0.06] animate-pulse" />
+          <div className="ml-auto flex items-center gap-2" style={{ marginRight: 'calc(-11px + 140px)' }}>
+            <div className="h-[30px] w-[30px] rounded-md bg-muted/70 dark:bg-white/[0.06] animate-pulse" />
+          </div>
+        </div>
+
+        {/* Content area */}
+        <div className="flex-1 min-h-0 p-1 bg-[#fafafa] dark:bg-[#18181b]">
+          <div className="flex h-full flex-col rounded-md border border-[#e4e4e7] dark:border-white/10 bg-white dark:bg-[#09090b] overflow-hidden">
+            <div className="mx-auto w-full max-w-3xl px-6 pt-10 pb-16">
+              {/* Hero greeting */}
+              <div className="mb-8">
+                <div className="h-8 w-64 mb-3 rounded-md bg-muted/70 dark:bg-white/[0.06] animate-pulse" />
+                <div className="h-4 w-40 rounded-md bg-muted/70 dark:bg-white/[0.06] animate-pulse" />
+              </div>
+
+              {/* Session list — two day-groups, three rows each */}
+              <div className="space-y-6 pt-6">
+                {[0, 1].map(group => (
+                  <section key={group}>
+                    <div className="h-3 w-24 mb-3 rounded-md bg-muted/70 dark:bg-white/[0.06] animate-pulse" />
+                    <ul className="space-y-1">
+                      {[0, 1, 2].map(i => (
+                        <li key={i} className="flex items-center justify-between rounded-lg px-3 py-2.5">
+                          <div className={`h-3.5 rounded-md bg-muted/70 dark:bg-white/[0.06] animate-pulse ${i === 0 ? 'w-[60%]' : i === 1 ? 'w-[45%]' : 'w-[52%]'}`} />
+                          <div className="flex shrink-0 items-center gap-3">
+                            <div className="h-5 w-10 rounded-full bg-muted/70 dark:bg-white/[0.06] animate-pulse" />
+                            <div className="h-3 w-10 rounded-md bg-muted/70 dark:bg-white/[0.06] animate-pulse" />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     )
   }
 

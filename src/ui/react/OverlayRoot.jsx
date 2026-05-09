@@ -148,12 +148,13 @@ export default function OverlayRoot() {
     const [showUpgradeOverlay, setShowUpgradeOverlay] = useState(false);
 
     const [panels, setPanels] = useState({
+        header: true,             // floating bar — visible by default, can be hidden when a session ends
         listen: false,
         ask: false,
         settings: false,
         'agent-selector': false,
     });
-    const panelsRef = useRef({ listen: false, ask: false, settings: false, 'agent-selector': false });
+    const panelsRef = useRef({ header: true, listen: false, ask: false, settings: false, 'agent-selector': false });
     const [panelAnimClass, setPanelAnimClass] = useState({});
 
     const [panelSizes, setPanelSizes] = useState({
@@ -414,25 +415,27 @@ export default function OverlayRoot() {
             background: 'transparent',
             pointerEvents: 'none', // transparent areas pass events to apps below
         }}>
-            <div
-                ref={pillContainerRef}
-                style={{
-                    position: 'absolute',
-                    left: pillPos.x,
-                    top: pillPos.y,
-                    pointerEvents: 'auto', // pill is fully interactive
-                    zIndex: 1000,
-                }}
-            >
-                <MainHeader
-                    overlayMode={true}
-                    overlayPosX={pillPos.x}
-                    overlayPosY={pillPos.y}
-                    onOverlayPosChange={handlePosChange}
-                    onOverlayDragEnd={handleDragEnd}
-                    onOverlayDragStart={handleDragStart}
-                />
-            </div>
+            {panels.header && (
+                <div
+                    ref={pillContainerRef}
+                    style={{
+                        position: 'absolute',
+                        left: pillPos.x,
+                        top: pillPos.y,
+                        pointerEvents: 'auto', // pill is fully interactive
+                        zIndex: 1000,
+                    }}
+                >
+                    <MainHeader
+                        overlayMode={true}
+                        overlayPosX={pillPos.x}
+                        overlayPosY={pillPos.y}
+                        onOverlayPosChange={handlePosChange}
+                        onOverlayDragEnd={handleDragEnd}
+                        onOverlayDragStart={handleDragStart}
+                    />
+                </div>
+            )}
 
             {panels.listen && positions.listen && (
                 <div ref={listenPanelRef} className={`overlay-panel-common ${panelAnimClass.listen || ''}`} style={panelStyle(positions.listen, panelSizes.listen)}>

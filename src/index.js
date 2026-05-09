@@ -65,15 +65,9 @@ if (isDev) {
     }
 }
 
-// Log detected API keys (for debugging)
-console.log('[STARTUP] Detected API keys:', {
-    openai: !!process.env.OPENAI_API_KEY,
-    anthropic: !!process.env.ANTHROPIC_API_KEY,
-    gemini: !!process.env.GEMINI_API_KEY,
-    openaiKeyLength: process.env.OPENAI_API_KEY?.length || 0,
-    anthropicKeyLength: process.env.ANTHROPIC_API_KEY?.length || 0,
-    geminiKeyLength: process.env.GEMINI_API_KEY?.length || 0
-});
+// Claire routes AI/STT through renderer.clairia.app (server-side keys),
+// so local .env keys are only used as a BYOK fallback for power users.
+console.log('[STARTUP] AI provider: claire-api (server-side, via Vercel proxy)');
 
 const { createDashboardWindow } = require('./window/windowManager.js');
 
