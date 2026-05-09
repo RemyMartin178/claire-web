@@ -27,6 +27,10 @@ export type SharedState = {
   agentMode: boolean
   googleSearchEnabled: boolean
   autoUpdate: boolean
+  autoMeetingDetectionEnabled: boolean
+  recallSdkStatus: 'idle' | 'ready' | 'recording' | 'error'
+  recallRecording: { windowId: string; uploadId?: string; recordingId?: string; startedAt: number } | null
+  lastRecallRecordingId: string | null
 }
 
 type SharedStateAPI = {

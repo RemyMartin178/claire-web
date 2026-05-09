@@ -56,6 +56,10 @@ const DEFAULT_STATE = Object.freeze({
   agentMode: false,
   googleSearchEnabled: false,
   autoUpdate: true,
+  autoMeetingDetectionEnabled: false,
+  recallSdkStatus: 'idle',                // 'idle' | 'ready' | 'recording' | 'error'
+  recallRecording: null,
+  lastRecallRecordingId: null,
 });
 
 // Fields that describe in-flight runtime state. They are NEVER persisted to
@@ -79,6 +83,8 @@ const TRANSIENT_KEYS = new Set([
   'isOnboarding',
   'titleBarVisible',
   'agentMode',
+  'recallSdkStatus',
+  'recallRecording',
 ]);
 
 class SharedStateService extends EventEmitter {

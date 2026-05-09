@@ -10,6 +10,7 @@ const settingsService = require('../features/settings/settingsService');
 const modelStateService = require('../common/services/modelStateService');
 const askService = require('../features/ask/askService');
 const listenService = require('../features/listen/listenService');
+const recallService = require('../common/services/recallService');
 const { createLogger } = require('../common/services/logger.js');
 
 const logger = createLogger('WindowReconciler');
@@ -80,6 +81,11 @@ async function reconcileAsyncSideEffects(state, previous) {
     try { await settingsService.setAutoUpdateSetting(Boolean(state.autoUpdate)); }
     catch (e) { logger.warn('[WindowReconciler] auto update reconcile failed', { error: e.message }); }
   }
+
+  if (state.autoMeetingDetectionEnabled !== previous.autoMeetingDetectionEnabled) {
+    try { await recallService.setEnabled(Boolean(state.autoMeetingDetectionEnabled)); }
+    catch (e) { logger.warn('[WindowReconciler] Recall auto detection reconcile failed', { error: e.message }); }
+  }
 }
 
 function reconcile({ state, previous }) {
@@ -146,6 +152,7 @@ function reconcile({ state, previous }) {
 function initialize() {
   if (unsubscribe) return;
   unsubscribe = sharedStateService.subscribe(reconcile);
+  void recallService.setEnabled(Boolean(sharedStateService.get().autoMeetingDetectionEnabled));
   logger.info('[WindowReconciler] initialized');
 }
 

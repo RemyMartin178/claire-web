@@ -20,7 +20,6 @@ import { auth, storage } from '@/utils/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential, updateProfile } from 'firebase/auth';
 import Avatar from './Avatar';
-import { useSharedState } from '@/contexts/SharedStateContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -145,7 +144,6 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const { user: userInfo } = useAuth();
   const isElectronRuntime = useElectronRuntime();
   const { openModal: openPasswordModal } = usePasswordModal();
-  const { patch: patchSharedState } = useSharedState();
 
   const [activeTab, setActiveTab] = useState<TabType>("general");
 
@@ -158,6 +156,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const { setTheme } = useTheme();
   const [screenUse, setScreenUse] = useState(false);
   const [hideWidget, setHideWidget] = useState(false);
+  const [autoMeetingDetection, setAutoMeetingDetection] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   // Mic
   const [micDeviceName, setMicDeviceName] = useState('Microphone par défaut');
@@ -226,6 +225,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       if (s.colorTheme) setColorTheme(s.colorTheme);
       if (s.screenUse !== undefined) setScreenUse(s.screenUse);
       if (s.hideWidget !== undefined) setHideWidget(s.hideWidget);
+      if (s.autoMeetingDetection !== undefined) setAutoMeetingDetection(s.autoMeetingDetection);
       if (s.transcriptionLang) setTranscriptionLang(s.transcriptionLang);
       if (s.outputLang) setOutputLang(s.outputLang);
       if (s.shortcuts?.length) setShortcutsList(s.shortcuts);
@@ -349,11 +349,14 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   useEffect(() => {
     const api = (window as any).api;
     if (api?.sharedState?.patch) {
-      void patchSharedState({ contentProtectionEnabled: !detectable });
+      void api.sharedState.patch({
+        contentProtectionEnabled: !detectable,
+        autoMeetingDetectionEnabled: autoMeetingDetection,
+      });
     } else {
       void api?.dashboard?.setContentProtection?.(!detectable);
     }
-  }, [detectable, patchSharedState]);
+  }, [detectable, autoMeetingDetection]);
 
   // ── ESC + SCROLL LOCK ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -646,6 +649,22 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             </div>
           </div>
           <Toggle on={ambient} onToggle={() => { setAmbient(v => { persistToggle('ambient', !v); return !v; }); }} />
+        </div>
+
+        {/* Détection automatique des réunions */}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-4 items-center">
+            <div className="w-12 h-12 rounded-md bg-[#f4f4f5] dark:bg-[#27272a] flex items-center justify-center shrink-0">
+              <Calendar size={24} className="text-[#71717a] dark:text-[#a1a1aa]" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">Détection auto réunion</p>
+              <p className="text-[12px] leading-[1.35] text-[#71717a] dark:text-[#a1a1aa] mt-0.5">
+                Lance l'enregistrement Recall quand Zoom, Meet ou Teams est détecté
+              </p>
+            </div>
+          </div>
+          <Toggle on={autoMeetingDetection} onToggle={() => { setAutoMeetingDetection(v => { persistToggle('autoMeetingDetection', !v); return !v; }); }} />
         </div>
 
         {/* Thème */}

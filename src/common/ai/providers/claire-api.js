@@ -93,6 +93,17 @@ async function fetchAssemblyAIToken() {
   return token;
 }
 
+async function createRecallSdkUpload({ window, metadata = {} } = {}) {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_URL}/api/recall/sdk-upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ window, metadata }),
+  });
+  if (!res.ok) throw new Error(`Failed to create Recall SDK upload: ${res.status}`);
+  return await res.json();
+}
+
 async function createSTT({
   language = 'multi',
   sampleRate = 24000,
@@ -159,4 +170,4 @@ async function createSTT({
   });
 }
 
-module.exports = { createLLM, createStreamingLLM, createSTT };
+module.exports = { createLLM, createStreamingLLM, createSTT, createRecallSdkUpload };

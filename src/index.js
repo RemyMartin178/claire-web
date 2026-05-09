@@ -73,6 +73,7 @@ const { createDashboardWindow } = require('./window/windowManager.js');
 
 const listenService = require('./features/listen/listenService');
 const sharedStateService = require('./common/services/sharedStateService');
+const recallService = require('./common/services/recallService');
 
 const { initializeFirebase } = require('./common/services/firebaseClient');
 // const databaseInitializer = require('./common/services/databaseInitializer'); // Phase 1 Fix: SQLite removed
@@ -603,11 +604,16 @@ app.on('before-quit', async (event) => {
             logger.warn('[Shutdown] sharedStateService.flush() failed:', e.message);
         }
 
-        // 1. Stop audio capture first (immediate)
+        // 1. Stop Recall SDK before closing local audio/session services
+        try { await recallService.shutdown(); } catch (e) {
+            logger.warn('[Shutdown] recallService.shutdown() failed:', e.message);
+        }
+
+        // 2. Stop audio capture
         await listenService.closeSession();
         logger.info('[Shutdown] Audio capture stopped');
 
-        // 2. End all active sessions (database operations) - with error handling
+        // 3. End all active sessions (database operations) - with error handling
         try {
             await sessionRepository.endAllActiveSessions();
             logger.info('[Shutdown] Active sessions ended');
@@ -615,7 +621,7 @@ app.on('before-quit', async (event) => {
             logger.warn('Could not end active sessions (database may be closed):', { error: dbError.message });
         }
 
-        // 3. Shutdown Ollama service (potentially time-consuming)
+        // 4. Shutdown Ollama service (potentially time-consuming)
         logger.info('[Shutdown] shutting down Ollama service...');
         const ollamaShutdownSuccess = await Promise.race([
             ollamaService.shutdown(false), // Graceful shutdown

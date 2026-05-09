@@ -57,6 +57,7 @@
     "@langchain/core": "^0.3.70",
     "@modelcontextprotocol/sdk": "^1.17.4",
     "@neondatabase/serverless": "^1.0.1",
+    "@recallai/desktop-sdk": "^2.0.13",
     "@sentry/node": "^10.47.0",
     "@types/pg": "^8.15.4",
     "axios": "^1.10.0",

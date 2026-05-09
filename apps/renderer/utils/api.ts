@@ -825,6 +825,7 @@ export interface UserSettings {
   colorTheme?: 'Système' | 'Clair' | 'Sombre'
   screenUse?: boolean
   hideWidget?: boolean
+  autoMeetingDetection?: boolean
   transcriptionLang?: string
   outputLang?: string
   shortcuts?: Array<{ id: string; group: string; label: string; keys: string[] }>
