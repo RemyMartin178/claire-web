@@ -91,11 +91,8 @@ export default function ConditionalLayout({
   const isDebugPage = normalizedPathname === '/fettywapdebug'
   const isBareWindow = normalizedPathname === '/notification'
 
-  if (isBareWindow) {
-    return <>{children}</>
-  }
-
   useEffect(() => {
+    if (isBareWindow) return
     if (isElectronRuntime === null) return
     if (isDebugPage) return
     if (!loading && !isAuthenticated && !isAuthPage) {
@@ -115,19 +112,36 @@ export default function ConditionalLayout({
 
       return () => clearTimeout(timer)
     }
-  }, [loading, isAuthenticated, isAuthPage, isDebugPage, isElectronRuntime, electronLoginPath, router])
+  }, [loading, isAuthenticated, isAuthPage, isDebugPage, isElectronRuntime, electronLoginPath, router, isBareWindow])
 
   useEffect(() => {
+    if (isBareWindow) return
     document.title = getDocumentTitle(pathname)
-  }, [pathname])
+  }, [pathname, isBareWindow])
 
   useEffect(() => {
+    if (isBareWindow) return
     const api = (window as any).api
     void api?.sharedState?.patch?.({
       titleBarVisible: !isAuthPage,
       isOnboarding: isAuthPage,
     })
-  }, [isAuthPage])
+  }, [isAuthPage, isBareWindow])
+
+  useEffect(() => {
+    if (isBareWindow) return
+    const api = (window as any).api
+    if (!api?.dashboard?.onNavigateToSession) return
+    const handler = ({ sessionId }: { sessionId: string }) => {
+      router.push(`/activity/details?sessionId=${sessionId}`)
+    }
+    api.dashboard.onNavigateToSession(handler)
+    return () => api.dashboard.removeOnNavigateToSession?.()
+  }, [isBareWindow, router])
+
+  if (isBareWindow) {
+    return <>{children}</>
+  }
 
   if (isAuthPage) {
     return (
@@ -147,11 +161,7 @@ export default function ConditionalLayout({
   }
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="w-6 h-6 rounded-full border-2 border-foreground/15 border-t-foreground/70 animate-spin" />
-      </div>
-    )
+    return null
   }
 
   if (!isAuthenticated) {

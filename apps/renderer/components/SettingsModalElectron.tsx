@@ -1536,7 +1536,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <h2 className="text-[22px] font-bold text-[#18181b] dark:text-[#fafafa] tracking-tight mb-2">Centre d'aide</h2>
       <p className="text-[14px] text-[#71717a] dark:text-[#a1a1aa] mb-8">Trouvez des réponses à vos questions.</p>
       <button
-        onClick={() => window.open('https://support.clairia.app', '_blank', 'noopener,noreferrer')}
+        onClick={() => openInBrowser('https://support.clairia.app')}
         className="flex items-center justify-between w-full px-4 py-3.5 bg-[#f9f9f9] border border-[#e4e4e7] dark:border-white/10 rounded-[8px] hover:bg-[#f4f4f5] dark:bg-[#18181b] dark:hover:bg-[#3f3f46] transition-colors"
       >
         <div className="flex items-center gap-3">
@@ -1553,7 +1553,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <h2 className="text-[22px] font-bold text-[#18181b] dark:text-[#fafafa] tracking-tight mb-2">Contact Support</h2>
       <p className="text-[14px] text-[#71717a] dark:text-[#a1a1aa] mb-8">Notre équipe est disponible pour vous aider.</p>
       <button
-        onClick={() => window.open('mailto:support@clairia.app', '_blank')}
+        onClick={() => openInBrowser('mailto:support@clairia.app')}
         className="flex items-center justify-between w-full px-4 py-3.5 bg-[#f9f9f9] border border-[#e4e4e7] dark:border-white/10 rounded-[8px] hover:bg-[#f4f4f5] dark:bg-[#18181b] dark:hover:bg-[#3f3f46] transition-colors"
       >
         <div className="flex items-center gap-3">
