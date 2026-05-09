@@ -433,6 +433,11 @@ class ListenService {
         const { windowPool, updateLayout, getPillWindow } = require('../../window/windowManager');
         const listenWindow = windowPool.get('listen');
         const header = getPillWindow();
+        const nextHeaderStateByAction = {
+            Listen: 'inSession',
+            Stop: 'afterSession',
+            Done: 'beforeSession',
+        };
 
         logger.info('[SEARCH] DEBUG: Windows obtained:', {
             listenWindow: !!listenWindow,
@@ -494,7 +499,10 @@ class ListenService {
             }
 
             logger.info('[SEARCH] DEBUG: About to send listen:changeSessionResult success to header');
-            header.webContents.send('listen:changeSessionResult', { success: true });
+            header.webContents.send('listen:changeSessionResult', {
+                success: true,
+                state: nextHeaderStateByAction[listenButtonText] || 'beforeSession',
+            });
             logger.info('[SEARCH] DEBUG: listen:changeSessionResult success sent successfully');
 
         } catch (error) {

@@ -644,13 +644,15 @@ export default function MainHeader({
     const onAuthFailed = () => setIsAuthenticating(false);
     window.api.on?.('auth-failed', onAuthFailed);
 
-    const onSession = (_, { success }) => {
+    const onSession = (_, { success, state }) => {
       if (success) {
-        setListenSessionStatus(prev => {
-          const next = ({ beforeSession:'inSession', inSession:'afterSession', afterSession:'beforeSession' })[prev] || 'beforeSession';
-          if (prev === 'afterSession') { setAgentModeActive(false); window.api?.mainHeader?.setAgentMode(false); setIsPaused(false); }
-          return next;
-        });
+        const next = ['beforeSession', 'inSession', 'afterSession'].includes(state) ? state : 'beforeSession';
+        setListenSessionStatus(next);
+        if (next === 'beforeSession') {
+          setAgentModeActive(false);
+          window.api?.mainHeader?.setAgentMode(false);
+          setIsPaused(false);
+        }
       } else {
         setListenSessionStatus('beforeSession');
         setAgentModeActive(false);
