@@ -16,7 +16,6 @@ class RecallService {
     this.activeUpload = null;
     this.boundHandlers = null;
     this.manuallyStoppedWindowIds = new Set();
-    this.partialTranscriptByWindow = new Map();
     this.syncQueue = Promise.resolve();
   }
 
@@ -130,7 +129,6 @@ class RecallService {
 
     this.activeWindowId = null;
     this.activeUpload = null;
-    this.partialTranscriptByWindow.delete(windowId);
 
     if (windowId && this.manuallyStoppedWindowIds.has(windowId)) {
       this.manuallyStoppedWindowIds.delete(windowId);
@@ -157,73 +155,47 @@ class RecallService {
     });
   }
 
-  async handleRealtimeEvent(evt) {
+  handleRealtimeEvent(evt) {
     if (!this.enabled || !this.activeUpload) return;
     if (evt?.window?.id && evt.window.id !== this.activeWindowId) return;
 
-    const turn = this.normalizeRealtimeTurn(evt);
-    if (!turn || !turn.text) return;
+    const state = sharedStateService.get();
+    const session = state.session;
+    if (!session || session.id !== this.activeUpload.sessionId) return;
 
-    const role = turn.role || 'them';
-    const windowId = evt?.window?.id || this.activeWindowId || 'active';
-
-    if (!turn.isFinal) {
-      this.partialTranscriptByWindow.set(windowId, {
-        speaker: role,
-        text: turn.text,
-        timestamp: turn.timestamp,
-      });
-      const state = sharedStateService.get();
-      if (state.session?.id === this.activeUpload.sessionId) {
-        sharedStateService.patch({
-          session: {
-            ...state.session,
-            partialTranscriptEntry: {
-              speaker: role,
-              text: turn.text,
-              timestamp: turn.timestamp,
-            },
-          },
-        });
-      }
-      return;
-    }
-
-    this.partialTranscriptByWindow.delete(windowId);
-    try {
-      const listenService = require('../../features/listen/listenService');
-      await listenService.handleTranscriptionComplete(role, turn.text);
-    } catch (e) {
-      logger.warn('[RecallService] failed to ingest realtime transcript', { error: e.message });
-    }
-  }
-
-  normalizeRealtimeTurn(evt) {
+    // Parse payload — SDK may deliver evt.data as a string or object
     let data = evt?.data;
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); }
-      catch { data = { text: data }; }
+      try { data = JSON.parse(data); } catch { return; }
     }
-    const eventName = evt?.event || data?.event || data?.type;
-    const transcript = data?.transcript || data?.text || data?.utterance?.text || data?.words?.map?.(w => w.text).join(' ');
-    const text = typeof transcript === 'string' ? transcript.trim() : '';
-    if (!text) return null;
 
-    const role = data?.speaker || data?.role || data?.participant?.role || 'them';
-    const isFinal = Boolean(
-      data?.end_of_turn ||
-      data?.is_final ||
-      data?.final ||
-      eventName === 'transcript.final' ||
-      eventName === 'turn'
-    );
+    // Schema: { data: { participant: { is_host: boolean }, words: [{ text, start_timestamp: { absolute } }] } }
+    const inner = data?.data;
+    if (!inner) return;
+    const words = inner.words;
+    if (!Array.isArray(words) || words.length === 0) return;
+    const firstWord = words[0];
+    if (!firstWord?.start_timestamp?.absolute) return;
 
-    return {
-      text,
-      role: role === 'me' || role === 'user' ? 'user' : 'them',
-      isFinal,
-      timestamp: data?.timestamp || data?.start_timestamp || Date.now(),
-    };
+    const createdAt = firstWord.start_timestamp.absolute;
+    const role = inner.participant?.is_host ? 'me' : 'them';
+    const text = words.map(w => w.text).join(' ').trim();
+    if (!text) return;
+
+    const relativeMs = Date.now() - session.startedAt;
+
+    const entry = { createdAt, relativeMs, role, text };
+
+    // If the incoming createdAt differs from the current partial → promote the old partial to transcript
+    let transcript = session.transcript ?? [];
+    if (session.partialTranscriptEntry && session.partialTranscriptEntry.createdAt !== createdAt) {
+      const existing = transcript.some(t => t.createdAt === session.partialTranscriptEntry.createdAt);
+      if (!existing) transcript = [...transcript, session.partialTranscriptEntry];
+    }
+
+    sharedStateService.patch({
+      session: { ...session, transcript, partialTranscriptEntry: entry },
+    });
   }
 
   async prepareSessionRecording(session) {
@@ -309,7 +281,6 @@ class RecallService {
     } finally {
       this.activeWindowId = null;
       this.activeUpload = null;
-      this.partialTranscriptByWindow.delete(windowId);
       sharedStateService.patch({
         recallSdkStatus: this.enabled ? 'ready' : 'idle',
         recallRecording: null,
@@ -343,7 +314,6 @@ class RecallService {
       this.activeWindowId = null;
       this.activeUpload = null;
       this.manuallyStoppedWindowIds.clear();
-      this.partialTranscriptByWindow.clear();
       sharedStateService.patch({ recallSdkInitialized: false, recallSdkStatus: 'idle', recallRecording: null });
     }
   }
