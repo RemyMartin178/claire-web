@@ -1,5 +1,5 @@
 // src/bridge/featureBridge.js
-const { ipcMain, app, BrowserWindow } = require('electron');
+const { ipcMain, app } = require('electron');
 const windowManager = require('../window/windowManager');
 const internalBridge = require('./internalBridge');
 const sharedStateService = require('../common/services/sharedStateService');
@@ -67,53 +67,28 @@ module.exports = {
     initialize() {
         // ── SharedState bridge (centralized cross-window state) ──────────────
         // Renderers read it via window.api.sharedState.get()/.subscribe()/.patch().
-        // Every change is broadcast to every renderer process so they stay in sync.
+        // windowReconciler broadcasts updates and applies side effects.
         ipcMain.handle('shared-state:get', () => sharedStateService.get());
         ipcMain.handle('shared-state:patch', (_event, partial) => sharedStateService.patch(partial));
 
-        sharedStateService.on('change', ({ state, previous }) => {
-            // 1. Broadcast to every renderer process so they stay in sync.
-            for (const win of BrowserWindow.getAllWindows()) {
-                if (win && !win.isDestroyed()) {
-                    try { win.webContents.send('shared-state:updated', state); } catch { /* renderer gone */ }
-                }
-            }
-
-            // 2. Drive window visibility off the state. Anyone can now hide/show
-            //    a window by calling sharedStateService.patch({ showHeader: false }) —
-            //    no need to know about internalBridge or windowManager internals.
-            if (state.showHeader !== previous.showHeader) {
-                try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: state.showHeader }); }
-                catch (e) { logger.warn('[FeatureBridge] state→header visibility failed:', e.message); }
-            }
-            if (state.showListen !== previous.showListen) {
-                try { internalBridge.emit('window:requestVisibility', { name: 'listen', visible: state.showListen }); }
-                catch (e) { logger.warn('[FeatureBridge] state→listen visibility failed:', e.message); }
-            }
-            if (state.showDashboard !== previous.showDashboard) {
-                const dashWin = windowManager.getDashboardWindow();
-                if (dashWin && !dashWin.isDestroyed()) {
-                    if (state.showDashboard) {
-                        try { dashWin.show(); dashWin.focus(); } catch { /* destroyed mid-flight */ }
-                    } else {
-                        try { dashWin.hide(); } catch { /* destroyed mid-flight */ }
-                    }
-                }
-            }
-            // dashboardFocusCount is a counter — bumping it requests focus without
-            // needing a separate IPC channel.
-            if (state.dashboardFocusCount !== previous.dashboardFocusCount && state.showDashboard) {
-                const dashWin = windowManager.getDashboardWindow();
-                if (dashWin && !dashWin.isDestroyed()) {
-                    try { dashWin.focus(); } catch { /* destroyed mid-flight */ }
-                }
-            }
-        });
 
         // Settings Service
         ipcMain.handle('settings:getPresets', async () => await settingsService.getPresets());
         ipcMain.handle('settings:get-auto-update', async () => await settingsService.getAutoUpdateSetting());
-        ipcMain.handle('settings:set-auto-update', async (event, isEnabled) => await settingsService.setAutoUpdateSetting(isEnabled));
+        ipcMain.handle('settings:set-auto-update', async (event, isEnabled) => {
+            sharedStateService.patch({ autoUpdate: Boolean(isEnabled) });
+            return { success: true };
+        });
+        void (async () => {
+            try {
+                sharedStateService.patch({
+                    selectedModel: modelStateService.getSelectedModels(),
+                    autoUpdate: await settingsService.getAutoUpdateSetting(),
+                });
+            } catch (e) {
+                logger.warn('[FeatureBridge] SharedState hydration failed', { error: e.message });
+            }
+        })();
         ipcMain.handle('settings:get-model-settings', async () => await settingsService.getModelSettings());
         ipcMain.handle('settings:validate-and-save-key', async (e, { provider, key }) => await settingsService.validateAndSaveKey(provider, key));
         ipcMain.handle('settings:clear-api-key', async (e, { provider }) => await settingsService.clearApiKey(provider));
@@ -349,13 +324,15 @@ module.exports = {
             return await askService.getPersonalities();
         });
         ipcMain.handle('ask:setPersonality', async (event, personalityId) => {
-            return await askService.setPersonality(personalityId);
+            sharedStateService.patch({ activePersonality: personalityId });
+            return { success: true };
         });
         ipcMain.handle('ask:getPersonalityRecommendations', async (event, taskType, userLevel) => {
             return await askService.handleGetPersonalityRecommendations(taskType, userLevel);
         });
         ipcMain.handle('ask:toggleAdaptivePersonality', async (event, enabled) => {
-            return await askService.handleToggleAdaptivePersonality(enabled);
+            sharedStateService.patch({ adaptivePersonality: Boolean(enabled) });
+            return { success: true, isAdaptive: Boolean(enabled) };
         });
 
         // Listen
@@ -363,8 +340,7 @@ module.exports = {
 
         // Agent Mode Tracking
         ipcMain.handle('listen:set-agent-mode', (event, agentModeActive) => {
-            listenService.agentModeActive = agentModeActive;
-            logger.info(`[FeatureBridge] Agent mode updated: ${agentModeActive}`);
+            sharedStateService.patch({ agentMode: Boolean(agentModeActive) });
             return { success: true };
         });
 
@@ -401,7 +377,10 @@ module.exports = {
         // Speaker Control for Hardware Acoustic Coupling Prevention
         ipcMain.handle('listen:muteSpeakers', async () => await listenService.handleMuteSpeakers());
         ipcMain.handle('listen:unmuteSpeakers', async (event, originalVolume) => await listenService.handleUnmuteSpeakers(originalVolume));
-        ipcMain.handle('update-google-search-setting', async (event, enabled) => await listenService.handleUpdateGoogleSearchSetting(enabled));
+        ipcMain.handle('update-google-search-setting', async (event, enabled) => {
+            sharedStateService.patch({ googleSearchEnabled: Boolean(enabled) });
+            return { success: true };
+        });
         ipcMain.handle('is-session-active', async (event) => listenService.isSessionActive());
         ipcMain.handle('listen:changeSession', async (event, listenButtonText) => {
             logger.info('[FeatureBridge] listen:changeSession from mainheader', listenButtonText);
@@ -468,7 +447,12 @@ module.exports = {
         ipcMain.handle('model:set-api-key', async (e, { provider, key }) => await modelStateService.setApiKey(provider, key));
         ipcMain.handle('model:remove-api-key', async (e, provider) => await modelStateService.handleRemoveApiKey(provider));
         ipcMain.handle('model:get-selected-models', () => modelStateService.getSelectedModels());
-        ipcMain.handle('model:set-selected-model', async (e, { type, modelId }) => await modelStateService.handleSetSelectedModel(type, modelId));
+        ipcMain.handle('model:set-selected-model', async (e, { type, modelId }) => {
+            if (!['llm', 'stt'].includes(type)) return { success: false, error: 'Invalid model type' };
+            const current = sharedStateService.get().selectedModel || {};
+            sharedStateService.patch({ selectedModel: { ...current, [type]: modelId } });
+            return { success: true };
+        });
         ipcMain.handle('model:get-available-models', (e, { type }) => modelStateService.getAvailableModels(type));
         ipcMain.handle('model:are-providers-configured', () => modelStateService.areProvidersConfigured());
         ipcMain.handle('model:has-configured-providers', () => modelStateService.hasConfiguredProviders());
@@ -757,34 +741,13 @@ module.exports = {
         });
 
         ipcMain.handle('dashboard:setTitleBarOverlayVisible', (_event, visible) => {
-            if (process.platform !== 'win32') return;
-            const dashWin = windowManager.getDashboardWindow();
-            if (!dashWin || dashWin.isDestroyed()) return;
-            try {
-                const { nativeTheme } = require('electron');
-                const isDark = nativeTheme.shouldUseDarkColors;
-                if (visible) {
-                    dashWin.setTitleBarOverlay({
-                        color: '#00000000',
-                        symbolColor: isDark ? '#FFFFFF' : '#000000',
-                        height: 38,
-                    });
-                } else {
-                    dashWin.setTitleBarOverlay({
-                        color: '#00000000',
-                        symbolColor: '#00000000',
-                        height: 0,
-                    });
-                }
-            } catch (e) {
-                logger.warn('[FeatureBridge] setTitleBarOverlay failed', { error: e.message });
-            }
+            sharedStateService.patch({ titleBarVisible: Boolean(visible) });
+            return { success: true };
         });
 
         ipcMain.handle('dashboard:setOnboardingMode', (_event, enabled) => {
-            try { windowManager.setDashboardOnboardingMode?.(Boolean(enabled)); } catch (e) {
-                logger.warn('[FeatureBridge] setOnboardingMode failed', { error: e.message });
-            }
+            sharedStateService.patch({ isOnboarding: Boolean(enabled) });
+            return { success: true };
         });
 
         ipcMain.handle('meeting:showNotification', (_event, meeting) => {
@@ -800,28 +763,14 @@ module.exports = {
         });
 
         ipcMain.handle('dashboard:setContentProtection', (_event, enabled) => {
-            const dashWin = windowManager.getDashboardWindow();
-            if (!dashWin || dashWin.isDestroyed()) return;
-            try { dashWin.setContentProtection(Boolean(enabled)); } catch (e) {
-                logger.warn('[FeatureBridge] setContentProtection failed', { error: e.message });
-            }
+            sharedStateService.patch({ contentProtectionEnabled: Boolean(enabled) });
+            return { success: true };
         });
 
         ipcMain.handle('dashboard:setTheme', (_event, theme) => {
-            if (process.platform !== 'win32') return;
-            const dashWin = windowManager.getDashboardWindow();
-            if (!dashWin || dashWin.isDestroyed()) return;
-            try {
-                const isDark = theme === 'dark';
-                dashWin.setTitleBarOverlay({
-                    color: '#00000000',
-                    symbolColor: isDark ? '#FFFFFF' : '#000000',
-                    height: 38,
-                });
-                dashWin.setBackgroundColor(isDark ? '#09090B' : '#FFFFFF');
-            } catch (e) {
-                logger.warn('[FeatureBridge] setTheme failed', { error: e.message });
-            }
+            const nextTheme = ['light', 'dark', 'system'].includes(theme) ? theme : 'system';
+            sharedStateService.patch({ theme: nextTheme });
+            return { success: true };
         });
 
         logger.info('[FeatureBridge] Initialized with all feature handlers including memory system.');

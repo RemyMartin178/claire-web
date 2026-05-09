@@ -214,9 +214,11 @@ export default function AgentSelectorView() {
 
   const selectAgent = useCallback(async (personality) => {
     try {
-      if (window.api && window.api.askView && window.api.askView.setPersonality) {
-        const result = await window.api.askView.setPersonality(personality.id);
-        if (result.success) {
+      if (window.api?.sharedState?.patch || window.api?.askView?.setPersonality) {
+        const result = window.api.sharedState?.patch
+          ? await window.api.sharedState.patch({ activePersonality: personality.id })
+          : await window.api.askView.setPersonality(personality.id);
+        if (result?.success !== false) {
           setSelectedPersonality(personality);
           if (window.api.mainHeader && window.api.mainHeader.hideAgentSelectorWindow) {
             window.api.mainHeader.hideAgentSelectorWindow();

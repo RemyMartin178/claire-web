@@ -17,6 +17,16 @@ export type SharedState = {
   isListenRunning: boolean
   isCapturingScreenshot: boolean
   showSessionDisconnectedModal: boolean
+  contentProtectionEnabled: boolean
+  theme: 'light' | 'dark' | 'system'
+  isOnboarding: boolean
+  titleBarVisible: boolean
+  selectedModel: { llm: string | null; stt: string | null }
+  activePersonality: string | null
+  adaptivePersonality: boolean
+  agentMode: boolean
+  googleSearchEnabled: boolean
+  autoUpdate: boolean
 }
 
 type SharedStateAPI = {

@@ -44,6 +44,18 @@ const DEFAULT_STATE = Object.freeze({
   // Transient UI flags
   isCapturingScreenshot: false,
   showSessionDisconnectedModal: false,
+
+  // Settings/state currently mirrored from legacy IPC handlers.
+  contentProtectionEnabled: true,
+  theme: 'system',                         // 'light' | 'dark' | 'system'
+  isOnboarding: false,
+  titleBarVisible: true,
+  selectedModel: { llm: null, stt: null },
+  activePersonality: null,
+  adaptivePersonality: false,
+  agentMode: false,
+  googleSearchEnabled: false,
+  autoUpdate: true,
 });
 
 // Fields that describe in-flight runtime state. They are NEVER persisted to
@@ -64,6 +76,9 @@ const TRANSIENT_KEYS = new Set([
   'session',
   'showSessionDisconnectedModal',
   'signInStatus',
+  'isOnboarding',
+  'titleBarVisible',
+  'agentMode',
 ]);
 
 class SharedStateService extends EventEmitter {

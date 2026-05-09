@@ -2069,6 +2069,7 @@ module.exports = {
     updateLayout,
     createWindows,
     windowPool,
+    setContentProtection,
     toggleContentProtection,
     resizeHeaderWindow,
     getContentProtectionStatus,

@@ -78,7 +78,7 @@ export default function ConditionalLayout({
   useEffect(() => {
     if (!resolvedTheme) return
     const api = (window as any).api
-    void api?.dashboard?.setTheme?.(resolvedTheme)
+    void api?.sharedState?.patch?.({ theme: resolvedTheme })
   }, [resolvedTheme])
 
   const electronLoginPath = getElectronLoginPath()
@@ -123,8 +123,10 @@ export default function ConditionalLayout({
 
   useEffect(() => {
     const api = (window as any).api
-    void api?.dashboard?.setTitleBarOverlayVisible?.(!isAuthPage)
-    void api?.dashboard?.setOnboardingMode?.(isAuthPage)
+    void api?.sharedState?.patch?.({
+      titleBarVisible: !isAuthPage,
+      isOnboarding: isAuthPage,
+    })
   }, [isAuthPage])
 
   if (isAuthPage) {

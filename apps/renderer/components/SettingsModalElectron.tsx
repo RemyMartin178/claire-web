@@ -20,6 +20,7 @@ import { auth, storage } from '@/utils/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential, updateProfile } from 'firebase/auth';
 import Avatar from './Avatar';
+import { useSharedState } from '@/contexts/SharedStateContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -144,6 +145,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const { user: userInfo } = useAuth();
   const isElectronRuntime = useElectronRuntime();
   const { openModal: openPasswordModal } = usePasswordModal();
+  const { patch: patchSharedState } = useSharedState();
 
   const [activeTab, setActiveTab] = useState<TabType>("general");
 
@@ -346,8 +348,12 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   // ── CONTENT PROTECTION (détectable toggle) ────────────────────────────────
   useEffect(() => {
     const api = (window as any).api;
-    void api?.dashboard?.setContentProtection?.(!detectable);
-  }, [detectable]);
+    if (api?.sharedState?.patch) {
+      void patchSharedState({ contentProtectionEnabled: !detectable });
+    } else {
+      void api?.dashboard?.setContentProtection?.(!detectable);
+    }
+  }, [detectable, patchSharedState]);
 
   // ── ESC + SCROLL LOCK ─────────────────────────────────────────────────────
   useEffect(() => {

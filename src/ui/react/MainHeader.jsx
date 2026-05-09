@@ -511,6 +511,15 @@ export default function MainHeader({
   useEffect(() => { listenStatusRef.current = listenSessionStatus; }, [listenSessionStatus]);
   useEffect(() => { agentModeRef.current = agentModeActive; }, [agentModeActive]);
 
+  const setAgentMode = useCallback((active) => {
+    const api = window.api;
+    if (api?.sharedState?.patch) {
+      void api.sharedState.patch({ agentMode: Boolean(active) });
+      return;
+    }
+    void api?.mainHeader?.setAgentMode?.(Boolean(active));
+  }, []);
+
   // ── Audio level → waveform bars ────────────────────────
   useEffect(() => {
     const HEIGHTS = [0.28, 0.28, 0.28]; // resting scale per bar
@@ -644,17 +653,19 @@ export default function MainHeader({
     const onAuthFailed = () => setIsAuthenticating(false);
     window.api.on?.('auth-failed', onAuthFailed);
 
-    const onSession = (_, { success }) => {
+    const onSession = (_, { success, state }) => {
       if (success) {
-        setListenSessionStatus(prev => {
-          const next = ({ beforeSession:'inSession', inSession:'afterSession', afterSession:'beforeSession' })[prev] || 'beforeSession';
-          if (prev === 'afterSession') { setAgentModeActive(false); window.api?.mainHeader?.setAgentMode(false); setIsPaused(false); }
-          return next;
-        });
+        const next = ['beforeSession', 'inSession', 'afterSession'].includes(state) ? state : 'beforeSession';
+        setListenSessionStatus(next);
+        if (next === 'beforeSession') {
+          setAgentModeActive(false);
+          setAgentMode(false);
+          setIsPaused(false);
+        }
       } else {
         setListenSessionStatus('beforeSession');
         setAgentModeActive(false);
-        window.api?.mainHeader?.setAgentMode(false);
+        setAgentMode(false);
       }
       setIsTogglingSession(false);
     };
@@ -680,7 +691,7 @@ export default function MainHeader({
       window.api.common?.removeOnPersistentAreaCleared?.(onAreaCleared);
       window.removeEventListener('pointerdown', onPointer, true);
     };
-  }, []);
+  }, [setAgentMode]);
 
   // ── Resize window to match pill size ──────────────────
   useEffect(() => {
@@ -793,9 +804,9 @@ export default function MainHeader({
 
   const handleTTSToggle = useCallback(({ ttsEnabled: v, originalState }) => {
     setTtsEnabled(v);
-    if (v) { setAgentModeActive(true); window.api?.mainHeader?.setAgentMode(true); }
-    else { setAgentModeActive(false); window.api?.mainHeader?.setAgentMode(false); }
-  }, []);
+    if (v) { setAgentModeActive(true); setAgentMode(true); }
+    else { setAgentModeActive(false); setAgentMode(false); }
+  }, [setAgentMode]);
 
   const isListening = listenSessionStatus === 'inSession';
 

@@ -98,6 +98,7 @@ const sessionRepository = require('./common/repositories/session');
 const modelStateService = require('./common/services/modelStateService');
 
 const featureBridge = require('./bridge/featureBridge');
+const windowReconciler = require('./window/windowReconciler');
 
 const windowBridge = require('./bridge/windowBridge');
 // Import context IPC handlers for context management functionality  
@@ -501,6 +502,7 @@ app.whenReady().then(async () => {
         } catch (err) {
             logger.warn('[Index] sharedStateService.init() failed (continuing):', err.message);
         }
+        windowReconciler.initialize();
 
         logger.info('[Index] DEBUG: About to initialize featureBridge and windowBridge...');
         featureBridge.initialize();  // [Korean comment translated]: featureBridge Initialize
