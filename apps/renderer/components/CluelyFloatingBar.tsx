@@ -12,14 +12,7 @@ import {
 } from 'lucide-react';
 
 /**
- * Pixel-faithful recreation of Cluely's floating bar.
- * Extracted className signatures from app.asar v2.0.178:
- *   container : "shadow-pane w-fit bg-surface-opaque rounded-full flex items-center p-[7px] gap-1"
- *   button    : "size-7 shadow-pane bg-surface-opaque hover:bg-surface-opaque-hover hover:scale-105 transition-all duration-150 rounded-full"
- *   utility   : "size-6 bg-surface-action shadow-pane-action backdrop-blur-md hover:bg-surface-action-hover rounded-full"
- *   rec pill  : "h-7 px-2 rounded-full bg-[#bb3232] hover:bg-red-600 active:bg-red-700"
- *
- * Drop-in: <CluelyFloatingBar />
+ * Floating control bar.
  * The wrapper div is draggable (-webkit-app-region: drag) — children opt out.
  */
 export default function CluelyFloatingBar() {

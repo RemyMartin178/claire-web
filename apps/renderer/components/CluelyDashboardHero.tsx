@@ -10,11 +10,7 @@ interface DashboardHeroProps {
 }
 
 /**
- * Cluely-style dashboard hero block.
- * Combines:
- *  - .cluely-hero-text (radial-gradient text with glow)
- *  - .cluely-cta-glass (premium glass CTA with brightness hover)
- *  - .cluely-glow-dot (small blue glow accent)
+ * Dashboard hero block — gradient title text + premium glass CTA + accent dot.
  */
 export default function CluelyDashboardHero({
   greeting = 'Bonjour',

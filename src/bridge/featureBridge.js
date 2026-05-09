@@ -65,7 +65,7 @@ function _serializeFsDoc(data) {
 module.exports = {
     // Renderer[Korean comment translated] Request[Korean comment translated] [Korean comment translated] [Korean comment translated] [Korean comment translated]
     initialize() {
-        // ── SharedState bridge (Cluely-style centralized state) ──────────────
+        // ── SharedState bridge (centralized cross-window state) ──────────────
         // Renderers read it via window.api.sharedState.get()/.subscribe()/.patch().
         // Every change is broadcast to every renderer process so they stay in sync.
         ipcMain.handle('shared-state:get', () => sharedStateService.get());
@@ -424,8 +424,8 @@ module.exports = {
                     try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: false }); }
                     catch (e) { logger.warn('[FeatureBridge] hide-header on Stop failed:', e.message); }
 
-                    // 5. Mirror the transition in shared state — Cluely uses session:null +
-                    //    showDashboard:true as the trigger that everything else reacts to.
+                    // 5. Mirror the transition in shared state — session:null +
+                    //    showDashboard:true is the trigger that everything else reacts to.
                     const prevFocus = sharedStateService.get().dashboardFocusCount || 0;
                     sharedStateService.patch({
                         session: null,

@@ -674,7 +674,7 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
     };
 
     // 'header' is the floating control bar — no animation, just show/hide.
-    // featureBridge hides it on session end so the dashboard surfaces alone, à la Cluely.
+    // featureBridge hides it on session end so the dashboard surfaces alone.
     if (name === 'header') {
         if (shouldBeVisible) {
             win.show();

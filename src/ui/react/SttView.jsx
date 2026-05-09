@@ -70,7 +70,7 @@ const CSS = `
   box-sizing: border-box;
   user-select: text;
 }
-/* Me — Bleu Cluely identique à AskView */
+/* Me — bulle bleue identique à AskView */
 .stt-bubble.me {
   background: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0, #0c26a8 100%);
   color: #CBE3FF;

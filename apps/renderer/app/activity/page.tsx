@@ -239,7 +239,7 @@ export default function ActivityPage() {
   return (
     <div className="flex flex-col min-h-full text-foreground font-body">
 
-      {/* ── Hero section (Cluely 1:1) ── */}
+      {/* ── Hero section ── */}
       <div className="shrink-0 border-b border-border/30 bg-muted/50 px-6 py-5">
         <div className="mx-auto w-full max-w-[52rem]">
           <div className="flex flex-wrap items-center justify-between gap-3">

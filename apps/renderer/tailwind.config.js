@@ -29,7 +29,7 @@ module.exports = {
 				apple: '-0.011em',
 			},
 			colors: {
-				// Cluely design tokens — via var() + color-mix pour opacity modifiers
+				// Design tokens — via var() + color-mix pour opacity modifiers
 				background: cssVar('--background'),
 				foreground: cssVar('--foreground'),
 				muted: {
@@ -55,7 +55,7 @@ module.exports = {
 					DEFAULT: cssVar('--secondary'),
 					foreground: cssVar('--secondary-foreground'),
 				},
-				// hsl() gardé pour primary et destructive (non remplacés par Cluely)
+				// hsl() gardé pour primary et destructive
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))',

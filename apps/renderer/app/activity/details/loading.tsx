@@ -1,7 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
 
-// Server-rendered skeleton shown while /activity/details streams in. Cluely-style
-// layout — date row + actions, big title, tab strip, transcript blocks. The user
+// Server-rendered skeleton shown while /activity/details streams in.
+// Layout: date row + actions, big title, tab strip, transcript blocks. The user
 // sees this instantly when the recording session ends, instead of a flash of
 // /activity before the real session details mount.
 export default function ActivityDetailsLoading() {

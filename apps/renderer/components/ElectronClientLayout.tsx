@@ -107,7 +107,7 @@ export default function ElectronClientLayout({
             )}
           </div>
 
-          {/* Search bar — absolutely centered, Cluely 1:1 */}
+          {/* Search bar — absolutely centered */}
           <div className="pointer-events-none absolute inset-x-0 top-1/2 mt-0.5 flex -translate-y-1/2 justify-center z-[160]">
             <div className="app-region-no-drag pointer-events-auto w-[45vw] max-w-[440px]">
               <button
@@ -120,7 +120,7 @@ export default function ElectronClientLayout({
             </div>
           </div>
 
-          {/* Avatar — ml-auto + marginRight Cluely exact (129px Windows, -11px Mac) */}
+          {/* Avatar — ml-auto + marginRight (129px Windows, -11px Mac) */}
           <div
             className="app-region-no-drag mt-[3px] ml-auto flex items-center gap-2 z-[170]"
             style={{ marginRight: isWindows ? 'calc(-11px + 140px)' : '-11px' } as CSSProperties}
@@ -135,7 +135,7 @@ export default function ElectronClientLayout({
         </header>
       )}
 
-      {/* Content box — rounded border Cluely 1:1 */}
+      {/* Content box — rounded border */}
       <div className="min-h-0 flex-1 p-1">
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-[#e4e4e7] dark:border-white/10 bg-white dark:bg-[#09090b]">
           <div className="h-full w-full overflow-auto no-scrollbar">

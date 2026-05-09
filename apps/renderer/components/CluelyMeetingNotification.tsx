@@ -12,8 +12,8 @@ interface MeetingNotificationProps {
 }
 
 /**
- * Cluely's meeting notification card — extracted from .notification-container CSS.
- * 400px wide, multi-layer drop shadow, blue rim, light + dark variants auto.
+ * Meeting notification card — 400px wide, multi-layer drop shadow,
+ * blue rim, light + dark variants auto.
  */
 export default function CluelyMeetingNotification({
   title,

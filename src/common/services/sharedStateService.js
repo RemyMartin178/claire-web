@@ -1,9 +1,8 @@
 // src/common/services/sharedStateService.js
 //
-// Single, persisted, observable source of truth for app-wide state, modeled
-// after Cluely's `shared-state.json` pattern. Other services read it, mutate
-// it via .patch(), and subscribe to "change" events. The renderer can mirror
-// it via window.api.sharedState (see preload.js).
+// Single, persisted, observable source of truth for app-wide state.
+// Other services read it, mutate it via .patch(), and subscribe to "change"
+// events. The renderer can mirror it via window.api.sharedState (see preload.js).
 //
 // Persistence: atomic write through a tmp file + rename to avoid torn writes.
 // Concurrency: a single write chain serializes saves; .patch() returns sync.
@@ -16,9 +15,9 @@ const { createLogger } = require('./logger.js');
 const logger = createLogger('SharedState');
 const FILE_NAME = 'shared-state.json';
 
-// Default state — adapted from Cluely's shape, scoped to what Claire actually
-// drives today. Owned by other services (auth user, model selection, settings)
-// is intentionally NOT mirrored here to avoid divergence.
+// Default state — scoped to what Claire actually drives today. Anything owned
+// by another service (auth user, model selection, settings) is intentionally
+// NOT mirrored here to avoid divergence.
 const DEFAULT_STATE = Object.freeze({
   appVersion: null,                       // filled at init() once app is ready
   signInStatus: 'loading',                // 'loading' | 'signed-in' | 'signed-out'

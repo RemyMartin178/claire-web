@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Geist Variable — extracted from Cluely (Vercel font) */
+/* Geist Variable — Vercel font */
 @font-face {
   font-family: 'Geist Variable';
   font-style: normal;
@@ -470,7 +470,7 @@ a:hover {
 
 @layer base {
   :root {
-    /* Cluely design tokens — oklch, extracted from their .asar */
+    /* Design tokens — oklch */
     --background: oklch(100% 0 0);
     --foreground: oklch(14.1% .005 285.823);
     --card: oklch(100% 0 0);
@@ -501,7 +501,7 @@ a:hover {
   }
 
   .dark {
-    /* Cluely design tokens dark — oklch, extracted from their .asar */
+    /* Design tokens dark — oklch */
     --background: oklch(14.1% .005 285.823);
     --foreground: oklch(98.5% 0 0);
     --card: oklch(21% .006 285.885);
@@ -935,7 +935,7 @@ a:hover {
   opacity: 1;
 }
 
-/* ─── Cluely Settings Design System (extracted from Cluely v2.0.178) ──────── */
+/* ─── Settings Design System ─────────────────────────────────────────────── */
 
 /* Modal shell — 860px wide, 620px tall, 2-column layout */
 .cluely-settings-modal {
