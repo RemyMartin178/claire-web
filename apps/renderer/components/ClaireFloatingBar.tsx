@@ -15,7 +15,7 @@ import {
  * Floating control bar.
  * The wrapper div is draggable (-webkit-app-region: drag) — children opt out.
  */
-export default function CluelyFloatingBar() {
+export default function ClaireFloatingBar() {
   const [listening, setListening] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -43,50 +43,50 @@ export default function CluelyFloatingBar() {
     >
       {/* THE BAR */}
       <div
-        className="cluely-floating-bar"
+        className="claire-floating-bar"
         style={{ pointerEvents: 'auto' }}
       >
         {/* Logo / app name pill */}
         <button
-          className="cluely-floating-btn !w-auto px-2.5 gap-1.5 text-xs font-medium text-white"
+          className="claire-floating-btn !w-auto px-2.5 gap-1.5 text-xs font-medium text-white"
           onClick={() => setHidden((h) => !h)}
         >
-          <span className="cluely-glow-dot !size-4" />
+          <span className="claire-glow-dot !size-4" />
           <span>Claire</span>
         </button>
 
         {/* Listen toggle */}
         {!listening ? (
           <button
-            className="cluely-floating-btn text-white"
+            className="claire-floating-btn text-white"
             onClick={() => setListening(true)}
           >
             <Mic size={14} strokeWidth={2.2} />
           </button>
         ) : (
           <button
-            className="cluely-floating-btn-rec gap-1.5"
+            className="claire-floating-btn-rec gap-1.5"
             onClick={() => setListening(false)}
           >
-            <span className="cluely-rec-dot !size-2" />
+            <span className="claire-rec-dot !size-2" />
             <span className="font-mono tabular-nums">{formatTime(seconds)}</span>
           </button>
         )}
 
         {/* Ask / chat toggle (the iconic blue button) */}
         <button
-          className="cluely-primary-button h-7 px-3 text-xs font-medium rounded-full inline-flex items-center gap-1.5"
+          className="claire-primary-button h-7 px-3 text-xs font-medium rounded-full inline-flex items-center gap-1.5"
           onClick={() => setChatOpen((o) => !o)}
         >
           <MessageSquare size={12} strokeWidth={2.4} />
           <span>Ask</span>
-          <span className="cluely-kbd ml-0.5">⌘</span>
-          <span className="cluely-kbd">↵</span>
+          <span className="claire-kbd ml-0.5">⌘</span>
+          <span className="claire-kbd">↵</span>
         </button>
 
         {/* Hide toggle */}
         <button
-          className="cluely-floating-btn text-white"
+          className="claire-floating-btn text-white"
           onClick={() => setHidden((h) => !h)}
         >
           {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -94,14 +94,14 @@ export default function CluelyFloatingBar() {
 
         {/* More menu */}
         <button
-          className="cluely-floating-btn text-white"
+          className="claire-floating-btn text-white"
         >
           <MoreHorizontal size={14} />
         </button>
 
         {/* Close (smaller utility variant) */}
         <button
-          className="cluely-floating-btn-sm ml-0.5"
+          className="claire-floating-btn-sm ml-0.5"
         >
           <X size={12} />
         </button>
@@ -110,33 +110,33 @@ export default function CluelyFloatingBar() {
       {/* CHAT PANEL (opens below the bar) */}
       {chatOpen && (
         <div
-          className="cluely-chat-panel"
+          className="claire-chat-panel"
           style={{ pointerEvents: 'auto' }}
         >
           <div className="flex flex-col gap-2 px-2 pt-2 max-h-[400px] overflow-y-auto">
             {/* Sample assistant + user messages */}
             <div className="w-full flex justify-start">
-              <div className="cluely-msg-assistant">
+              <div className="claire-msg-assistant">
                 Bonjour ! Pose-moi une question sur ce que tu vois ou écoutes.
               </div>
             </div>
             <div className="w-full flex justify-end">
-              <div className="cluely-msg-user">
+              <div className="claire-msg-user">
                 Quels sont les points clés de la réunion ?
               </div>
             </div>
           </div>
 
-          <div className="cluely-chat-footer">
+          <div className="claire-chat-footer">
             <input
               type="text"
               placeholder="Pose ta question..."
               className="flex-1 bg-transparent outline-none text-xs text-white placeholder:text-white/40 px-1"
             />
-            <button className="cluely-floating-btn-sm">
+            <button className="claire-floating-btn-sm">
               <MicOff size={12} />
             </button>
-            <button className="cluely-primary-button h-6 w-6 rounded-full inline-flex items-center justify-center">
+            <button className="claire-primary-button h-6 w-6 rounded-full inline-flex items-center justify-center">
               <span className="text-xs">↑</span>
             </button>
           </div>

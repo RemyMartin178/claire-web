@@ -12,7 +12,7 @@ interface DashboardHeroProps {
 /**
  * Dashboard hero block — gradient title text + premium glass CTA + accent dot.
  */
-export default function CluelyDashboardHero({
+export default function ClaireDashboardHero({
   greeting = 'Bonjour',
   subtitle = 'Prêt pour ta prochaine réunion ?',
   ctaLabel = 'Démarrer Claire',
@@ -21,7 +21,7 @@ export default function CluelyDashboardHero({
   return (
     <section className="w-full max-w-[52rem] mx-auto py-12 flex flex-col items-center text-center">
       {/* Gradient logo title */}
-      <h1 className="cluely-hero-text" style={{ fontSize: '3rem', lineHeight: 1.05 }}>
+      <h1 className="claire-hero-text" style={{ fontSize: '3rem', lineHeight: 1.05 }}>
         {greeting}
       </h1>
 
@@ -32,9 +32,9 @@ export default function CluelyDashboardHero({
       {/* Premium glass CTA */}
       <button
         onClick={onCta}
-        className="cluely-cta-glass !h-12 !px-5 !text-[14px] !font-medium"
+        className="claire-cta-glass !h-12 !px-5 !text-[14px] !font-medium"
       >
-        <span className="cluely-glow-dot !size-5" />
+        <span className="claire-glow-dot !size-5" />
         <span>{ctaLabel}</span>
         <ChevronRight size={16} className="opacity-60" />
       </button>

@@ -15,7 +15,7 @@ interface MeetingNotificationProps {
  * Meeting notification card — 400px wide, multi-layer drop shadow,
  * blue rim, light + dark variants auto.
  */
-export default function CluelyMeetingNotification({
+export default function ClaireMeetingNotification({
   title,
   time,
   participants,
@@ -24,11 +24,11 @@ export default function CluelyMeetingNotification({
   onMute,
 }: MeetingNotificationProps) {
   return (
-    <div className="cluely-notification-container">
+    <div className="claire-notification-container">
       {/* Top row : icon + title + close */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0 flex-1">
-          <div className="cluely-glow-dot !size-9 shrink-0">
+          <div className="claire-glow-dot !size-9 shrink-0">
             <Calendar size={16} className="text-white" strokeWidth={2.2} />
           </div>
 
@@ -61,7 +61,7 @@ export default function CluelyMeetingNotification({
       <div className="flex items-center gap-2 mt-3">
         <button
           onClick={onJoin}
-          className="cluely-notification-accent-button flex-1 h-9 rounded-lg text-[13px] font-medium"
+          className="claire-notification-accent-button flex-1 h-9 rounded-lg text-[13px] font-medium"
         >
           Rejoindre la réunion
         </button>
@@ -69,7 +69,7 @@ export default function CluelyMeetingNotification({
         {onMute && (
           <button
             onClick={onMute}
-            className="cluely-notification-button h-9 px-3 rounded-lg text-[13px] font-medium"
+            className="claire-notification-button h-9 px-3 rounded-lg text-[13px] font-medium"
           >
             Plus tard
           </button>
