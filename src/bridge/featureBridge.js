@@ -71,10 +71,41 @@ module.exports = {
         ipcMain.handle('shared-state:get', () => sharedStateService.get());
         ipcMain.handle('shared-state:patch', (_event, partial) => sharedStateService.patch(partial));
 
-        sharedStateService.on('change', ({ state }) => {
+        sharedStateService.on('change', ({ state, previous }) => {
+            // 1. Broadcast to every renderer process so they stay in sync.
             for (const win of BrowserWindow.getAllWindows()) {
                 if (win && !win.isDestroyed()) {
                     try { win.webContents.send('shared-state:updated', state); } catch { /* renderer gone */ }
+                }
+            }
+
+            // 2. Drive window visibility off the state. Anyone can now hide/show
+            //    a window by calling sharedStateService.patch({ showHeader: false }) —
+            //    no need to know about internalBridge or windowManager internals.
+            if (state.showHeader !== previous.showHeader) {
+                try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: state.showHeader }); }
+                catch (e) { logger.warn('[FeatureBridge] state→header visibility failed:', e.message); }
+            }
+            if (state.showListen !== previous.showListen) {
+                try { internalBridge.emit('window:requestVisibility', { name: 'listen', visible: state.showListen }); }
+                catch (e) { logger.warn('[FeatureBridge] state→listen visibility failed:', e.message); }
+            }
+            if (state.showDashboard !== previous.showDashboard) {
+                const dashWin = windowManager.getDashboardWindow();
+                if (dashWin && !dashWin.isDestroyed()) {
+                    if (state.showDashboard) {
+                        try { dashWin.show(); dashWin.focus(); } catch { /* destroyed mid-flight */ }
+                    } else {
+                        try { dashWin.hide(); } catch { /* destroyed mid-flight */ }
+                    }
+                }
+            }
+            // dashboardFocusCount is a counter — bumping it requests focus without
+            // needing a separate IPC channel.
+            if (state.dashboardFocusCount !== previous.dashboardFocusCount && state.showDashboard) {
+                const dashWin = windowManager.getDashboardWindow();
+                if (dashWin && !dashWin.isDestroyed()) {
+                    try { dashWin.focus(); } catch { /* destroyed mid-flight */ }
                 }
             }
         });
@@ -398,34 +429,21 @@ module.exports = {
                 }
 
                 if (sessionIdBeforeStop) {
+                    // 1. Tell the (still-hidden) dashboard to route to the just-ended session NOW,
+                    //    so React can re-render in the background while the overlay is still on top.
                     const dashWin = windowManager.getDashboardWindow();
                     if (dashWin && !dashWin.isDestroyed()) {
-                        // 1. Tell the (still-hidden) dashboard to route to the just-ended session NOW,
-                        //    so React can re-render in the background while the overlay is still on top.
                         dashWin.webContents.send('dashboard:navigateToSession', { sessionId: sessionIdBeforeStop });
-
-                        // 2. Give the renderer ~1 frame to start the route transition before we surface it.
-                        //    Without this, the user briefly sees /activity before /activity/details kicks in.
-                        await new Promise(r => setTimeout(r, 80));
-
-                        // 3. Surface the dashboard (already on the right page).
-                        dashWin.show();
-                        dashWin.focus();
                     }
 
-                    // 4. Tear down the floating windows AFTER the dashboard is up.
-                    //    IMPORTANT: emit visibility requests directly instead of calling
-                    //    handleListenRequest('Done'). The latter would broadcast another
-                    //    listen:changeSessionResult to the header, double-cycling
-                    //    MainHeader's session-button state machine (the user's own
-                    //    follow-up Done click is what's supposed to land that transition).
-                    try { internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false }); }
-                    catch (e) { logger.warn('[FeatureBridge] hide-overlay on Stop failed:', e.message); }
-                    try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: false }); }
-                    catch (e) { logger.warn('[FeatureBridge] hide-header on Stop failed:', e.message); }
+                    // 2. Give the renderer ~1 frame to start the route transition before we surface it.
+                    //    Without this, the user briefly sees /activity before /activity/details kicks in.
+                    await new Promise(r => setTimeout(r, 80));
 
-                    // 5. Mirror the transition in shared state — session:null +
-                    //    showDashboard:true is the trigger that everything else reacts to.
+                    // 3. Single state patch drives everything: the change subscription
+                    //    above will hide the listen overlay + header bar, show + focus
+                    //    the dashboard, and notify any renderer subscribed to shared state.
+                    //    The state is also persisted to disk so a relaunch knows the last session.
                     const prevFocus = sharedStateService.get().dashboardFocusCount || 0;
                     sharedStateService.patch({
                         session: null,
@@ -694,21 +712,17 @@ module.exports = {
 
         ipcMain.handle('dashboard:startClaire', async () => {
             try {
-                // Lazy-init the floating bar on first use
+                // Lazy-init the windows on first use
                 if (!windowManager.windowPool.has('header')) {
                     windowManager.createWindows();
                 }
-
-                // Make sure the floating bar is visible — it gets hidden after a previous Stop.
-                try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: true }); }
-                catch (e) { logger.warn('[FeatureBridge] show-header on Start failed:', e.message); }
-
-                const dashWin = windowManager.getDashboardWindow();
-                if (dashWin && !dashWin.isDestroyed()) dashWin.hide();
                 windowManager.ensureListenWindow();
+
+                // Kick off the listen pipeline (audio capture, STT, session DB row).
                 await listenService.handleListenRequest('Listen');
 
-                // Mirror the transition in shared state.
+                // Single state patch — the change subscription handles every side
+                // effect: dashboard hide, header show, listen show.
                 const newId = listenService.currentSessionId;
                 sharedStateService.patch({
                     showDashboard: false,

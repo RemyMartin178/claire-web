@@ -46,6 +46,26 @@ const DEFAULT_STATE = Object.freeze({
   showSessionDisconnectedModal: false,
 });
 
+// Fields that describe in-flight runtime state. They are NEVER persisted to
+// disk and ALWAYS reset to their defaults on cold start, regardless of what
+// shared-state.json says. This avoids a stale persisted "showHeader: false"
+// (left over from a previous Stop) shadowing the freshly-created visible
+// header window after relaunch.
+const TRANSIENT_KEYS = new Set([
+  'isHeaderLoaded',
+  'isListenLoaded',
+  'isDashboardLoaded',
+  'isCapturingScreenshot',
+  'dashboardFocusCount',
+  'showHeader',
+  'showListen',
+  'showDashboard',
+  'isListenRunning',
+  'session',
+  'showSessionDisconnectedModal',
+  'signInStatus',
+]);
+
 class SharedStateService extends EventEmitter {
   constructor() {
     super();
@@ -73,17 +93,17 @@ class SharedStateService extends EventEmitter {
     try {
       const raw = await fsp.readFile(file, 'utf8');
       const parsed = JSON.parse(raw);
-      // Persisted wins for fields it has, defaults fill the rest. appVersion
-      // always reflects the running build, not whatever was on disk.
+      // Persisted wins for non-transient fields, defaults fill the rest.
+      // Transient keys (window visibility, session, runtime flags) are forced
+      // back to their defaults so the state matches the freshly-created windows.
       this._state = {
         ...DEFAULT_STATE,
         ...parsed,
         appVersion: app.getVersion(),
-        // Window-loaded flags must NOT be persisted — they describe runtime readiness.
-        isHeaderLoaded: false,
-        isListenLoaded: false,
-        isDashboardLoaded: false,
       };
+      for (const key of TRANSIENT_KEYS) {
+        this._state[key] = DEFAULT_STATE[key];
+      }
     } catch (err) {
       if (err && err.code !== 'ENOENT') {
         logger.warn('[SharedState] state file unreadable, resetting:', err.message);
@@ -147,14 +167,8 @@ class SharedStateService extends EventEmitter {
     this._state = next;
     this.emit('change', { state: next, previous, patch: partial });
 
-    // Don't persist transient flags — they describe in-flight UI, not user data.
-    const persistable = Object.keys(partial).some(k =>
-      k !== 'isCapturingScreenshot' &&
-      k !== 'isHeaderLoaded' &&
-      k !== 'isListenLoaded' &&
-      k !== 'isDashboardLoaded' &&
-      k !== 'dashboardFocusCount'
-    );
+    // Persist only non-transient field changes — see TRANSIENT_KEYS above.
+    const persistable = Object.keys(partial).some(k => !TRANSIENT_KEYS.has(k));
     if (persistable) void this._save();
 
     return next;
