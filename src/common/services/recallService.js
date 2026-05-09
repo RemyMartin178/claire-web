@@ -1,5 +1,6 @@
 const sharedStateService = require('./sharedStateService');
 const { createRecallSdkUpload } = require('../ai/providers/claire-api');
+const windowManager = require('../../window/windowManager');
 const { createLogger } = require('./logger.js');
 
 const logger = createLogger('RecallService');
@@ -57,6 +58,7 @@ class RecallService {
   async setEnabled(enabled) {
     this.enabled = Boolean(enabled);
     if (!this.enabled) {
+      await this.stopRecording();
       sharedStateService.patch({ recallSdkStatus: this.activeWindowId ? 'recording' : 'idle' });
       return { success: true };
     }
@@ -64,35 +66,19 @@ class RecallService {
   }
 
   async handleMeetingDetected(evt) {
-    if (!this.enabled || !this.sdk) return;
-    const windowId = evt?.window?.id;
-    if (!windowId || this.activeWindowId) return;
+    if (!this.enabled) return;
+    const state = sharedStateService.get();
+    const platform = evt?.window?.platform?.trim();
+    if (!platform || state.session) return;
 
     try {
-      const upload = await createRecallSdkUpload({
-        window: evt.window,
-        metadata: { detected_at: new Date().toISOString() },
-      });
-
-      await this.sdk.startRecording({
-        windowId,
-        uploadToken: upload.upload_token,
-      });
-
-      this.activeWindowId = windowId;
-      this.activeUpload = upload;
-      sharedStateService.patch({
-        recallSdkStatus: 'recording',
-        recallRecording: {
-          windowId,
-          uploadId: upload.id,
-          recordingId: upload.recording_id,
-          startedAt: Date.now(),
-        },
+      windowManager.showMeetingNotification?.({
+        title: `${platform} meeting detected`,
+        source: 'recall',
+        platform,
       });
     } catch (e) {
-      sharedStateService.patch({ recallSdkStatus: 'error' });
-      logger.warn('[RecallService] failed to start recording', { error: e.message });
+      logger.warn('[RecallService] failed to show meeting notification', { error: e.message });
     }
   }
 
@@ -128,6 +114,86 @@ class RecallService {
       showSessionDisconnectedModal: true,
       dashboardFocusCount: prevFocus + 1,
     });
+  }
+
+  async prepareSessionRecording(session) {
+    if (!this.enabled || !this.sdk || !session?.id) return null;
+    const upload = await createRecallSdkUpload({
+      metadata: {
+        sessionId: session.id,
+        startedAt: session.startedAt,
+      },
+    });
+    return {
+      uploadToken: upload.upload_token,
+      uploadId: upload.id,
+      recordingId: upload.recording_id,
+      assemblyAiSpeechModel: 'universal-streaming',
+    };
+  }
+
+  async syncSharedState(state) {
+    if (!this.enabled) {
+      await this.stopRecording();
+      return;
+    }
+
+    if (!this.initialized) {
+      const result = await this.initialize();
+      if (!result.success) return;
+    }
+
+    const session = state.session;
+    if (!session?.recallSdkRecording?.uploadToken) {
+      await this.stopRecording();
+      return;
+    }
+
+    if (this.activeUpload?.sessionId === session.id) return;
+
+    await this.stopRecording();
+
+    const windowId = await this.sdk.prepareDesktopAudioRecording();
+    await this.sdk.startRecording({
+      windowId,
+      uploadToken: session.recallSdkRecording.uploadToken,
+    });
+
+    this.activeWindowId = windowId;
+    this.activeUpload = {
+      sessionId: session.id,
+      uploadId: session.recallSdkRecording.uploadId,
+      recording_id: session.recallSdkRecording.recordingId,
+    };
+
+    sharedStateService.patch({
+      recallSdkStatus: 'recording',
+      recallRecording: {
+        windowId,
+        uploadId: session.recallSdkRecording.uploadId,
+        recordingId: session.recallSdkRecording.recordingId,
+        startedAt: Date.now(),
+      },
+    });
+    logger.info('[RecallService] started Recall recording for session', { sessionId: session.id, windowId });
+  }
+
+  async stopRecording() {
+    if (!this.sdk || !this.activeWindowId) return;
+    const windowId = this.activeWindowId;
+    try {
+      await this.sdk.stopRecording({ windowId });
+      logger.info('[RecallService] stopped Recall recording', { windowId });
+    } catch (e) {
+      logger.warn('[RecallService] stopRecording failed', { error: e.message });
+    } finally {
+      this.activeWindowId = null;
+      this.activeUpload = null;
+      sharedStateService.patch({
+        recallSdkStatus: this.enabled ? 'ready' : 'idle',
+        recallRecording: null,
+      });
+    }
   }
 
   handleError(evt) {

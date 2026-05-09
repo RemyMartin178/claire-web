@@ -15,6 +15,7 @@ const presetRepository = require('../common/repositories/preset');
 
 const askService = require('../features/ask/askService');
 const listenService = require('../features/listen/listenService');
+const recallService = require('../common/services/recallService');
 const permissionService = require('../common/services/permissionService');
 const subscriptionService = require('../common/services/subscriptionService');
 const { createLogger } = require('../common/services/logger.js');
@@ -400,8 +401,17 @@ module.exports = {
                 if (listenButtonText === 'Listen') {
                     const newId = listenService.currentSessionId;
                     if (newId) {
+                        const startedAt = Date.now();
+                        let recallSdkRecording = null;
+                        if (sharedStateService.get().autoMeetingDetectionEnabled) {
+                            try {
+                                recallSdkRecording = await recallService.prepareSessionRecording({ id: newId, startedAt });
+                            } catch (e) {
+                                logger.warn('[FeatureBridge] Recall session preparation failed', { error: e.message });
+                            }
+                        }
                         sharedStateService.patch({
-                            session: { id: newId, startedAt: Date.now() },
+                            session: { id: newId, startedAt, ...(recallSdkRecording && { recallSdkRecording }) },
                             isListenRunning: true,
                         });
                     }

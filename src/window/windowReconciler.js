@@ -146,6 +146,9 @@ function reconcile({ state, previous }) {
     reconcileSelectedModel(state, previous);
   }
 
+  void recallService.syncSharedState(state)
+    .catch((e) => logger.warn('[WindowReconciler] Recall state sync failed', { error: e.message }));
+
   void reconcileAsyncSideEffects(state, previous);
 }
 

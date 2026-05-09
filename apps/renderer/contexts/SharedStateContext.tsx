@@ -12,7 +12,16 @@ export type SharedState = {
   showHeader: boolean
   showListen: boolean
   dashboardFocusCount: number
-  session: { id: string; startedAt: number } | null
+  session: {
+    id: string
+    startedAt: number
+    recallSdkRecording?: {
+      uploadToken: string
+      uploadId?: string
+      recordingId?: string | null
+      assemblyAiSpeechModel?: string
+    }
+  } | null
   lastSessionId: string | null
   isListenRunning: boolean
   isCapturingScreenshot: boolean
