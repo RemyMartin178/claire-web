@@ -1097,7 +1097,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                         type="button"
                         onClick={() => { setIsSavingEmail(true); setTimeout(() => { setIsSavingEmail(false); setIsEditingEmail(false); setNewEmailInput(''); }, 1000); }}
                         disabled={!newEmailInput || isSavingEmail}
-                        className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
+                        className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white dark:text-[#18181b] text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
                       >
                         {isSavingEmail ? 'Mise à jour...' : 'Mettre à jour'}
                       </button>
@@ -1285,7 +1285,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       type="button"
                       onClick={handleSavePassword}
                       disabled={isSavingPassword}
-                      className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
+                      className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white dark:text-[#18181b] text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
                     >
                       {isSavingPassword ? 'Sauvegarde...' : 'Sauvegarder'}
                     </button>
