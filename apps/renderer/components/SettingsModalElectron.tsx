@@ -1033,7 +1033,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
               <div className="relative">
                 <button 
                   onClick={() => setShowEmailOptions(!showEmailOptions)}
-                  className="text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 transition-colors p-1 rounded-md hover:bg-[#f4f4f5] dark:bg-[#27272a]"
+                  className="text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 transition-colors p-1 rounded-md hover:bg-transparent"
                 >
                   <MoreHorizontal size={18} />
                 </button>
