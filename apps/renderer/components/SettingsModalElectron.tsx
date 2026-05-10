@@ -582,7 +582,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         className={`flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150
           ${isActive
             ? 'bg-[#f4f4f5] text-[#18181b] font-medium dark:bg-white/10 dark:text-white'
-            : 'text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white'}`}
+            : 'text-[#71717a] dark:text-[#a1a1aa] font-medium hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white'}`}
         style={{ fontSize: '13.5px' }}
       >
         <Icon size={14} className="shrink-0" strokeWidth={isActive ? 2.5 : 2} />
@@ -1623,7 +1623,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 <button
                   type="button"
                   onClick={() => openInBrowser('https://support.clairia.app')}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white"
                   style={{ fontSize: '13.5px' }}
                 >
                   <Globe size={14} className="shrink-0" strokeWidth={2} />
@@ -1632,7 +1632,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 <button
                   type="button"
                   onClick={() => openInBrowser('mailto:support@clairia.app')}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white"
                   style={{ fontSize: '13.5px' }}
                 >
                   <HelpCircle size={14} className="shrink-0" strokeWidth={2} />
@@ -1642,7 +1642,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
               <div className="mt-auto pt-4 pb-4 flex flex-col gap-0.5 px-3">
                 <button
                   onClick={() => { handleLogout(); onClose(); }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-red-600 dark:hover:bg-transparent dark:hover:text-red-400 transition duration-150"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-red-600 dark:hover:bg-transparent dark:hover:text-red-400 transition duration-150"
                   style={{ fontSize: '13.5px' }}
                 >
                   <LogOut size={14} strokeWidth={2} className="shrink-0" />
@@ -1656,7 +1656,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       onClose();
                     }
                   }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white transition duration-150"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white transition duration-150"
                   style={{ fontSize: '13.5px' }}
                 >
                   <Power size={14} strokeWidth={2} className="shrink-0" />
