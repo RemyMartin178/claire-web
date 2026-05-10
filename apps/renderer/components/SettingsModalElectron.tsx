@@ -1049,7 +1049,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       >
                         <button 
                           onClick={() => { setIsEditingEmail(true); setShowEmailOptions(false); }}
-                          className="w-full text-left px-4 py-2 text-[13px] font-medium text-neutral-700 hover:bg-[#f4f4f5] dark:bg-[#18181b]/50 transition-colors"
+                          className="w-full text-left px-4 py-2 text-[13px] font-medium text-neutral-700 dark:text-[#fafafa] hover:bg-[#f4f4f5] dark:hover:bg-white/5 transition-colors"
                         >
                           Changer l'adresse e-mail
                         </button>
