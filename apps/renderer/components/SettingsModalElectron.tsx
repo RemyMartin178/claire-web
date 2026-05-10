@@ -20,6 +20,7 @@ import { auth, storage } from '@/utils/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential, updateProfile } from 'firebase/auth';
 import Avatar from './Avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -161,9 +162,12 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   // Mic
   const [micDeviceName, setMicDeviceName] = useState('Microphone par défaut');
   const [isMicTesting, setIsMicTesting] = useState(false);
+  const [micStatus, setMicStatus] = useState('Connexion au microphone...');
   const micLevelRef = useRef<HTMLDivElement | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const micAnimRef = useRef<number>(0);
+  const micSmoothedRef = useRef<number>(0);
+  const micHistoryRef = useRef<number[]>(Array.from({ length: 17 }, () => 0));
 
   // Billing
   const [billingAnnual, setBillingAnnual] = useState(true);
@@ -453,43 +457,65 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
   const handleMicTest = async () => {
     if (isMicTesting) {
-      // Stop
+      cancelAnimationFrame(micAnimRef.current);
       micStreamRef.current?.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
-      cancelAnimationFrame(micAnimRef.current);
+      micSmoothedRef.current = 0;
+      micHistoryRef.current = Array.from({ length: 17 }, () => 0);
       if (micLevelRef.current) {
-        (micLevelRef.current as HTMLElement).style.width = '0%';
+        Array.from(micLevelRef.current.children).forEach(bar => {
+          (bar as HTMLElement).style.height = '8px';
+          (bar as HTMLElement).style.opacity = '0.2';
+        });
       }
       setIsMicTesting(false);
       return;
     }
+    setMicStatus('Connexion au microphone...');
+    setIsMicTesting(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
-      // Get device name
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const mic = devices.find(d => d.kind === 'audioinput');
+      const mic = devices.find(d => d.kind === 'audioinput' && d.deviceId === 'default') ?? devices.find(d => d.kind === 'audioinput');
       if (mic) setMicDeviceName(mic.label || 'Microphone par défaut');
 
       const ctx = new AudioContext();
-      const source = ctx.createMediaStreamSource(stream);
+      await ctx.resume();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
-      source.connect(analyser);
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      setIsMicTesting(true);
+      analyser.smoothingTimeConstant = 0.85;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const data = new Uint8Array(analyser.fftSize);
+      setMicStatus('Parlez dans votre microphone pour tester le niveau d\'entrée.');
 
       const tick = () => {
-        analyser.getByteFrequencyData(data);
-        const avg = data.reduce((sum, v) => sum + v, 0) / data.length;
-        const pct = Math.min(100, (avg / 128) * 100);
+        analyser.getByteTimeDomainData(data);
+        let rms = 0;
+        for (let i = 0; i < data.length; i++) {
+          const norm = (data[i] - 128) / 128;
+          rms += norm * norm;
+        }
+        const level = Math.min(1, Math.sqrt(rms / data.length) * 6);
+        micSmoothedRef.current = micSmoothedRef.current * 0.65 + level * 0.35;
+        const val = micSmoothedRef.current < 0.01 ? 0 : micSmoothedRef.current;
+        micHistoryRef.current = [...micHistoryRef.current.slice(1), val];
         if (micLevelRef.current) {
-          (micLevelRef.current as HTMLElement).style.width = `${pct}%`;
+          const bars = micLevelRef.current.children;
+          for (let i = 0; i < bars.length; i++) {
+            const bar = bars[i] as HTMLElement;
+            const v = micHistoryRef.current[i];
+            bar.style.height = `${8 + v * 28}px`;
+            bar.style.opacity = `${0.2 + v * 0.8}`;
+          }
         }
         micAnimRef.current = requestAnimationFrame(tick);
       };
       micAnimRef.current = requestAnimationFrame(tick);
-    } catch { toast.error('Impossible d\'accéder au microphone.'); }
+    } catch {
+      setIsMicTesting(false);
+      toast.error('Impossible d\'accéder au microphone.');
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -663,31 +689,36 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <div className="mb-8">
         <p className="text-[14px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1">Paramètres audio</p>
         <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa] mb-3">Testez votre entrée audio avant de rejoindre un appel</p>
-        <div className="flex items-center justify-between gap-4 px-3 py-3 rounded-lg bg-[#f9f9f9] dark:bg-[#18181b] border border-[#e4e4e7] dark:border-white/10">
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1">Source du microphone</p>
-            <div className="flex items-center gap-2">
-              <Mic size={13} className="text-neutral-400 dark:text-neutral-400 shrink-0" />
-              <p className="text-[12px] text-[#71717a] dark:text-[#a1a1aa] truncate">{micDeviceName}</p>
-            </div>
-            {isMicTesting && (
-              <div className="mt-2.5">
-                <div className="w-full h-[6px] rounded-full bg-[#e4e4e7] dark:bg-[#27272a] overflow-hidden">
-                  <div
-                    ref={micLevelRef as any}
-                    className="h-full rounded-full bg-[#22c55e]"
-                    style={{ width: '0%', transition: 'width 0.05s ease' }}
-                  />
-                </div>
+        <div className="space-y-4 rounded-lg bg-[#f9f9f9] dark:bg-[#18181b] border border-[#e4e4e7] dark:border-white/10 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">Source du microphone</p>
+              <div className="flex items-center gap-1.5">
+                <Mic size={14} className="text-[#71717a] dark:text-[#a1a1aa] shrink-0" />
+                <p className="text-[12px] text-[#71717a] dark:text-[#a1a1aa] leading-[1.35]">{micDeviceName || ' '}</p>
               </div>
-            )}
+            </div>
+            <button
+              onClick={handleMicTest}
+              className={`shrink-0 px-3 py-1.5 border shadow-sm transition-colors rounded-[6px] text-[13px] font-semibold ${isMicTesting ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50' : 'bg-white dark:bg-[#27272a] border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-neutral-100 hover:bg-[#f4f4f5] dark:hover:bg-[#3f3f46]'}`}
+            >
+              {isMicTesting ? 'Arrêter le test' : 'Tester le microphone'}
+            </button>
           </div>
-          <button
-            onClick={handleMicTest}
-            className={`shrink-0 px-3 py-1.5 border shadow-sm transition-colors rounded-[6px] text-[13px] font-bold ${isMicTesting ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50' : 'bg-white dark:bg-[#27272a] border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-neutral-100 hover:bg-[#f4f4f5] dark:hover:bg-[#3f3f46]'}`}
-          >
-            {isMicTesting ? 'Arrêter' : 'Tester le microphone'}
-          </button>
+          {isMicTesting && (
+            <div className="space-y-2 rounded-md border border-[#e4e4e7] dark:border-white/10 bg-white/70 dark:bg-black/20 p-3">
+              <div className="flex h-14 items-end justify-center gap-1 rounded-md" ref={micLevelRef}>
+                {Array.from({ length: 17 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 rounded-full bg-[#18181b] dark:bg-white"
+                    style={{ height: '8px', opacity: 0.2, transition: 'height 75ms ease, opacity 75ms ease' }}
+                  />
+                ))}
+              </div>
+              <p className="text-center text-[12px] text-[#71717a] dark:text-[#a1a1aa] leading-[1.35]">{micStatus}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -748,7 +779,16 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <h2 className="text-[22px] font-bold text-[#18181b] dark:text-[#fafafa] tracking-tight mb-2">Calendrier</h2>
       <p className="text-[14px] text-[#71717a] dark:text-[#a1a1aa] mb-8">Gérez le compte calendrier que Claire utilise pour les réunions et rappels.</p>
       {isLoadingCalendar ? (
-        <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa]">Chargement...</p>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-4 items-center">
+            <Skeleton className="w-12 h-12 rounded-md shrink-0" />
+            <div className="space-y-2">
+              <Skeleton className="h-[13px] w-32" />
+              <Skeleton className="h-[12px] w-56" />
+            </div>
+          </div>
+          <Skeleton className="h-8 w-24 rounded-[6px]" />
+        </div>
       ) : (
         <div className="flex items-center justify-between">
           <div className="flex gap-4 items-center">
