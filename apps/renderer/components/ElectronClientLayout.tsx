@@ -138,7 +138,7 @@ export default function ElectronClientLayout({
       {/* Content box — rounded border */}
       <div className="min-h-0 flex-1 p-1">
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-md border border-[#e4e4e7] dark:border-white/10 bg-white dark:bg-[#09090b]">
-          <div className="h-full w-full overflow-auto no-scrollbar">
+          <div className="flex h-full w-full flex-col overflow-auto no-scrollbar">
             {children}
           </div>
         </div>

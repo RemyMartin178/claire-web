@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ActivityLoading() {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-[#09090b] text-foreground font-body">
+    <div className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-[#09090b] text-foreground font-body">
       {/* Hero */}
       <div className="shrink-0 border-b border-border/30 bg-muted/50 px-6 py-5">
         <div className="mx-auto w-full max-w-[52rem]">
