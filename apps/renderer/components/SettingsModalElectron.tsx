@@ -997,22 +997,22 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
                   <div className="flex gap-4 mb-8">
                     <div className="flex-1">
-                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">First name</label>
+                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Prénom</label>
                       <input type="text" value={profileFirstName} onChange={e => setProfileFirstName(e.target.value)} placeholder="Prénom"
                         className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Last name</label>
-                      <input type="text" value={profileLastName} onChange={e => setProfileLastName(e.target.value)} placeholder="Last name"
+                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Nom</label>
+                      <input type="text" value={profileLastName} onChange={e => setProfileLastName(e.target.value)} placeholder="Nom"
                         className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end gap-4 mt-4 pt-4 border-t border-[#e4e4e7] dark:border-white/10">
-                    <button type="button" onClick={() => setIsEditingProfile(false)} className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                    <button type="button" onClick={() => setIsEditingProfile(false)} className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">Annuler</button>
                     <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile}
-                      className="px-5 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60">
-                      {isSavingProfile ? 'Saving...' : 'Save'}
+                      className="px-5 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white dark:text-[#18181b] text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60">
+                      {isSavingProfile ? 'Enregistrement...' : 'Enregistrer'}
                     </button>
                   </div>
                 </motion.div>
