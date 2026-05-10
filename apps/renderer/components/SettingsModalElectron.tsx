@@ -458,9 +458,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       micStreamRef.current = null;
       cancelAnimationFrame(micAnimRef.current);
       if (micLevelRef.current) {
-        Array.from(micLevelRef.current.children).forEach((bar) => {
-          (bar as HTMLElement).style.height = '4%';
-        });
+        (micLevelRef.current as HTMLElement).style.width = '0%';
       }
       setIsMicTesting(false);
       return;
@@ -481,18 +479,12 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       const data = new Uint8Array(analyser.frequencyBinCount);
       setIsMicTesting(true);
 
-      const BARS = 20;
       const tick = () => {
         analyser.getByteFrequencyData(data);
+        const avg = data.reduce((sum, v) => sum + v, 0) / data.length;
+        const pct = Math.min(100, (avg / 128) * 100);
         if (micLevelRef.current) {
-          const bars = micLevelRef.current.children;
-          for (let i = 0; i < bars.length; i++) {
-            const bar = bars[i] as HTMLElement;
-            const freqIndex = Math.floor((i / BARS) * data.length * 0.5);
-            const value = data[freqIndex];
-            const height = Math.max(4, (value / 255) * 100);
-            bar.style.height = `${height}%`;
-          }
+          (micLevelRef.current as HTMLElement).style.width = `${pct}%`;
         }
         micAnimRef.current = requestAnimationFrame(tick);
       };
@@ -679,11 +671,13 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
               <p className="text-[12px] text-[#71717a] dark:text-[#a1a1aa] truncate">{micDeviceName}</p>
             </div>
             {isMicTesting && (
-              <div className="mt-2">
-                <div ref={micLevelRef} className="flex gap-[2px] items-end h-8">
-                  {Array.from({ length: 20 }).map((_, i) => (
-                    <div key={i} className="flex-1 rounded-sm bg-[#34d399]" style={{ height: '4%', transition: 'height 0.05s ease' }} />
-                  ))}
+              <div className="mt-2.5">
+                <div className="w-full h-[6px] rounded-full bg-[#e4e4e7] dark:bg-[#27272a] overflow-hidden">
+                  <div
+                    ref={micLevelRef as any}
+                    className="h-full rounded-full bg-[#22c55e]"
+                    style={{ width: '0%', transition: 'width 0.05s ease' }}
+                  />
                 </div>
               </div>
             )}
