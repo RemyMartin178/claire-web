@@ -459,7 +459,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       cancelAnimationFrame(micAnimRef.current);
       if (micLevelRef.current) {
         Array.from(micLevelRef.current.children).forEach((bar) => {
-          (bar as HTMLElement).style.backgroundColor = '#e5e7eb';
+          (bar as HTMLElement).style.height = '4%';
         });
       }
       setIsMicTesting(false);
@@ -481,20 +481,17 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       const data = new Uint8Array(analyser.frequencyBinCount);
       setIsMicTesting(true);
 
-      const BARS = 12;
+      const BARS = 20;
       const tick = () => {
         analyser.getByteFrequencyData(data);
-        const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        const level = Math.min(100, (avg / 128) * 100 * 2);
         if (micLevelRef.current) {
           const bars = micLevelRef.current.children;
           for (let i = 0; i < bars.length; i++) {
             const bar = bars[i] as HTMLElement;
-            const threshold = (i / BARS) * 100;
-            const active = level > threshold;
-            bar.style.backgroundColor = active
-              ? (i < 8 ? '#34d399' : i < 10 ? '#fbbf24' : '#f87171')
-              : '#e5e7eb';
+            const freqIndex = Math.floor((i / BARS) * data.length * 0.5);
+            const value = data[freqIndex];
+            const height = Math.max(4, (value / 255) * 100);
+            bar.style.height = `${height}%`;
           }
         }
         micAnimRef.current = requestAnimationFrame(tick);
@@ -674,7 +671,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <div className="mb-8">
         <p className="text-[14px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1">Paramètres audio</p>
         <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa] mb-3">Testez votre entrée audio avant de rejoindre un appel</p>
-        <div className="flex items-center justify-between gap-4 py-2">
+        <div className="flex items-center justify-between gap-4 px-3 py-3 rounded-lg bg-[#f9f9f9] dark:bg-[#18181b] border border-[#e4e4e7] dark:border-white/10">
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1">Source du microphone</p>
             <div className="flex items-center gap-2">
@@ -683,9 +680,9 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             </div>
             {isMicTesting && (
               <div className="mt-2">
-                <div ref={micLevelRef} className="flex gap-0.5 items-end h-5">
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="w-1.5 rounded-sm bg-neutral-200" style={{ height: `${40 + i * 5}%`, transition: 'background-color 0.05s' }} />
+                <div ref={micLevelRef} className="flex gap-[2px] items-end h-8">
+                  {Array.from({ length: 20 }).map((_, i) => (
+                    <div key={i} className="flex-1 rounded-sm bg-[#34d399]" style={{ height: '4%', transition: 'height 0.05s ease' }} />
                   ))}
                 </div>
               </div>
@@ -693,7 +690,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
           </div>
           <button
             onClick={handleMicTest}
-            className={`shrink-0 px-3 py-1.5 border text-neutral-900 dark:text-neutral-100 shadow-sm transition-colors rounded-[6px] text-[13px] font-bold ${isMicTesting ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100' : 'bg-white dark:bg-[#18181b]/50 border-neutral-200 dark:border-white/10 hover:bg-[#f4f4f5]'}`}
+            className={`shrink-0 px-3 py-1.5 border shadow-sm transition-colors rounded-[6px] text-[13px] font-bold ${isMicTesting ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50' : 'bg-white dark:bg-[#27272a] border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-neutral-100 hover:bg-[#f4f4f5] dark:hover:bg-[#3f3f46]'}`}
           >
             {isMicTesting ? 'Arrêter' : 'Tester le microphone'}
           </button>
