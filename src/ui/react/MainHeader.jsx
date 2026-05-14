@@ -55,14 +55,17 @@ const CSS = `
   -webkit-app-region: drag;
   display: inline-flex;
   align-items: center;
-  height: 32px;
-  padding: 0;
+  height: 34px;
+  padding: 0 9px;
   border-radius: 100px;
-  background: transparent;
-  border: 0;
+  background: hsla(252,10%,10%,0.82);
+  border: 0.5px solid rgba(255,255,255,0.09);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.38), 0 1px 0 rgba(255,255,255,0.04) inset;
   gap: 6px;
   position: relative;
   overflow: visible;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
 .mh-pill .mh-wide-btn { order: 1; }
@@ -85,14 +88,13 @@ const CSS = `
   height: 1px;
   background: linear-gradient(90deg,
     transparent 0%,
-    rgba(255,255,255,0.18) 30%,
-    rgba(255,255,255,0.22) 50%,
-    rgba(255,255,255,0.18) 70%,
+    rgba(255,255,255,0.14) 30%,
+    rgba(255,255,255,0.18) 50%,
+    rgba(255,255,255,0.14) 70%,
     transparent 100%
   );
   border-radius: 1px;
   pointer-events: none;
-  display: none;
 }
 
 /* ── DIVIDER ── */
@@ -138,64 +140,54 @@ const CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 0;
-  background: linear-gradient(#2e3039,#272a31);
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
-  color: rgba(255, 255, 255, 0.90);
+  background: rgba(255,255,255,0.07);
+  color: rgba(255, 255, 255, 0.72);
   cursor: pointer;
-  transition: filter 0.15s ease, color 0.12s ease, transform 0.12s ease;
+  transition: background 0.15s ease, color 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
   position: relative;
 }
 .mh-btn:hover {
-  filter: brightness(1.2);
+  background: rgba(255,255,255,0.14);
   color: rgba(255, 255, 255, 0.95);
 }
-.mh-btn:active {
-  transform: scale(0.92);
-}
+.mh-btn:active { transform: scale(0.92); }
 .mh-btn.active {
+  background: rgba(255,255,255,0.12);
   color: rgba(255, 255, 255, 0.95);
-  filter: brightness(1.08);
 }
-.mh-btn.accent {
-  color: rgba(99, 179, 237, 0.9);
-}
-.mh-btn.accent:hover {
-  color: rgba(144, 205, 244, 1);
-  filter: brightness(1.18);
-}
-.mh-btn svg {
-  display: block;
-}
+.mh-btn.accent { color: rgba(99, 179, 237, 0.9); }
+.mh-btn.accent:hover { color: rgba(144, 205, 244, 1); }
+.mh-btn svg { display: block; }
 
-/* ── WIDE BUTTON (Ask / text+icon) ── */
+/* ── WIDE BUTTON (Hide) ── */
 .mh-wide-btn {
   -webkit-app-region: no-drag;
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 32px;
-  padding: 0 13px 0 11px;
+  height: 26px;
+  padding: 0 11px;
   border-radius: 100px;
   border: none;
-  background: linear-gradient(#0544a9,#022c70);
-  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
-  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255,255,255,0.10);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: filter 0.15s ease, transform 0.12s ease;
+  transition: background 0.15s ease, color 0.12s ease, transform 0.12s ease;
   white-space: nowrap;
   flex-shrink: 0;
   margin: 0;
 }
 .mh-wide-btn:hover {
-  filter: brightness(1.18);
+  background: rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.95);
 }
 .mh-wide-btn:active { transform: scale(0.94); }
 .mh-wide-btn svg { opacity: 0.86; }
@@ -296,7 +288,7 @@ const CSS = `
 .mh-ctrl {
   -webkit-app-region: no-drag;
   display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px;
+  width: 26px; height: 26px;
   border-radius: 50%;
   border: 0;
   background: linear-gradient(#2e3039,#272a31);
@@ -306,14 +298,12 @@ const CSS = `
   flex-shrink: 0;
   transition: filter 0.15s ease, transform 0.12s ease, color 0.12s ease;
 }
-.mh-ctrl:hover { filter: brightness(1.2); color: #fff; }
+.mh-ctrl:hover { filter: brightness(1.25); color: #fff; }
 .mh-ctrl:active { transform: scale(0.92); }
 .mh-ctrl:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
-.mh-ctrl.mic { background: linear-gradient(#2e3039,#272a31); }
-.mh-ctrl.mic:hover { filter: brightness(1.2); }
-.mh-ctrl.stop { background: linear-gradient(#2e3039,#272a31); color: rgba(255,255,255,0.78); }
-.mh-ctrl.stop:hover { color: #fecaca; filter: brightness(1.2); }
-.mh-listen-controls { display: flex; align-items: center; gap: 6px; }
+.mh-ctrl.stop { color: rgba(255,255,255,0.78); }
+.mh-ctrl.stop:hover { color: #fecaca; }
+.mh-listen-controls { display: flex; align-items: center; gap: 5px; }
 @keyframes ctrl-pop {
   0%   { opacity: 0; transform: scale(0.55); }
   70%  { transform: scale(1.08); }
@@ -382,50 +372,6 @@ const CSS = `
 }
 .mh-quit-btn:hover { filter: brightness(1.18); color: rgba(255,255,255,0.95); }
 
-/* Cluely-like compact session bar: logo, Hide, stop. */
-.mh-pill {
-  height: 58px;
-  padding: 7px;
-  gap: 7px;
-  background: #4a4b53;
-  border: 0;
-  box-shadow: 0 14px 30px rgba(0,0,0,0.28), inset 0 1px rgba(255,255,255,0.08);
-}
-.mh-pill::before {
-  content: "\\2197";
-  position: static;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  color: rgba(255,255,255,0.94);
-  font-size: 20px;
-  font-weight: 800;
-  background: transparent;
-  flex: 0 0 auto;
-  order: 0;
-}
-.mh-wide-btn {
-  height: 40px;
-  padding: 0 15px 0 13px;
-  color: rgba(255,255,255,0.92);
-  background: linear-gradient(#2f323a,#24272e);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.32), inset 0 1px rgba(255,255,255,0.12), 0 5px 12px rgba(0,0,0,0.22);
-}
-.mh-wide-btn svg { display: none; }
-.mh-wide-btn::before {
-  content: "\\2304";
-  font-size: 15px;
-  line-height: 1;
-  color: rgba(255,255,255,0.82);
-  transform: translateY(-2px);
-}
-.mh-ctrl {
-  width: 40px;
-  height: 40px;
-}
 `;
 
 const KEY_MAP = {

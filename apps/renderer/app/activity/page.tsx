@@ -290,13 +290,13 @@ export default function ActivityPage() {
     <div className="flex flex-col min-h-full text-foreground font-body motion-safe:animate-page-enter">
 
       {/* ── Hero section ── */}
-      <div className="shrink-0 border-b border-border/30 bg-muted/50 px-6 py-5">
+      <div className="shrink-0 border-b border-border/30 bg-muted/30 px-6 py-6">
         <div className="mx-auto w-full max-w-[52rem]">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
 
             {/* Left: greeting */}
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h1 className="font-normal text-2xl text-muted-foreground/90 tracking-tight">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="font-semibold text-[1.65rem] text-foreground tracking-tight leading-none">
                 {getGreeting(currentTime)}{userInfo.display_name ? `, ${userInfo.display_name.split(' ')[0]}` : ''}
               </h1>
               {isRefreshing && (
@@ -315,29 +315,21 @@ export default function ActivityPage() {
                   aria-hidden={!isStartingClaire}
                   className={`absolute -left-7 inline-flex size-4 items-center justify-center text-muted-foreground/70 transition-opacity duration-150 ${isStartingClaire ? 'opacity-100' : 'opacity-0'}`}
                 >
-                  <svg
-                    className="size-4 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
+                  <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                   </svg>
                 </span>
                 <button
-                onClick={handleStartClaire}
-                disabled={isStartingClaire}
-                aria-label="Démarrer Claire"
-                className="relative inline-flex items-center gap-2 h-10 px-5 rounded-full text-[13px] font-semibold text-white transform-gpu transition-[filter,box-shadow,transform,opacity] duration-180 ease-apple hover:scale-[1.025] hover:brightness-105 active:scale-[0.985] disabled:opacity-80 disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
-                style={{ background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%)', boxShadow: '0 0 0 0.678px #0c44a1, inset 0 -1.355px #022c70, inset 0 0.678px #81b6ff' }}
-              >
-                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
-                </svg>
-                Démarrer Claire
+                  onClick={handleStartClaire}
+                  disabled={isStartingClaire}
+                  aria-label="Démarrer Claire"
+                  className="relative inline-flex items-center gap-2 h-9 px-5 rounded-full text-[13px] font-semibold text-white transition duration-150 hover:scale-105 hover:brightness-125 active:scale-[0.97] disabled:opacity-80 disabled:hover:scale-100 focus-visible:outline-none"
+                  style={{ background: 'linear-gradient(#0544a9,#022c70)', boxShadow: '0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff' }}
+                >
+                  <svg className="size-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
+                  </svg>
+                  Démarrer Claire
                 </button>
               </div>
             )}

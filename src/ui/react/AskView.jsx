@@ -11,7 +11,7 @@ const injectStyles = (id, css) => {
 };
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;450;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600&display=swap');
 
 @keyframes ask-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes ask-fade-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
@@ -21,12 +21,12 @@ const CSS = `
 
 .ask-view-root {
   display: flex; flex-direction: column; width: 100%;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased; color: white;
-  background: linear-gradient(to bottom, #18171cbf, #18171ccc);
-  border-radius: 1rem;
-  border: 1px solid rgba(207,226,255,0.24);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: rgba(11,11,14,0.88);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.09);
+  backdrop-filter: blur(28px) saturate(190%); -webkit-backdrop-filter: blur(28px) saturate(190%);
   overflow: hidden; position: relative;
 }
 .ask-view-root::before {
@@ -350,109 +350,124 @@ const CSS = `
 /* === CLUELY-STYLE ASK PANEL === */
 .ask-view-root {
   min-height: 168px;
-  background: linear-gradient(180deg, #3a3a3d 0%, #333335 100%);
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 22px;
-  box-shadow: 0 18px 48px rgba(0,0,0,0.32), inset 0 1px rgba(255,255,255,0.06);
+  background: rgba(11,11,14,0.88);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.60), 0 1px 0 rgba(255,255,255,0.05) inset;
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
 }
-.ask-view-root::before { display: none; }
+.ask-view-root::before {
+  display: block;
+  left: 14px; right: 14px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10) 40%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.10) 60%, transparent);
+}
 .ask-mode-tabs {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px 12px;
-  min-height: 48px;
+  gap: 2px;
+  padding: 10px 10px 6px;
+  min-height: 40px;
   overflow: hidden;
 }
 .ask-mode-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0;
+  gap: 6px;
+  padding: 5px 8px;
   border: 0;
+  border-radius: 100px;
   background: transparent;
-  color: rgba(255,255,255,0.74);
-  font-size: 14px;
-  font-weight: 650;
+  color: rgba(255,255,255,0.62);
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer !important;
-  transition: color 0.12s ease, transform 0.12s ease;
+  transition: background 0.15s ease, color 0.12s ease;
 }
-.ask-mode-btn:hover { color: rgba(255,255,255,0.95); transform: translateY(-1px); }
+.ask-mode-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.92); }
 .ask-mode-btn svg {
-  width: 17px;
-  height: 17px;
-  color: rgba(255,255,255,0.72);
+  width: 13px;
+  height: 13px;
+  color: currentColor;
 }
 .ask-mode-dot {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.25);
   flex: 0 0 auto;
+  margin: 0 2px;
 }
 .ask-suggestions { display: none; }
 .ask-composer {
-  margin: 0 12px 12px;
-  min-height: 90px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.06);
-  box-shadow: inset 0 1px rgba(255,255,255,0.05);
+  margin: 0 10px 10px;
+  min-height: 80px;
+  border-radius: 8px;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  box-shadow: inset 0 1px rgba(255,255,255,0.04);
   display: flex;
   flex-direction: column;
 }
 .ask-bar {
-  min-height: 48px;
-  align-items: center;
-  padding: 12px 10px 4px 16px;
+  min-height: 44px;
+  align-items: flex-start;
+  padding: 10px 10px 4px 12px;
 }
 .ask-text-input {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 400;
   color: rgba(255,255,255,0.88);
+  line-height: 1.5;
 }
-.ask-text-input::placeholder { color: rgba(214,216,224,0.62); }
+.ask-text-input::placeholder { color: rgba(255,255,255,0.32); }
 .ask-send-btn {
-  width: 32px;
-  height: 32px;
-  background: radial-gradient(120% 120% at 35% 15%, #2072ff 0%, #0a4fbd 72%);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 14px rgba(0,49,150,0.34);
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(#0544a9,#022c70);
+  box-shadow: 0 0 0 0.5px #0c44a1, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
+  margin-top: 2px;
 }
+.ask-send-btn svg { width: 11px; height: 11px; }
 .ask-composer-footer {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0 14px 12px;
+  gap: 6px;
+  padding: 0 10px 8px;
 }
 .ask-smart-chip {
-  height: 30px;
-  padding: 0 11px;
+  height: 24px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 15px;
-  background: rgba(255,255,255,0.18);
-  color: rgba(255,255,255,0.82);
-  font-size: 14px;
-  font-weight: 650;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.72);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer !important;
+  transition: background 0.12s, color 0.12s;
 }
+.ask-smart-chip:hover { background: rgba(255,255,255,0.16); color: #fff; }
 .ask-smart-chip.active {
-  background: rgba(255,255,255,0.27);
+  background: rgba(255,255,255,0.16);
   color: #fff;
 }
 .ask-more-btn {
-  width: 34px;
-  height: 30px;
+  width: 28px;
+  height: 24px;
   border: 0;
-  border-radius: 15px;
+  border-radius: 100px;
   background: transparent;
-  color: rgba(255,255,255,0.68);
-  font-size: 18px;
+  color: rgba(255,255,255,0.50);
+  font-size: 14px;
   font-weight: 700;
   line-height: 1;
   cursor: pointer !important;
+  transition: color 0.12s;
 }
+.ask-more-btn:hover { color: rgba(255,255,255,0.88); }
 .ask-more-btn.active { color: #8fd4bf; }
 .ask-composer .ask-web-btn,
 .ask-composer .ask-think-btn {

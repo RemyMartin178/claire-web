@@ -1160,3 +1160,41 @@ a:hover {
 .dark .claire-settings-label {
   color: rgba(255,255,255,0.3);
 }
+
+/* ── Title shimmer animation (post-session generation effect) ── */
+@keyframes title-shimmer-move {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.title-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.35) 0%,
+    rgba(0,0,0,0.55) 35%,
+    rgba(0,0,0,0.35) 50%,
+    rgba(0,0,0,0.55) 65%,
+    rgba(0,0,0,0.35) 100%
+  );
+  background-size: 400% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: title-shimmer-move 1.8s linear infinite;
+}
+
+.dark .title-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.20) 0%,
+    rgba(255,255,255,0.45) 35%,
+    rgba(255,255,255,0.20) 50%,
+    rgba(255,255,255,0.45) 65%,
+    rgba(255,255,255,0.20) 100%
+  );
+  background-size: 400% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: title-shimmer-move 1.8s linear infinite;
+}

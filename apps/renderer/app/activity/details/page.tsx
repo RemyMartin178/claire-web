@@ -184,6 +184,8 @@ function SessionDetailsContent() {
     }
   }, [userInfo, loading, router]);
 
+  const isNewSession = searchParams.get('new') === '1'
+  const [titleShimmer, setTitleShimmer] = useState(isNewSession)
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(() => cachedDetails);
   const [isLoading, setIsLoading] = useState(() => !cachedDetails)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -202,9 +204,17 @@ function SessionDetailsContent() {
     setSessionDetails(detailsQuery.data);
     setChatHistory(detailsQuery.data.ai_messages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })));
     setIsLoading(false);
+    setTitleShimmer(false);
     patchSessionFromDetails(queryClient, detailsQuery.data);
     trackSessionViewed(sessionId);
   }, [detailsQuery.data, queryClient, sessionId]);
+
+  // Auto-stop shimmer after 4s even if data is slow
+  useEffect(() => {
+    if (!titleShimmer) return
+    const t = setTimeout(() => setTitleShimmer(false), 4000)
+    return () => clearTimeout(t)
+  }, [titleShimmer]);
 
   useEffect(() => {
     if (detailsQuery.error) {
@@ -568,7 +578,7 @@ function SessionDetailsContent() {
           </div>
 
           {/* Title */}
-          <h1 className="mt-2 font-medium text-3xl text-foreground leading-[1.03] tracking-tight">
+          <h1 className={`mt-2 font-medium text-3xl leading-[1.03] tracking-tight transition-colors duration-500 ${titleShimmer ? 'text-muted-foreground/50 title-shimmer' : 'text-foreground'}`}>
             {displayTitle}
           </h1>
 
