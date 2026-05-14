@@ -24,7 +24,7 @@ class NotificationManager {
             showSTTComplete: false,
             showConversationUpdates: false,
             showErrors: true,
-            showSessionChanges: false,
+            showSessionChanges: true,
             sound: false,
             duration: 5000
         };
@@ -159,27 +159,144 @@ class NotificationManager {
     showSessionChange(state, options = {}) {
         if (!this.enabled || !this.settings.showSessionChanges) return;
 
-        const messages = {
-            'started': 'Session started - Ready to listen',
-            'stopped': 'Session stopped',
-            'paused': 'Session paused',
-            'resumed': 'Session resumed',
-            'error': 'Session error occurred'
-        };
-
-        const title = 'Session Status';
-        const body = messages[state] || `Session ${state}`;
-        
-        const notificationOptions = {
-            ...options,
-            onClick: () => {
-                this.focusMainWindow();
+        const configs = {
+            'started': {
+                subtitle: 'Claire',
+                title: 'Écoute démarrée',
+                duration: 3500,
+                action: null,
             },
-            sound: this.settings.sound,
-            tag: 'session-change'
+            'stopped': {
+                subtitle: 'Claire',
+                title: 'Écoute arrêtée',
+                duration: 4000,
+                action: { label: 'Voir l\'activité', channel: 'dashboard:open' },
+            },
+            'paused': {
+                subtitle: 'Claire',
+                title: 'Écoute en pause',
+                duration: 3000,
+                action: null,
+            },
+            'resumed': {
+                subtitle: 'Claire',
+                title: 'Écoute reprise',
+                duration: 3000,
+                action: null,
+            },
+            'error': {
+                subtitle: 'Claire',
+                title: 'Erreur lors de l\'écoute',
+                duration: 5000,
+                action: null,
+            },
+            'no_transcript': {
+                subtitle: 'Claire',
+                title: 'Aucune transcription détectée',
+                duration: 5000,
+                action: null,
+            },
+            'notes_ready': {
+                subtitle: 'Claire',
+                title: 'Notes prêtes',
+                duration: 5000,
+                action: { label: 'Voir les notes', channel: 'dashboard:open' },
+            },
+            'summary_ready': {
+                subtitle: 'Claire',
+                title: 'Résumé prêt',
+                duration: 5000,
+                action: { label: 'Voir le résumé', channel: 'dashboard:open' },
+            },
+            'zoom_ended': {
+                subtitle: 'Zoom',
+                title: 'Réunion Zoom terminée',
+                duration: 6000,
+                action: { label: 'Récupérer les notes', channel: 'dashboard:open' },
+            },
+            'meetings_done': {
+                subtitle: 'Claire',
+                title: 'Réunions terminées ? Récupérez vos notes',
+                duration: 7000,
+                action: { label: 'Voir les notes', channel: 'dashboard:open' },
+            },
+            'quota_exceeded': {
+                subtitle: 'Claire',
+                title: 'Quota atteint — Mettez à jour votre plan',
+                duration: 6000,
+                action: null,
+            },
+            'network_error': {
+                subtitle: 'Claire',
+                title: 'Erreur réseau — Vérifiez votre connexion',
+                duration: 5000,
+                action: null,
+            },
+            'auth_required': {
+                subtitle: 'Claire',
+                title: 'Connexion requise',
+                duration: 5000,
+                action: { label: 'Se connecter', channel: 'auth:open' },
+            },
         };
 
-        return this.showNotification(title, body, notificationOptions);
+        const cfg = configs[state] || { subtitle: 'Claire', title: `Session ${state}`, duration: 4000, action: null };
+
+        return this.showNotification(cfg.subtitle, cfg.title, {
+            ...options,
+            tag: `session-${state}`,
+            duration: cfg.duration,
+            action: cfg.action,
+        });
+    }
+
+    /**
+     * Show Zoom meeting ended notification
+     */
+    showZoomEnded() {
+        return this.showSessionChange('zoom_ended');
+    }
+
+    /**
+     * Show "meetings done, get notes" notification
+     */
+    showMeetingsDone() {
+        return this.showSessionChange('meetings_done');
+    }
+
+    /**
+     * Show notes ready notification after session summary
+     */
+    showNotesReady() {
+        return this.showSessionChange('notes_ready');
+    }
+
+    /**
+     * Show summary ready notification
+     */
+    showSummaryReady() {
+        return this.showSessionChange('summary_ready');
+    }
+
+    /**
+     * Show quota exceeded notification
+     */
+    showQuotaExceeded() {
+        return this.showSessionChange('quota_exceeded');
+    }
+
+    /**
+     * Show network error notification
+     */
+    showNetworkError() {
+        return this.showSessionChange('network_error');
+    }
+
+    /**
+     * Show auth required notification
+     */
+    showAuthRequired() {
+        return this.showSessionChange('auth_required');
     }
 
     /**
@@ -197,9 +314,10 @@ class NotificationManager {
 
             const toastData = {
                 icon,
-                subtitle: title,   // ex: "Session Status"
-                title: body,       // ex: "Session started"
-                duration: this.settings.duration || 4000,
+                subtitle: title,
+                title: body,
+                duration: options.duration || this.settings.duration || 4000,
+                action: options.action || null,
             };
 
             // Envoyer à toutes les fenêtres renderer (l'overlay capte via onShowToast)
@@ -222,6 +340,20 @@ class NotificationManager {
             logger.error('Error showing in-app notification:', { error });
             return false;
         }
+    }
+
+    /**
+     * Show warning notification
+     */
+    showWarning(message, options = {}) {
+        return this.showNotification('Claire', message, { ...options, tag: 'warning', urgency: 'normal' });
+    }
+
+    /**
+     * Show info notification
+     */
+    showInfo(message, options = {}) {
+        return this.showNotification('Claire', message, { ...options, tag: 'info' });
     }
 
     /**

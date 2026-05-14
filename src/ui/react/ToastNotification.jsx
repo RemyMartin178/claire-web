@@ -10,19 +10,21 @@ const injectStyles = (id, css) => {
 };
 
 const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
 @keyframes toast-in {
-  from { opacity: 0; transform: translateX(16px) scale(0.96); }
-  to   { opacity: 1; transform: translateX(0) scale(1); }
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes toast-out {
-  from { opacity: 1; transform: translateX(0) scale(1); }
-  to   { opacity: 0; transform: translateX(12px) scale(0.96); }
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(4px) scale(0.97); }
 }
 
 .toast-wrapper {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 16px;
+  right: 16px;
   z-index: 99999;
   pointer-events: none;
   display: flex;
@@ -32,41 +34,40 @@ const CSS = `
 }
 
 .toast-card {
-  background: rgba(22, 22, 26, 0.96);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
-  padding: 11px 14px 11px 12px;
+  background: #f4f4f5;
+  border: 1px solid #e4e4e7;
+  border-radius: 12px;
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 240px;
+  min-width: 260px;
   max-width: 340px;
   pointer-events: auto !important;
   -webkit-app-region: no-drag;
-  animation: toast-in 0.26s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+  animation: toast-in 0.22s cubic-bezier(0.34, 1.1, 0.64, 1) forwards;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.07);
 }
 
 .toast-card.toast-leaving {
-  animation: toast-out 0.20s cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  animation: toast-out 0.18s cubic-bezier(0.4, 0, 0.6, 1) forwards;
 }
 
 .toast-logo {
-  width: 30px; height: 30px; flex-shrink: 0;
-  border-radius: 8px;
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 7px;
   overflow: hidden;
   display: flex; align-items: center; justify-content: center;
 }
 .toast-logo img {
-  width: 100%; height: 100%; object-fit: cover; border-radius: 8px;
+  width: 100%; height: 100%; object-fit: cover; border-radius: 7px;
 }
 
 .toast-body { flex: 1; min-width: 0; }
 .toast-subtitle {
-  font-size: 10.5px;
-  color: rgba(255,255,255,0.38);
-  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
+  font-size: 10px;
+  color: #71717a;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-weight: 500;
   margin-bottom: 1px;
   white-space: nowrap;
@@ -75,35 +76,34 @@ const CSS = `
   letter-spacing: 0.01em;
 }
 .toast-title {
-  font-size: 13px;
-  color: rgba(255,255,255,0.90);
-  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
-  font-weight: 600;
-  line-height: 1.38;
+  font-size: 12.5px;
+  color: #18181b;
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-weight: 500;
+  line-height: 1.4;
   word-break: break-word;
-  letter-spacing: -0.01em;
 }
 
 .toast-dismiss {
   background: none; border: none; padding: 4px; cursor: pointer;
-  color: rgba(255,255,255,0.40); flex-shrink: 0;
+  color: #a1a1aa; flex-shrink: 0;
   transition: color 0.12s;
   border-radius: 4px;
   display: flex; align-items: center; justify-content: center;
   pointer-events: auto !important;
   -webkit-app-region: no-drag;
 }
-.toast-dismiss:hover { color: rgba(255,255,255,0.80); }
+.toast-dismiss:hover { color: #52525b; }
 
 .toast-action {
-  background: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0, #0c26a8 100%);
-  color: #CBE3FF;
-  box-shadow: 0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6ff;
+  background: linear-gradient(#0544a9, #022c70);
+  color: #cbe3ff;
+  box-shadow: 0 0 0 0.5px #0c44a1, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
   border: none;
-  border-radius: 8px;
-  padding: 5px 11px;
+  border-radius: 7px;
+  padding: 5px 10px;
   font-size: 11.5px;
-  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;

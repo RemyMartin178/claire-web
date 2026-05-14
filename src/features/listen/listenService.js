@@ -203,6 +203,9 @@ class ListenService {
         this.summaryService.setCallbacks({
             onAnalysisComplete: (data) => {
                 logger.info('[DATA] Analysis completed:', data);
+                if (notificationManager) {
+                    notificationManager.showNotesReady();
+                }
             },
             onStatusUpdate: (status) => {
                 this.sendToRenderer('update-status', status);
