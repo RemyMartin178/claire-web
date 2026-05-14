@@ -139,8 +139,26 @@ let currentHeaderState = 'apikey';
 const windowPool = new Map();
 
 let dashboardWindow = null;
-// Dev: override via DASHBOARD_DEV_URL. Prod: load from renderer.clairia.app.
-const DASHBOARD_URL = process.env.DASHBOARD_DEV_URL || 'https://renderer.clairia.app/electron-login';
+// Dev: load from the local auxiliary frontend. Prod: load the packaged static renderer.
+function getInitialDashboardPath() {
+    try {
+        const authService = require('../common/services/authService');
+        const userState = authService.getCurrentUser();
+        if (userState?.isLoggedIn) return '/activity';
+    } catch (_) { }
+    return '/electron-login';
+}
+
+function getDashboardUrl() {
+    const initialPath = getInitialDashboardPath();
+
+    if (app.isPackaged) {
+        return process.env.DASHBOARD_URL || `app://renderer${initialPath}`;
+    }
+
+    const baseUrl = (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || process.env.DASHBOARD_DEV_URL || 'http://localhost:3000').trim();
+    return `${baseUrl.replace(/\/$/, '')}${initialPath}`;
+}
 
 let settingsHideTimer = null;
 let agentSelectorHideTimer = null;
@@ -336,7 +354,7 @@ const getOverlayInitialState = () => {
         return { pillX: x, pillY: y };
     }
     const display = screen.getPrimaryDisplay();
-    return { pillX: Math.round((display.workArea.width - 353) / 2), pillY: 21 };
+    return { pillX: Math.round((display.workArea.width - 202) / 2), pillY: 21 };
 };
 
 const getOverlayWindow = () => overlayWindow;
@@ -1339,9 +1357,10 @@ function getDisplayById(displayId) {
 
 
 
-function createWindows() {
-    const HEADER_HEIGHT = 47;
-    const DEFAULT_WINDOW_WIDTH = 353;
+function createWindows(options = {}) {
+    const { showHeader = true } = options;
+    const HEADER_HEIGHT = 58;
+    const DEFAULT_WINDOW_WIDTH = 202;
 
     const primaryDisplay = screen.getPrimaryDisplay();
     const { y: workAreaY, width: screenWidth } = primaryDisplay.workArea;
@@ -1363,6 +1382,7 @@ function createWindows() {
         skipTaskbar: true,
         hiddenInMissionControl: true,
         resizable: false,
+        show: showHeader,
         focusable: true,
         acceptFirstMouse: true,
         webPreferences: {
@@ -1875,8 +1895,9 @@ function createDashboardWindow() {
     dashboardWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
         logger.error('[Dashboard] did-fail-load', { errorCode, errorDescription, validatedURL });
     });
-    logger.info('[Dashboard] Loading dashboard URL', { url: DASHBOARD_URL });
-    void dashboardWindow.loadURL(DASHBOARD_URL);
+    const dashboardUrl = getDashboardUrl();
+    logger.info('[Dashboard] Loading dashboard URL', { url: dashboardUrl });
+    void dashboardWindow.loadURL(dashboardUrl);
 
     // Adapter dynamiquement le titleBarOverlay et les bounds selon la route,
     // AVANT que React ne monte. Évite le flicker des boutons natifs.
@@ -1897,7 +1918,7 @@ function createDashboardWindow() {
             logger.warn('[Dashboard] applyChromeForUrl failed', { error: e.message });
         }
     };
-    applyChromeForUrl(DASHBOARD_URL);
+    applyChromeForUrl(dashboardUrl);
     dashboardWindow.webContents.on('did-navigate', (_e, url) => applyChromeForUrl(url));
     dashboardWindow.webContents.on('did-navigate-in-page', (_e, url) => applyChromeForUrl(url));
 
@@ -2018,9 +2039,11 @@ function createMeetingNotificationWindow() {
         },
     });
 
-    const baseUrl = process.env.DASHBOARD_DEV_URL
-        ? new URL(process.env.DASHBOARD_DEV_URL).origin
-        : 'https://renderer.clairia.app';
+    const baseUrl = app.isPackaged
+        ? 'app://renderer'
+        : (process.env.DASHBOARD_DEV_URL
+            ? new URL(process.env.DASHBOARD_DEV_URL).origin
+            : (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000').replace(/\/$/, ''));
     void meetingNotificationWindow.loadURL(`${baseUrl}/notification`);
 
     meetingNotificationWindow.setAlwaysOnTop(true, 'floating');

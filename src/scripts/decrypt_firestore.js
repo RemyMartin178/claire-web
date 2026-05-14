@@ -14,6 +14,11 @@ const summaryConverter = createEncryptedConverter(['tldr', 'text', 'bulletPoints
 const sessionConverter = createEncryptedConverter(['title', 'content']);
 
 async function decryptUserData(uid) {
+    if (!uid || uid === 'default_user') {
+        logItem('[Migration] Skipping decryption migration: no real Firebase user.');
+        return;
+    }
+
     logItem(`\n\n[Migration] === Starting decryption migration for user: ${uid} ===`);
     const db = getFirestoreInstance();
 
@@ -46,6 +51,8 @@ async function decryptUserData(uid) {
             }
 
             // 4. Summary
+            const summaryRef = collection(db, `users/${uid}/sessions/${sessionId}/summary`).withConverter(summaryConverter);
+            const summarySnap = await getDocs(summaryRef);
             for (const sumDoc of summarySnap.docs) {
                 let data = sumDoc.data();
                 const sumId = sumDoc.id;

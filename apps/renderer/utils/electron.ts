@@ -11,12 +11,15 @@ declare global {
     api?: {
       dashboard?: {
         getUser?: () => Promise<ElectronDashboardUserResult | undefined>
+        getSessions?: (uid: string) => Promise<unknown[]>
+        getSessionDetails?: (uid: string, sessionId: string) => Promise<unknown>
+        deleteSession?: (uid: string, sessionId: string) => Promise<unknown>
         startClaire?: () => Promise<unknown>
         minimizeWindow?: () => Promise<unknown>
         maximizeWindow?: () => Promise<unknown>
         closeWindow?: () => Promise<unknown>
-        onUserChanged?: (cb: (...args: any[]) => void) => void
-        removeUserChanged?: () => void
+        onUserChanged?: (cb: (...args: any[]) => void) => (() => void) | void
+        removeUserChanged?: (unsubscribe?: () => void) => void
       }
       common?: {
         startFirebaseAuth?: () => Promise<unknown>

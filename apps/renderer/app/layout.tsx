@@ -10,6 +10,7 @@ import { RevenueCatProvider } from '@/contexts/RevenueCatContext'
 import Analytics from '@/components/Analytics'
 import { GA_TRACKING_ID } from '@/lib/gtag'
 import { Toaster } from 'react-hot-toast'
+import { QueryProvider } from '@/components/QueryProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -68,12 +69,13 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            <RevenueCatProvider>
-              <PasswordModalProvider>
-                <ConditionalLayout>
-                  <Analytics />
-                  {children}
-                  <Toaster position="bottom-right" toastOptions={{
+            <QueryProvider>
+              <RevenueCatProvider>
+                <PasswordModalProvider>
+                  <ConditionalLayout>
+                    <Analytics />
+                    {children}
+                    <Toaster position="bottom-right" toastOptions={{
                   duration: 3000,
                   className: 'dark-toast',
                   style: {
@@ -100,9 +102,10 @@ export default function RootLayout({
                     },
                   },
                   }} />
-                </ConditionalLayout>
-              </PasswordModalProvider>
-            </RevenueCatProvider>
+                  </ConditionalLayout>
+                </PasswordModalProvider>
+              </RevenueCatProvider>
+            </QueryProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

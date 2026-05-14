@@ -1,89 +1,94 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
-import {
-  Session,
-  getSessions,
-  deleteSession,
-} from '@/utils/api'
+import { Session, deleteSession } from '@/utils/api'
 import { Button } from '@/components/ui/button'
 import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
-import GettingStartedChecklist from '@/components/GettingStartedChecklist'
 import { getEventStartDate, getEventEndDate, getEventTitle } from '../calendar/event-utils'
+import { ActivitySessionListSkeleton } from '@/components/ActivityListSkeleton'
+import {
+  patchSessionList,
+  prefetchSessionDetailsQuery,
+  sessionKeys,
+  useSessionsQuery,
+} from '@/hooks/useSessionQueries'
 
 export default function ActivityPage() {
   const { user: userInfo, loading } = useAuth();
-  const [sessions, setSessions] = useState<Session[]>([])
-  const [allSessions, setAllSessions] = useState<Session[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const sessionsQuery = useSessionsQuery(Boolean(userInfo))
+  const allSessions = useMemo(() => sessionsQuery.data || [], [sessionsQuery.data])
+  const sessions = useMemo(() => allSessions.filter(s => s.session_type !== 'ask'), [allSessions])
+  const isLoading = sessionsQuery.isLoading && !sessionsQuery.data
+  const isRefreshing = sessionsQuery.isFetching && !isLoading
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [hasRenderedActivity, setHasRenderedActivity] = useState(false)
 
   const [upcomingMeeting, setUpcomingMeeting] = useState<any>(null)
   const [meetingBrief, setMeetingBrief] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const [canStartClaire, setCanStartClaire] = useState(false)
-
-  const fetchSessions = async () => {
-    try {
-      const fetchedSessions = await getSessions();
-      setAllSessions(fetchedSessions);
-      // Only show Listen (microphone) sessions — filter out Ask-only sessions
-      const listenSessions = fetchedSessions.filter(s => s.session_type !== 'ask');
-      setSessions(listenSessions);
-      // GA4: track activity page view with session count
-      trackActivityPageView(fetchedSessions.length)
-    } catch (error) {
-      console.error('Impossible de récupérer les conversations :', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const [isStartingClaire, setIsStartingClaire] = useState(false)
+  const [openingSessionId, setOpeningSessionId] = useState<string | null>(null)
 
   const hasListenSession = allSessions.some((session) => session.session_type !== 'ask')
 
   useEffect(() => {
-    if (userInfo) {
-      fetchSessions()
+    if (sessionsQuery.error) {
+      console.error('Impossible de récupérer les conversations :', sessionsQuery.error)
     }
-  }, [userInfo])
+  }, [sessionsQuery.error])
+
+  useEffect(() => {
+    if (sessionsQuery.data) {
+      trackActivityPageView(sessionsQuery.data.length)
+      setHasRenderedActivity(true)
+    }
+  }, [sessionsQuery.data])
+
+  useEffect(() => {
+    if (isLoading || sessions.length === 0) return undefined
+
+    const warmRecentSessions = () => {
+      sessions.slice(0, 3).forEach((session) => {
+        void prefetchSessionDetailsQuery(queryClient, session.id)
+      })
+    }
+
+    const requestIdleCallback = (window as any).requestIdleCallback
+    const cancelIdleCallback = (window as any).cancelIdleCallback
+
+    if (typeof requestIdleCallback === 'function') {
+      const idleId = requestIdleCallback(warmRecentSessions, { timeout: 1500 })
+      return () => {
+        if (typeof cancelIdleCallback === 'function') {
+          cancelIdleCallback(idleId)
+        }
+      }
+    }
+
+    const timeoutId = window.setTimeout(warmRecentSessions, 600)
+    return () => window.clearTimeout(timeoutId)
+  }, [isLoading, queryClient, sessions])
 
   useEffect(() => {
     if (!userInfo) return undefined
 
-    const refreshSessions = () => {
-      fetchSessions()
-    }
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        refreshSessions()
-      }
-    }
-
     const handleSessionCreated = () => {
-      refreshSessions()
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     }
 
-    window.addEventListener('focus', refreshSessions)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('claire:session-created', handleSessionCreated as EventListener)
 
-    const interval = window.setInterval(() => {
-      if (!document.hidden && !hasListenSession) {
-        refreshSessions()
-      }
-    }, 10000)
-
     return () => {
-      window.removeEventListener('focus', refreshSessions)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('claire:session-created', handleSessionCreated as EventListener)
-      window.clearInterval(interval)
     }
-  }, [userInfo, hasListenSession])
+  }, [userInfo, queryClient])
 
   // Clock tick to auto-hide past meetings
   useEffect(() => {
@@ -185,12 +190,57 @@ export default function ActivityPage() {
     setDeletingId(sessionId);
     try {
       await deleteSession(sessionId);
-      setSessions(sessions => sessions.filter(s => s.id !== sessionId));
+      patchSessionList(queryClient, (sessions) => sessions.filter(s => s.id !== sessionId));
+      queryClient.removeQueries({ queryKey: sessionKeys.detail(sessionId) });
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
       toast.success('Activité supprimée');
     } catch (error) {
       toast.error('Échec de la suppression de l\'activité.');
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  const warmSessionDetails = (sessionId: string) => {
+    void prefetchSessionDetailsQuery(queryClient, sessionId)
+  }
+
+  const getSessionDetailsHref = (session: Session, title: string) => {
+    const params = new URLSearchParams({
+      sessionId: session.id,
+      title,
+      createdAt: new Date(session.started_at).toISOString(),
+    })
+
+    return `/activity/details?${params.toString()}`
+  }
+
+  const warmSessionNavigation = (session: Session, title: string) => {
+    warmSessionDetails(session.id)
+    router.prefetch(getSessionDetailsHref(session, title))
+  }
+
+  const openSession = (session: Session, title: string) => {
+    if (openingSessionId) return
+    const href = getSessionDetailsHref(session, title)
+    setOpeningSessionId(session.id)
+    warmSessionNavigation(session, title)
+    trackSessionViewed(session.id)
+    router.push(href)
+  }
+
+  const handleStartClaire = async () => {
+    if (isStartingClaire) return
+    setIsStartingClaire(true)
+
+    try {
+      const result = await (window as any).api?.dashboard?.startClaire?.()
+      if (result && result.success === false) {
+        throw new Error(result.error || 'Failed to start Claire')
+      }
+    } catch {
+      setIsStartingClaire(false)
+      toast.error("Impossible de démarrer Claire.")
     }
   }
 
@@ -237,7 +287,7 @@ export default function ActivityPage() {
 
 
   return (
-    <div className="flex flex-col min-h-full text-foreground font-body animate-in fade-in duration-200">
+    <div className="flex flex-col min-h-full text-foreground font-body motion-safe:animate-page-enter">
 
       {/* ── Hero section ── */}
       <div className="shrink-0 border-b border-border/30 bg-muted/50 px-6 py-5">
@@ -249,21 +299,47 @@ export default function ActivityPage() {
               <h1 className="font-normal text-2xl text-muted-foreground/90 tracking-tight">
                 {getGreeting(currentTime)}{userInfo.display_name ? `, ${userInfo.display_name.split(' ')[0]}` : ''}
               </h1>
+              {isRefreshing && (
+                <span
+                  aria-label="Mise a jour"
+                  className="size-3 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60 animate-spin"
+                />
+              )}
             </div>
 
             {/* Right: Start Claire */}
             {canStartClaire && (
-              <button
-                onClick={() => (window as any).api.dashboard.startClaire()}
+              <div className="relative inline-flex items-center justify-center">
+                <span
+                  aria-label={isStartingClaire ? 'Demarrage' : undefined}
+                  aria-hidden={!isStartingClaire}
+                  className={`absolute -left-7 inline-flex size-4 items-center justify-center text-muted-foreground/70 transition-opacity duration-150 ${isStartingClaire ? 'opacity-100' : 'opacity-0'}`}
+                >
+                  <svg
+                    className="size-4 animate-spin"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                </span>
+                <button
+                onClick={handleStartClaire}
+                disabled={isStartingClaire}
                 aria-label="Démarrer Claire"
-                className="relative inline-flex items-center gap-2 h-10 px-5 rounded-full text-[13px] font-semibold text-white transform-gpu transition-all duration-200 hover:scale-[1.04] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                className="relative inline-flex items-center gap-2 h-10 px-5 rounded-full text-[13px] font-semibold text-white transform-gpu transition-[filter,box-shadow,transform,opacity] duration-180 ease-apple hover:scale-[1.025] hover:brightness-105 active:scale-[0.985] disabled:opacity-80 disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
                 style={{ background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%)', boxShadow: '0 0 0 0.678px #0c44a1, inset 0 -1.355px #022c70, inset 0 0.678px #81b6ff' }}
               >
                 <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
                 </svg>
                 Démarrer Claire
-              </button>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -293,35 +369,9 @@ export default function ActivityPage() {
             )
           })()}
 
-          {/* Checklist */}
-          {!isLoading && (
-            <GettingStartedChecklist
-              allSessions={allSessions}
-              userId={userInfo.uid || userInfo.email || 'anonymous'}
-              userAliases={[userInfo.uid, userInfo.email].filter(Boolean)}
-            />
-          )}
-
           {/* Sessions */}
-          {isLoading ? (
-            <div className="space-y-6 pt-6">
-              {[0, 1].map(group => (
-                <div key={group} className="animate-pulse">
-                  <div className="h-3 w-20 bg-muted rounded mb-3" />
-                  <div className="space-y-1">
-                    {[0, 1, 2].map(i => (
-                      <div key={i} className="flex items-center justify-between rounded-lg px-3 py-2.5">
-                        <div className={`h-3.5 bg-muted rounded ${i === 0 ? 'w-[60%]' : i === 1 ? 'w-[45%]' : 'w-[52%]'}`} />
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="h-5 w-10 bg-muted rounded-full" />
-                          <div className="h-3 w-10 bg-muted rounded" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
+          {isLoading && !hasRenderedActivity ? (
+            <ActivitySessionListSkeleton />
           ) : sessions.length > 0 ? (
             <div className="space-y-4 pt-6">
               {sortedDates.map((dateStr) => (
@@ -352,14 +402,25 @@ export default function ActivityPage() {
 
                       return (
                         <li key={session.id} className="group/row relative">
-                          <div className="flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors group-hover/row:bg-muted/70">
-                            <Link
-                              href={`/activity/details?sessionId=${session.id}`}
-                              onClick={() => trackSessionViewed(session.id)}
-                              className="truncate pr-3 font-medium text-sm text-foreground flex-1 block"
-                            >
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => {
+                              if ((event.target as HTMLElement).closest('[data-row-action]')) return
+                              openSession(session, displayTitle)
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                openSession(session, displayTitle)
+                              }
+                            }}
+                            onPointerDown={() => warmSessionNavigation(session, displayTitle)}
+                            className="flex cursor-default items-center justify-between rounded-lg px-3 py-2.5 transform-gpu transition-[background-color,filter,opacity] duration-180 ease-apple group-hover/row:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
+                          >
+                            <span className="truncate pr-3 font-medium text-sm text-foreground flex-1 block">
                               {displayTitle}
-                            </Link>
+                            </span>
                             <span className="flex shrink-0 items-center gap-3">
                               <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums bg-muted text-foreground">
                                 {durationStr}
@@ -368,11 +429,12 @@ export default function ActivityPage() {
                                 {timeStr}
                               </span>
                               <Button
+                                data-row-action
                                 onClick={(e) => { e.preventDefault(); handleDeleteClick(session.id) }}
                                 disabled={deletingId === session.id}
                                 variant="ghost"
                                 size="icon"
-                                className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-all"
+                                className="opacity-0 translate-x-1 group-hover/row:translate-x-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-[background-color,color,opacity,transform] duration-180 ease-apple"
                               >
                                 {deletingId === session.id ? (
                                   <div className="animate-spin h-3.5 w-3.5 border-2 border-red-500 rounded-full border-t-transparent" />

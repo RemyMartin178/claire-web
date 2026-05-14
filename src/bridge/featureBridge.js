@@ -24,6 +24,7 @@ const MemoryApiClient = require('../domains/conversation/memory-api-client');
 const logger = createLogger('FeatureBridge');
 
 const MODEL_NAME_RE = /^[a-zA-Z0-9._:/-]{1,200}$/;
+let dashboardStartClairePromise = null;
 
 function isValidModelName(name) {
     return typeof name === 'string' && MODEL_NAME_RE.test(name);
@@ -670,6 +671,37 @@ module.exports = {
             }
         });
 
+        ipcMain.handle('dashboard:getSessionDetails', async (event, uid, sessionId) => {
+            try {
+                const db = getFirestoreInstance();
+                const [sessionSnap, transcriptSnap, aiMessageSnap, summarySnap] = await Promise.all([
+                    getDoc(doc(db, 'users', uid, 'sessions', sessionId)),
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'transcripts')),
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'ai_messages')),
+                    getDoc(doc(db, 'users', uid, 'sessions', sessionId, 'summary', 'data')),
+                ]);
+
+                if (!sessionSnap.exists()) return null;
+
+                const transcripts = transcriptSnap.docs
+                    .map(d => ({ id: d.id, ..._serializeFsDoc(d.data()) }))
+                    .sort((a, b) => (a._startAtMs || a.startAt || a.start_at || 0) - (b._startAtMs || b.startAt || b.start_at || 0));
+                const aiMessages = aiMessageSnap.docs
+                    .map(d => ({ id: d.id, ..._serializeFsDoc(d.data()) }))
+                    .sort((a, b) => (a._sentAtMs || a.sentAt || a.sent_at || 0) - (b._sentAtMs || b.sentAt || b.sent_at || 0));
+
+                return {
+                    session: { id: sessionSnap.id, ..._serializeFsDoc(sessionSnap.data()) },
+                    transcripts,
+                    aiMessages,
+                    summary: summarySnap.exists() ? _serializeFsDoc(summarySnap.data()) : null,
+                };
+            } catch (e) {
+                logger.error('[FeatureBridge] dashboard:getSessionDetails failed', { message: e.message });
+                return null;
+            }
+        });
+
         ipcMain.handle('dashboard:deleteSession', async (event, uid, sessionId) => {
             try {
                 const db = getFirestoreInstance();
@@ -683,21 +715,51 @@ module.exports = {
 
         ipcMain.handle('dashboard:startClaire', async () => {
             try {
+                if (listenService.isSessionActive()) {
+                    sharedStateService.patch({
+                        showDashboard: false,
+                        showHeader: true,
+                        showListen: true,
+                        isListenRunning: true,
+                    });
+                    return { success: true, sessionId: listenService.currentSessionId || null, starting: false };
+                }
+
+                if (dashboardStartClairePromise) {
+                    return await dashboardStartClairePromise;
+                }
+
+                sharedStateService.patch({
+                    showDashboard: true,
+                    showHeader: false,
+                    showListen: false,
+                    isListenRunning: false,
+                    session: null,
+                });
+                internalBridge.emit('window:requestVisibility', { name: 'header', visible: false });
+                internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
+
                 // Lazy-init the windows on first use
                 if (!windowManager.windowPool.has('header')) {
-                    windowManager.createWindows();
+                    windowManager.createWindows({ showHeader: false });
                 }
                 windowManager.ensureListenWindow();
+                internalBridge.emit('window:requestVisibility', { name: 'header', visible: false });
+                internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
 
-                // Kick off the listen pipeline (audio capture, STT, session DB row).
-                await listenService.handleListenRequest('Listen');
+                dashboardStartClairePromise = (async () => {
+                    await listenService.handleListenRequest('Listen', { revealListen: false });
 
                 // Single state patch — the change subscription handles every side
                 // effect: dashboard hide, header show, listen show.
                 const newId = listenService.currentSessionId;
+                if (!newId) {
+                    throw new Error('Listen session started without a session id');
+                }
+
                 const startedAt = Date.now();
                 let recallSdkRecording = null;
-                if (newId && sharedStateService.get().autoMeetingDetectionEnabled) {
+                if (sharedStateService.get().autoMeetingDetectionEnabled) {
                     try {
                         recallSdkRecording = await recallService.prepareSessionRecording({ id: newId, startedAt });
                     } catch (e) {
@@ -709,12 +771,44 @@ module.exports = {
                     showHeader: true,
                     showListen: true,
                     isListenRunning: true,
-                    session: newId ? { id: newId, startedAt, ...(recallSdkRecording && { recallSdkRecording }) } : null,
+                    session: { id: newId, startedAt, ...(recallSdkRecording && { recallSdkRecording }) },
+                });
+                internalBridge.emit('window:requestVisibility', { name: 'header', visible: true });
+                internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
+
+                return { success: true, sessionId: newId, starting: false };
+
+                })().catch(async (e) => {
+                    logger.error('[FeatureBridge] dashboard:startClaire failed', { message: e.message });
+                    try {
+                        if (listenService.currentSessionId || listenService.isSessionActive()) {
+                            await listenService.closeSession();
+                        }
+                    } catch (closeError) {
+                        logger.warn('[FeatureBridge] dashboard:startClaire cleanup failed', { message: closeError.message });
+                    }
+                    sharedStateService.patch({
+                        showDashboard: true,
+                        showHeader: false,
+                        showListen: false,
+                        isListenRunning: false,
+                        session: null,
+                    });
+                    return { success: false, error: e.message };
+                }).finally(() => {
+                    dashboardStartClairePromise = null;
                 });
 
-                return { success: true };
+                return await dashboardStartClairePromise;
             } catch (e) {
                 logger.error('[FeatureBridge] dashboard:startClaire failed', { message: e.message });
+                sharedStateService.patch({
+                    showDashboard: true,
+                    showHeader: false,
+                    showListen: false,
+                    isListenRunning: false,
+                    session: null,
+                });
                 return { success: false, error: e.message };
             }
         });

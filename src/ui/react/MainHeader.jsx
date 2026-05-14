@@ -55,16 +55,26 @@ const CSS = `
   -webkit-app-region: drag;
   display: inline-flex;
   align-items: center;
-  height: 42px;
-  padding: 0 6px 0 4px;
+  height: 32px;
+  padding: 0;
   border-radius: 100px;
-  background: #18171ccc;
-  border: 1px solid rgba(207,226,255,0.24);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  gap: 0;
+  background: transparent;
+  border: 0;
+  gap: 6px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+}
+
+.mh-pill .mh-wide-btn { order: 1; }
+.mh-pill .mh-listen-section { order: 2; }
+.mh-pill .mh-btn,
+.mh-pill .mh-divider,
+.mh-pill .mh-rec-wave,
+.mh-pill .mh-shortcut {
+  display: none !important;
+}
+.mh-pill .mh-listen-controls > button:first-child {
+  display: none !important;
 }
 
 /* subtle top gloss */
@@ -82,14 +92,15 @@ const CSS = `
   );
   border-radius: 1px;
   pointer-events: none;
+  display: none;
 }
 
 /* ── DIVIDER ── */
 .mh-divider {
   width: 1px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.13);
-  margin: 0 4px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.14);
+  margin: 0 1px;
   flex-shrink: 0;
   border-radius: 1px;
 }
@@ -130,32 +141,32 @@ const CSS = `
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: none;
-  background: transparent;
+  border: 0;
+  background: linear-gradient(#2e3039,#272a31);
+  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
   color: rgba(255, 255, 255, 0.90);
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
+  transition: filter 0.15s ease, color 0.12s ease, transform 0.12s ease;
   flex-shrink: 0;
   position: relative;
 }
 .mh-btn:hover {
-  background: rgba(255, 255, 255, 0.10);
+  filter: brightness(1.2);
   color: rgba(255, 255, 255, 0.95);
 }
 .mh-btn:active {
-  transform: scale(0.88);
-  background: rgba(255, 255, 255, 0.07);
+  transform: scale(0.92);
 }
 .mh-btn.active {
   color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.08);
+  filter: brightness(1.08);
 }
 .mh-btn.accent {
   color: rgba(99, 179, 237, 0.9);
 }
 .mh-btn.accent:hover {
   color: rgba(144, 205, 244, 1);
-  background: rgba(99, 179, 237, 0.10);
+  filter: brightness(1.18);
 }
 .mh-btn svg {
   display: block;
@@ -167,34 +178,34 @@ const CSS = `
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 28px;
-  padding: 0 10px 0 8px;
+  height: 32px;
+  padding: 0 13px 0 11px;
   border-radius: 100px;
   border: none;
-  background: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(#0544a9,#022c70);
+  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
   color: rgba(255, 255, 255, 0.95);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 650;
   letter-spacing: 0.01em;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
+  transition: filter 0.15s ease, transform 0.12s ease;
   white-space: nowrap;
   flex-shrink: 0;
-  margin: 0 2px;
+  margin: 0;
 }
 .mh-wide-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.95);
+  filter: brightness(1.18);
 }
-.mh-wide-btn:active { transform: scale(0.95); }
-.mh-wide-btn svg { opacity: 0.75; }
+.mh-wide-btn:active { transform: scale(0.94); }
+.mh-wide-btn svg { opacity: 0.86; }
 
 /* ── LISTEN SECTION ── */
 .mh-listen-section {
   -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
-  padding: 0 2px 0 2px;
+  padding: 0;
 }
 
 /* ── STATUS DOT ── */
@@ -285,23 +296,24 @@ const CSS = `
 .mh-ctrl {
   -webkit-app-region: no-drag;
   display: flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px;
+  width: 32px; height: 32px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.08);
+  border: 0;
+  background: linear-gradient(#2e3039,#272a31);
+  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
   color: rgba(255,255,255,0.90);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.13s, border-color 0.13s, transform 0.1s;
+  transition: filter 0.15s ease, transform 0.12s ease, color 0.12s ease;
 }
-.mh-ctrl:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.18); color: #fff; }
-.mh-ctrl:active { transform: scale(0.87); }
+.mh-ctrl:hover { filter: brightness(1.2); color: #fff; }
+.mh-ctrl:active { transform: scale(0.92); }
 .mh-ctrl:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
-.mh-ctrl.mic { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.08); }
-.mh-ctrl.mic:hover { background: rgba(255,255,255,0.13); }
-.mh-ctrl.stop { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.10); }
-.mh-ctrl.stop:hover { background: rgba(248,113,113,0.18); color: #fecaca; border-color: rgba(248,113,113,0.30); }
-.mh-listen-controls { display: flex; align-items: center; gap: 4px; }
+.mh-ctrl.mic { background: linear-gradient(#2e3039,#272a31); }
+.mh-ctrl.mic:hover { filter: brightness(1.2); }
+.mh-ctrl.stop { background: linear-gradient(#2e3039,#272a31); color: rgba(255,255,255,0.78); }
+.mh-ctrl.stop:hover { color: #fecaca; filter: brightness(1.2); }
+.mh-listen-controls { display: flex; align-items: center; gap: 6px; }
 @keyframes ctrl-pop {
   0%   { opacity: 0; transform: scale(0.55); }
   70%  { transform: scale(1.08); }
@@ -320,24 +332,23 @@ const CSS = `
   -webkit-app-region: drag;
   display: inline-flex;
   align-items: center;
-  height: 42px;
-  padding: 0 6px 0 4px;
+  height: 32px;
+  padding: 0;
   border-radius: 100px;
   gap: 8px;
-  background: #18171ccc;
-  border: 1px solid rgba(207,226,255,0.24);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: transparent;
+  border: 0;
   flex-wrap: nowrap !important;
   white-space: nowrap !important;
 }
 .mh-sign-in-btn {
   -webkit-app-region: no-drag;
-  height: 28px;
+  height: 32px;
   padding: 0 14px;
   border-radius: 100px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.06);
+  border: 0;
+  background: linear-gradient(#0544a9,#022c70);
+  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
   color: rgba(255,255,255,0.88);
   font-size: 12px;
   font-weight: 500;
@@ -348,7 +359,7 @@ const CSS = `
   flex-shrink: 0 !important;
   min-width: 120px;
 }
-.mh-sign-in-btn:hover { background: rgba(255,255,255,0.11); }
+.mh-sign-in-btn:hover { filter: brightness(1.18); }
 .mh-sign-in-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ── QUIT BUTTON (sibling to pill, detached) ── */
@@ -361,16 +372,60 @@ const CSS = `
   height: 28px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 1px solid rgba(207,226,255,0.24);
-  background: #18171ccc;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  border: 0;
+  background: linear-gradient(#2e3039,#272a31);
+  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
   color: rgba(255,255,255,0.6);
   cursor: pointer;
   margin-left: 8px;
   transition: background 0.12s ease, color 0.12s ease;
 }
-.mh-quit-btn:hover { background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.95); }
+.mh-quit-btn:hover { filter: brightness(1.18); color: rgba(255,255,255,0.95); }
+
+/* Cluely-like compact session bar: logo, Hide, stop. */
+.mh-pill {
+  height: 58px;
+  padding: 7px;
+  gap: 7px;
+  background: #4a4b53;
+  border: 0;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.28), inset 0 1px rgba(255,255,255,0.08);
+}
+.mh-pill::before {
+  content: "\\2197";
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: rgba(255,255,255,0.94);
+  font-size: 20px;
+  font-weight: 800;
+  background: transparent;
+  flex: 0 0 auto;
+  order: 0;
+}
+.mh-wide-btn {
+  height: 40px;
+  padding: 0 15px 0 13px;
+  color: rgba(255,255,255,0.92);
+  background: linear-gradient(#2f323a,#24272e);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.32), inset 0 1px rgba(255,255,255,0.12), 0 5px 12px rgba(0,0,0,0.22);
+}
+.mh-wide-btn svg { display: none; }
+.mh-wide-btn::before {
+  content: "\\2304";
+  font-size: 15px;
+  line-height: 1;
+  color: rgba(255,255,255,0.82);
+  transform: translateY(-2px);
+}
+.mh-ctrl {
+  width: 40px;
+  height: 40px;
+}
 `;
 
 const KEY_MAP = {
@@ -891,7 +946,7 @@ export default function MainHeader({
         /* ── Main pill ── */
         <div className={`mh-pill ${justLoggedIn ? 'animating-in' : ''}`} onMouseDown={handleMouseDown}>
 
-          {/* Listen controls */}
+          {/* Session controls */}
           <div className="mh-listen-section">
             {listenSessionStatus === 'beforeSession' ? (
               <button
@@ -924,22 +979,20 @@ export default function MainHeader({
             )}
           </div>
 
+          {/* Ask */}
+          <button className="mh-wide-btn no-drag" onClick={handleAsk} title="Ask AI">
+            <IconAsk />
+            Hide
+            <ShortcutBadge accelerator={shortcuts.nextStep} />
+          </button>
+
           {isListening && (
-            <div className={`mh-rec-wave${isPaused ? ' paused' : ''}`} style={{ marginLeft: 6, marginRight: 4 }}>
+            <div className={`mh-rec-wave${isPaused ? ' paused' : ''}`}>
               <span ref={waveBarRefs[0]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
               <span ref={waveBarRefs[1]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
               <span ref={waveBarRefs[2]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
             </div>
           )}
-
-          <div className="mh-divider" />
-
-          {/* Ask */}
-          <button className="mh-wide-btn no-drag" onClick={handleAsk} title="Ask AI">
-            <IconAsk />
-            Ask
-            <ShortcutBadge accelerator={shortcuts.nextStep} />
-          </button>
 
           {/* Screen context for Ask */}
           <button

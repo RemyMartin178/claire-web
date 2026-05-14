@@ -39,7 +39,7 @@ files:
 
 # Additional resources to be copied into the app's resources directory
 extraResources:
-    - from: pickleglass_web/out
+    - from: apps/renderer/out
       to: out
     - from: src/common/config/production-config.js
       to: config/production-config.js

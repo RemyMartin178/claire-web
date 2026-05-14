@@ -12,7 +12,7 @@ const authService = require('./authService');
 const { createLogger } = require('./logger.js');
 
 const logger = createLogger('ModelStateService');
-const APP_MANAGED_PROVIDERS = new Set(['claire-api', 'openai', 'gemini', 'anthropic', 'deepgram', 'assemblyai']);
+const APP_MANAGED_PROVIDERS = new Set(['claire-api', 'openai', 'anthropic', 'assemblyai']);
 
 class ModelStateService extends EventEmitter {
     constructor() {
@@ -207,25 +207,16 @@ class ModelStateService extends EventEmitter {
             }
 
             // Fallback to environment variables for missing API keys
-            // Les clés API sont récupérées depuis le backend Railway
             const envMapping = {
                 'openai': process.env.OPENAI_API_KEY,
-                'gemini': process.env.GEMINI_API_KEY,
                 'anthropic': process.env.ANTHROPIC_API_KEY,
-                'deepgram': process.env.DEEPGRAM_API_KEY,
                 'assemblyai': process.env.ASSEMBLYAI_API_KEY,
-                'ollama': 'local', // Ollama uses local by default
-                'whisper': 'local' // Whisper uses local by default
             };
 
-
-            // Force load from environment variables (prioritize .env over database)
-            // This ensures that API keys in .env are always used, even if empty values exist in DB
             logger.debug('[ModelStateService] Loading API keys from environment:', {
                 openai: !!process.env.OPENAI_API_KEY,
-                gemini: !!process.env.GEMINI_API_KEY,
                 anthropic: !!process.env.ANTHROPIC_API_KEY,
-                deepgram: !!process.env.DEEPGRAM_API_KEY
+                assemblyai: !!process.env.ASSEMBLYAI_API_KEY,
             });
 
             // FIX: Prioriser les clés API de la base de données sur .env
@@ -248,13 +239,10 @@ class ModelStateService extends EventEmitter {
                 }
             }
 
-            // Debug log: Show which API keys are loaded
             logger.info('[ModelStateService] API keys summary:', {
                 openai: !!apiKeys.openai,
-                gemini: !!apiKeys.gemini,
                 anthropic: !!apiKeys.anthropic,
-                deepgram: !!apiKeys.deepgram,
-                assemblyai: !!apiKeys.assemblyai
+                assemblyai: !!apiKeys.assemblyai,
             });
 
 
@@ -287,12 +275,8 @@ class ModelStateService extends EventEmitter {
 
             const envMapping = {
                 'openai': process.env.OPENAI_API_KEY,
-                'gemini': process.env.GEMINI_API_KEY,
                 'anthropic': process.env.ANTHROPIC_API_KEY,
-                'deepgram': process.env.DEEPGRAM_API_KEY,
                 'assemblyai': process.env.ASSEMBLYAI_API_KEY,
-                'ollama': 'local', // Ollama uses local by default
-                'whisper': 'local' // Whisper uses local by default
             };
 
             for (const [provider, envKey] of Object.entries(envMapping)) {
@@ -448,9 +432,7 @@ class ModelStateService extends EventEmitter {
         if (APP_MANAGED_PROVIDERS.has(provider)) {
             const envMapping = {
                 openai: process.env.OPENAI_API_KEY,
-                gemini: process.env.GEMINI_API_KEY,
                 anthropic: process.env.ANTHROPIC_API_KEY,
-                deepgram: process.env.DEEPGRAM_API_KEY,
                 assemblyai: process.env.ASSEMBLYAI_API_KEY,
             };
             return envMapping[provider] || null;
@@ -491,12 +473,6 @@ class ModelStateService extends EventEmitter {
             }
         }
 
-        // If no provider was found, assume it could be a custom Ollama model
-        // if Ollama provider is configured (has a key).
-        if (type === 'llm' && this.state.apiKeys['ollama']) {
-            logger.info('Model not found in PROVIDERS list, assuming it\'s a custom Ollama model:', { modelId });
-            return 'ollama';
-        }
 
         return null;
     }

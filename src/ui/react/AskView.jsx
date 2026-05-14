@@ -347,6 +347,118 @@ const CSS = `
 .ask-send-btn:hover { opacity: 0.88; transform: scale(0.96); }
 .ask-send-btn svg { width: 13px; height: 13px; }
 
+/* === CLUELY-STYLE ASK PANEL === */
+.ask-view-root {
+  min-height: 168px;
+  background: linear-gradient(180deg, #3a3a3d 0%, #333335 100%);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 22px;
+  box-shadow: 0 18px 48px rgba(0,0,0,0.32), inset 0 1px rgba(255,255,255,0.06);
+}
+.ask-view-root::before { display: none; }
+.ask-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px 12px;
+  min-height: 48px;
+  overflow: hidden;
+}
+.ask-mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,0.74);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer !important;
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+.ask-mode-btn:hover { color: rgba(255,255,255,0.95); transform: translateY(-1px); }
+.ask-mode-btn svg {
+  width: 17px;
+  height: 17px;
+  color: rgba(255,255,255,0.72);
+}
+.ask-mode-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  flex: 0 0 auto;
+}
+.ask-suggestions { display: none; }
+.ask-composer {
+  margin: 0 12px 12px;
+  min-height: 90px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.06);
+  box-shadow: inset 0 1px rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+}
+.ask-bar {
+  min-height: 48px;
+  align-items: center;
+  padding: 12px 10px 4px 16px;
+}
+.ask-text-input {
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.88);
+}
+.ask-text-input::placeholder { color: rgba(214,216,224,0.62); }
+.ask-send-btn {
+  width: 32px;
+  height: 32px;
+  background: radial-gradient(120% 120% at 35% 15%, #2072ff 0%, #0a4fbd 72%);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 6px 14px rgba(0,49,150,0.34);
+}
+.ask-composer-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 12px;
+}
+.ask-smart-chip {
+  height: 30px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 15px;
+  background: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.82);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer !important;
+}
+.ask-smart-chip.active {
+  background: rgba(255,255,255,0.27);
+  color: #fff;
+}
+.ask-more-btn {
+  width: 34px;
+  height: 30px;
+  border: 0;
+  border-radius: 15px;
+  background: transparent;
+  color: rgba(255,255,255,0.68);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer !important;
+}
+.ask-more-btn.active { color: #8fd4bf; }
+.ask-composer .ask-web-btn,
+.ask-composer .ask-think-btn {
+  display: none;
+}
+
 /* === MATH BLOCKS === */
 .ask-math-block {
   display: block; font-family: 'Courier New', Menlo, monospace;
@@ -431,6 +543,51 @@ const SUGGESTED_QUESTIONS = [
   "Donne-moi un résumé rapide",
 ];
 
+const CLUELY_ACTIONS = [
+  {
+    label: 'Assist',
+    prompt: 'Assist me based on my screen and the current conversation.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/>
+        <path d="M5 3v4"/>
+        <path d="M3 5h4"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'What should I say?',
+    prompt: 'What should I say next? Answer with only the words I should say.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+        <path d="M19 11l.7 2.3L22 14l-2.3.7L19 17l-.7-2.3L16 14l2.3-.7L19 11z"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Follow-up questions',
+    prompt: 'Suggest concise follow-up questions for this screen or conversation.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="5" width="16" height="13" rx="2"/>
+        <path d="M8 9h8"/>
+        <path d="M8 13h5"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Recap',
+    prompt: 'Recap the current screen or conversation clearly and briefly.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-3-6.7"/>
+        <path d="M21 3v6h-6"/>
+      </svg>
+    ),
+  },
+];
+
 export default function AskView() {
   const [currentResponse, setCurrentResponse] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState('');
@@ -505,7 +662,7 @@ export default function AskView() {
     if (!window.api) return;
     isResizingRef.current = true;
     if (document.querySelector('.mh-root.overlay-mode') || document.body.classList.contains('has-glass')) {
-      window.dispatchEvent(new CustomEvent('local-panel-resize', { detail: { name: 'ask', width: 600, height: targetHeight } }));
+      window.dispatchEvent(new CustomEvent('local-panel-resize', { detail: { name: 'ask', width: 670, height: targetHeight } }));
     } else {
       window.api.askView.adjustWindowHeight(targetHeight);
     }
@@ -516,15 +673,15 @@ export default function AskView() {
     if (!window.api) return;
     requestAnimationFrame(() => {
       const panelEl = document.querySelector('.ask-response-panel');
-      const suggestEl = document.querySelector('.ask-suggestions');
-      const barEl = document.querySelector('.ask-bar');
+      const tabsEl = document.querySelector('.ask-mode-tabs');
+      const composerEl = document.querySelector('.ask-composer');
       const panelHeight = panelEl ? panelEl.offsetHeight : 0;
-      const suggestHeight = suggestEl ? suggestEl.offsetHeight : 0;
-      const barHeight = barEl ? barEl.offsetHeight : 0;
+      const tabsHeight = tabsEl ? tabsEl.offsetHeight : 0;
+      const composerHeight = composerEl ? composerEl.offsetHeight : 0;
       const gap = panelEl ? 8 : 0;
-      const idealHeight = panelHeight + gap + suggestHeight + barHeight + 4;
+      const idealHeight = panelHeight + gap + tabsHeight + composerHeight + 4;
       // Quota overlay needs extra space so CTA is always fully visible
-      const minHeight = isQuotaExceededRef.current ? 320 : 50;
+      const minHeight = isQuotaExceededRef.current ? 320 : 168;
       requestWindowResize(Math.min(700, Math.max(minHeight, idealHeight)));
     });
   }, [requestWindowResize]);
@@ -762,6 +919,23 @@ export default function AskView() {
 
   return (
     <div className="ask-view-root">
+      <div className="ask-mode-tabs">
+        {CLUELY_ACTIONS.map((action, index) => (
+          <React.Fragment key={action.label}>
+            <button
+              className="ask-mode-btn"
+              onClick={() => !isBlocked && handleSendText(action.prompt)}
+              disabled={isBlocked}
+              title={action.label}
+            >
+              {action.icon}
+              <span>{action.label}</span>
+            </button>
+            {index < CLUELY_ACTIONS.length - 1 && <span className="ask-mode-dot" />}
+          </React.Fragment>
+        ))}
+      </div>
+
       {hasContent && (
         <div
           className={`ask-response-panel${isQuotaExceeded ? ' quota-exceeded' : ''}`}
@@ -852,25 +1026,12 @@ export default function AskView() {
         </div>
       )}
 
-      {!hasContent && (
-        <div className="ask-suggestions" style={{ opacity: suggestionsVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}>
-          {visibleSuggestions.map((q, i) => (
-            <div
-              key={`${suggestionOffset}-${i}`}
-              className={`ask-suggestion-chip${animatingChip === q ? ' sending' : ''}`}
-              onClick={() => handleChipClick(q)}
-            >
-              {q}
-            </div>
-          ))}
-        </div>
-      )}
-
+      <div className="ask-composer">
       <div className="ask-bar">
         <input
           type="text"
           className="ask-text-input"
-          placeholder={isBlocked ? "Limite atteinte — Passez à Pro" : "Posez une question sur votre écran ou la conversation..."}
+          placeholder={isBlocked ? "Limit reached - Upgrade to Pro" : "Ask about your screen or conversation, or Ctrl Enter for Assist"}
           ref={textInputRef}
           onKeyDown={handleTextKeydown}
           disabled={isBlocked}
@@ -928,6 +1089,25 @@ export default function AskView() {
             <polyline points="12 5 19 12 12 19"/>
           </svg>
         </button>
+      </div>
+      <div className="ask-composer-footer">
+        <button
+          className={`ask-smart-chip${maxMode ? ' active' : ''}`}
+          onClick={() => !isBlocked && setMaxMode(prev => !prev)}
+          disabled={isBlocked}
+          title="Smart"
+        >
+          Smart
+        </button>
+        <button
+          className={`ask-more-btn${webSearchMode ? ' active' : ''}`}
+          onClick={() => !isBlocked && setWebSearchMode(prev => !prev)}
+          disabled={isBlocked}
+          title="Web search"
+        >
+          ...
+        </button>
+      </div>
       </div>
     </div>
   );

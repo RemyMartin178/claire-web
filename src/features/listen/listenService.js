@@ -435,8 +435,9 @@ class ListenService {
         logger.info('[ListenService] Initialized and ready.');
     }
 
-    async handleListenRequest(listenButtonText) {
+    async handleListenRequest(listenButtonText, options = {}) {
         logger.info('[SEARCH] DEBUG: handleListenRequest called with:', listenButtonText);
+        const { revealListen = true } = options;
 
         const nextHeaderStateByAction = {
             Listen: 'inSession',
@@ -448,7 +449,9 @@ class ListenService {
             switch (listenButtonText) {
                 case 'Listen':
                     logger.info('[ListenService] [START] Enhanced session start with pre-initialization');
-                    internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
+                    if (revealListen) {
+                        internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
+                    }
                     await this.preInitializeComponents();
 
                     const sessionInitialized = await this.initializeSession();

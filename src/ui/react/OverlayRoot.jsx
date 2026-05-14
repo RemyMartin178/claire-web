@@ -24,8 +24,8 @@ function computeLayout(pillX, pillY, pillW, pillH, screenW, screenH, panels, pan
     const listenVis = panels.listen;
 
     if (askVis || listenVis) {
-        const askW = panelSizes.ask?.w ?? 600;
-        const askH = panelSizes.ask?.h ?? 400;
+        const askW = panelSizes.ask?.w ?? 670;
+        const askH = panelSizes.ask?.h ?? 168;
         const listenW = panelSizes.listen?.w ?? 400;
         const listenH = panelSizes.listen?.h ?? 400;
 
@@ -60,7 +60,7 @@ function computeLayout(pillX, pillY, pillW, pillH, screenW, screenH, panels, pan
         let x;
         if (panels.ask && result.ask) {
             // Ask is open: place Settings to the right of Ask panel
-            x = result.ask.x + (panelSizes.ask?.w ?? 600) + PAD;
+            x = result.ask.x + (panelSizes.ask?.w ?? 670) + PAD;
         } else if (panels.listen && result.listen) {
             // Listen is open: place Settings to the right of Listen panel
             x = result.listen.x + (panelSizes.listen?.w ?? 400) + PAD;
@@ -128,14 +128,14 @@ export default function OverlayRoot() {
     const screenW = window.screen.width;
     const screenH = window.screen.height;
 
-    const initPos = { x: Math.round((screenW - 353) / 2), y: 21 };
+    const initPos = { x: Math.round((screenW - 202) / 2), y: 21 };
 
     const [pillPos, setPillPos] = useState(initPos);
     const pillPosRef = useRef(initPos);
     const pillContainerRef = useRef(null);
 
-    const [pillSize, setPillSize] = useState({ w: 353, h: 47 });
-    const pillSizeRef = useRef({ w: 353, h: 47 });
+    const [pillSize, setPillSize] = useState({ w: 202, h: 58 });
+    const pillSizeRef = useRef({ w: 202, h: 58 });
 
     // Panel refs for hit-rect polling
     const listenPanelRef       = useRef(null);
@@ -158,13 +158,13 @@ export default function OverlayRoot() {
     const [panelAnimClass, setPanelAnimClass] = useState({});
 
     const [panelSizes, setPanelSizes] = useState({
-        ask: { w: 600, h: 400 },
+        ask: { w: 670, h: 168 },
         listen: { w: 400, h: 400 },
         settings: { w: 240, h: 500 },
         'agent-selector': { w: 320, h: 380 },
     });
     const panelSizesRef = useRef({
-        ask: { w: 600, h: 400 },
+        ask: { w: 670, h: 168 },
         listen: { w: 400, h: 400 },
         settings: { w: 240, h: 500 },
         'agent-selector': { w: 320, h: 380 },

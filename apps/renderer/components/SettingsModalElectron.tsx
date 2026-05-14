@@ -594,7 +594,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <button
         type="button"
         onClick={e => { e.preventDefault(); e.stopPropagation(); setActiveTab(tabId); }}
-        className={`flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150
+        className={`flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-[0.99]
           ${isActive
             ? 'bg-[#f4f4f5] text-[#18181b] font-medium dark:bg-white/10 dark:text-white'
             : 'text-[#71717a] dark:text-[#a1a1aa] font-medium hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white'}`}
@@ -1333,7 +1333,25 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         <div className="pb-8 border-b border-[#e4e4e7] dark:border-white/10">
           <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-6">Appareils actifs</p>
           {isLoadingDevices ? (
-            <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa]">Chargement des appareils...</p>
+            <div className="space-y-6">
+              {[0, 1].map((item) => (
+                <div key={item} className="flex items-start gap-4">
+                  <Skeleton className="mt-0.5 h-6 w-8 shrink-0 rounded border border-neutral-200 dark:border-white/10" />
+                  <div className="flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-[15px] w-20" />
+                        {item === 0 && <Skeleton className="h-5 w-20 rounded-md" />}
+                      </div>
+                      {item === 1 && <Skeleton className="h-4 w-4 rounded" />}
+                    </div>
+                    <Skeleton className="mb-1.5 h-[13px] w-28" />
+                    <Skeleton className="mb-2 h-[13px] w-44" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="space-y-6">
               {devices.map(device => (
@@ -1618,7 +1636,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         <motion.div
           key="settings-modal-backdrop"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
           className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
           onClick={handleBackdropClick}
         >
@@ -1626,14 +1644,14 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             initial={{ opacity: 0, scale: 0.97, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-[860px] h-[620px] max-h-[92vh] bg-white dark:bg-[#09090b] rounded-xl flex overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-black/5 dark:ring-white/10"
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-[860px] h-[620px] max-h-[92vh] bg-white dark:bg-[#09090b] rounded-xl flex overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-black/5 dark:ring-white/10 transform-gpu"
             onClick={e => e.stopPropagation()}
           >
             {/* LEFT SIDEBAR */}
             <div className="w-[220px] bg-[#fafafa] dark:bg-[#18181b] border-r border-[#e4e4e7] dark:border-white/10 flex flex-col pt-3 pb-4 overflow-hidden shrink-0">
               <div className="px-3 mb-4">
-                <button onClick={onClose} className="flex items-center justify-center w-8 h-8 rounded text-[#a1a1aa] dark:text-[#a1a1aa] hover:text-[#18181b] dark:hover:text-white hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transition duration-150">
+                <button onClick={onClose} className="flex items-center justify-center w-8 h-8 rounded text-[#a1a1aa] dark:text-[#a1a1aa] hover:text-[#18181b] dark:hover:text-white hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-95">
                   <X size={16} strokeWidth={2} />
                 </button>
               </div>
@@ -1654,7 +1672,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 <button
                   type="button"
                   onClick={() => openInBrowser('https://support.clairia.app')}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transform-gpu transition-[background-color,color,transform] duration-180 ease-apple text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <Globe size={14} className="shrink-0" strokeWidth={2} />
@@ -1663,7 +1681,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 <button
                   type="button"
                   onClick={() => openInBrowser('mailto:support@clairia.app')}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transform-gpu transition-[background-color,color,transform] duration-180 ease-apple text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <HelpCircle size={14} className="shrink-0" strokeWidth={2} />
@@ -1673,7 +1691,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
               <div className="mt-auto pt-4 pb-4 flex flex-col gap-0.5 px-3">
                 <button
                   onClick={() => { handleLogout(); onClose(); }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-red-600 dark:hover:bg-transparent dark:hover:text-red-400 transition duration-150"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-red-600 dark:hover:bg-transparent dark:hover:text-red-400 transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <LogOut size={14} strokeWidth={2} className="shrink-0" />
@@ -1687,7 +1705,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       onClose();
                     }
                   }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white transition duration-150"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <Power size={14} strokeWidth={2} className="shrink-0" />
@@ -1697,7 +1715,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             </div>
 
             {/* RIGHT CONTENT */}
-            <div key={activeTab} className="flex-1 bg-white dark:bg-[#09090b] overflow-y-auto px-12 py-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div key={activeTab} className="flex-1 bg-white dark:bg-[#09090b] overflow-y-auto px-12 py-10 motion-safe:animate-page-enter">
               {renderContent()}
             </div>
           </motion.div>
