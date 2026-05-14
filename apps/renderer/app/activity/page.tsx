@@ -251,16 +251,19 @@ export default function ActivityPage() {
               </h1>
             </div>
 
-            {/* Right: Start Claire */}
+            {/* Right: Start Claire — Cluely blue gradient button style */}
             {canStartClaire && (
               <button
                 onClick={() => (window as any).api.dashboard.startClaire()}
                 aria-label="Démarrer Claire"
-                className="relative inline-flex items-center gap-2 h-10 px-5 rounded-full text-[13px] font-semibold text-white transform-gpu transition-all duration-200 hover:scale-[1.04] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
-                style={{ background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%)', boxShadow: '0 0 0 0.678px #0c44a1, inset 0 -1.355px #022c70, inset 0 0.678px #81b6ff' }}
+                className="relative inline-flex items-center gap-2 h-9 px-5 rounded-full text-[13px] font-semibold text-[#CBE3FF] transition duration-150 hover:scale-105 hover:brightness-125 focus-visible:outline-none"
+                style={{
+                  background: 'linear-gradient(#0544a9, #022c70)',
+                  boxShadow: '0 0 0 0.5px #0c44a1, inset 0 -1px #022c70, inset 0 0.5px #81b6ff',
+                }}
               >
-                <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
+                <svg className="size-3.5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5 3l14 9-14 9V3z"/>
                 </svg>
                 Démarrer Claire
               </button>
@@ -351,36 +354,44 @@ export default function ActivityPage() {
                       }
 
                       return (
-                        <li key={session.id} className="group/row relative">
-                          <div className="flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors group-hover/row:bg-muted/70">
-                            <Link
-                              href={`/activity/details?sessionId=${session.id}`}
-                              onClick={() => trackSessionViewed(session.id)}
-                              className="truncate pr-3 font-medium text-sm text-foreground flex-1 block"
-                            >
+                        <li key={session.id} className="group/row relative transition-[filter,opacity] duration-200">
+                          {/* Full-row link underneath — z-0 */}
+                          <Link
+                            href={`/activity/details?sessionId=${session.id}`}
+                            onClick={() => trackSessionViewed(session.id)}
+                            aria-label={displayTitle}
+                            className="absolute inset-0 z-0 rounded-lg"
+                          />
+                          {/* Visible row content — z-10, pointer-events-none so link receives clicks */}
+                          <div className="pointer-events-none relative z-10 flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors group-hover/row:bg-muted/70">
+                            <span className="truncate pr-3 font-medium text-sm text-foreground flex-1">
                               {displayTitle}
-                            </Link>
+                            </span>
                             <span className="flex shrink-0 items-center gap-3">
                               <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums bg-muted text-foreground">
                                 {durationStr}
                               </span>
-                              <span className="text-[11px] text-muted-foreground w-[5ch] text-right">
+                              {/* Time: slides left and fades out on hover — Cluely pattern */}
+                              <span className="font-medium text-muted-foreground text-xs tabular-nums transition-all duration-200 group-hover/row:-translate-x-1.5 group-hover/row:opacity-0">
                                 {timeStr}
                               </span>
-                              <Button
-                                onClick={(e) => { e.preventDefault(); handleDeleteClick(session.id) }}
-                                disabled={deletingId === session.id}
-                                variant="ghost"
-                                size="icon"
-                                className="opacity-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-all"
-                              >
-                                {deletingId === session.id ? (
-                                  <div className="animate-spin h-3.5 w-3.5 border-2 border-red-500 rounded-full border-t-transparent" />
-                                ) : (
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                )}
-                              </Button>
                             </span>
+                          </div>
+                          {/* Delete button: slides in from right on hover — z-10, pointer-events-auto */}
+                          <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center pr-3 transition-all duration-200 translate-x-1.5 opacity-0 group-hover/row:translate-x-0 group-hover/row:opacity-100">
+                            <Button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteClick(session.id) }}
+                              disabled={deletingId === session.id}
+                              variant="ghost"
+                              size="icon"
+                              className="pointer-events-auto text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-all"
+                            >
+                              {deletingId === session.id ? (
+                                <div className="animate-spin h-3.5 w-3.5 border-2 border-red-500 rounded-full border-t-transparent" />
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              )}
+                            </Button>
                           </div>
                         </li>
                       )
