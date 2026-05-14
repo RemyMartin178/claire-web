@@ -510,38 +510,6 @@ class ListenService {
         logger.info('[ListenService] [TOOL] Pre-initializing components for reliable startup...');
 
         try {
-            // Pre-initialize model state service
-            const modelStateService = require('../../common/services/modelStateService');
-
-            // Ensure Deepgram is selected and ready
-            const modelInfo = modelStateService.getCurrentModelInfo('stt');
-            if (!modelInfo || modelInfo.provider !== 'deepgram') {
-                logger.info('[ListenService] [LOADING] Pre-initializing Deepgram selection...');
-                const deepgramKey = modelStateService.getApiKey('deepgram');
-                if (deepgramKey) {
-                    if (modelStateService.state?.selectedModels) {
-                        modelStateService.state.selectedModels.stt = null;
-                    }
-                    modelStateService._autoSelectAvailableModels(['stt']);
-
-                    // Wait a moment for selection to complete
-                    await new Promise(resolve => setTimeout(resolve, 100));
-
-                    // Verify selection worked
-                    const updatedModelInfo = modelStateService.getCurrentModelInfo('stt');
-                    logger.info('[ListenService] [SEARCH] Post-selection model info:', {
-                        provider: updatedModelInfo?.provider,
-                        model: updatedModelInfo?.model,
-                        hasApiKey: !!updatedModelInfo?.apiKey
-                    });
-                }
-            } else {
-                logger.info('[ListenService] [OK] Deepgram already selected:', {
-                    provider: modelInfo.provider,
-                    model: modelInfo.model
-                });
-            }
-
             // Pre-warm audio context (helps prevent browser audio context suspension)
             if (typeof window !== 'undefined' && window.AudioContext) {
                 try {
@@ -828,25 +796,6 @@ class ListenService {
         this.sendToRenderer('update-status', 'Initializing sessions...');
 
         try {
-            // Force Deepgram selection if available for ultra-low latency
-            try {
-                const modelStateService = require('../../common/services/modelStateService');
-                const deepgramKey = modelStateService.getApiKey('deepgram');
-                const currentSTT = modelStateService.getCurrentModelInfo('stt');
-
-                if (deepgramKey && currentSTT?.provider !== 'deepgram') {
-                    logger.info('[ListenService] [START] Forcing Deepgram selection for ultra-low latency STT');
-                    // Clear current selection and force reselection
-                    if (modelStateService.state?.selectedModels) {
-                        modelStateService.state.selectedModels.stt = null;
-                    }
-                    modelStateService._autoSelectAvailableModels(['stt']);
-                    logger.info('[ListenService] [OK] Deepgram auto-selection completed');
-                }
-            } catch (error) {
-                logger.warn('[ListenService] Could not force Deepgram selection:', error.message);
-            }
-
             // Initialize database session
             const sessionInitialized = await this.initializeNewSession();
             if (!sessionInitialized) {

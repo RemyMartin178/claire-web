@@ -122,11 +122,6 @@ const ALLOWED_DEEPLINK_ACTIONS = ['auth', 'login', 'auth-success', 'local-mode',
 global.modelStateService = modelStateService;
 //////// after_modelStateService ////////
 
-// Import and initialize OllamaService
-const ollamaService = require('./common/services/ollamaService');
-
-const ollamaModelRepository = require('./common/repositories/ollamaModel');
-
 const { createLogger } = require('./common/services/logger.js');
 
 const logger = createLogger('Index');
@@ -515,19 +510,6 @@ app.whenReady().then(async () => {
         listenService.initialize();
         logger.info('[Index] Listen service initialized');
 
-        // >>> [index.js] Ollama model database initialization disabled (Phase 1 Fix - SQLite removed)
-        logger.info('[Index] DEBUG: Ollama model initialization skipped - using backend API endpoints');
-
-        // Auto warm-up selected Ollama model in background (non-blocking)
-        setTimeout(async () => {
-            try {
-                logger.info('[index.js] Starting background Ollama model warm-up...');
-                await ollamaService.autoWarmUpSelectedModel();
-            } catch (error) {
-                logger.info('[index.js] Background warm-up failed (non-critical):', error.message);
-            }
-        }, 2000); // Wait 2 seconds after app start
-
         ensureAuxiliaryWebStackStarted().catch(() => {});
 
         // Onboarding window opens first (1100×720 frameless).
@@ -613,26 +595,7 @@ app.on('before-quit', async (event) => {
             logger.warn('Could not end active sessions (database may be closed):', { error: dbError.message });
         }
 
-        // 3. Shutdown Ollama service (potentially time-consuming)
-        logger.info('[Shutdown] shutting down Ollama service...');
-        const ollamaShutdownSuccess = await Promise.race([
-            ollamaService.shutdown(false), // Graceful shutdown
-            new Promise(resolve => setTimeout(() => resolve(false), 8000)) // 8s timeout
-        ]);
-
-        if (ollamaShutdownSuccess) {
-            logger.info('[Shutdown] Ollama service shut down gracefully');
-        } else {
-            logger.info('[Shutdown] Ollama shutdown timeout, forcing...');
-            // Force shutdown if graceful failed
-            try {
-                await ollamaService.shutdown(true);
-            } catch (forceShutdownError) {
-                logger.warn('Force shutdown also failed:', { error: forceShutdownError.message });
-            }
-        }
-
-        // 4. Close database connections (final cleanup) - SQLite removed
+        // 3. Close database connections (final cleanup) - SQLite removed
         logger.info('[Shutdown] SQLite database close skipped (migrated to Neon)');
 
         logger.info('[Shutdown] Graceful shutdown completed successfully');

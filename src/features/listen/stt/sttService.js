@@ -213,22 +213,14 @@ class SttService {
     }
 
     debounceMyCompletion(text) {
-        if (this.modelInfo?.provider === 'gemini') {
-            this.myCompletionBuffer += text;
-        } else {
-            this.myCompletionBuffer += (this.myCompletionBuffer ? ' ' : '') + text;
-        }
+        this.myCompletionBuffer += (this.myCompletionBuffer ? ' ' : '') + text;
 
         if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
         this.myCompletionTimer = setTimeout(() => this.flushMyCompletion(), COMPLETION_DEBOUNCE_MS);
     }
 
     debounceTheirCompletion(text) {
-        if (this.modelInfo?.provider === 'gemini') {
-            this.theirCompletionBuffer += text;
-        } else {
-            this.theirCompletionBuffer += (this.theirCompletionBuffer ? ' ' : '') + text;
-        }
+        this.theirCompletionBuffer += (this.theirCompletionBuffer ? ' ' : '') + text;
 
         if (this.theirCompletionTimer) clearTimeout(this.theirCompletionTimer);
         this.theirCompletionTimer = setTimeout(() => this.flushTheirCompletion(), COMPLETION_DEBOUNCE_MS);
@@ -244,18 +236,11 @@ class SttService {
         logger.info('[STT] Configuration récupérée:', {
             hasModelInfo: !!modelInfo,
             provider: modelInfo?.provider,
-            model: modelInfo?.model,
-            hasApiKey: !!modelInfo?.apiKey,
-            apiKeyPreview: modelInfo?.apiKey ? modelInfo.apiKey.substring(0, 8) + '...' : 'none'
+            model: modelInfo?.model
         });
         
-        if (!modelInfo || !modelInfo.apiKey) {
-            logger.error('[STT] ERREUR: Configuration manquante:', {
-                hasModelInfo: !!modelInfo,
-                hasApiKey: !!modelInfo?.apiKey,
-                provider: modelInfo?.provider
-            });
-            throw new Error('Modèle IA ou clé API non configuré.');
+        if (!modelInfo) {
+            throw new Error('STT model info unavailable');
         }
         this.modelInfo = modelInfo;
         logger.info(`[STT] Initialisation ${modelInfo.provider} avec le modèle ${modelInfo.model}`);
@@ -270,151 +255,46 @@ class SttService {
                 return;
             }
             
-            // Enhanced debugging for incoming messages (logging removed to prevent terminal flooding)
-            
-            if (this.modelInfo.provider === 'whisper') {
-                // Whisper STT emits 'transcription' events with different structure
-                if (message.text && message.text.trim()) {
-                    const finalText = message.text.trim();
-                    
-                    // Filter out Whisper noise transcriptions
-                    const noisePatterns = [
-                        '[BLANK_AUDIO]',
-                        '[INAUDIBLE]',
-                        '[MUSIC]',
-                        '[SOUND]',
-                        '[NOISE]',
-                        '(BLANK_AUDIO)',
-                        '(INAUDIBLE)',
-                        '(MUSIC)',
-                        '(SOUND)',
-                        '(NOISE)'
-                    ];
-                    
-                    const isNoise = noisePatterns.some(pattern => 
-                        finalText.includes(pattern) || finalText === pattern
-                    );
-                    
-                    
-                    if (!isNoise && finalText.length > 2) {
-                        // Show as partial immediately for responsiveness
-                        this.sendToRenderer('stt-update', {
-                            speaker: 'Me',
-                            text: finalText,
-                            isPartial: true,
-                            isFinal: false,
-                            timestamp: Date.now(),
-                        });
-                        // Whisper sends full text each event - replace buffer instead of appending
-                        this.myCompletionBuffer = finalText;
-                        this.myCurrentUtterance = '';
-                        if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
-                        this.myCompletionTimer = setTimeout(() => this.flushMyCompletion(), 500);
-                    } else {
-                        logger.info('Filtered noise: ""');
-                    }
+            // Handle optimized AssemblyAI/Deepgram message format
+            if (message.type === 'speech_started') {
+                // Voice activity detected - prepare for incoming audio
+                return;
+            } else if (message.type === 'utterance_end') {
+                // Utterance completed - finalize any pending text
+                if (this.myCompletionTimer) {
+                    clearTimeout(this.myCompletionTimer);
+                    this.flushMyCompletion();
                 }
                 return;
-            } else if (this.modelInfo.provider === 'gemini') {
-                if (!message.serverContent?.modelTurn) {
-                    logger.info('[Gemini STT - Me]', JSON.stringify(message, null, 2));
-                }
+            }
 
-                if (message.serverContent?.turnComplete) {
-                    if (this.myCompletionTimer) {
-                        clearTimeout(this.myCompletionTimer);
-                        this.flushMyCompletion();
-                    }
-                    return;
-                }
-            
-                const transcription = message.serverContent?.inputTranscription;
-                if (!transcription || !transcription.text) return;
-                
-                const textChunk = transcription.text;
-                if (!textChunk.trim() || textChunk.trim() === '<noise>') {
-                    return; // 1. Ignore whitespace-only chunks or noise
-                }
-            
-                this.debounceMyCompletion(textChunk);
-                
+            // Handle transcript results
+            const text = message.transcript || message.channel?.alternatives?.[0]?.transcript;
+            if (!text || text.trim().length === 0) return;
+
+            const isFinal = message.is_final;
+            const confidence = message.confidence || message.channel?.alternatives?.[0]?.confidence || 0;
+
+            if (isFinal) {
+                // Flush synchronously to prevent next partial from contaminating this sentence
+                if (this.myCompletionTimer) { clearTimeout(this.myCompletionTimer); this.myCompletionTimer = null; }
+                this.myCurrentUtterance = '';
+                this.myCompletionBuffer = text;
+                this.flushMyCompletion();
+            } else {
+                if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
+                this.myCompletionTimer = null;
+
+                this.myCurrentUtterance = text;
+
                 this.sendToRenderer('stt-update', {
                     speaker: 'Me',
-                    text: this.myCompletionBuffer,
+                    text: text,
                     isPartial: true,
                     isFinal: false,
+                    confidence: confidence,
                     timestamp: Date.now(),
                 });
-                
-            // Deepgram & AssemblyAI
-            } else if (this.modelInfo.provider === 'deepgram' || this.modelInfo.provider === 'assemblyai') {
-                // Handle optimized Deepgram message format
-                if (message.type === 'speech_started') {
-                    // Voice activity detected - prepare for incoming audio
-                    return;
-                } else if (message.type === 'utterance_end') {
-                    // Utterance completed - finalize any pending text
-                    if (this.myCompletionTimer) {
-                        clearTimeout(this.myCompletionTimer);
-                        this.flushMyCompletion();
-                    }
-                    return;
-                }
-                
-                // Handle transcript results (both old and new format)
-                const text = message.transcript || message.channel?.alternatives?.[0]?.transcript;
-                if (!text || text.trim().length === 0) return;
-
-                const isFinal = message.is_final;
-                const confidence = message.confidence || message.channel?.alternatives?.[0]?.confidence || 0;
-
-                if (isFinal) {
-                    // Flush synchronously to prevent next partial from contaminating this sentence
-                    if (this.myCompletionTimer) { clearTimeout(this.myCompletionTimer); this.myCompletionTimer = null; }
-                    this.myCurrentUtterance = '';
-                    this.myCompletionBuffer = text;
-                    this.flushMyCompletion();
-                } else {
-                    if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
-                    this.myCompletionTimer = null;
-
-                    this.myCurrentUtterance = text;
-
-                    this.sendToRenderer('stt-update', {
-                        speaker: 'Me',
-                        text: text,
-                        isPartial: true,
-                        isFinal: false,
-                        confidence: confidence,
-                        timestamp: Date.now(),
-                    });
-                }
-
-            } else {
-                const type = message.type;
-                const text = message.transcript || message.delta || (message.alternatives && message.alternatives[0]?.transcript) || '';
-
-                if (type === 'conversation.item.input_audio_transcription.delta') {
-                    if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
-                    this.myCompletionTimer = null;
-                    this.myCurrentUtterance += text;
-                    const continuousText = this.myCompletionBuffer + (this.myCompletionBuffer ? ' ' : '') + this.myCurrentUtterance;
-                    if (text && !text.includes('vq_lbr_audio_')) {
-                        this.sendToRenderer('stt-update', {
-                            speaker: 'Me',
-                            text: continuousText,
-                            isPartial: true,
-                            isFinal: false,
-                            timestamp: Date.now(),
-                        });
-                    }
-                } else if (type === 'conversation.item.input_audio_transcription.completed') {
-                    if (text && text.trim()) {
-                        const finalUtteranceText = text.trim();
-                        this.myCurrentUtterance = '';
-                        this.debounceMyCompletion(finalUtteranceText);
-                    }
-                }
             }
 
             if (message.error) {
@@ -434,152 +314,48 @@ class SttService {
                 return;
             }
             
-            // Enhanced debugging for incoming messages (logging removed to prevent terminal flooding)
-            
-            if (this.modelInfo.provider === 'whisper') {
-                // Whisper STT emits 'transcription' events with different structure
-                if (message.text && message.text.trim()) {
-                    const finalText = message.text.trim();
-                    
-                    // Filter out Whisper noise transcriptions
-                    const noisePatterns = [
-                        '[BLANK_AUDIO]',
-                        '[INAUDIBLE]',
-                        '[MUSIC]',
-                        '[SOUND]',
-                        '[NOISE]',
-                        '(BLANK_AUDIO)',
-                        '(INAUDIBLE)',
-                        '(MUSIC)',
-                        '(SOUND)',
-                        '(NOISE)'
-                    ];
-                    
-                    const isNoise = noisePatterns.some(pattern => 
-                        finalText.includes(pattern) || finalText === pattern
-                    );
-                    
-                    
-                    // Only process if it's not noise, not a false positive, and has meaningful content
-                    if (!isNoise && finalText.length > 2) {
-                        this.sendToRenderer('stt-update', {
-                            speaker: 'Them',
-                            text: finalText,
-                            isPartial: true,
-                            isFinal: false,
-                            timestamp: Date.now(),
-                        });
-                        // Whisper sends full text each event - replace buffer instead of appending
-                        this.theirCompletionBuffer = finalText;
-                        this.theirCurrentUtterance = '';
-                        if (this.theirCompletionTimer) clearTimeout(this.theirCompletionTimer);
-                        this.theirCompletionTimer = setTimeout(() => this.flushTheirCompletion(), 500);
-                    } else {
-                        logger.info('Filtered noise: ""');
-                    }
+            // Handle optimized AssemblyAI/Deepgram message format
+            if (message.type === 'speech_started') {
+                // Voice activity detected - prepare for incoming audio
+                return;
+            } else if (message.type === 'utterance_end') {
+                // Utterance completed - finalize any pending text
+                if (this.theirCompletionTimer) {
+                    clearTimeout(this.theirCompletionTimer);
+                    this.flushTheirCompletion();
                 }
                 return;
-            } else if (this.modelInfo.provider === 'gemini') {
-                if (!message.serverContent?.modelTurn) {
-                    logger.info('[Gemini STT - Them]', JSON.stringify(message, null, 2));
-                }
+            }
 
-                if (message.serverContent?.turnComplete) {
-                    if (this.theirCompletionTimer) {
-                        clearTimeout(this.theirCompletionTimer);
-                        this.flushTheirCompletion();
-                    }
-                    return;
-                }
-            
-                const transcription = message.serverContent?.inputTranscription;
-                if (!transcription || !transcription.text) return;
+            // Handle transcript results
+            const text = message.transcript || message.channel?.alternatives?.[0]?.transcript;
+            if (!text || text.trim().length === 0) return;
 
-                const textChunk = transcription.text;
-                if (!textChunk.trim() || textChunk.trim() === '<noise>') {
-                    return; // 1. Ignore whitespace-only chunks or noise
-                }
+            const isFinal = message.is_final;
+            const confidence = message.confidence || message.channel?.alternatives?.[0]?.confidence || 0;
 
-                this.debounceTheirCompletion(textChunk);
-                
+            if (isFinal) {
+                // Flush synchronously to prevent next partial from contaminating this sentence
+                if (this.theirCompletionTimer) { clearTimeout(this.theirCompletionTimer); this.theirCompletionTimer = null; }
+                this.theirCurrentUtterance = '';
+                this.theirCompletionBuffer = text;
+                this.flushTheirCompletion();
+            } else {
+                if (this.theirCompletionTimer) clearTimeout(this.theirCompletionTimer);
+                this.theirCompletionTimer = null;
+
+                this.theirCurrentUtterance = text;
+
                 this.sendToRenderer('stt-update', {
                     speaker: 'Them',
-                    text: this.theirCompletionBuffer,
+                    text: text,
                     isPartial: true,
                     isFinal: false,
+                    confidence: confidence,
                     timestamp: Date.now(),
                 });
-
-            // Deepgram & AssemblyAI
-            } else if (this.modelInfo.provider === 'deepgram' || this.modelInfo.provider === 'assemblyai') {
-                // Handle optimized Deepgram message format
-                if (message.type === 'speech_started') {
-                    // Voice activity detected - prepare for incoming audio
-                    return;
-                } else if (message.type === 'utterance_end') {
-                    // Utterance completed - finalize any pending text
-                    if (this.theirCompletionTimer) {
-                        clearTimeout(this.theirCompletionTimer);
-                        this.flushTheirCompletion();
-                    }
-                    return;
-                }
-                
-                // Handle transcript results (both old and new format)
-                const text = message.transcript || message.channel?.alternatives?.[0]?.transcript;
-                if (!text || text.trim().length === 0) return;
-
-                const isFinal = message.is_final;
-                const confidence = message.confidence || message.channel?.alternatives?.[0]?.confidence || 0;
-
-                if (isFinal) {
-                    // Flush synchronously to prevent next partial from contaminating this sentence
-                    if (this.theirCompletionTimer) { clearTimeout(this.theirCompletionTimer); this.theirCompletionTimer = null; }
-                    this.theirCurrentUtterance = '';
-                    this.theirCompletionBuffer = text;
-                    this.flushTheirCompletion();
-                } else {
-                    if (this.theirCompletionTimer) clearTimeout(this.theirCompletionTimer);
-                    this.theirCompletionTimer = null;
-
-                    this.theirCurrentUtterance = text;
-
-                    this.sendToRenderer('stt-update', {
-                        speaker: 'Them',
-                        text: text,
-                        isPartial: true,
-                        isFinal: false,
-                        confidence: confidence,
-                        timestamp: Date.now(),
-                    });
-                }
-
-            } else {
-                const type = message.type;
-                const text = message.transcript || message.delta || (message.alternatives && message.alternatives[0]?.transcript) || '';
-                if (type === 'conversation.item.input_audio_transcription.delta') {
-                    if (this.theirCompletionTimer) clearTimeout(this.theirCompletionTimer);
-                    this.theirCompletionTimer = null;
-                    this.theirCurrentUtterance += text;
-                    const continuousText = this.theirCompletionBuffer + (this.theirCompletionBuffer ? ' ' : '') + this.theirCurrentUtterance;
-                    if (text && !text.includes('vq_lbr_audio_')) {
-                        this.sendToRenderer('stt-update', {
-                            speaker: 'Them',
-                            text: continuousText,
-                            isPartial: true,
-                            isFinal: false,
-                            timestamp: Date.now(),
-                        });
-                    }
-                } else if (type === 'conversation.item.input_audio_transcription.completed') {
-                    if (text && text.trim()) {
-                        const finalUtteranceText = text.trim();
-                        this.theirCurrentUtterance = '';
-                        this.debounceTheirCompletion(finalUtteranceText);
-                    }
-                }
             }
-            
+
             if (message.error) {
                 logger.error('STT Session Error:', { error: message.error });
             }
@@ -603,56 +379,16 @@ class SttService {
             },
         };
         
-        // Provider-specific options to avoid parameter conflicts
-        // Handle auto-detection: Deepgram uses 'multi', others use null for auto
-        let finalLanguage = effectiveLanguage;
-        if (effectiveLanguage === 'auto') {
-            if (this.modelInfo.provider === 'deepgram') {
-                finalLanguage = 'multi'; // Deepgram's multilanguage mode (French + English)
-            } else if (this.modelInfo.provider === 'whisper' || this.modelInfo.provider === 'openai' || this.modelInfo.provider === 'openai-glass') {
-                finalLanguage = null; // OpenAI/Whisper auto-detects when language is null
-            } else {
-                finalLanguage = 'fr'; // Default to French for other providers
-            }
-        }
-        
-        let sttOptions = {
-            apiKey: this.modelInfo.apiKey,
-            language: finalLanguage,
-        };
-        
-        // Add provider-specific parameters
-        if (this.modelInfo.provider === 'openai-glass') {
-            sttOptions.usePortkey = true;
-            sttOptions.portkeyVirtualKey = this.modelInfo.apiKey;
-        } else if (this.modelInfo.provider === 'whisper') {
-            // Whisper-specific options
-            sttOptions.sessionType = 'whisper'; // Will be overridden per session
-        } else if (this.modelInfo.provider === 'deepgram') {
-            // Deepgram-specific options for best French/English recognition
-            sttOptions.sampleRate = 24000;
-            sttOptions.model = 'nova-3'; // Nova-3 = meilleure précision que Nova-2
-            sttOptions.smart_format = true; // Auto-formatting for better readability
-            sttOptions.punctuate = true; // Ponctuation automatique
-            sttOptions.filler_words = false; // Supprimer "euh", "hum"
-            sttOptions.utterance_end_ms = 1500; // 1.5s pour fin d'énoncé
-            sttOptions.endpointing = 300; // 300ms pour meilleure détection pauses
-        } else if (this.modelInfo.provider === 'assemblyai') {
-            sttOptions.sampleRate = 24000;
-            sttOptions.model = this.modelInfo.model || 'u3-rt-pro';
-        }
+        let finalLanguage = effectiveLanguage === 'auto' ? 'fr' : effectiveLanguage;
 
-        // Add sessionType for Whisper to distinguish between My and Their sessions
-        const myOptions = { 
-            ...sttOptions, 
-            callbacks: mySttConfig.callbacks, 
-            sessionType: this.modelInfo.provider === 'whisper' ? 'my' : undefined 
+        const sttOptions = {
+            language: finalLanguage,
+            sampleRate: 24000,
+            model: this.modelInfo.model || 'u3-rt-pro',
         };
-        const theirOptions = { 
-            ...sttOptions, 
-            callbacks: theirSttConfig.callbacks, 
-            sessionType: this.modelInfo.provider === 'whisper' ? 'their' : undefined 
-        };
+
+        const myOptions = { ...sttOptions, callbacks: mySttConfig.callbacks };
+        const theirOptions = { ...sttOptions, callbacks: theirSttConfig.callbacks };
 
         logger.info('[STT] Création des sessions de transcription...', {
             provider: this.modelInfo.provider,
@@ -683,72 +419,8 @@ class SttService {
                 createWithTimeout(this.modelInfo.provider, theirOptions, 'Their'),
             ]);
         } catch (error) {
-            if (this.modelInfo.provider === 'assemblyai') {
-                logger.warn('[STT] AssemblyAI failed, trying fallback...', { model: this.modelInfo.model, error: error.message });
-
-                // Step 1: Try a cheaper AssemblyAI model before switching providers
-                const assemblyFallbackModels = ['u3-rt', 'default', 'nano'];
-                const currentModel = this.modelInfo.model || 'u3-rt-pro';
-                const nextModel = assemblyFallbackModels.find(m => m !== currentModel);
-                if (nextModel) {
-                    const assemblyKey = modelStateService.getApiKey('assemblyai');
-                    const downgradeOpts = { ...myOptions, model: nextModel };
-                    const downgradeTheirOpts = { ...theirOptions, model: nextModel };
-                    try {
-                        [this.mySttSession, this.theirSttSession] = await Promise.all([
-                            createWithTimeout('assemblyai', downgradeOpts, `My (assemblyai/${nextModel})`),
-                            createWithTimeout('assemblyai', downgradeTheirOpts, `Their (assemblyai/${nextModel})`),
-                        ]);
-                        this.modelInfo = { ...this.modelInfo, model: nextModel };
-                        logger.info(`[STT] AssemblyAI model downgrade to ${nextModel} succeeded`);
-                        // skip provider fallback
-                        logger.info('[STT] Sessions de transcription créées avec succès (downgraded model)');
-                        return;
-                    } catch (downgradeError) {
-                        logger.warn(`[STT] AssemblyAI ${nextModel} also failed, switching provider`, { error: downgradeError.message });
-                    }
-                }
-
-                // Step 2: Switch to another provider
-                // Fallback chain: Deepgram -> Gemini -> Whisper -> OpenAI
-                const fallbackChain = [
-                    { provider: 'deepgram', extraOpts: { sampleRate: 24000, model: 'nova-3', smart_format: true, punctuate: true, filler_words: false, utterance_end_ms: 1500, endpointing: 300 } },
-                    { provider: 'gemini', extraOpts: {} },
-                    { provider: 'whisper', extraOpts: { sessionType: 'my' } },
-                    { provider: 'openai', extraOpts: {} },
-                ];
-
-                let fallbackSucceeded = false;
-                for (const { provider, extraOpts } of fallbackChain) {
-                    const fallbackApiKey = modelStateService.getApiKey(provider);
-                    if (!fallbackApiKey) continue;
-
-                    logger.info(`[STT] Trying fallback provider: ${provider}`);
-                    const fallbackMyOptions = { ...myOptions, ...extraOpts, apiKey: fallbackApiKey, sessionType: provider === 'whisper' ? 'my' : undefined };
-                    const fallbackTheirOptions = { ...theirOptions, ...extraOpts, apiKey: fallbackApiKey, sessionType: provider === 'whisper' ? 'their' : undefined };
-
-                    try {
-                        [this.mySttSession, this.theirSttSession] = await Promise.all([
-                            createWithTimeout(provider, fallbackMyOptions, `My (${provider} fallback)`),
-                            createWithTimeout(provider, fallbackTheirOptions, `Their (${provider} fallback)`),
-                        ]);
-                        this.modelInfo = { ...this.modelInfo, provider };
-                        logger.info(`[STT] Fallback to ${provider} succeeded`);
-                        fallbackSucceeded = true;
-                        break;
-                    } catch (fallbackError) {
-                        logger.warn(`[STT] ${provider} fallback also failed:`, { error: fallbackError.message });
-                    }
-                }
-
-                if (!fallbackSucceeded) {
-                    initializationFailed = true;
-                    throw new Error('All STT providers failed to initialize.');
-                }
-            } else {
-                initializationFailed = true;
-                throw error;
-            }
+            initializationFailed = true;
+            throw error;
         }
 
         logger.info('[STT] Sessions de transcription créées avec succès:', {
@@ -854,18 +526,8 @@ class SttService {
             return { success: false, error: 'STT model info could not be retrieved' };
         }
 
-        let payload;
         try {
-            if (modelInfo.provider === 'gemini') {
-                payload = { audio: { data, mimeType: mimeType || 'audio/pcm;rate=24000' } };
-            } else if (modelInfo.provider === 'deepgram' || modelInfo.provider === 'assemblyai') {
-                // Deepgram expectations raw audio buffer, AssemblyAI provider toStrings it to base64 inside.
-                payload = Buffer.from(data, 'base64'); 
-                // Deepgram payload prepared (debug logging removed to prevent terminal flooding)
-            } else {
-                // OpenAI and others expect base64 string directly
-                payload = data;
-            }
+            const payload = Buffer.from(data, 'base64');
 
             await this.mySttSession.sendRealtimeInput(payload);
             // Microphone audio sent to STT session (debug logging removed to prevent terminal flooding)
@@ -900,14 +562,7 @@ class SttService {
             return { success: false, error: 'STT model info could not be retrieved' };
         }
 
-        let payload;
-        if (modelInfo.provider === 'gemini') {
-            payload = { audio: { data, mimeType: mimeType || 'audio/pcm;rate=24000' } };
-        } else if (modelInfo.provider === 'deepgram' || modelInfo.provider === 'assemblyai') {
-            payload = Buffer.from(data, 'base64');
-        } else {
-            payload = data;
-        }
+        const payload = Buffer.from(data, 'base64');
 
         try {
             await this.theirSttSession.sendRealtimeInput(payload);
@@ -1003,8 +658,7 @@ class SttService {
 
         logger.info('SystemAudioDump started with PID:', this.systemAudioProc.pid);
 
-        // AssemblyAI requires min 50ms chunks; Deepgram works with 25ms
-        const CHUNK_DURATION = (this.modelInfo?.provider === 'assemblyai') ? 0.1 : 0.025;
+        const CHUNK_DURATION = 0.1; // 100ms chunks for AssemblyAI (via claire-api)
         const SAMPLE_RATE = 24000;
         const BYTES_PER_SAMPLE = 2;
         const CHANNELS = 2;
@@ -1038,14 +692,7 @@ class SttService {
 
                 if (this.theirSttSession) {
                     try {
-                        let payload;
-                        if (modelInfo.provider === 'gemini') {
-                            payload = { audio: { data: base64Data, mimeType: 'audio/pcm;rate=24000' } };
-                        } else if (modelInfo.provider === 'deepgram') {
-                            payload = Buffer.from(base64Data, 'base64');
-                        } else {
-                            payload = base64Data;
-                        }
+                        const payload = Buffer.from(base64Data, 'base64');
 
                         await this.theirSttSession.sendRealtimeInput(payload);
                     } catch (err) {
@@ -1243,7 +890,7 @@ class SttService {
             
             // Restart session with current configuration
             const modelInfo = this.modelInfo || modelStateService.getCurrentModelInfo('stt');
-            if (!modelInfo || !modelInfo.apiKey) {
+            if (!modelInfo) {
                 throw new Error('STT model configuration not available for restart');
             }
             
@@ -1260,93 +907,44 @@ class SttService {
                     return;
                 }
                 
-                if (this.modelInfo.provider === 'whisper') {
-                    if (message.text && message.text.trim()) {
-                        const finalText = message.text.trim();
-                        
-                        const noisePatterns = [
-                            '[BLANK_AUDIO]', '[INAUDIBLE]', '[MUSIC]', '[SOUND]', '[NOISE]',
-                            '(BLANK_AUDIO)', '(INAUDIBLE)', '(MUSIC)', '(SOUND)', '(NOISE)'
-                        ];
-                        
-                        const isNoise = noisePatterns.some(pattern => 
-                            finalText.includes(pattern) || finalText === pattern
-                        );
-                        
-                        if (!isNoise && finalText.length > 2) {
-                            this.sendToRenderer('stt-update', {
-                                speaker: 'Me',
-                                text: finalText,
-                                isPartial: true,
-                                isFinal: false,
-                                timestamp: Date.now(),
-                            });
-                            // Whisper sends full text each event - replace buffer instead of appending
-                            this.myCompletionBuffer = finalText;
-                            this.myCurrentUtterance = '';
-                            if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
-                            this.myCompletionTimer = setTimeout(() => this.flushMyCompletion(), 500);
-                        }
+                // Handle optimized AssemblyAI message format
+                if (message.type === 'speech_started') {
+                    return;
+                } else if (message.type === 'utterance_end') {
+                    if (this.myCompletionTimer) {
+                        clearTimeout(this.myCompletionTimer);
+                        this.flushMyCompletion();
                     }
                     return;
-                } else if (this.modelInfo.provider === 'gemini') {
-                    if (message.serverContent?.turnComplete) {
-                        if (this.myCompletionTimer) {
-                            clearTimeout(this.myCompletionTimer);
-                            this.flushMyCompletion();
-                        }
-                        return;
-                    }
-                
-                    const transcription = message.serverContent?.inputTranscription;
-                    if (!transcription || !transcription.text) return;
-                    
-                    const textChunk = transcription.text;
-                    if (!textChunk.trim() || textChunk.trim() === '<noise>') {
-                        return;
-                    }
-                
-                    this.debounceMyCompletion(textChunk);
-                    
+                }
+
+                const text = message.transcript || message.channel?.alternatives?.[0]?.transcript;
+                if (!text || text.trim().length === 0) return;
+
+                const isFinal = message.is_final;
+                const confidence = message.confidence || message.channel?.alternatives?.[0]?.confidence || 0;
+
+                if (isFinal) {
+                    if (this.myCompletionTimer) { clearTimeout(this.myCompletionTimer); this.myCompletionTimer = null; }
+                    this.myCurrentUtterance = '';
+                    this.myCompletionBuffer = text;
+                    this.flushMyCompletion();
+                } else {
+                    if (this.myCompletionTimer) clearTimeout(this.myCompletionTimer);
+                    this.myCompletionTimer = null;
+
+                    this.myCurrentUtterance = text;
+
                     this.sendToRenderer('stt-update', {
                         speaker: 'Me',
-                        text: this.myCompletionBuffer,
+                        text: text,
                         isPartial: true,
                         isFinal: false,
-                        timestamp: Date.now(),
-                    });
-                    
-                } else if (this.modelInfo.provider === 'deepgram') {
-                    if (message.type === 'speech_started') {
-                        return;
-                    } else if (message.type === 'utterance_end') {
-                        if (this.myCompletionTimer) {
-                            clearTimeout(this.myCompletionTimer);
-                            this.flushMyCompletion();
-                        }
-                        return;
-                    }
-                    
-                    const text = message.transcript || message.channel?.alternatives?.[0]?.transcript;
-                    if (!text || text.trim().length === 0) return;
-
-                    const isFinal = message.is_final;
-                    const confidence = message.confidence || message.channel?.alternatives?.[0]?.confidence || 0;
-
-                    if (isFinal && confidence > 0.5 && text.trim().length > 1) {
-                        this.debounceMyCompletion(text.trim());
-                    }
-                    
-                    this.sendToRenderer('stt-update', {
-                        speaker: 'Me',
-                        text: isFinal ? this.myCompletionBuffer : text,
-                        isPartial: !isFinal,
-                        isFinal,
-                        confidence,
+                        confidence: confidence,
                         timestamp: Date.now(),
                     });
                 }
-                
+
                 if (message.error) {
                     logger.error('STT Session Error:', { error: message.error });
                 }
@@ -1361,20 +959,12 @@ class SttService {
                 },
             };
             
-            let sttOptions = {
-                apiKey: modelInfo.apiKey,
-                language: this.modelInfo.language || 'en',
+            const sttOptions = {
+                language: this.modelInfo.language || 'fr',
+                sampleRate: 24000,
+                model: modelInfo.model || 'u3-rt-pro',
                 callbacks: mySttConfig.callbacks,
             };
-            
-            if (modelInfo.provider === 'openai-glass') {
-                sttOptions.usePortkey = true;
-                sttOptions.portkeyVirtualKey = modelInfo.apiKey;
-            } else if (modelInfo.provider === 'whisper') {
-                sttOptions.sessionType = 'my';
-            } else if (modelInfo.provider === 'deepgram') {
-                sttOptions.sampleRate = 24000;
-            }
 
             this.mySttSession = await Promise.race([
                 createSTT(modelInfo.provider, sttOptions),

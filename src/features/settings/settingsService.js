@@ -6,8 +6,6 @@ const { getStoredApiKey, getStoredProvider, windowPool } = require('../../window
 
 // New imports for common services
 const modelStateService = require('../../common/services/modelStateService');
-const ollamaService = require('../../common/services/ollamaService');
-const whisperService = require('../../common/services/whisperService');
 const { createLogger } = require('../../common/services/logger.js');
 
 const logger = createLogger('SettingsService');
@@ -61,18 +59,6 @@ async function setSelectedModel(type, modelId) {
     return { success };
 }
 
-// Ollama facade functions
-async function getOllamaStatus() {
-    return ollamaService.getStatus();
-}
-
-async function ensureOllamaReady() {
-    return ollamaService.ensureReady();
-}
-
-async function shutdownOllama() {
-    return ollamaService.shutdown(false); // false for graceful shutdown
-}
 
 
 // window targeting system
@@ -368,7 +354,7 @@ async function removeApiKey() {
         }
         
         // Remove all API keys for all providers
-        const providers = ['openai', 'anthropic', 'gemini', 'ollama', 'whisper'];
+        const providers = [];
         for (const provider of providers) {
             await modelStateService.removeApiKey(provider);
         }
@@ -467,8 +453,4 @@ module.exports = {
     validateAndSaveKey,
     clearApiKey,
     setSelectedModel,
-    // Ollama facade
-    getOllamaStatus,
-    ensureOllamaReady,
-    shutdownOllama
 };
