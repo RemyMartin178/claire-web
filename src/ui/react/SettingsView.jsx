@@ -10,13 +10,12 @@ const injectStyles = (id, css) => {
 };
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
 @keyframes sv-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @keyframes sv-fadeout { 0% { opacity: 1; } 100% { opacity: 0; transform: scale(0.97); } }
 
 .sv-root {
   display: block; width: 100%; height: 100%;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased; cursor: default; user-select: none;
 }
 .sv-root.quitting { animation: sv-fadeout 0.22s ease forwards; }

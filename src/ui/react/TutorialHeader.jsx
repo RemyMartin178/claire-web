@@ -21,7 +21,7 @@ const injectStyles = (id, css) => {
 const CSS = `
 .th-root {
   display: block;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   cursor: default;
   user-select: none;
 }

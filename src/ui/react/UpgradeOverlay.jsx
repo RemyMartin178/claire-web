@@ -30,7 +30,7 @@ const CSS = `
   display: flex; align-items: center; justify-content: center;
   z-index: 9999;
   animation: uo-backdrop-in 0.22s ease both;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .uo-card {

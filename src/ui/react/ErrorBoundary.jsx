@@ -10,8 +10,6 @@ const injectStyles = (id, css) => {
 };
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
-
 @keyframes eb-fadein {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -24,7 +22,7 @@ const CSS = `
 .eb-root {
   display: flex; align-items: center; justify-content: center;
   width: 100%; height: 100%; min-height: 120px;
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

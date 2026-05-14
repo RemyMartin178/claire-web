@@ -1109,3 +1109,81 @@ a:hover {
 .dark .claire-settings-label {
   color: rgba(255,255,255,0.3);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CLUELY DESIGN SYSTEM — CSS tokens extracted from Cluely 2.0.186
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Glass panel background (hsla(252,10%,10%,0.8)) */
+  --claire-glass-bg: hsla(252, 10%, 10%, 0.82);
+  --claire-glass-border: rgba(255, 255, 255, 0.09);
+  --claire-glass-blur: blur(28px) saturate(190%);
+  --claire-glass-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.05) inset;
+
+  /* Pill outer ring */
+  --claire-pill-ring: 0 0 0 1px rgba(207,226,255,0.24), 0 -0.5px 0 0 rgba(255,255,255,0.8);
+
+  /* Inactive grey gradient (pill bg, circular buttons) */
+  --claire-btn-inactive-bg: linear-gradient(#2e3039, #272a31);
+  --claire-btn-inactive-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014,
+    0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
+
+  /* Active blue gradient (ask open, send button) */
+  --claire-btn-active-bg: linear-gradient(#0544a9, #022c70);
+  --claire-btn-active-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005,
+    0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029,
+    inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
+
+  /* Question bubble */
+  --claire-bubble-bg: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0, #0c26a8 100%);
+  --claire-bubble-color: #CBE3FF;
+  --claire-bubble-shadow: 0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6ff;
+
+  /* Typography */
+  --claire-font: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --claire-font-smoothing: antialiased;
+}
+
+/* ─── Cluely shimmer animation (used for loading session titles) ─── */
+@keyframes cluely-text-shimmer {
+  0%  { background-position: -180% 0; }
+  to  { background-position:  180% 0; }
+}
+
+.cluely-text-shimmer {
+  color: transparent;
+  background: linear-gradient(90deg, #a1a1aa 20%, #f4f4f5 50%, #a1a1aa 80%) 0 0 / 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: 1.6s linear infinite cluely-text-shimmer;
+}
+
+/* Speed variants */
+.shimmer-speed-250 { animation-duration: 2.5s; }
+.shimmer-speed-200 { animation-duration: 2.0s; }
+
+/* ─── Cluely blue gradient button (reusable utility) ─── */
+.claire-btn-blue {
+  background: var(--claire-btn-active-bg);
+  box-shadow: var(--claire-btn-active-shadow);
+  color: var(--claire-bubble-color);
+  border: none;
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: transform 150ms, filter 150ms;
+}
+.claire-btn-blue:hover {
+  transform: scale(1.05);
+  filter: brightness(1.25);
+}
+
+/* ─── Cluely glass panel utility ─── */
+.claire-glass-panel {
+  background: var(--claire-glass-bg);
+  border: 1px solid var(--claire-glass-border);
+  backdrop-filter: var(--claire-glass-blur);
+  -webkit-backdrop-filter: var(--claire-glass-blur);
+  box-shadow: var(--claire-glass-shadow);
+  border-radius: 16px;
+}

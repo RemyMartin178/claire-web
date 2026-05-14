@@ -184,8 +184,19 @@ function SessionDetailsContent() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [sidebarInputValue, setSidebarInputValue] = useState("");
   const [isEmailing, setIsEmailing] = useState(false);
+  // Shimmer animation on title when navigating from a just-ended session (?new=1)
+  const [titleShimmer, setTitleShimmer] = useState(false);
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
+  const isNewSession = searchParams.get('new') === '1';
+
+  // Start shimmer on title for ~3.2s when arriving from a just-ended session
+  useEffect(() => {
+    if (!isNewSession) return;
+    setTitleShimmer(true);
+    const t = setTimeout(() => setTitleShimmer(false), 3200);
+    return () => clearTimeout(t);
+  }, [isNewSession]);
 
   useEffect(() => {
     if (userInfo && sessionId) {
@@ -525,8 +536,8 @@ function SessionDetailsContent() {
             </div>
           </div>
 
-          {/* Title */}
-          <h1 className="mt-2 font-medium text-3xl text-foreground leading-[1.03] tracking-tight">
+          {/* Title — shimmer animation when arriving from a just-ended session */}
+          <h1 className={`mt-2 font-medium text-3xl leading-[1.03] tracking-tight transition-all ${titleShimmer ? 'cluely-text-shimmer' : 'text-foreground'}`}>
             {displayTitle}
           </h1>
 

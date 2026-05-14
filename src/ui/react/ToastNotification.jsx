@@ -10,8 +10,6 @@ const injectStyles = (id, css) => {
 };
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Google+Sans:wght@400;500&display=swap');
-
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(16px) scale(0.96); }
   to   { opacity: 1; transform: translateX(0) scale(1); }
@@ -68,7 +66,7 @@ const CSS = `
 .toast-subtitle {
   font-size: 10.5px;
   color: rgba(255,255,255,0.38);
-  font-family: 'Google Sans', 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
   font-weight: 500;
   margin-bottom: 1px;
   white-space: nowrap;
@@ -79,7 +77,7 @@ const CSS = `
 .toast-title {
   font-size: 13px;
   color: rgba(255,255,255,0.90);
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
   font-weight: 600;
   line-height: 1.38;
   word-break: break-word;
@@ -105,7 +103,7 @@ const CSS = `
   border-radius: 8px;
   padding: 5px 11px;
   font-size: 11.5px;
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;

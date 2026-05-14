@@ -99,7 +99,7 @@ const CSS = `
 .lv-bar-left-text {
   color: rgba(255,255,255,0.88);
   font-size: 12.5px;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 600;
   letter-spacing: -0.01em;
   position: relative;
@@ -141,7 +141,7 @@ const CSS = `
   white-space: nowrap;
   transition: background 0.12s, color 0.12s;
   justify-content: center;
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
 }
 .lv-toggle-button:hover { background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.90); }
 .lv-toggle-button:active { transform: scale(0.96); }

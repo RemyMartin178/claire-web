@@ -53,7 +53,8 @@ export default function ElectronClientLayout({
     onNavigate((data: { sessionId?: string } | undefined) => {
       const id = data?.sessionId
       if (typeof id === 'string' && id.length > 0) {
-        router.push(`/activity/details?sessionId=${id}`)
+        // ?new=1 signals the details page to show the shimmer animation on the title
+        router.push(`/activity/details?sessionId=${id}&new=1`)
       }
     })
 

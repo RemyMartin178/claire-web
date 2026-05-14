@@ -10,8 +10,6 @@ const injectStyles = (id, css) => {
 };
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;450;500;600&display=swap');
-
 .stt-transcription-container {
   overflow-y: auto;
   padding: 12px 14px 16px;
@@ -24,7 +22,7 @@ const CSS = `
   z-index: 1;
   flex: 1;
   background: transparent;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .stt-transcription-container { scrollbar-width: none; }
 .stt-transcription-container::-webkit-scrollbar { display: none; }
@@ -102,7 +100,7 @@ const CSS = `
 .stt-empty-state {
   display: flex; align-items: center; justify-content: center; flex: 1;
   min-height: 180px; color: rgba(255,255,255,0.25); font-size: 13px;
-  font-style: italic; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-style: italic; font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
 }
 `;
 
