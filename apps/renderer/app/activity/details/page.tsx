@@ -423,7 +423,7 @@ function SessionDetailsContent() {
   // const askMessages = sessionDetails.ai_messages || []; // This is now handled by chatHistory state
 
   let displayTitle = sessionDetails?.session.title || routeTitle || 'Discussion avec Claire';
-  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire'];
+  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'Résumé en cours', 'Sans titre'];
   const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
 
   let rawSummaryText = sessionDetails?.summary?.text || '';
@@ -453,7 +453,7 @@ function SessionDetailsContent() {
 
   const finalTitleIsGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
   if (finalTitleIsGeneric) {
-    displayTitle = isNewSession ? 'Résumé en cours...' : 'Sans titre';
+    displayTitle = (isNewSession && titleShimmer) ? 'Résumé en cours...' : 'Sans titre';
   }
   const titleValue = editableTitle || displayTitle;
 
