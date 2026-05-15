@@ -114,15 +114,12 @@ const CSS = `
 
 /* ── LOGO ── */
 .mh-logo {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 26px;
-  object-fit: contain;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   pointer-events: none;
+  margin-right: auto;
+  overflow: visible;
 }
 
 /* ── WIDE BUTTON (Ask / Cacher) ── */
@@ -312,7 +309,13 @@ const IconStop = () => (
   </svg>
 );
 
-const LOGO_SRC = '../assets/claire-mark-white.svg';
+const ClaireMark = () => (
+  <svg className="mh-logo" viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M 20 50 C 20 38, 28 32, 38 32 C 44 32, 46 39, 50 39 C 54 39, 56 32, 62 32 C 72 32, 80 38, 80 50 C 80 62, 64 68, 50 68 C 36 68, 20 62, 20 50 Z"
+      fill="none" stroke="#FFFFFF" strokeWidth="5"
+      strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
 export default function MainHeader({
   overlayMode = false,
@@ -655,11 +658,10 @@ export default function MainHeader({
           onMouseDown={handleMouseDown}
           onClick={handlePillClick}
         >
-          {/* Logo */}
-          <img className="mh-logo" src={LOGO_SRC} alt="" draggable={false} />
-
           <div className="mh-controls">
-          {/* Wide button: Ask ↔ Cacher */}
+          {/* Logo — inline SVG, no image load delay */}
+          <ClaireMark />
+          {/* Wide button: IA ↔ Masquer */}
           <button
               className={`mh-wide-btn no-drag${isListening && showChat ? ' chat-visible' : ''}`}
             onClick={isListening ? handleChatToggle : handleAsk}
@@ -668,7 +670,7 @@ export default function MainHeader({
           >
             <span className="mh-wide-content">
               {isListening && showChat ? <IconChevronDown /> : <IconSparkles />}
-              {isListening && showChat ? 'Masquer' : 'Ask'}
+              {isListening && showChat ? 'Masquer' : 'IA'}
             </span>
           </button>
 

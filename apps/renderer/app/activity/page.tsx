@@ -284,6 +284,11 @@ export default function ActivityPage() {
     groupedSessions[formattedDate].push(session);
   });
 
+  // Sort sessions within each day descending
+  Object.keys(groupedSessions).forEach(key => {
+    groupedSessions[key].sort((a, b) => b.started_at - a.started_at);
+  });
+
   // Sort dates descending
   const sortedDates = Object.keys(groupedSessions).sort((a, b) => {
     // Small hack to parse the French dates back for sorting if needed, but since we pushed them from sorted timestamps initially,

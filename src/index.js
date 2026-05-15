@@ -406,6 +406,9 @@ async function bootApp() {
     }
     _bootPhase = 'booting';
 
+    // Reset any persisted panel visibility from the previous session
+    sharedStateService.patch({ showHeader: false, showListen: false, showChat: false, showDashboard: false });
+
     logger.info('[Boot] Cold start — creating splash window');
     createSplashWindow();
 

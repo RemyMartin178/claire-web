@@ -307,13 +307,7 @@ function SessionDetailsContent() {
 
       // Use anchor.click() trick - bypasses popup blocker after async calls
       const gmailUrl = `https://mail.google.com/mail/u/0/?tf=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      const a = document.createElement('a');
-      a.href = gmailUrl;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      await (window as any).api?.openExternal?.(gmailUrl);
 
       toast.success('Brouillon ouvert dans Gmail', { id: toastId });
     } catch (e) {
@@ -509,7 +503,11 @@ function SessionDetailsContent() {
           <div className="max-w-none">
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
-        ) : isGeneratingSummary ? null : (
+        ) : isGeneratingSummary ? (
+          isLiveSession
+            ? <p className="text-muted-foreground/50 text-sm">Terminez la session pour voir vos notes.</p>
+            : <p className="text-muted-foreground/60 text-sm motion-safe:animate-pulse">Génération des notes en cours…</p>
+        ) : (
           <p className="text-muted-foreground/80 text-sm">Aucun résumé disponible.</p>
         );
       case 'transcript':
