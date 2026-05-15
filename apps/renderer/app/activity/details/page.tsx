@@ -24,6 +24,7 @@ import { LiquidGlassInput } from '@/components/ui/liquid-glass-input'
 import ActivityDetailsLoading from './loading'
 import React from 'react'
 import { patchSessionFromDetails, sessionKeys, useSessionDetailsQuery } from '@/hooks/useSessionQueries'
+import { useSharedState } from '@/contexts/SharedStateContext'
 
 // Session context type detection
 
@@ -172,6 +173,7 @@ function SessionDetailsContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const { state: sharedState } = useSharedState();
   const sessionId = searchParams.get('sessionId');
   const routeTitle = searchParams.get('title');
   const routeCreatedAt = searchParams.get('createdAt');
@@ -197,6 +199,7 @@ function SessionDetailsContent() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [sidebarInputValue, setSidebarInputValue] = useState("");
   const [isEmailing, setIsEmailing] = useState(false);
+  const [editableTitle, setEditableTitle] = useState(routeTitle || '');
 
   useEffect(() => {
     if (!detailsQuery.data || !sessionId) return
@@ -204,17 +207,17 @@ function SessionDetailsContent() {
     setSessionDetails(detailsQuery.data);
     setChatHistory(detailsQuery.data.ai_messages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })));
     setIsLoading(false);
-    setTitleShimmer(false);
+    const loadedTitle = detailsQuery.data.session?.title || '';
+    const loadedTitleIsGeneric = !loadedTitle || ['Session @', 'Session Sans Titre', 'Discussion avec Claire'].some(t => loadedTitle.includes(t));
+    if (detailsQuery.data.summary || !loadedTitleIsGeneric) {
+      setTitleShimmer(false);
+    }
+    if (loadedTitle && !loadedTitleIsGeneric) {
+      setEditableTitle((current) => current || loadedTitle);
+    }
     patchSessionFromDetails(queryClient, detailsQuery.data);
     trackSessionViewed(sessionId);
   }, [detailsQuery.data, queryClient, sessionId]);
-
-  // Auto-stop shimmer after 4s even if data is slow
-  useEffect(() => {
-    if (!titleShimmer) return
-    const t = setTimeout(() => setTitleShimmer(false), 4000)
-    return () => clearTimeout(t)
-  }, [titleShimmer]);
 
   useEffect(() => {
     if (detailsQuery.error) {
@@ -222,6 +225,22 @@ function SessionDetailsContent() {
     }
     setIsLoading(detailsQuery.isLoading && !detailsQuery.data && !sessionDetails);
   }, [detailsQuery.data, detailsQuery.error, detailsQuery.isLoading, sessionDetails]);
+
+  useEffect(() => {
+    if (!isNewSession || !sessionId || sessionDetails?.summary) return
+    void detailsQuery.refetch()
+    const interval = window.setInterval(() => {
+      void detailsQuery.refetch()
+    }, 2500)
+    return () => window.clearInterval(interval)
+  }, [detailsQuery.refetch, isNewSession, sessionDetails?.summary, sessionId])
+
+  // Fallback: stop shimmer after 30s even if summary never arrives
+  useEffect(() => {
+    if (!titleShimmer) return
+    const t = setTimeout(() => setTitleShimmer(false), 30000)
+    return () => clearTimeout(t)
+  }, [titleShimmer])
 
   const handleDeleteClick = async () => {
     if (!sessionId) return;
@@ -432,9 +451,11 @@ function SessionDetailsContent() {
     }
   }
 
-  if (!displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t))) {
-    displayTitle = 'Discussion avec Claire';
+  const finalTitleIsGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
+  if (finalTitleIsGeneric) {
+    displayTitle = isNewSession ? 'Résumé en cours...' : 'Sans titre';
   }
+  const titleValue = editableTitle || displayTitle;
 
 
   // Helper to remove emojis and redundant prefixes from summary text
@@ -457,6 +478,7 @@ function SessionDetailsContent() {
     // Remove emojis and prefixes from extracted bullets
     if (matches) bulletPoints = matches.map(m => stripEmojisAndPrefixes(m.replace(/^- /, '')));
   }
+  const isGeneratingSummary = isNewSession && !rawSummaryText && bulletPoints.length === 0;
 
   const missedOpportunitiesCount = 6;
 
@@ -485,6 +507,8 @@ function SessionDetailsContent() {
           <div className="max-w-none">
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
+        ) : isGeneratingSummary ? (
+          <p className="text-muted-foreground/80 text-sm motion-safe:animate-pulse">Génération des notes...</p>
         ) : (
           <p className="text-muted-foreground/80 text-sm">Aucun résumé disponible.</p>
         );
@@ -578,9 +602,24 @@ function SessionDetailsContent() {
           </div>
 
           {/* Title */}
-          <h1 className={`mt-2 font-medium text-3xl leading-[1.03] tracking-tight transition-colors duration-500 ${titleShimmer ? 'text-muted-foreground/50 title-shimmer' : 'text-foreground'}`}>
-            {displayTitle}
-          </h1>
+          {(() => {
+            const isLiveSession = isNewSession && (sharedState?.isListenRunning ?? false) && sharedState?.session?.id === sessionId
+            const titleClass = isLiveSession
+              ? 'text-muted-foreground/50 animate-pulse'
+              : titleShimmer
+              ? 'text-muted-foreground/50 title-shimmer'
+              : 'text-foreground'
+            const displayTitle = isLiveSession ? 'Session en cours' : titleValue
+            return (
+              <input
+                value={displayTitle}
+                onChange={(event) => { if (!isLiveSession) setEditableTitle(event.target.value) }}
+                readOnly={isLiveSession}
+                aria-label="Titre de l'activite"
+                className={`mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none transition-colors duration-500 ${titleClass}`}
+              />
+            )
+          })()}
 
           {/* Tabs row + copy button */}
           <div className="mt-4 flex items-center justify-between gap-4">
