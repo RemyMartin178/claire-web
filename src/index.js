@@ -69,7 +69,7 @@ if (isDev) {
 // so local .env keys are only used as a BYOK fallback for power users.
 console.log('[STARTUP] AI provider: claire-api (server-side, via Vercel proxy)');
 
-const { createDashboardWindow } = require('./window/windowManager.js');
+const { createDashboardWindow, createSplashWindow, closeSplashWindow, getDashboardWindow } = require('./window/windowManager.js');
 
 const listenService = require('./features/listen/listenService');
 const sharedStateService = require('./common/services/sharedStateService');
@@ -372,6 +372,58 @@ app.on('web-contents-created', (_, contents) => {
     });
 });
 
+// ── Boot IPC handlers (registered once, before any window loads) ─────────────
+let _bootPhase = 'idle'; // 'idle' | 'booting' | 'done'
+
+function _resolveBoot() {
+    if (_bootPhase === 'done') return;
+    _bootPhase = 'done';
+    logger.info('[Boot] Resolving boot — closing splash, showing dashboard');
+    const dash = getDashboardWindow();
+    if (dash && !dash.isDestroyed()) {
+        dash.show();
+        dash.focus();
+    }
+    setTimeout(() => closeSplashWindow(), 120);
+}
+
+ipcMain.handle('electron-boot:dashboard-ready', () => {
+    logger.info('[Boot] Renderer → dashboardReady');
+    _resolveBoot();
+});
+
+ipcMain.handle('electron-boot:needs-login', () => {
+    logger.info('[Boot] Renderer → needsLogin');
+    _resolveBoot();
+});
+
+ipcMain.handle('electron-boot:login-success', () => {
+    logger.info('[Boot] Renderer → loginSuccess (no-op, auth flow handles navigation)');
+});
+
+async function bootApp() {
+    // Only run on cold start
+    if (_bootPhase !== 'idle') {
+        createDashboardWindow();
+        return;
+    }
+    _bootPhase = 'booting';
+
+    logger.info('[Boot] Cold start — creating splash window');
+    createSplashWindow();
+
+    logger.info('[Boot] Creating dashboard window (hidden)');
+    createDashboardWindow({ skipAutoShow: true });
+
+    // Timeout fallback: if renderer doesn't signal within 15s, force show
+    setTimeout(() => {
+        if (_bootPhase !== 'done') {
+            logger.warn('[Boot] Timeout — forcing boot resolution');
+            _resolveBoot();
+        }
+    }, 15000);
+}
+
 app.whenReady().then(async () => {
 
     // Serve the static Next.js export via app://renderer/
@@ -520,9 +572,8 @@ app.whenReady().then(async () => {
 
         await ensureAuxiliaryWebStackStarted().catch(() => {});
 
-        // Onboarding window opens first (1100×720 frameless).
-        // It pre-warms the hidden dashboard window and closes itself once auth is done.
-        createDashboardWindow();
+        // ── Boot orchestration (Cluely-style splash) ──────────────────────────
+        await bootApp();
 
     } catch (err) {
         logger.error('>>> [index.js] Database initialization failed - some features may not work', {

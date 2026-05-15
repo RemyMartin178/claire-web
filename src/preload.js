@@ -14,6 +14,7 @@ const dashboardApi = {
   getSessionDetails: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSessionDetails', uid, sessionId),
   deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
   startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
+  stopClaire: () => ipcRenderer.invoke('dashboard:stopClaire'),
   minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
   closeWindow: () => ipcRenderer.invoke('dashboard:close'),
@@ -43,6 +44,13 @@ const dashboardApi = {
 };
 
 contextBridge.exposeInMainWorld('api', {
+  // Boot orchestration signals (renderer → main)
+  electronBoot: {
+    dashboardReady: () => ipcRenderer.invoke('electron-boot:dashboard-ready'),
+    needsLogin:     () => ipcRenderer.invoke('electron-boot:needs-login'),
+    loginSuccess:   () => ipcRenderer.invoke('electron-boot:login-success'),
+  },
+
   // Platform information for renderer processes
   platform: {
     isLinux: process.platform === 'linux',

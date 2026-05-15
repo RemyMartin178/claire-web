@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import ConditionalLayout from '@/components/ConditionalLayout'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ElectronBootProvider } from '@/contexts/ElectronBootProvider'
 import { PasswordModalProvider } from '@/contexts/PasswordModalContext'
 import { RevenueCatProvider } from '@/contexts/RevenueCatContext'
 import Analytics from '@/components/Analytics'
@@ -69,6 +70,7 @@ export default function RootLayout({
       <body className="antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
+            <ElectronBootProvider>
             <QueryProvider>
               <RevenueCatProvider>
                 <PasswordModalProvider>
@@ -106,6 +108,7 @@ export default function RootLayout({
                 </PasswordModalProvider>
               </RevenueCatProvider>
             </QueryProvider>
+            </ElectronBootProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
