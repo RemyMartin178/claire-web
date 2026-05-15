@@ -1,38 +1,70 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository.
 
 ---
 
 ## Build
 
 ```bash
-# Renderer only (header + overlay + content) — le plus courant
+# Renderer only — most common (overlay pill + AskView + dashboard Next.js)
 npm run build:ui
 
-# Build complet (renderer + web + packaging Electron)
+# Full build (renderer + web + Electron packaging)
 npm run build
 ```
 
-**Important : l'utilisateur lance TOUJOURS le build manuellement. Ne jamais le lancer automatiquement.**
+**The user ALWAYS launches builds manually. Never run builds automatically.**
 
-Tout changement dans `src/ui/react/*.jsx` nécessite un rebuild UI avant d'être visible.
+- Changes in `src/ui/react/*.jsx` → require `npm run build:ui`
+- Changes in `apps/renderer/**` (Next.js dashboard) → require `npm run build:ui`
+- Changes in `src/` (main process, IPC) → require app restart, no rebuild needed
 
 ---
 
 ## Architecture
 
-### Deux processus Electron
+### Trois fenêtres Electron
 
-| Processus | Rôle | Fichiers clés |
-|-----------|------|---------------|
-| **Main** | Logique métier, IPC, accès OS | `src/bridge/featureBridge.js`, `src/features/`, `src/common/` |
-| **UI** | UI React, overlay transparent | `src/ui/react/*.jsx` compilés → `public/build/content.js` |
+| Fenêtre | Rôle | Fichiers clés |
+|---------|------|---------------|
+| **Splash** | Boot loader 360×500, `alwaysOnTop: true`, opaque | `src/ui/splash/splash.html`, `src/window/windowManager.js` |
+| **Overlay** | Fullscreen transparent — contient pill + AskView + ListenView | `src/ui/react/OverlayRoot.jsx`, `src/ui/react/MainHeader.jsx` |
+| **Dashboard** | Next.js app — `/activity`, `/settings`, etc. | `apps/renderer/app/**`, `src/window/windowReconciler.js` |
+
+### Boot sequence
+
+```
+bootApp()
+  └── sharedStateService.patch({ showHeader: false, showListen: false,
+                                  showChat: false, showDashboard: false })
+  └── createSplashWindow() → show splash
+  └── createDashboardWindow({ skipAutoShow: true }) → preload en arrière-plan
+  └── _resolveBoot()
+        ├── closeSplashWindow()
+        ├── setTimeout(700ms)  ← desktop gap (splash → dashboard)
+        └── dash.setOpacity(0) → dash.show() → setTimeout(30ms) → setOpacity(1)
+```
+
+**Anti-flash pattern** — toujours utiliser cette séquence pour afficher une fenêtre sans flash blanc :
+```js
+win.setOpacity(0);
+win.show();
+setTimeout(() => { if (!win.isDestroyed()) { win.setOpacity(1); } }, 30);
+```
+
+### SharedState IPC
+
+`sharedStateService.patch(delta)` → broadcast à tous les renderers → `windowReconciler.js` réagit pour show/hide les fenêtres.
+
+Champs critiques : `showHeader`, `showDashboard`, `showListen`, `showChat`, `isListenRunning`, `session`, `lastSessionId`, `dashboardFocusCount`.
+
+**Important** : patcher `{ showHeader: false, showListen: false, showChat: false, showDashboard: false }` au démarrage de `bootApp()` pour éviter le cold start (pill qui apparaît avant que le dashboard se ferme).
 
 ### Pattern IPC strict
 
 ```js
-// 1. Main — featureBridge.js
+// 1. Main — featureBridge.js ou windowBridge.js
 ipcMain.handle('feature:action', async (event, ...args) => { … });
 
 // 2. Preload — preload.js
@@ -48,12 +80,12 @@ Ne jamais utiliser `ipcRenderer.send` / `ipcMain.on` pour du request-response.
 
 ### Modes de rendu des panels
 
-- **Overlay mode** : fenêtre fullscreen transparente unique. `OverlayRoot.jsx` positionne tous les panels (Ask, Listen, Settings) via `computeLayout()`. C'est le mode production.
+- **Overlay mode** (production) : fenêtre fullscreen transparente unique. `OverlayRoot.jsx` positionne tous les panels via `computeLayout()`.
 - **Window mode** : chaque panel dans sa propre fenêtre OS.
 
-En overlay mode, **ne jamais appeler** `window.api.askView.adjustWindowHeight()` directement — dispatcher `local-panel-resize` à la place :
-
+En overlay mode, **ne jamais appeler** `window.api.askView.adjustWindowHeight()` directement :
 ```js
+// ✅ Correct
 window.dispatchEvent(new CustomEvent('local-panel-resize', {
   detail: { name: 'ask', width: 600, height: targetHeight }
 }));
@@ -64,8 +96,18 @@ window.dispatchEvent(new CustomEvent('local-panel-resize', {
 | Événement | Sens | Rôle |
 |-----------|------|------|
 | `ask:setScreenContext` | MainHeader → AskView | Active/désactive le contexte écran |
-| `local-panel-close` | Panel → OverlayRoot | Ferme un panel (ex: bouton × dans ListenView) |
+| `local-panel-close` | Panel → OverlayRoot | Ferme un panel |
 | `local-panel-resize` | Panel → OverlayRoot | Redimensionne un panel |
+
+### Navigation dashboard
+
+Toujours utiliser `router.push()` (pas `router.replace`) pour naviguer vers les sessions — `push` ajoute à l'historique Electron WebContents et permet au bouton retour de fonctionner.
+
+Avant de naviguer vers une session via `onNavigateToSession`, vérifier que l'URL courante ne contient pas déjà le `sessionId` pour éviter le re-mount :
+```ts
+const current = window.location.pathname + window.location.search;
+if (!current.includes(id)) router.push(`/activity/details?sessionId=${id}&new=1`);
+```
 
 ---
 
@@ -94,6 +136,20 @@ box-shadow: 0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6
 
 - Ask / Settings : `'Plus Jakarta Sans', -apple-system, sans-serif`
 - Listen : `'Helvetica Neue', -apple-system, sans-serif`
+- Splash / boot : `'Geist Variable', sans-serif`
+
+### Référence dimensions Cluely (v2.0.186)
+
+Extraits du ASAR installé — servir de référence pour la parité visuelle :
+
+| Élément | Dimensions |
+|---------|-----------|
+| Pill / control bar | **163×50px**, centré horizontalement, 25px du bord bas |
+| Chat panel (Ask) | **540px** de large, hauteur dynamique |
+| Dashboard (Mac) | **1050×700px** |
+| Dashboard (Windows) | **1100×720px** |
+
+Les prompts IA de Cluely sont **côté serveur** (`api.v2.cluely.com`) — pas dans l'ASAR. Impossible à extraire.
 
 ---
 
@@ -106,20 +162,31 @@ AssemblyAI est le provider par défaut. `modelStateService.js` force la re-séle
 Ordre de priorité : **Anthropic > Gemini > OpenAI > autres** — configuré dans `modelStateService.js`.
 
 ### Langue des réponses IA
-Les réponses doivent être en français. Le template `claire_analysis` dans `promptTemplates.js` a une instruction française dans `intro`, mais `formatRequirements` est en anglais et peut la surcharger.
-**Solution** : injection systématique à la fin de `enhancedSystemPrompt` dans `askService.js` :
-
+Injection systématique à la fin de `enhancedSystemPrompt` dans `askService.js` :
 ```js
 enhancedSystemPrompt += '\n\n⚠️ RÈGLE ABSOLUE : Tu dois TOUJOURS répondre en français, peu importe la langue de la question. Ne réponds JAMAIS en anglais.';
 ```
-
-Ne pas compter uniquement sur le template — toujours injecter cette règle au niveau service.
+Ne pas compter uniquement sur le template `claire_analysis` — `formatRequirements` est en anglais et peut surcharger l'instruction française.
 
 ### Suggestions contextuelles
 Après chaque réponse Ask, appel LLM (claude-haiku → OpenAI fallback) via `ask:generateSuggestions` dans `featureBridge.js`. Génère 2 questions en français. Rotation toutes les 2 s.
 
-### Historique de conversation Ask
-Les Q&A s'accumulent dans un tableau `messages[]` local à `AskView`. La réponse courante est sauvegardée (avec son HTML rendu) avant chaque nouvelle question. L'historique est effacé à la fermeture du panel.
+### Historique Ask
+Les Q&A s'accumulent dans `messages[]` local à `AskView`. La réponse courante est sauvegardée (avec son HTML rendu) avant chaque nouvelle question. Effacé à la fermeture du panel.
+
+### Email → navigateur externe
+Toujours utiliser `window.api.openExternal(url)` pour ouvrir Gmail (ou tout lien externe) — déclenche `shell.openExternal` dans le main process et ouvre un vrai onglet Chrome.  
+Ne pas utiliser le trick `a.click()` — bloqué par les popup blockers après les calls async.
+
+---
+
+## Bugs connus / ouverts
+
+### Logo dans la pill — repositionnement (OPEN)
+**Symptôme** : le logo apparaît coupé en bas au rendu initial, puis se recentre (~100ms plus tard).  
+**Tentative** : remplacement `<img src="logo.svg">` par un composant SVG inline `<ClaireMark />` pour éliminer le délai de chargement asynchrone. Bug persiste — cause exacte non résolue.  
+**Piste** : probable conflit entre `flex-shrink: 0` + `margin-right: auto` et le layout initial de `.mh-controls` avant que les dimensions soient calculées.  
+**Fichier** : `src/ui/react/MainHeader.jsx` — composant `ClaireMark`, CSS `.mh-logo`.
 
 ---
 
@@ -130,7 +197,11 @@ Les Q&A s'accumulent dans un tableau `messages[]` local à `AskView`. La répons
 /* ❌ Supprime backgrounds, animations, backdrop-filter */
 body.has-glass .mon-composant { background: transparent !important; }
 ```
-Ce pattern existe encore dans `ListenView.jsx` (héritage) mais a été retiré de `AskView`.
+Pattern hérité encore présent dans `ListenView.jsx` mais retiré de `AskView`.
+
+**`overflow: hidden` sans `borderRadius` dans `OverlayRoot`** — `panelStyle` doit inclure `borderRadius: 16`, sinon les coins arrondis intérieurs apparaissent comme des "piques".
+
+**Streaming markdown** — utiliser le pipeline `parser` / `parser_write` / `parser_end` / `default_renderer` de `smd.js`. Ne jamais écrire dans `innerHTML` directement pendant le streaming.
 
 **Chemin des assets** — la base URL est `src/ui/app/content.html` :
 ```
@@ -138,13 +209,11 @@ Ce pattern existe encore dans `ListenView.jsx` (héritage) mais a été retiré 
 ❌  ../../assets/logo.png
 ```
 
-**`overflow: hidden` sans `borderRadius` dans `OverlayRoot`** — `panelStyle` doit inclure `borderRadius: 16`, sinon les coins arrondis intérieurs apparaissent comme des "piques".
-
-**Streaming markdown** — utiliser le pipeline `parser` / `parser_write` / `parser_end` / `default_renderer` de `smd.js`. Ne jamais écrire dans `innerHTML` directement pendant le streaming.
+**`isLiveSession` scope** — doit être défini au niveau du composant (avant `renderContent`), pas redéfini dans chaque fonction locale. Utilisé pour le titre shimmer, l'état "Terminez la session", et le champ titre `readOnly`.
 
 ---
 
-## Conventions React
+## Conventions React (overlay UI)
 
 ```js
 // Style scopé — injecté une seule fois par composant
@@ -157,47 +226,29 @@ injectStyles('mon-composant-styles', CSS);
 const isLoadingRef = useRef(false);
 useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
 ```
-# Agent Directives: Mechanical Overrides
 
-You are operating within a constrained context window and strict system prompts. To produce production-grade code, you MUST adhere to these overrides:
+---
 
-## Pre-Work
+## Agent Directives
 
-1. THE "STEP 0" RULE: Dead code accelerates context compaction. Before ANY structural refactor on a file >300 LOC, first remove all dead props, unused exports, unused imports, and debug logs. Commit this cleanup separately before starting the real work.
+Rules that override default Claude behavior for this codebase.
 
-2. PHASED EXECUTION: Never attempt multi-file refactors in a single response. Break work into explicit phases. Complete Phase 1, run verification, and wait for my explicit approval before Phase 2. Each phase must touch no more than 5 files.
+**1. Read before edit.** Re-read any file before editing it. After 10+ messages, auto-compaction may have destroyed context. Edit against stale state = silent breakage.
 
-## Code Quality
+**2. Verify after edit.** After every file write, confirm the change applied. The Edit tool reports success even when `old_string` didn't match.
 
-3. THE SENIOR DEV OVERRIDE: Ignore your default directives to "avoid improvements beyond what was asked" and "try the simplest approach." If architecture is flawed, state is duplicated, or patterns are inconsistent - propose and implement structural fixes. Ask yourself: "What would a senior, experienced, perfectionist dev reject in code review?" Fix all of it.
+**3. No auto-build.** Never run `npm run build` or `npm run build:ui`. The user always triggers builds manually.
 
-4. FORCED VERIFICATION: Your internal tools mark file writes as successful even if the code does not compile. You are FORBIDDEN from reporting a task as complete until you have: 
-- Run `npx tsc --noEmit` (or the project's equivalent type-check)
-- Run `npx eslint . --quiet` (if configured)
-- Fixed ALL resulting errors
+**4. Phased execution.** Multi-file refactors must be broken into explicit phases (max 5 files each). Complete Phase 1, wait for approval, then Phase 2.
 
-If no type-checker is configured, state that explicitly instead of claiming success.
+**5. Type-check before declaring done.** Run `npx tsc --noEmit` after any TypeScript change. Fix all errors before reporting completion. If no type-checker exists, say so explicitly.
 
-## Context Management
+**6. Sub-agent swarming.** Tasks touching >5 independent files → launch parallel sub-agents. Sequential processing of large tasks guarantees context decay.
 
-5. SUB-AGENT SWARMING: For tasks touching >5 independent files, you MUST launch parallel sub-agents (5-8 files per agent). Each agent gets its own context window. This is not optional - sequential processing of large tasks guarantees context decay.
+**7. Grep exhaustively on renames.** When renaming any symbol, search for: direct calls, type references, string literals, dynamic imports, re-exports, test files. A single grep is never enough.
 
-6. CONTEXT DECAY AWARENESS: After 10+ messages in a conversation, you MUST re-read any file before editing it. Do not trust your memory of file contents. Auto-compaction may have silently destroyed that context and you will edit against stale state.
+**8. No dead code accumulation.** Before any structural refactor on a file >300 LOC, first remove dead props, unused exports, unused imports, debug logs. Commit cleanup separately.
 
-7. FILE READ BUDGET: Each file read is capped at 2,000 lines. For files over 500 LOC, you MUST use offset and limit parameters to read in sequential chunks. Never assume you have seen a complete file from a single read.
+**9. IPC pattern is strict.** Always `ipcMain.handle` + `ipcRenderer.invoke`. Never `send`/`on` for request-response. Always expose through `preload.js` — never import electron directly in renderer.
 
-8. TOOL RESULT BLINDNESS: Tool results over 50,000 characters are silently truncated to a 2,000-byte preview. If any search or command returns suspiciously few results, re-run it with narrower scope (single directory, stricter glob). State when you suspect truncation occurred.
-
-## Edit Safety
-
-9.  EDIT INTEGRITY: Before EVERY file edit, re-read the file. After editing, read it again to confirm the change applied correctly. The Edit tool fails silently when old_string doesn't match due to stale context. Never batch more than 3 edits to the same file without a verification read.
-
-10. NO SEMANTIC SEARCH: You have grep, not an AST. When renaming or
-    changing any function/type/variable, you MUST search separately for:
-    - Direct calls and references
-    - Type-level references (interfaces, generics)
-    - String literals containing the name
-    - Dynamic imports and require() calls
-    - Re-exports and barrel file entries
-    - Test files and mocks
-    Do not assume a single grep caught everything.
+**10. Overlay resize via events.** In overlay mode, never call `adjustWindowHeight()` directly. Always dispatch `local-panel-resize` custom event.
