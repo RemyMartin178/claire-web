@@ -366,40 +366,42 @@ const CSS = `
 .ask-mode-tabs {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 10px 10px 6px;
-  min-height: 40px;
+  gap: 0;
+  padding: 6px 10px 2px;
   overflow: hidden;
 }
 .ask-mode-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 8px;
+  padding: 6px 8px;
   border: 0;
   border-radius: 100px;
   background: transparent;
-  color: rgba(255,255,255,0.62);
+  color: rgba(255,255,255,0.80);
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
   cursor: pointer !important;
   transition: background 0.15s ease, color 0.12s ease;
+  flex-shrink: 0;
 }
-.ask-mode-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.92); }
+.ask-mode-btn:hover { background: rgba(255,255,255,0.13); color: rgba(255,255,255,0.96); }
+.ask-mode-btn:disabled { opacity: 0.35; pointer-events: none; }
 .ask-mode-btn svg {
   width: 13px;
   height: 13px;
   color: currentColor;
+  flex-shrink: 0;
 }
 .ask-mode-dot {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.22);
   flex: 0 0 auto;
-  margin: 0 2px;
+  margin: 0 3px;
 }
 .ask-suggestions { display: none; }
 .ask-composer {
@@ -483,17 +485,17 @@ const CSS = `
   padding: 0 10px;
   border: 0;
   border-radius: 100px;
-  background: rgba(255,255,255,0.10);
-  color: rgba(255,255,255,0.72);
+  background: rgba(255,255,255,0.13);
+  color: rgba(255,255,255,0.70);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer !important;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, transform 0.12s;
 }
-.ask-smart-chip:hover { background: rgba(255,255,255,0.16); color: #fff; }
+.ask-smart-chip:hover { background: rgba(255,255,255,0.20); color: #fff; transform: scale(1.04); }
 .ask-smart-chip.active {
-  background: rgba(255,255,255,0.16);
-  color: #fff;
+  background: rgba(245,158,11,0.28);  /* amber-300/40 */
+  color: rgba(253,230,138,0.82);       /* amber-100/80 */
 }
 .ask-more-btn {
   width: 28px;
@@ -1017,22 +1019,6 @@ export default function AskView() {
 
   return (
     <div className={`ask-view-root${activeView === 'chat' && !hasContent ? ' empty-chat' : ''}`}>
-      <div className="ask-mode-tabs">
-        {CLUELY_ACTIONS.map((action, index) => (
-          <React.Fragment key={action.label}>
-            <button
-              className="ask-mode-btn"
-              onClick={() => !isBlocked && handleSendText(action.prompt, action.label)}
-              disabled={isBlocked}
-              title={action.label}
-            >
-              {action.icon}
-              <span>{action.label}</span>
-            </button>
-            {index < CLUELY_ACTIONS.length - 1 && <span className="ask-mode-dot" />}
-          </React.Fragment>
-        ))}
-      </div>
 
       {activeView === 'transcript' && (
         <div className="ask-response-panel" style={{ position: 'relative', borderRadius: '12px' }}>
@@ -1143,12 +1129,30 @@ export default function AskView() {
         </div>
       )}
 
+      {/* Quick action buttons — Cluely-style, between messages and input */}
+      <div className="ask-mode-tabs">
+        {CLUELY_ACTIONS.map((action, index) => (
+          <React.Fragment key={action.label}>
+            <button
+              className="ask-mode-btn"
+              onClick={() => !isBlocked && handleSendText(action.prompt, action.label)}
+              disabled={isBlocked}
+              title={action.label}
+            >
+              {action.icon}
+              <span>{action.label}</span>
+            </button>
+            {index < CLUELY_ACTIONS.length - 1 && <span className="ask-mode-dot" />}
+          </React.Fragment>
+        ))}
+      </div>
+
       <div className="ask-composer">
       <div className="ask-bar">
         <input
           type="text"
           className="ask-text-input"
-          placeholder={isBlocked ? "Limit reached - Upgrade to Pro" : "Ask about your screen or conversation, or Ctrl Enter for Assist"}
+          placeholder={isBlocked ? "Limite atteinte — Passer à Pro" : "Posez une question sur votre écran ou conversation…"}
           ref={textInputRef}
           onKeyDown={handleTextKeydown}
           disabled={isBlocked}
