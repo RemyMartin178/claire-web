@@ -31,6 +31,7 @@ const DEFAULT_STATE = Object.freeze({
   showDashboard: true,
   showHeader: true,
   showListen: false,
+  showChat: false,
 
   // Increment to request a focus pass — windowManager checks the diff
   dashboardFocusCount: 0,
@@ -78,6 +79,7 @@ const TRANSIENT_KEYS = new Set([
   'dashboardFocusCount',
   'showHeader',
   'showListen',
+  'showChat',
   'showDashboard',
   'isListenRunning',
   'session',

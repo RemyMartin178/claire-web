@@ -206,6 +206,7 @@ module.exports = {
             return await askService.sendMessage(enrichedPrompt, formattedAskHistory, {
                 originalPrompt: userPrompt,
                 forceScreenshot: !!options.forceScreenshot,
+                displayPrompt: options.displayPrompt,
                 maxMode: !!options.maxMode,
                 webSearch: !!options.webSearch
             });
@@ -371,10 +372,13 @@ module.exports = {
             try {
                 if (listenButtonText === 'Listen') {
                     // About to start — reflect intent in shared state for any subscriber.
-                    sharedStateService.patch({ isListenRunning: true, showListen: true });
+                    sharedStateService.patch({ isListenRunning: true, showListen: false, showChat: false });
                 }
 
-                await listenService.handleListenRequest(listenButtonText);
+                await listenService.handleListenRequest(
+                    listenButtonText,
+                    listenButtonText === 'Listen' ? { revealListen: false } : {}
+                );
 
                 if (listenButtonText === 'Listen') {
                     const newId = listenService.currentSessionId;
@@ -391,6 +395,9 @@ module.exports = {
                         sharedStateService.patch({
                             session: { id: newId, startedAt, ...(recallSdkRecording && { recallSdkRecording }) },
                             isListenRunning: true,
+                            showHeader: true,
+                            showListen: false,
+                            showChat: true,
                         });
                     }
                 }
@@ -417,6 +424,7 @@ module.exports = {
                         lastSessionId: sessionIdBeforeStop,
                         isListenRunning: false,
                         showListen: false,
+                        showChat: false,
                         showHeader: false,
                         showDashboard: true,
                         dashboardFocusCount: prevFocus + 1,
@@ -715,7 +723,8 @@ module.exports = {
                     sharedStateService.patch({
                         showDashboard: false,
                         showHeader: true,
-                        showListen: true,
+                        showListen: false,
+                        showChat: true,
                         isListenRunning: true,
                     });
                     return { success: true, sessionId: listenService.currentSessionId || null, starting: false };
@@ -729,11 +738,13 @@ module.exports = {
                     showDashboard: true,
                     showHeader: false,
                     showListen: false,
+                    showChat: false,
                     isListenRunning: false,
                     session: null,
                 });
                 internalBridge.emit('window:requestVisibility', { name: 'header', visible: false });
                 internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
+                internalBridge.emit('window:requestVisibility', { name: 'ask', visible: false });
 
                 // Lazy-init the windows on first use
                 if (!windowManager.windowPool.has('header')) {
@@ -742,12 +753,13 @@ module.exports = {
                 windowManager.ensureListenWindow();
                 internalBridge.emit('window:requestVisibility', { name: 'header', visible: false });
                 internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
+                internalBridge.emit('window:requestVisibility', { name: 'ask', visible: false });
 
                 dashboardStartClairePromise = (async () => {
                     await listenService.handleListenRequest('Listen', { revealListen: false });
 
                 // Single state patch — the change subscription handles every side
-                // effect: dashboard hide, header show, listen show.
+                // effect: dashboard hide, header show, Ask show.
                 const newId = listenService.currentSessionId;
                 if (!newId) {
                     throw new Error('Listen session started without a session id');
@@ -765,13 +777,11 @@ module.exports = {
                 sharedStateService.patch({
                     showDashboard: false,
                     showHeader: true,
-                    showListen: true,
+                    showListen: false,
+                    showChat: true,
                     isListenRunning: true,
                     session: { id: newId, startedAt, ...(recallSdkRecording && { recallSdkRecording }) },
                 });
-                internalBridge.emit('window:requestVisibility', { name: 'header', visible: true });
-                internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
-
                 return { success: true, sessionId: newId, starting: false };
 
                 })().catch(async (e) => {
@@ -787,6 +797,7 @@ module.exports = {
                         showDashboard: true,
                         showHeader: false,
                         showListen: false,
+                        showChat: false,
                         isListenRunning: false,
                         session: null,
                     });
@@ -802,9 +813,20 @@ module.exports = {
                     showDashboard: true,
                     showHeader: false,
                     showListen: false,
+                    showChat: false,
                     isListenRunning: false,
                     session: null,
                 });
+                return { success: false, error: e.message };
+            }
+        });
+
+        ipcMain.handle('dashboard:stopClaire', async () => {
+            try {
+                await listenService.handleListenRequest('Stop', {});
+                return { success: true };
+            } catch (e) {
+                logger.error('[FeatureBridge] dashboard:stopClaire failed', { message: e.message });
                 return { success: false, error: e.message };
             }
         });

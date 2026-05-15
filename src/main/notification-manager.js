@@ -24,7 +24,7 @@ class NotificationManager {
             showSTTComplete: false,
             showConversationUpdates: false,
             showErrors: true,
-            showSessionChanges: true,
+            showSessionChanges: false,
             sound: false,
             duration: 5000
         };
@@ -157,146 +157,37 @@ class NotificationManager {
      * Show session state change notification
      */
     showSessionChange(state, options = {}) {
-        if (!this.enabled || !this.settings.showSessionChanges) return;
+        return false;
 
-        const configs = {
-            'started': {
-                subtitle: 'Claire',
-                title: 'Écoute démarrée',
-                duration: 3500,
-                action: null,
-            },
-            'stopped': {
-                subtitle: 'Claire',
-                title: 'Écoute arrêtée',
-                duration: 4000,
-                action: { label: 'Voir l\'activité', channel: 'dashboard:open' },
-            },
-            'paused': {
-                subtitle: 'Claire',
-                title: 'Écoute en pause',
-                duration: 3000,
-                action: null,
-            },
-            'resumed': {
-                subtitle: 'Claire',
-                title: 'Écoute reprise',
-                duration: 3000,
-                action: null,
-            },
-            'error': {
-                subtitle: 'Claire',
-                title: 'Erreur lors de l\'écoute',
-                duration: 5000,
-                action: null,
-            },
-            'no_transcript': {
-                subtitle: 'Claire',
-                title: 'Aucune transcription détectée',
-                duration: 5000,
-                action: null,
-            },
-            'notes_ready': {
-                subtitle: 'Claire',
-                title: 'Notes prêtes',
-                duration: 5000,
-                action: { label: 'Voir les notes', channel: 'dashboard:open' },
-            },
-            'summary_ready': {
-                subtitle: 'Claire',
-                title: 'Résumé prêt',
-                duration: 5000,
-                action: { label: 'Voir le résumé', channel: 'dashboard:open' },
-            },
-            'zoom_ended': {
-                subtitle: 'Zoom',
-                title: 'Réunion Zoom terminée',
-                duration: 6000,
-                action: { label: 'Récupérer les notes', channel: 'dashboard:open' },
-            },
-            'meetings_done': {
-                subtitle: 'Claire',
-                title: 'Réunions terminées ? Récupérez vos notes',
-                duration: 7000,
-                action: { label: 'Voir les notes', channel: 'dashboard:open' },
-            },
-            'quota_exceeded': {
-                subtitle: 'Claire',
-                title: 'Quota atteint — Mettez à jour votre plan',
-                duration: 6000,
-                action: null,
-            },
-            'network_error': {
-                subtitle: 'Claire',
-                title: 'Erreur réseau — Vérifiez votre connexion',
-                duration: 5000,
-                action: null,
-            },
-            'auth_required': {
-                subtitle: 'Claire',
-                title: 'Connexion requise',
-                duration: 5000,
-                action: { label: 'Se connecter', channel: 'auth:open' },
-            },
+        const messages = {
+            'started': 'Prête à écouter',
+            'stopped': 'Session terminée',
+            'paused': 'Session mise en pause',
+            'resumed': 'Session reprise',
+            'error': 'Erreur de session'
         };
 
-        const cfg = configs[state] || { subtitle: 'Claire', title: `Session ${state}`, duration: 4000, action: null };
+        const subtitles = {
+            'started': 'Claire',
+            'stopped': 'Claire · Vos notes sont prêtes',
+            'paused': 'Claire',
+            'resumed': 'Claire',
+            'error': 'Claire',
+        };
 
-        return this.showNotification(cfg.subtitle, cfg.title, {
+        const title = subtitles[state] || 'Claire';
+        const body = messages[state] || `Session ${state}`;
+        
+        const notificationOptions = {
             ...options,
-            tag: `session-${state}`,
-            duration: cfg.duration,
-            action: cfg.action,
-        });
-    }
+            onClick: () => {
+                this.focusMainWindow();
+            },
+            sound: this.settings.sound,
+            tag: 'session-change'
+        };
 
-    /**
-     * Show Zoom meeting ended notification
-     */
-    showZoomEnded() {
-        return this.showSessionChange('zoom_ended');
-    }
-
-    /**
-     * Show "meetings done, get notes" notification
-     */
-    showMeetingsDone() {
-        return this.showSessionChange('meetings_done');
-    }
-
-    /**
-     * Show notes ready notification after session summary
-     */
-    showNotesReady() {
-        return this.showSessionChange('notes_ready');
-    }
-
-    /**
-     * Show summary ready notification
-     */
-    showSummaryReady() {
-        return this.showSessionChange('summary_ready');
-    }
-
-    /**
-     * Show quota exceeded notification
-     */
-    showQuotaExceeded() {
-        return this.showSessionChange('quota_exceeded');
-    }
-
-    /**
-     * Show network error notification
-     */
-    showNetworkError() {
-        return this.showSessionChange('network_error');
-    }
-
-    /**
-     * Show auth required notification
-     */
-    showAuthRequired() {
-        return this.showSessionChange('auth_required');
+        return this.showNotification(title, body, notificationOptions);
     }
 
     /**
@@ -316,7 +207,7 @@ class NotificationManager {
                 icon,
                 subtitle: title,
                 title: body,
-                duration: options.duration || this.settings.duration || 4000,
+                duration: options.duration || this.settings.duration || 5000,
                 action: options.action || null,
             };
 
@@ -340,20 +231,6 @@ class NotificationManager {
             logger.error('Error showing in-app notification:', { error });
             return false;
         }
-    }
-
-    /**
-     * Show warning notification
-     */
-    showWarning(message, options = {}) {
-        return this.showNotification('Claire', message, { ...options, tag: 'warning', urgency: 'normal' });
-    }
-
-    /**
-     * Show info notification
-     */
-    showInfo(message, options = {}) {
-        return this.showNotification('Claire', message, { ...options, tag: 'info' });
     }
 
     /**

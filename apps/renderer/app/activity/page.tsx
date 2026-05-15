@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,11 +16,13 @@ import {
   sessionKeys,
   useSessionsQuery,
 } from '@/hooks/useSessionQueries'
+import { useSharedState } from '@/contexts/SharedStateContext'
 
 export default function ActivityPage() {
   const { user: userInfo, loading } = useAuth();
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { state: sharedState, ready: sharedReady } = useSharedState()
   const sessionsQuery = useSessionsQuery(Boolean(userInfo))
   const allSessions = useMemo(() => sessionsQuery.data || [], [sessionsQuery.data])
   const sessions = useMemo(() => allSessions.filter(s => s.session_type !== 'ask'), [allSessions])
@@ -30,6 +32,7 @@ export default function ActivityPage() {
   const [hasRenderedActivity, setHasRenderedActivity] = useState(false)
 
   const [upcomingMeeting, setUpcomingMeeting] = useState<any>(null)
+  const [upcomingMeetings, setUpcomingMeetings] = useState<any[]>([])
   const [meetingBrief, setMeetingBrief] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState<Date | null>(null)
   const [canStartClaire, setCanStartClaire] = useState(false)
@@ -37,6 +40,23 @@ export default function ActivityPage() {
   const [openingSessionId, setOpeningSessionId] = useState<string | null>(null)
 
   const hasListenSession = allSessions.some((session) => session.session_type !== 'ask')
+  const focusCount = sharedState?.dashboardFocusCount ?? 0
+  const prevFocusCount = useRef<number | null>(null)
+
+  // Auto-navigate to active/recent session when dashboard is shown
+  useEffect(() => {
+    if (!sharedReady) return
+    const sessionId = sharedState?.session?.id
+    if (!sessionId) return
+    const isFirst = prevFocusCount.current === null
+    const didFocus = !isFirst && focusCount > (prevFocusCount.current ?? 0)
+    prevFocusCount.current = focusCount
+    if (!isFirst && !didFocus) return
+    const key = `dashboard:redirected:${sessionId}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+    router.replace(`/activity/details?sessionId=${sessionId}&title=Session+en+cours&new=1`)
+  }, [sharedReady, focusCount])
 
   useEffect(() => {
     if (sessionsQuery.error) {
@@ -126,12 +146,14 @@ export default function ActivityPage() {
       const events = JSON.parse(cached) as any[]
       if (!Array.isArray(events)) return
       const now = new Date()
-      const next = events
+      const sorted = events
         .map((e) => ({ event: e, start: getEventStartDate(e) }))
         .filter(({ start }) => start && start > now)
-        .sort((a, b) => a.start!.getTime() - b.start!.getTime())[0]
+        .sort((a, b) => a.start!.getTime() - b.start!.getTime())
+      const next = sorted[0]
       const event = next?.event || null
       setUpcomingMeeting(event)
+      setUpcomingMeetings(sorted.slice(0, 4).map(x => x.event))
 
       if (event) {
         // Check sessionStorage cache first (written by calendar/details page)
@@ -289,77 +311,90 @@ export default function ActivityPage() {
   return (
     <div className="flex flex-col min-h-full text-foreground font-body motion-safe:animate-page-enter">
 
-      {/* ── Hero section ── */}
-      <div className="shrink-0 border-b border-border/30 bg-muted/30 px-6 py-6">
+      {/* ── Hero section — exact Cluely structure ── */}
+      <div className="shrink-0 border-b border-border/30 bg-muted/50 px-6 py-5">
         <div className="mx-auto w-full max-w-[52rem]">
-          <div className="flex flex-wrap items-center justify-between gap-4">
 
-            {/* Left: greeting */}
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-semibold text-[1.65rem] text-foreground tracking-tight leading-none">
+          {/* Row 1: title + button */}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+              <h1 className="mr-2 font-normal text-2xl text-muted-foreground/90 tracking-tight">
                 {getGreeting(currentTime)}{userInfo.display_name ? `, ${userInfo.display_name.split(' ')[0]}` : ''}
               </h1>
               {isRefreshing && (
-                <span
-                  aria-label="Mise a jour"
-                  className="size-3 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60 animate-spin"
-                />
+                <span className="size-3 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/60 animate-spin" />
               )}
             </div>
 
-            {/* Right: Start Claire */}
             {canStartClaire && (
-              <div className="relative inline-flex items-center justify-center">
-                <span
-                  aria-label={isStartingClaire ? 'Demarrage' : undefined}
-                  aria-hidden={!isStartingClaire}
-                  className={`absolute -left-7 inline-flex size-4 items-center justify-center text-muted-foreground/70 transition-opacity duration-150 ${isStartingClaire ? 'opacity-100' : 'opacity-0'}`}
-                >
-                  <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                  </svg>
-                </span>
-                <button
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-2">
+                  {isStartingClaire && (
+                    <span aria-label="Demarrage en cours" className="size-4 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/70 animate-spin" />
+                  )}
+                  <button
                   onClick={handleStartClaire}
                   disabled={isStartingClaire}
                   aria-label="Démarrer Claire"
-                  className="relative inline-flex items-center gap-2 h-9 px-5 rounded-full text-[13px] font-semibold text-white transition duration-150 hover:scale-105 hover:brightness-125 active:scale-[0.97] disabled:opacity-80 disabled:hover:scale-100 focus-visible:outline-none"
-                  style={{ background: 'linear-gradient(#0544a9,#022c70)', boxShadow: '0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff' }}
+                  className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.04] hover:brightness-105 active:scale-[0.97] disabled:opacity-70 disabled:hover:scale-100 focus-visible:outline-none"
+                  style={{ background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%)', boxShadow: '0 0 0 0.678px #0c44a1, inset 0 -1.355px #022c70, inset 0 0.678px #81b6ff' }}
                 >
-                  <svg className="size-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" />
-                  </svg>
+                  <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" /></svg>
                   Démarrer Claire
-                </button>
+                  </button>
+                </div>
+                <span className="text-[11px] text-muted-foreground/60 tabular-nums pr-1">
+                  {sessions.length} {sessions.length === 1 ? 'session enregistrée' : 'sessions enregistrées'}
+                </span>
               </div>
             )}
           </div>
+
+          {/* Row 2: calendar link / upcoming meetings — inside header like Cluely */}
+          {currentTime && upcomingMeetings.length > 0 ? (
+            <ul className="mt-4 space-y-1">
+              {upcomingMeetings.map((meeting, idx) => {
+                const start = getEventStartDate(meeting)
+                if (!start || start <= currentTime) return null
+                const end = getEventEndDate(meeting)
+                const isToday = start.toDateString() === currentTime.toDateString()
+                const isTomorrow = new Date(currentTime.getTime() + 86_400_000).toDateString() === start.toDateString()
+                const dayLabel = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+                const fmt = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
+                const minutesUntil = Math.round((start.getTime() - currentTime.getTime()) / 60_000)
+                const title = getEventTitle(meeting)
+                const brief = idx === 0 ? meetingBrief : null
+                return (
+                  <li key={meeting.id || idx} className="flex items-start gap-3 rounded-lg px-3 py-2.5 hover:bg-muted/60 transition-colors duration-150 cursor-default">
+                    <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+                      <svg className="size-3.5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium text-sm text-foreground">{title}</span>
+                        {minutesUntil <= 15 && minutesUntil > 0 && (
+                          <span className="shrink-0 rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-orange-500">Dans {minutesUntil} min</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground tabular-nums">{dayLabel} · {fmt(start)}{end ? ` – ${fmt(end)}` : ''}</p>
+                      {brief && <p className="mt-0.5 text-xs text-muted-foreground/80 line-clamp-2">{brief}</p>}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground/80">
+              <button className="text-blue-500 hover:underline font-medium" onClick={() => {}}>Relier votre calendrier</button>
+              {' '}pour recevoir des notifications pour vos réunions à venir.
+            </p>
+          )}
         </div>
       </div>
 
-      {/* ── List section ── */}
+      {/* ── Sessions list ── */}
       <div className="flex-1 px-6 pb-6">
         <div className="mx-auto w-full max-w-[52rem]">
-
-          {/* Upcoming meeting */}
-          {(() => {
-            if (!upcomingMeeting || !currentTime) return null
-            const start = getEventStartDate(upcomingMeeting)
-            if (!start || start <= currentTime) return null
-            const end = getEventEndDate(upcomingMeeting)
-            const isToday = start.toDateString() === currentTime.toDateString()
-            const isTomorrow = new Date(currentTime.getTime() + 86_400_000).toDateString() === start.toDateString()
-            const dayLabel = isToday ? "Aujourd'hui" : isTomorrow ? 'Demain' : start.toLocaleDateString('fr-FR', { weekday: 'long' })
-            const fmt = (d: Date) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h')
-            const timeRange = end ? `${fmt(start)} – ${fmt(end)}` : fmt(start)
-            return (
-              <div className="mt-4 mb-2 border-l-[3px] border-blue-500 bg-blue-500/5 dark:bg-blue-500/10 rounded-r-lg pl-4 pr-4 py-3">
-                <p className="text-xs font-medium text-muted-foreground mb-0.5">{dayLabel} · {timeRange}</p>
-                <p className="text-sm font-semibold text-foreground">{getEventTitle(upcomingMeeting)}</p>
-                {meetingBrief && <p className="text-xs text-muted-foreground mt-0.5">{meetingBrief}</p>}
-              </div>
-            )
-          })()}
 
           {/* Sessions */}
           {isLoading && !hasRenderedActivity ? (

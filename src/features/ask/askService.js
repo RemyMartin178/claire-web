@@ -223,6 +223,7 @@ class AskService {
             isStreaming: false,
             currentQuestion: '',
             currentResponse: '',
+            currentScreenshotUrl: null,
             showTextInput: true,
             currentProvider: null,
             contextOptimized: false,
@@ -462,6 +463,7 @@ class AskService {
                 isStreaming: Boolean(this.state.isStreaming),
                 currentQuestion: String(this.state.currentQuestion || ''),
                 currentResponse: String(this.state.currentResponse || ''),
+                currentScreenshotUrl: this.state.currentScreenshotUrl ? String(this.state.currentScreenshotUrl) : null,
                 showTextInput: Boolean(this.state.showTextInput),
                 currentProvider: this.state.currentProvider ? String(this.state.currentProvider) : null,
                 contextOptimized: Boolean(this.state.contextOptimized),
@@ -523,6 +525,7 @@ class AskService {
                 isStreaming    : false,
                 currentQuestion: '',
                 currentResponse: '',
+                currentScreenshotUrl: null,
                 showTextInput  : true,
             };
             this._broadcastState();
@@ -609,8 +612,9 @@ class AskService {
             ...this.state,
             isLoading: true,
             isStreaming: false,
-            currentQuestion: options.originalPrompt || userPrompt,
+            currentQuestion: options.displayPrompt || options.originalPrompt || userPrompt,
             currentResponse: '',
+            currentScreenshotUrl: null,
             showTextInput: false,
             contextOptimized: false,
             isQuotaExceeded: false,
@@ -750,6 +754,12 @@ class AskService {
                 screenshotContext = 'full screen';
             }
             } // END needsScreenshot
+
+            if (screenshotBase64) {
+                this.state.currentScreenshotUrl = `data:image/jpeg;base64,${screenshotBase64}`;
+                this._broadcastState();
+                this.state.currentScreenshotUrl = null;
+            }
 
             // Add user message to context manager (non bloquant)
             safeAddContext({

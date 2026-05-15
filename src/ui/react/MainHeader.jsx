@@ -120,10 +120,9 @@ const CSS = `
   transform: translateY(-50%);
   width: 26px;
   height: 26px;
-  object-fit: cover;
+  object-fit: contain;
   flex-shrink: 0;
   pointer-events: none;
-  filter: brightness(0) invert(1);
 }
 
 /* ── WIDE BUTTON (Ask / Cacher) ── */
@@ -313,7 +312,7 @@ const IconStop = () => (
   </svg>
 );
 
-const LOGO_SRC = '../assets/logo.png';
+const LOGO_SRC = '../assets/claire-mark-white.svg';
 
 export default function MainHeader({
   overlayMode = false,
@@ -328,7 +327,7 @@ export default function MainHeader({
   const [listenSessionStatus, setListenSessionStatus] = useState('beforeSession');
   const [isUserLoggedIn, setIsUserLoggedIn]        = useState(false);
   const [isAuthenticating, setIsAuthenticating]    = useState(false);
-  const [animClass, setAnimClass]                  = useState('sliding-in');
+  const [animClass, setAnimClass]                  = useState('');
   const [justLoggedIn, setJustLoggedIn]            = useState(false);
   const [showChat, setShowChat]                    = useState(false);
 
@@ -587,7 +586,8 @@ export default function MainHeader({
     } catch {}
   }, []);
 
-  const handleChatToggle = useCallback(async () => {
+  const handleChatToggle = useCallback(async (e) => {
+    if (e) e.stopPropagation();
     if (wasJustDraggedRef.current) return;
     try { await window.api.sharedState?.patch?.({ showChat: !showChat }); } catch {}
   }, [showChat]);
@@ -668,7 +668,7 @@ export default function MainHeader({
           >
             <span className="mh-wide-content">
               {isListening && showChat ? <IconChevronDown /> : <IconSparkles />}
-              {isListening && showChat ? 'Hide' : 'Ask'}
+              {isListening && showChat ? 'Masquer' : 'Ask'}
             </span>
           </button>
 

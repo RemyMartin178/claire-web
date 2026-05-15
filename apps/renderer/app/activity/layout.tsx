@@ -3,5 +3,9 @@ export default function ActivityLayout({
 }: {
   children: React.ReactNode
 }) {
-  return <>{children}</>
-} 
+  return (
+    <div className="relative min-h-full">
+      {children}
+    </div>
+  )
+}

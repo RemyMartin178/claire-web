@@ -861,10 +861,7 @@ class ListenService {
             // NOTE: Removed automatic audio capture start - should only start when user clicks listen button
             // this.sendToRenderer('change-listen-capture-state', { status: "start" });
 
-            // Show session started notification (if available)
-            if (notificationManager) {
-                notificationManager.showSessionChange('started');
-            }
+            // No notification on session start — only on stop
 
             return true;
         } catch (error) {

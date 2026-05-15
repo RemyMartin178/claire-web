@@ -729,7 +729,9 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
             return;
         }
         if (shouldBeVisible) {
+            win.setOpacity(0);
             win.show();
+            setTimeout(() => { if (!win.isDestroyed()) win.setOpacity(1); }, 30);
             try { win.focus(); } catch { /* focus may fail on some platforms */ }
         } else {
             win.hide();
@@ -1863,7 +1865,7 @@ function createSplashWindow() {
         resizable: false,
         center: true,
         show: false,
-        alwaysOnTop: false,
+        alwaysOnTop: true,
         skipTaskbar: true,
         webPreferences: {
             nodeIntegration: false,
@@ -1873,7 +1875,11 @@ function createSplashWindow() {
     });
 
     splashWindow.once('ready-to-show', () => {
-        if (!splashWindow.isDestroyed()) splashWindow.show();
+        if (!splashWindow.isDestroyed()) {
+            splashWindow.setOpacity(0);
+            splashWindow.show();
+            setTimeout(() => { if (!splashWindow.isDestroyed()) splashWindow.setOpacity(1); }, 30);
+        }
     });
 
     splashWindow.on('closed', () => { splashWindow = null; });

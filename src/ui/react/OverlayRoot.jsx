@@ -128,14 +128,14 @@ export default function OverlayRoot() {
     const screenW = window.screen.width;
     const screenH = window.screen.height;
 
-    const initPos = { x: Math.round((screenW - 202) / 2), y: 21 };
+    const initPos = { x: Math.round((screenW - 163) / 2), y: 25 };
 
     const [pillPos, setPillPos] = useState(initPos);
     const pillPosRef = useRef(initPos);
     const pillContainerRef = useRef(null);
 
-    const [pillSize, setPillSize] = useState({ w: 202, h: 58 });
-    const pillSizeRef = useRef({ w: 202, h: 58 });
+    const [pillSize, setPillSize] = useState({ w: 163, h: 50 });
+    const pillSizeRef = useRef({ w: 163, h: 50 });
 
     // Panel refs for hit-rect polling
     const listenPanelRef       = useRef(null);

@@ -355,6 +355,9 @@ const CSS = `
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
 }
+.ask-view-root.empty-chat {
+  min-height: 168px;
+}
 .ask-view-root::before {
   display: block;
   left: 14px; right: 14px;
@@ -400,7 +403,7 @@ const CSS = `
 }
 .ask-suggestions { display: none; }
 .ask-composer {
-  margin: 0 10px 10px;
+  margin: auto 10px 10px;
   min-height: 80px;
   border-radius: 8px;
   border: 0.5px solid rgba(255,255,255,0.12);
@@ -408,6 +411,46 @@ const CSS = `
   box-shadow: inset 0 1px rgba(255,255,255,0.04);
   display: flex;
   flex-direction: column;
+}
+.ask-viewed-screen {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0 0 4px 12px;
+  color: rgba(255,255,255,0.48);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  position: relative;
+}
+.ask-viewed-screen:hover { color: rgba(255,255,255,0.72); }
+.ask-viewed-preview {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 20px;
+  width: 320px;
+  max-height: 320px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(18,18,22,0.96);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 18px 55px rgba(0,0,0,0.42);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.16s ease-out, transform 0.16s ease-out;
+  z-index: 30;
+}
+.ask-viewed-screen:hover .ask-viewed-preview {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ask-viewed-preview img {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 5px;
 }
 .ask-bar {
   min-height: 44px;
@@ -559,7 +602,7 @@ const SUGGESTED_QUESTIONS = [
 const CLUELY_ACTIONS = [
   {
     label: 'Assist',
-    prompt: 'Assist me based on my screen and the current conversation.',
+    prompt: "Based on what's on my screen, infer and provide me with the best information to help me at the current moment.",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/>
@@ -570,7 +613,7 @@ const CLUELY_ACTIONS = [
   },
   {
     label: 'What should I say?',
-    prompt: 'What should I say next? Answer with only the words I should say.',
+    prompt: 'What should I say next? Output only the words I should say.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
@@ -580,7 +623,7 @@ const CLUELY_ACTIONS = [
   },
   {
     label: 'Follow-up questions',
-    prompt: 'Suggest concise follow-up questions for this screen or conversation.',
+    prompt: 'Suggest two follow-up questions that I can ask to carry forward the conversation. Output as two bullet points.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="4" y="5" width="16" height="13" rx="2"/>
@@ -591,7 +634,7 @@ const CLUELY_ACTIONS = [
   },
   {
     label: 'Recap',
-    prompt: 'Recap the current screen or conversation clearly and briefly.',
+    prompt: 'Recap the most recent thing that happened in the conversation.',
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 12a9 9 0 1 1-3-6.7"/>
@@ -619,6 +662,10 @@ export default function AskView() {
   const [quotaRemaining, setQuotaRemaining] = useState(null); // null = unlimited
   const [proUnlocked, setProUnlocked] = useState(false);
   const [proHiding, setProHiding] = useState(false);
+  const [activeView, setActiveView] = useState('chat');
+  const [transcriptEntries, setTranscriptEntries] = useState([]);
+  const [audioStatus, setAudioStatus] = useState('Connexion audio...');
+  const [currentScreenshotUrl, setCurrentScreenshotUrl] = useState(null);
 
   const isQuotaExceededRef = useRef(false);
   const responseContainerRef = useRef(null);
@@ -637,6 +684,7 @@ export default function AskView() {
 
   const currentResponseRef = useRef('');
   const currentQuestionRef = useRef('');
+  const currentScreenshotUrlRef = useRef(null);
   const isLoadingRef = useRef(false);
   const isStreamingRef = useRef(false);
   const justSavedRef = useRef(false); // prevent double-save between handleSendText and onAskStateUpdate
@@ -644,6 +692,7 @@ export default function AskView() {
   useEffect(() => { _historyStore.messages = messages; }, [messages]);
   useEffect(() => { currentResponseRef.current = currentResponse; }, [currentResponse]);
   useEffect(() => { currentQuestionRef.current = currentQuestion; }, [currentQuestion]);
+  useEffect(() => { currentScreenshotUrlRef.current = currentScreenshotUrl; }, [currentScreenshotUrl]);
   useEffect(() => { isQuotaExceededRef.current = isQuotaExceeded; }, [isQuotaExceeded]);
   useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
   useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
@@ -831,6 +880,7 @@ export default function AskView() {
     document.addEventListener('keydown', handleEscKey);
     window.addEventListener('ask:setScreenContext', handleScreenContextEvent);
     window.api?.common?.onUserStateChanged?.(handleUserStateChanged);
+    let sttUpdateHandler = null;
     if (window.api) {
       window.api.askView.onShowTextInput(() => focusTextInput());
       window.api.askView.onScrollResponseUp(() => { const el = document.querySelector('.ask-response-panel') || responseContainerRef.current; if (el) el.scrollTop -= 100; });
@@ -838,15 +888,17 @@ export default function AskView() {
       window.api.askView.onAskStateUpdate((event, newState) => {
         // When a new question arrives via action/IPC, save the current Q&A to history first
         // Skip if handleSendText already saved it (justSavedRef flag prevents duplicates)
+        const questionChanged = newState.currentQuestion && newState.currentQuestion !== currentQuestionRef.current;
         if (newState.isLoading && newState.currentQuestion && newState.currentQuestion !== currentQuestionRef.current) {
           if (currentQuestionRef.current && currentResponseRef.current && !justSavedRef.current) {
             const html = responseContainerRef.current?.innerHTML || '';
-            setMessages(prev => [...prev, { question: currentQuestionRef.current, html }]);
+            setMessages(prev => [...prev, { question: currentQuestionRef.current, html, screenshotUrl: currentScreenshotUrlRef.current }]);
           }
           justSavedRef.current = false;
         }
         setCurrentResponse(newState.currentResponse);
         setCurrentQuestion(newState.currentQuestion);
+        setCurrentScreenshotUrl(newState.currentScreenshotUrl || (questionChanged ? null : currentScreenshotUrlRef.current));
         setIsLoading(newState.isLoading);
         setIsStreaming(newState.isStreaming);
         setIsQuotaExceeded(newState.isQuotaExceeded || false);
@@ -854,6 +906,24 @@ export default function AskView() {
         focusTextInput();
         if (newState.isStreaming && autoScrollEnabledRef.current) setTimeout(() => scrollToBottom(), 0);
       });
+      sttUpdateHandler = (_event, update) => {
+        if (!update?.text) return;
+        setAudioStatus('Audio connecte');
+        setTranscriptEntries(prev => {
+          const entry = {
+            id: `${update.timestamp || Date.now()}-${prev.length}`,
+            speaker: update.speaker || 'Audio',
+            text: update.text,
+            isPartial: Boolean(update.isPartial),
+            timestamp: update.timestamp || Date.now(),
+          };
+          if (entry.isPartial && prev[prev.length - 1]?.isPartial) {
+            return [...prev.slice(0, -1), entry];
+          }
+          return [...prev, entry].slice(-80);
+        });
+      };
+      window.api.sttView?.onSttUpdate?.(sttUpdateHandler);
     }
     setTimeout(() => adjustWindowHeight(), 200);
     return () => {
@@ -861,6 +931,7 @@ export default function AskView() {
       window.removeEventListener('ask:setScreenContext', handleScreenContextEvent);
       window.api?.common?.removeOnUserStateChanged?.(handleUserStateChanged);
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      if (sttUpdateHandler) window.api?.sttView?.removeOnSttUpdate?.(sttUpdateHandler);
     };
   }, []);
 
@@ -884,14 +955,16 @@ export default function AskView() {
   // Block when quota hits exactly 0. -1 = unlimited (Pro/Max), never block those.
   const isBlocked = isQuotaExceeded || (quotaRemaining !== null && quotaRemaining === 0);
 
-  const handleSendText = useCallback(async (overridingText = '') => {
+  const handleSendText = useCallback(async (overridingText = '', displayTextOverride = '') => {
     if (isBlocked) return;
-    const text = (overridingText || textInputRef.current?.value || '').trim();
-    if (!text) return;
+    const inputText = (textInputRef.current?.value || '').trim();
+    const text = (overridingText || inputText).trim();
+    const displayText = (displayTextOverride || inputText || overridingText).trim();
+    if (!text || !displayText) return;
     // Save current Q&A to history before starting new question
     if (currentQuestionRef.current && currentResponseRef.current && !isLoadingRef.current && !isStreamingRef.current) {
       const html = responseContainerRef.current?.innerHTML || '';
-      setMessages(prev => [...prev, { question: currentQuestionRef.current, html }]);
+      setMessages(prev => [...prev, { question: currentQuestionRef.current, html, screenshotUrl: currentScreenshotUrlRef.current }]);
       justSavedRef.current = true; // prevent onAskStateUpdate from saving again
     }
     if (textInputRef.current) textInputRef.current.value = '';
@@ -899,7 +972,7 @@ export default function AskView() {
     if (window.api) {
       // Pass conversation history so the AI has context of the current Ask session
       const historySnapshot = _historyStore.messages.map(m => ({ question: m.question, text: m.html?.replace(/<[^>]*>/g, '') || '' }));
-      window.api.askView.sendMessage(text, { forceScreenshot: screenContext, maxMode, webSearch: webSearchMode }, historySnapshot).catch(err => console.error('Error sending text:', err));
+      window.api.askView.sendMessage(text, { displayPrompt: displayText, forceScreenshot: screenContext, maxMode, webSearch: webSearchMode }, historySnapshot).catch(err => console.error('Error sending text:', err));
     }
   }, [screenContext, isBlocked, maxMode, webSearchMode]);
 
@@ -930,14 +1003,26 @@ export default function AskView() {
     }, 220);
   }, [handleSendText]);
 
+  const renderViewedScreen = useCallback((url) => {
+    if (!url) return null;
+    return (
+      <div className="ask-viewed-screen">
+        Viewed screen
+        <div className="ask-viewed-preview">
+          <img src={url} alt="Viewed screen screenshot" />
+        </div>
+      </div>
+    );
+  }, []);
+
   return (
-    <div className="ask-view-root">
+    <div className={`ask-view-root${activeView === 'chat' && !hasContent ? ' empty-chat' : ''}`}>
       <div className="ask-mode-tabs">
         {CLUELY_ACTIONS.map((action, index) => (
           <React.Fragment key={action.label}>
             <button
               className="ask-mode-btn"
-              onClick={() => !isBlocked && handleSendText(action.prompt)}
+              onClick={() => !isBlocked && handleSendText(action.prompt, action.label)}
               disabled={isBlocked}
               title={action.label}
             >
@@ -949,7 +1034,24 @@ export default function AskView() {
         ))}
       </div>
 
-      {hasContent && (
+      {activeView === 'transcript' && (
+        <div className="ask-response-panel" style={{ position: 'relative', borderRadius: '12px' }}>
+          <div className="ask-history-response">
+            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginBottom: 10 }}>{audioStatus}</p>
+            {transcriptEntries.length === 0 ? (
+              <p style={{ color: 'rgba(255,255,255,0.42)' }}>La transcription apparaitra ici pendant la conversation.</p>
+            ) : (
+              transcriptEntries.map((entry) => (
+                <p key={entry.id} style={{ marginBottom: 8, opacity: entry.isPartial ? 0.6 : 1 }}>
+                  <strong>{entry.speaker === 'Me' ? 'Vous' : entry.speaker === 'Them' ? 'Interlocuteur' : entry.speaker}</strong>: {entry.text}
+                </p>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeView === 'chat' && hasContent && (
         <div
           className={`ask-response-panel${isQuotaExceeded ? ' quota-exceeded' : ''}`}
           style={{
@@ -972,6 +1074,7 @@ export default function AskView() {
                 </button>
                 <div className="ask-question-bubble">{msg.question}</div>
               </div>
+              {renderViewedScreen(msg.screenshotUrl)}
               <div className="ask-history-response" dangerouslySetInnerHTML={{ __html: msg.html }} />
             </div>
           ))}
@@ -990,6 +1093,7 @@ export default function AskView() {
               <div className="ask-question-bubble">{currentQuestion}</div>
             </div>
           )}
+          {currentQuestion && renderViewedScreen(currentScreenshotUrl)}
 
           {/* Response area (always rendered so blurred content shows behind overlay) */}
           <div className={`ask-response-area${hasResponse ? ' visible' : ''}`}>

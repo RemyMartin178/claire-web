@@ -11,6 +11,7 @@ export type SharedState = {
   showDashboard: boolean
   showHeader: boolean
   showListen: boolean
+  showChat: boolean
   dashboardFocusCount: number
   session: {
     id: string

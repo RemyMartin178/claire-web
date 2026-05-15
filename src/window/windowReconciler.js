@@ -108,6 +108,17 @@ function reconcile({ state, previous }) {
     }
   }
 
+  if (state.showDashboard !== previous.showDashboard) {
+    const dashWin = windowManager.getDashboardWindow();
+    if (dashWin && !dashWin.isDestroyed()) {
+      if (state.showDashboard) {
+        try { dashWin.show(); dashWin.focus(); } catch { /* destroyed mid-flight */ }
+      } else {
+        try { dashWin.hide(); } catch { /* destroyed mid-flight */ }
+      }
+    }
+  }
+
   if (state.showHeader !== previous.showHeader) {
     try { internalBridge.emit('window:requestVisibility', { name: 'header', visible: state.showHeader }); }
     catch (e) { logger.warn('[WindowReconciler] state->header visibility failed:', e.message); }
@@ -118,15 +129,9 @@ function reconcile({ state, previous }) {
     catch (e) { logger.warn('[WindowReconciler] state->listen visibility failed:', e.message); }
   }
 
-  if (state.showDashboard !== previous.showDashboard) {
-    const dashWin = windowManager.getDashboardWindow();
-    if (dashWin && !dashWin.isDestroyed()) {
-      if (state.showDashboard) {
-        try { dashWin.show(); dashWin.focus(); } catch { /* destroyed mid-flight */ }
-      } else {
-        try { dashWin.hide(); } catch { /* destroyed mid-flight */ }
-      }
-    }
+  if (state.showChat !== previous.showChat) {
+    try { internalBridge.emit('window:requestVisibility', { name: 'ask', visible: state.showChat }); }
+    catch (e) { logger.warn('[WindowReconciler] state->ask visibility failed:', e.message); }
   }
 
   if (state.dashboardFocusCount !== previous.dashboardFocusCount && state.showDashboard) {
