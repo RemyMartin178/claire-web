@@ -373,18 +373,15 @@ let _bootPhase = 'idle'; // 'idle' | 'booting' | 'done'
 function _resolveBoot() {
     if (_bootPhase === 'done') return;
     _bootPhase = 'done';
-    logger.info('[Boot] Resolving boot — showing dashboard, then closing splash');
-    const dash = getDashboardWindow();
-    if (dash && !dash.isDestroyed()) {
+    logger.info('[Boot] Resolving boot — closing splash, desktop gap, then showing dashboard');
+    closeSplashWindow();
+    setTimeout(() => {
+        const dash = getDashboardWindow();
+        if (!dash || dash.isDestroyed()) return;
         dash.setOpacity(0);
         dash.show();
-        setTimeout(() => {
-            if (!dash.isDestroyed()) { dash.setOpacity(1); dash.focus(); }
-            setTimeout(() => closeSplashWindow(), 80);
-        }, 250);
-    } else {
-        closeSplashWindow();
-    }
+        setTimeout(() => { if (!dash.isDestroyed()) { dash.setOpacity(1); dash.focus(); } }, 30);
+    }, 700);
 }
 
 ipcMain.handle('electron-boot:dashboard-ready', () => {

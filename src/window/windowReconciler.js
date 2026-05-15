@@ -112,7 +112,11 @@ function reconcile({ state, previous }) {
     const dashWin = windowManager.getDashboardWindow();
     if (dashWin && !dashWin.isDestroyed()) {
       if (state.showDashboard) {
-        try { dashWin.show(); dashWin.focus(); } catch { /* destroyed mid-flight */ }
+        try {
+          dashWin.setOpacity(0);
+          dashWin.show();
+          setTimeout(() => { if (!dashWin.isDestroyed()) { dashWin.setOpacity(1); dashWin.focus(); } }, 80);
+        } catch { /* destroyed mid-flight */ }
       } else {
         try { dashWin.hide(); } catch { /* destroyed mid-flight */ }
       }

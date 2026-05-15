@@ -480,6 +480,8 @@ function SessionDetailsContent() {
   }
   const isGeneratingSummary = isNewSession && !rawSummaryText && bulletPoints.length === 0;
 
+  const isLiveSession = isNewSession && (sharedState?.isListenRunning ?? false) && sharedState?.session?.id === sessionId
+
   const missedOpportunitiesCount = 6;
 
   const hasTranscript = Boolean(sessionDetails?.transcripts && sessionDetails.transcripts.length > 0);
@@ -507,9 +509,7 @@ function SessionDetailsContent() {
           <div className="max-w-none">
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
-        ) : isGeneratingSummary ? (
-          <p className="text-muted-foreground/80 text-sm motion-safe:animate-pulse">Génération des notes...</p>
-        ) : (
+        ) : isGeneratingSummary ? null : (
           <p className="text-muted-foreground/80 text-sm">Aucun résumé disponible.</p>
         );
       case 'transcript':
@@ -603,16 +603,15 @@ function SessionDetailsContent() {
 
           {/* Title */}
           {(() => {
-            const isLiveSession = isNewSession && (sharedState?.isListenRunning ?? false) && sharedState?.session?.id === sessionId
             const titleClass = isLiveSession
               ? 'text-muted-foreground/50 animate-pulse'
               : titleShimmer
               ? 'text-muted-foreground/50 title-shimmer'
               : 'text-foreground'
-            const displayTitle = isLiveSession ? 'Session en cours' : titleValue
+            const liveTitle = isLiveSession ? 'Session en cours' : titleValue
             return (
               <input
-                value={displayTitle}
+                value={liveTitle}
                 onChange={(event) => { if (!isLiveSession) setEditableTitle(event.target.value) }}
                 readOnly={isLiveSession}
                 aria-label="Titre de l'activite"

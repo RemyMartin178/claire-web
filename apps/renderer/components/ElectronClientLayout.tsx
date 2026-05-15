@@ -8,6 +8,8 @@ import Avatar from '@/components/Avatar'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePathname, useRouter } from 'next/navigation'
 import { Search, ArrowLeft, ArrowRight } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { sessionKeys } from '@/hooks/useSessionQueries'
 
 const isWindows =
   typeof window !== 'undefined' &&
@@ -20,6 +22,7 @@ export default function ElectronClientLayout({
 }) {
   const { user: userInfo } = useAuth()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [canGoBack, setCanGoBack] = useState(false)
   const [canGoForward, setCanGoForward] = useState(false)
@@ -53,7 +56,11 @@ export default function ElectronClientLayout({
     onNavigate((data: { sessionId?: string } | undefined) => {
       const id = data?.sessionId
       if (typeof id === 'string' && id.length > 0) {
-        router.push(`/activity/details?sessionId=${id}&new=1`)
+        void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+        const current = window.location.pathname + window.location.search
+        if (!current.includes(id)) {
+          router.push(`/activity/details?sessionId=${id}&new=1`)
+        }
       }
     })
 

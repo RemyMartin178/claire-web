@@ -55,8 +55,13 @@ export default function ActivityPage() {
     const key = `dashboard:redirected:${sessionId}`
     if (sessionStorage.getItem(key)) return
     sessionStorage.setItem(key, '1')
-    router.replace(`/activity/details?sessionId=${sessionId}&title=Session+en+cours&new=1`)
+    router.push(`/activity/details?sessionId=${sessionId}&title=Session+en+cours&new=1`)
   }, [sharedReady, focusCount])
+
+  useEffect(() => {
+    if (!sharedState?.lastSessionId) return
+    void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+  }, [sharedState?.lastSessionId, queryClient])
 
   useEffect(() => {
     if (sessionsQuery.error) {
