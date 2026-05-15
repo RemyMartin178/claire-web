@@ -418,42 +418,69 @@ const CSS = `
   display: inline-flex;
   align-items: center;
   width: fit-content;
-  margin: 0 0 4px 12px;
-  color: rgba(255,255,255,0.48);
+  margin: 0 0 6px 12px;
+  color: rgba(255,255,255,0.42);
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
   position: relative;
+  cursor: default;
+  transition: color 0.12s;
 }
 .ask-viewed-screen:hover { color: rgba(255,255,255,0.72); }
 .ask-viewed-preview {
   pointer-events: none;
   position: absolute;
   left: 0;
-  top: 20px;
-  width: 320px;
-  max-height: 320px;
+  top: 22px;
   padding: 8px;
   border-radius: 12px;
-  background: rgba(18,18,22,0.96);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 18px 55px rgba(0,0,0,0.42);
+  background: rgba(14,14,18,0.97);
+  border: 1px solid rgba(255,255,255,0.09);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.55);
   opacity: 0;
   transform: translateY(-4px);
   transition: opacity 0.16s ease-out, transform 0.16s ease-out;
   z-index: 30;
 }
-.ask-viewed-screen:hover .ask-viewed-preview {
-  opacity: 1;
-  transform: translateY(0);
+.ask-viewed-screen:hover .ask-viewed-preview { opacity: 1; transform: translateY(0); }
+
+/* image wrapper — aspect-video while loading, w-fit when loaded */
+.ask-viewed-img-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  width: 320px;
 }
-.ask-viewed-preview img {
+.ask-viewed-img-wrap.loading { aspect-ratio: 16/9; }
+.ask-viewed-img-wrap.loaded  { width: fit-content; }
+
+/* spinner overlay */
+.ask-viewed-spinner {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.08);
+}
+.ask-viewed-spinner svg { animation: ask-pulse 1s ease-in-out infinite; }
+
+/* error overlay */
+.ask-viewed-error {
+  position: absolute; inset: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px; text-align: center;
+  color: rgba(255,255,255,0.55); font-size: 11px; line-height: 1.4;
+}
+
+.ask-viewed-img {
   display: block;
-  width: 100%;
-  max-height: 300px;
+  width: 320px;
+  max-height: 320px;
   object-fit: contain;
-  border-radius: 5px;
+  transition: opacity 0.15s ease;
 }
+.ask-viewed-img.invisible { opacity: 0; width: 320px; height: 180px; }
+.ask-viewed-img.visible   { opacity: 1; height: auto; }
 .ask-bar {
   min-height: 44px;
   align-items: flex-start;
@@ -583,6 +610,52 @@ function applyMathPostProcess(container) {
     `<span class="ask-math-inline">${convertLatexToUnicode(math)}</span>`
   );
   if (html !== before) container.innerHTML = html;
+}
+
+// ── "Écran consulté" label — identique à Cluely "Viewed screen" ────────────
+function ViewedScreenLabel({ url }) {
+  const [imgState, setImgState] = useState('loading'); // 'loading' | 'loaded' | 'error'
+  const [displayUrl, setDisplayUrl] = useState(null);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!url) return;
+    setImgState('loading');
+    // petit délai pour laisser le tooltip se préparer avant de charger l'image
+    timerRef.current = setTimeout(() => setDisplayUrl(url), 500);
+    return () => clearTimeout(timerRef.current);
+  }, [url]);
+
+  if (!url) return null;
+
+  return (
+    <div className="ask-viewed-screen">
+      Écran consulté
+      <div className="ask-viewed-preview">
+        <div className={`ask-viewed-img-wrap ${imgState === 'loaded' ? 'loaded' : 'loading'}`}>
+          {imgState === 'loading' && (
+            <div className="ask-viewed-spinner">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+              </svg>
+            </div>
+          )}
+          {imgState === 'error' && (
+            <div className="ask-viewed-error">Impossible de charger la capture d'écran</div>
+          )}
+          {displayUrl && (
+            <img
+              className={`ask-viewed-img ${imgState === 'loaded' ? 'visible' : 'invisible'}`}
+              src={displayUrl}
+              alt="Capture d'écran consultée"
+              onLoad={() => setImgState('loaded')}
+              onError={() => setImgState('error')}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Persistent history store (survives panel open/close within app session) ─
@@ -1005,17 +1078,6 @@ export default function AskView() {
     }, 220);
   }, [handleSendText]);
 
-  const renderViewedScreen = useCallback((url) => {
-    if (!url) return null;
-    return (
-      <div className="ask-viewed-screen">
-        Viewed screen
-        <div className="ask-viewed-preview">
-          <img src={url} alt="Viewed screen screenshot" />
-        </div>
-      </div>
-    );
-  }, []);
 
   return (
     <div className={`ask-view-root${activeView === 'chat' && !hasContent ? ' empty-chat' : ''}`}>
@@ -1060,7 +1122,8 @@ export default function AskView() {
                 </button>
                 <div className="ask-question-bubble">{msg.question}</div>
               </div>
-              {renderViewedScreen(msg.screenshotUrl)}
+              {/* Écran consulté — en haut de la réponse IA, comme Cluely */}
+              <ViewedScreenLabel url={msg.screenshotUrl} />
               <div className="ask-history-response" dangerouslySetInnerHTML={{ __html: msg.html }} />
             </div>
           ))}
@@ -1079,10 +1142,11 @@ export default function AskView() {
               <div className="ask-question-bubble">{currentQuestion}</div>
             </div>
           )}
-          {currentQuestion && renderViewedScreen(currentScreenshotUrl)}
 
           {/* Response area (always rendered so blurred content shows behind overlay) */}
           <div className={`ask-response-area${hasResponse ? ' visible' : ''}`}>
+            {/* Écran consulté — tout en haut de la réponse, comme Cluely */}
+            <ViewedScreenLabel url={currentScreenshotUrl} />
             <div id="askResponseContainer" ref={responseContainerRef} />
             {currentResponse && !isStreaming && !isQuotaExceeded && (
               <div className="ask-response-footer">
