@@ -178,3 +178,5 @@ scripts/update-icon.ps1
 cluely_extracted/
 apps/renderer/update-dark-mode.js
 .claude/worktrees/
+.claude/ 
+xerus-master/ 

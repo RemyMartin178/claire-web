@@ -25,8 +25,17 @@ module.exports = {
 				'serif': ['Lora', 'Georgia', 'Times New Roman', 'serif'],
 			},
 			letterSpacing: {
-				tightest: '-0.022em',
-				apple: '-0.011em',
+				tightest: '0',
+				apple: '0',
+			},
+			transitionTimingFunction: {
+				apple: 'cubic-bezier(0.16, 1, 0.3, 1)',
+				snappy: 'cubic-bezier(0.2, 0, 0, 1)',
+			},
+			transitionDuration: {
+				'180': '180ms',
+				'240': '240ms',
+				'320': '320ms',
 			},
 			colors: {
 				// Design tokens — via var() + color-mix pour opacity modifiers
@@ -109,6 +118,10 @@ module.exports = {
 					'0%': { transform: 'scale(0.95)', opacity: '0' },
 					'100%': { transform: 'scale(1)', opacity: '1' },
 				},
+				'page-enter': {
+					'0%': { transform: 'translateY(4px)', opacity: '0' },
+					'100%': { transform: 'translateY(0)', opacity: '1' },
+				},
 				'bounce-gentle': {
 					'0%, 100%': { transform: 'translateY(0)' },
 					'50%': { transform: 'translateY(-5px)' },
@@ -127,6 +140,7 @@ module.exports = {
 				'slide-in': 'slide-in 0.6s ease-out',
 				'slide-up': 'slide-up 0.6s ease-out',
 				'scale-in': 'scale-in 0.4s ease-out',
+				'page-enter': 'page-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both',
 				'bounce-gentle': 'bounce-gentle 2s ease-in-out infinite',
 				'slide-in-right': 'slide-in-right 0.3s ease-out forwards',
 				'slide-out-right': 'slide-out-right 0.3s ease-out forwards',

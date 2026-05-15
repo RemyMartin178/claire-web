@@ -12,11 +12,50 @@ export type SharedState = {
   showHeader: boolean
   showListen: boolean
   dashboardFocusCount: number
-  session: { id: string; startedAt: number } | null
+  session: {
+    id: string
+    startedAt: number
+    recallSdkRecording?: {
+      uploadToken: string
+      uploadId?: string
+      recordingId?: string | null
+      assemblyAiSpeechModel?: string
+    }
+  } | null
   lastSessionId: string | null
   isListenRunning: boolean
   isCapturingScreenshot: boolean
   showSessionDisconnectedModal: boolean
+  meetingNotification: {
+    id?: string
+    title?: string
+    startTime?: string
+    endTime?: string
+    meetingUrl?: string
+    source?: string
+    recallWindow?: {
+      id?: string | null
+      platform?: string | null
+      title?: string | null
+      url?: string | null
+    }
+  } | null
+  handledMeetingNotificationIds: string[]
+  contentProtectionEnabled: boolean
+  theme: 'light' | 'dark' | 'system'
+  isOnboarding: boolean
+  titleBarVisible: boolean
+  selectedModel: { llm: string | null; stt: string | null }
+  activePersonality: string | null
+  adaptivePersonality: boolean
+  agentMode: boolean
+  googleSearchEnabled: boolean
+  autoUpdate: boolean
+  autoMeetingDetectionEnabled: boolean
+  recallSdkInitialized: boolean
+  recallSdkStatus: 'idle' | 'ready' | 'recording' | 'error'
+  recallRecording: { windowId: string; uploadId?: string; recordingId?: string; startedAt: number } | null
+  lastRecallRecordingId: string | null
 }
 
 type SharedStateAPI = {

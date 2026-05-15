@@ -110,7 +110,7 @@ export default function ElectronLoginPage() {
       }
     }
 
-    window.api?.dashboard?.onUserChanged?.(handleUserChanged)
+    const unsubscribeUserChanged = window.api?.dashboard?.onUserChanged?.(handleUserChanged)
 
     void window.api?.dashboard?.getUser?.().then((res) => {
       if (res?.user) {
@@ -119,7 +119,11 @@ export default function ElectronLoginPage() {
     }).catch(() => {})
 
     return () => {
-      window.api?.dashboard?.removeUserChanged?.()
+      if (typeof unsubscribeUserChanged === 'function') {
+        unsubscribeUserChanged()
+      } else {
+        window.api?.dashboard?.removeUserChanged?.()
+      }
       clearRedirectTimer()
       clearPollTimer()
       clearAuthFallbackTimer()

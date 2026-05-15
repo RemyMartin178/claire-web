@@ -44,6 +44,25 @@ const DEFAULT_STATE = Object.freeze({
   // Transient UI flags
   isCapturingScreenshot: false,
   showSessionDisconnectedModal: false,
+  meetingNotification: null,
+  handledMeetingNotificationIds: [],
+
+  // Settings/state currently mirrored from legacy IPC handlers.
+  contentProtectionEnabled: true,
+  theme: 'system',                         // 'light' | 'dark' | 'system'
+  isOnboarding: false,
+  titleBarVisible: true,
+  selectedModel: { llm: null, stt: null },
+  activePersonality: null,
+  adaptivePersonality: false,
+  agentMode: false,
+  googleSearchEnabled: false,
+  autoUpdate: true,
+  autoMeetingDetectionEnabled: false,
+  recallSdkInitialized: false,
+  recallSdkStatus: 'idle',                // 'idle' | 'ready' | 'recording' | 'error'
+  recallRecording: null,
+  lastRecallRecordingId: null,
 });
 
 // Fields that describe in-flight runtime state. They are NEVER persisted to
@@ -63,7 +82,15 @@ const TRANSIENT_KEYS = new Set([
   'isListenRunning',
   'session',
   'showSessionDisconnectedModal',
+  'meetingNotification',
+  'handledMeetingNotificationIds',
   'signInStatus',
+  'isOnboarding',
+  'titleBarVisible',
+  'agentMode',
+  'recallSdkInitialized',
+  'recallSdkStatus',
+  'recallRecording',
 ]);
 
 class SharedStateService extends EventEmitter {
@@ -161,6 +188,19 @@ class SharedStateService extends EventEmitter {
         next[key] = partial[key];
         changed = true;
       }
+    }
+
+    if (next.session && next.meetingNotification) {
+      next.meetingNotification = null;
+      changed = true;
+    }
+    if (next.session && next.showSessionDisconnectedModal) {
+      next.showSessionDisconnectedModal = false;
+      changed = true;
+    }
+    if (!next.lastSessionId && next.showSessionDisconnectedModal) {
+      next.showSessionDisconnectedModal = false;
+      changed = true;
     }
     if (!changed) return previous;
 

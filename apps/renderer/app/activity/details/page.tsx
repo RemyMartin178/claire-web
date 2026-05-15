@@ -3,13 +3,14 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import {
   UserProfile,
   SessionDetails,
   Transcript,
   AiMessage,
-  getSessionDetails,
+  getCachedSessionDetails,
   deleteSession,
 } from '@/utils/api'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,8 @@ import { toast } from 'react-hot-toast'
 import { LiquidGlassInput } from '@/components/ui/liquid-glass-input'
 import ActivityDetailsLoading from './loading'
 import React from 'react'
+import { patchSessionFromDetails, sessionKeys, useSessionDetailsQuery } from '@/hooks/useSessionQueries'
+import { useSharedState } from '@/contexts/SharedStateContext'
 
 // Session context type detection
 
@@ -168,6 +171,14 @@ type TabType = 'summary' | 'transcript' | 'usage';
 function SessionDetailsContent() {
   const { user: userInfo, loading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const { state: sharedState } = useSharedState();
+  const sessionId = searchParams.get('sessionId');
+  const routeTitle = searchParams.get('title');
+  const routeCreatedAt = searchParams.get('createdAt');
+  const cachedDetails = sessionId ? getCachedSessionDetails(sessionId) : null;
+  const detailsQuery = useSessionDetailsQuery(sessionId, Boolean(userInfo && sessionId));
 
   useEffect(() => {
     if (!loading && !userInfo) {
@@ -175,56 +186,69 @@ function SessionDetailsContent() {
     }
   }, [userInfo, loading, router]);
 
-  const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
-  const [isLoading, setIsLoading] = useState(true)
+  const isNewSession = searchParams.get('new') === '1'
+  const [titleShimmer, setTitleShimmer] = useState(isNewSession)
+  const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(() => cachedDetails);
+  const [isLoading, setIsLoading] = useState(() => !cachedDetails)
   const [isDeleting, setIsDeleting] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
-  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>(
+    () => cachedDetails?.ai_messages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })) || []
+  );
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [sidebarInputValue, setSidebarInputValue] = useState("");
   const [isEmailing, setIsEmailing] = useState(false);
-  // Shimmer animation on title when navigating from a just-ended session (?new=1)
-  const [titleShimmer, setTitleShimmer] = useState(false);
-  const searchParams = useSearchParams();
-  const sessionId = searchParams.get('sessionId');
-  const isNewSession = searchParams.get('new') === '1';
-
-  // Start shimmer on title for ~3.2s when arriving from a just-ended session
-  useEffect(() => {
-    if (!isNewSession) return;
-    setTitleShimmer(true);
-    const t = setTimeout(() => setTitleShimmer(false), 3200);
-    return () => clearTimeout(t);
-  }, [isNewSession]);
+  const [editableTitle, setEditableTitle] = useState(routeTitle || '');
 
   useEffect(() => {
-    if (userInfo && sessionId) {
-      const fetchDetails = async () => {
-        setIsLoading(true);
-        try {
-          const details = await getSessionDetails(sessionId as string);
-          setSessionDetails(details);
-          // Initialize chat history with existing AI messages
-          if (details?.ai_messages) {
-            setChatHistory(details.ai_messages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })));
-          }
-          trackSessionViewed(sessionId);
-        } catch (error) {
-          console.error('Failed to load session details:', error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      fetchDetails();
+    if (!detailsQuery.data || !sessionId) return
+
+    setSessionDetails(detailsQuery.data);
+    setChatHistory(detailsQuery.data.ai_messages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })));
+    setIsLoading(false);
+    const loadedTitle = detailsQuery.data.session?.title || '';
+    const loadedTitleIsGeneric = !loadedTitle || ['Session @', 'Session Sans Titre', 'Discussion avec Claire'].some(t => loadedTitle.includes(t));
+    if (detailsQuery.data.summary || !loadedTitleIsGeneric) {
+      setTitleShimmer(false);
     }
-  }, [userInfo, sessionId]);
+    if (loadedTitle && !loadedTitleIsGeneric) {
+      setEditableTitle((current) => current || loadedTitle);
+    }
+    patchSessionFromDetails(queryClient, detailsQuery.data);
+    trackSessionViewed(sessionId);
+  }, [detailsQuery.data, queryClient, sessionId]);
+
+  useEffect(() => {
+    if (detailsQuery.error) {
+      console.error('Failed to load session details:', detailsQuery.error);
+    }
+    setIsLoading(detailsQuery.isLoading && !detailsQuery.data && !sessionDetails);
+  }, [detailsQuery.data, detailsQuery.error, detailsQuery.isLoading, sessionDetails]);
+
+  useEffect(() => {
+    if (!isNewSession || !sessionId || sessionDetails?.summary) return
+    void detailsQuery.refetch()
+    const interval = window.setInterval(() => {
+      void detailsQuery.refetch()
+    }, 2500)
+    return () => window.clearInterval(interval)
+  }, [detailsQuery.refetch, isNewSession, sessionDetails?.summary, sessionId])
+
+  // Fallback: stop shimmer after 30s even if summary never arrives
+  useEffect(() => {
+    if (!titleShimmer) return
+    const t = setTimeout(() => setTitleShimmer(false), 30000)
+    return () => clearTimeout(t)
+  }, [titleShimmer])
 
   const handleDeleteClick = async () => {
     if (!sessionId) return;
     setIsDeleting(true);
     try {
       await deleteSession(sessionId);
+      queryClient.removeQueries({ queryKey: sessionKeys.detail(sessionId) });
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
       toast.success('Session supprimée');
       router.push('/activity');
     } catch (error) {
@@ -299,9 +323,7 @@ function SessionDetailsContent() {
     }
   };
 
-  if (loading || isLoading) {
-    // Reuse the route-level skeleton so the in-page loading state matches what
-    // Next.js shows during the route transition — no jarring swap.
+  if (loading) {
     return <ActivityDetailsLoading />
   }
 
@@ -365,7 +387,7 @@ function SessionDetailsContent() {
     return null;
   }
 
-  if (!sessionDetails) {
+  if (!sessionDetails && !isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6">
         <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
@@ -383,30 +405,31 @@ function SessionDetailsContent() {
     )
   }
 
-  const startDate = new Date(sessionDetails.session.started_at);
+  const previewDateMs = routeCreatedAt ? new Date(routeCreatedAt).getTime() : Date.now();
+  const startDate = new Date(sessionDetails?.session.started_at ?? previewDateMs);
   const formattedDate = new Intl.DateTimeFormat('fr-FR', { month: 'short', day: 'numeric' }).format(startDate);
 
   // Calculate true duration if we have both start and end times
   let durationFormatted = "";
-  if (sessionDetails.session.ended_at && sessionDetails.session.started_at) {
+  if (sessionDetails?.session.ended_at && sessionDetails.session.started_at) {
     const diffSec = Math.floor((sessionDetails.session.ended_at - sessionDetails.session.started_at) / 1000);
     const m = Math.floor(diffSec / 60);
     const s = Math.floor(diffSec % 60);
     durationFormatted = `${m}:${s.toString().padStart(2, '0')}`;
-  } else {
+  } else if (sessionDetails) {
     durationFormatted = "En cours";
   }
 
   // const askMessages = sessionDetails.ai_messages || []; // This is now handled by chatHistory state
 
-  let displayTitle = sessionDetails.session.title;
-  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire'];
+  let displayTitle = sessionDetails?.session.title || routeTitle || 'Discussion avec Claire';
+  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'Résumé en cours', 'Sans titre'];
   const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
 
-  let rawSummaryText = sessionDetails.summary?.text || '';
+  let rawSummaryText = sessionDetails?.summary?.text || '';
 
   // Use tldr (short title, 3-6 words) as primary title source when session title is generic
-  if (isGeneric && sessionDetails.summary?.tldr) {
+  if (isGeneric && sessionDetails?.summary?.tldr) {
     const tldr = sessionDetails.summary.tldr.split('\n')[0].trim(); // Take first line only
     const cleanTldr = tldr
       .replace(/\*\*/g, '')
@@ -428,9 +451,11 @@ function SessionDetailsContent() {
     }
   }
 
-  if (!displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t))) {
-    displayTitle = 'Discussion avec Claire';
+  const finalTitleIsGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
+  if (finalTitleIsGeneric) {
+    displayTitle = (isNewSession && titleShimmer) ? 'Résumé en cours...' : 'Sans titre';
   }
+  const titleValue = editableTitle || displayTitle;
 
 
   // Helper to remove emojis and redundant prefixes from summary text
@@ -444,21 +469,30 @@ function SessionDetailsContent() {
   // Fallback to parsing markdown if JSON is empty/null
   let bulletPoints = [];
   try {
-    bulletPoints = sessionDetails.summary?.bullet_json ? JSON.parse(sessionDetails.summary.bullet_json) : [];
+    bulletPoints = sessionDetails?.summary?.bullet_json ? JSON.parse(sessionDetails.summary.bullet_json) : [];
   } catch (e) { console.error("Error parsing bullet_json", e); }
 
-  if (bulletPoints.length === 0 && sessionDetails.summary?.text) {
+  if (bulletPoints.length === 0 && sessionDetails?.summary?.text) {
     // Basic extraction from markdown if JSON failed
     const matches = sessionDetails.summary.text.match(/^- .+/gm);
     // Remove emojis and prefixes from extracted bullets
     if (matches) bulletPoints = matches.map(m => stripEmojisAndPrefixes(m.replace(/^- /, '')));
   }
+  const isGeneratingSummary = isNewSession && !rawSummaryText && bulletPoints.length === 0;
 
   const missedOpportunitiesCount = 6;
 
-  const hasTranscript = sessionDetails.transcripts && sessionDetails.transcripts.length > 0;
+  const hasTranscript = Boolean(sessionDetails?.transcripts && sessionDetails.transcripts.length > 0);
 
   const renderContent = () => {
+    if (!sessionDetails) {
+      return (
+        <div className="grid min-h-[220px] place-items-center">
+          <div className="animate-spin h-5 w-5 rounded-full border-2 border-muted-foreground/30 border-t-muted-foreground" />
+        </div>
+      )
+    }
+
     switch (activeTab) {
       case 'summary':
         return bulletPoints.length > 0 ? (
@@ -473,6 +507,8 @@ function SessionDetailsContent() {
           <div className="max-w-none">
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
+        ) : isGeneratingSummary ? (
+          <p className="text-muted-foreground/80 text-sm motion-safe:animate-pulse">Génération des notes...</p>
         ) : (
           <p className="text-muted-foreground/80 text-sm">Aucun résumé disponible.</p>
         );
@@ -501,10 +537,39 @@ function SessionDetailsContent() {
         );
       case 'usage':
         return chatHistory.length > 0 ? (
-          <div className="space-y-2">
-            {chatHistory.map((msg: any, idx: number) => (
-              <AiMessageWithActions key={msg.id || idx} role={msg.role as 'user' | 'assistant'} content={msg.content} />
-            ))}
+          <div className="space-y-5">
+            {chatHistory.map((msg: any, idx: number) => {
+              const isUserMessage = msg.role === 'user';
+              const speakerName = isUserMessage ? userInfo?.display_name || 'Vous' : 'Claire';
+
+              return (
+                <article key={msg.id || idx} className="group space-y-0.5">
+                  <p className="flex items-center gap-2">
+                    <span className={`font-medium text-[11px] ${isUserMessage ? 'text-[#1562df]' : 'text-foreground/75'}`}>
+                      {speakerName}
+                    </span>
+                    <span className="font-medium text-[10px] text-muted-foreground">
+                      {idx + 1}
+                    </span>
+                    {!isUserMessage && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.content);
+                          toast.success('Réponse copiée');
+                        }}
+                        className="ml-auto opacity-0 group-hover:opacity-100 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-opacity"
+                      >
+                        Copier
+                      </button>
+                    )}
+                  </p>
+                  <p className="whitespace-pre-wrap text-foreground text-sm leading-snug">
+                    {msg.content}
+                  </p>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <p className="text-muted-foreground/80 text-sm">Aucun échange IA pour le moment.</p>
@@ -517,7 +582,7 @@ function SessionDetailsContent() {
   return (
     <div className="bg-background text-foreground font-sans selection:bg-[#007aff]/10 flex overflow-hidden h-full">
       {/* Main Content Area */}
-      <div className={`flex-1 min-h-0 overflow-y-auto pb-16 no-scrollbar transition-all duration-500 ${isAiSidebarOpen ? 'mr-[400px]' : 'mr-0'}`}>
+      <div className={`flex-1 min-h-0 overflow-y-auto pb-16 no-scrollbar transform-gpu transition-[margin,opacity] duration-320 ease-apple ${isAiSidebarOpen ? 'mr-[400px]' : 'mr-0'}`}>
         <div className="mx-auto w-full max-w-[42rem] px-6 pt-7 pb-6">
 
           {/* Header: metadata + actions */}
@@ -526,7 +591,7 @@ function SessionDetailsContent() {
               {formattedDate}{durationFormatted ? ` · ${durationFormatted}` : ''}
             </p>
             <div className="flex items-center gap-0.5">
-              <button type="button" onClick={handleEmailSession} disabled={isEmailing}                 className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition disabled:opacity-50">
+              <button type="button" onClick={handleEmailSession} disabled={!sessionDetails || isEmailing}                 className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition disabled:opacity-50">
                 {isEmailing ? <div className="animate-spin w-3 h-3 border-2 border-current rounded-full border-t-transparent" /> : <Mail className="w-3.5 h-3.5" strokeWidth={2} />}
                 <span>{isEmailing ? 'Génération...' : 'Mail'}</span>
               </button>
@@ -536,10 +601,25 @@ function SessionDetailsContent() {
             </div>
           </div>
 
-          {/* Title — shimmer animation when arriving from a just-ended session */}
-          <h1 className={`mt-2 font-medium text-3xl leading-[1.03] tracking-tight transition-all ${titleShimmer ? 'cluely-text-shimmer' : 'text-foreground'}`}>
-            {displayTitle}
-          </h1>
+          {/* Title */}
+          {(() => {
+            const isLiveSession = isNewSession && (sharedState?.isListenRunning ?? false) && sharedState?.session?.id === sessionId
+            const titleClass = isLiveSession
+              ? 'text-muted-foreground/50 animate-pulse'
+              : titleShimmer
+              ? 'text-muted-foreground/50 title-shimmer'
+              : 'text-foreground'
+            const displayTitle = isLiveSession ? 'Session en cours' : titleValue
+            return (
+              <input
+                value={displayTitle}
+                onChange={(event) => { if (!isLiveSession) setEditableTitle(event.target.value) }}
+                readOnly={isLiveSession}
+                aria-label="Titre de l'activite"
+                className={`mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none transition-colors duration-500 ${titleClass}`}
+              />
+            )
+          })()}
 
           {/* Tabs row + copy button */}
           <div className="mt-4 flex items-center justify-between gap-4">
@@ -558,7 +638,7 @@ function SessionDetailsContent() {
                 </button>
               ))}
             </div>
-            {activeTab === 'summary' && (
+            {activeTab === 'summary' && sessionDetails && (
               <button type="button" onClick={handleCopySummary}
                 className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition">
                 <Copy className="w-3 h-3" /> Copier
@@ -581,8 +661,8 @@ function SessionDetailsContent() {
       </div>
 
       {/* Liquid Glass Bottom Bar */}
-      <div className={`fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-[540px] px-6 z-50 transition-all duration-500 ease-apple ${isAiSidebarOpen ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-none'}`}>
-        <div className="pointer-events-auto shadow-2xl rounded-3xl">
+      <div className={`fixed bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-[540px] px-6 z-50 transition-[transform,opacity] duration-320 ease-apple ${isAiSidebarOpen ? 'translate-y-24 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100 pointer-events-none'}`}>
+        <div className="pointer-events-auto shadow-2xl rounded-2xl">
           <LiquidGlassInput
             placeholder="Posez une question à Claire..."
             onAction={handleAiQuestion}
@@ -591,7 +671,7 @@ function SessionDetailsContent() {
       </div>
 
       {/* AI Chat Sidebar */}
-      <div className={`fixed top-0 right-0 h-full w-[400px] bg-background shadow-2xl z-[60] transform transition-transform duration-500 ease-apple border-l border-border rounded-l-3xl ${isAiSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-[400px] bg-background shadow-2xl z-[60] transform-gpu transition-transform duration-320 ease-apple border-l border-border rounded-l-2xl ${isAiSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
           <div className="flex items-center justify-between px-6 py-8 border-b border-border">
@@ -647,7 +727,7 @@ function SessionDetailsContent() {
                   }
                 }}
                 placeholder="Répondre à Claire..."
-                className="w-full bg-muted border-none rounded-2xl px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-[#007aff]/20 transition-all outline-none pr-10"
+                className="w-full bg-muted border-none rounded-xl px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-[#007aff]/20 transition-[background-color,box-shadow] duration-180 ease-apple outline-none pr-10"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
                 <button
@@ -674,11 +754,7 @@ function SessionDetailsContent() {
 
 export default function SessionDetailsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-      </div>
-    }>
+    <Suspense fallback={<ActivityDetailsLoading />}>
       <SessionDetailsContent />
     </Suspense>
   );

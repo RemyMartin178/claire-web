@@ -16,7 +16,10 @@ const CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  width: 100vw;
+  height: 100vh;
+  padding: 2px;
+  background: transparent;
   font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -25,8 +28,8 @@ const CSS = `
   user-select: none;
   cursor: default;
 }
-.mh-root.hiding { animation: mh-up 0.28s cubic-bezier(0.4, 0, 1, 1) forwards; }
-.mh-root.showing { animation: mh-down 0.38s cubic-bezier(0.34, 1.3, 0.64, 1) forwards; }
+.mh-root.hiding  { animation: mh-up   0.28s cubic-bezier(0.4, 0, 1, 1)         forwards; }
+.mh-root.showing { animation: mh-down 0.38s cubic-bezier(0.34, 1.3, 0.64, 1)   forwards; }
 .mh-root.sliding-in { animation: mh-fadein 0.25s ease-out forwards; }
 .mh-root.hidden { opacity: 0; transform: translateY(-160%) scale(0.82); pointer-events: none; }
 
@@ -44,123 +47,86 @@ const CSS = `
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* In overlay mode the whole window must NOT move — pill uses JS drag only */
+.mh-root.overlay-mode {
+  width: 163px;
+  height: 50px;
+}
 .mh-root.overlay-mode .mh-pill,
 .mh-root.overlay-mode .mh-login-pill {
   -webkit-app-region: no-drag;
 }
 
 /* ── PILL ── */
-/* Matches Cluely control.js: select-none overflow-hidden rounded-full bg-transparent */
 .mh-pill {
   -webkit-app-region: drag;
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  padding: 2px;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
   border-radius: 9999px;
   background: transparent;
-  border: none;
-  gap: 0;
-  position: relative;
-  overflow: visible;
-  /* Cluely: boxShadow: 0 0 0 1px rgba(207,226,255,0.24), 0 -0.5px 0 0 rgba(255,255,255,0.8) */
-  box-shadow: 0 0 0 1px rgba(207,226,255,0.24), 0 -0.5px 0 0 rgba(255,255,255,0.8);
+  overflow: hidden;
+  user-select: none;
+  box-shadow: 0 0 0 1px rgba(207, 226, 255, 0.24), 0 -0.5px 0 0 rgba(255, 255, 255, 0.8);
 }
-
-/* Dark background layer under the pill (Cluely uses peer + absolute spans) */
-.mh-pill-bg {
+.mh-pill::before {
+  content: '';
   pointer-events: none;
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  /* Cluely inactive: linear-gradient(#2e3039,#272a31) */
-  background: linear-gradient(#2e3039, #272a31);
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021,
-              0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
+  background: hsla(252, 10%, 10%, 0.8);
+  transition: filter 75ms ease;
+}
+.mh-pill:hover::before { filter: brightness(3); }
+.mh-controls {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-left: 8px;
+  padding-right: 9px;
 }
 
-/* ── DIVIDER ── */
-.mh-divider {
-  width: 1px;
-  height: 18px;
-  background: rgba(255, 255, 255, 0.13);
-  margin: 0 4px;
-  flex-shrink: 0;
-  border-radius: 1px;
-}
-
-/* ── POST LOGIN ANIMATION ── */
+/* ── POST-LOGIN ANIMATION ── */
 @keyframes mh-pill-reveal {
-  0% { max-width: 190px; opacity: 0.5; }
-  100% { max-width: 650px; opacity: 1; }
+  0%   { max-width: 120px; opacity: 0.5; }
+  100% { max-width: 220px; opacity: 1; }
 }
 @keyframes mh-item-slide {
-  0% { opacity: 0; transform: translateX(-15px) scale(0.95); }
+  0%   { opacity: 0; transform: translateX(-12px) scale(0.95); }
   100% { opacity: 1; transform: translateX(0) scale(1); }
 }
-
 .mh-pill.animating-in {
-  animation: mh-pill-reveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: mh-pill-reveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   white-space: nowrap;
 }
 .mh-pill.animating-in > * {
   opacity: 0;
-  animation: mh-item-slide 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: mh-item-slide 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 .mh-pill.animating-in > *:nth-child(1) { animation-delay: 0.05s; }
-.mh-pill.animating-in > *:nth-child(2) { animation-delay: 0.10s; }
-.mh-pill.animating-in > *:nth-child(3) { animation-delay: 0.15s; }
-.mh-pill.animating-in > *:nth-child(4) { animation-delay: 0.20s; }
-.mh-pill.animating-in > *:nth-child(5) { animation-delay: 0.25s; }
-.mh-pill.animating-in > *:nth-child(6) { animation-delay: 0.30s; }
-.mh-pill.animating-in > *:nth-child(7) { animation-delay: 0.35s; }
-.mh-pill.animating-in > *:nth-child(8) { animation-delay: 0.40s; }
+.mh-pill.animating-in > *:nth-child(2) { animation-delay: 0.12s; }
+.mh-pill.animating-in > *:nth-child(3) { animation-delay: 0.20s; }
 
-/* ── ICON BUTTONS ── */
-/* Cluely: pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full
-   bg-[linear-gradient(#2e3039,#272a31)] text-white shadow-[...] transition duration-150
-   hover:scale-105 hover:brightness-125 */
-.mh-btn {
-  -webkit-app-region: no-drag;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 9999px;
-  border: none;
-  background: linear-gradient(#2e3039, #272a31);
-  color: rgba(255, 255, 255, 0.90);
-  cursor: pointer;
-  transition: transform 150ms, filter 150ms;
+/* ── LOGO ── */
+.mh-logo {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  object-fit: cover;
   flex-shrink: 0;
-  position: relative;
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021,
-              0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
-}
-.mh-btn:hover {
-  transform: scale(1.05);
-  filter: brightness(1.25);
-}
-.mh-btn:active {
-  transform: scale(0.95);
-}
-.mh-btn.active {
-  color: rgba(255, 255, 255, 0.95);
-}
-.mh-btn.accent {
-  /* Blue gradient for active state */
-  background: linear-gradient(#0544a9, #022c70);
-  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014,
-              0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
-  color: #CBE3FF;
-}
-.mh-btn svg {
-  display: block;
+  pointer-events: none;
+  filter: brightness(0) invert(1);
 }
 
-/* ── WIDE BUTTON (Ask/Hide — Cluely: h-8 w-[66px] rounded-full font-semibold text-white text-xs) ── */
+/* ── WIDE BUTTON (Ask / Cacher) ── */
 .mh-wide-btn {
   -webkit-app-region: no-drag;
   display: inline-flex;
@@ -170,302 +136,168 @@ const CSS = `
   height: 32px;
   width: 66px;
   padding: 0;
-  border-radius: 9999px;
+  border-radius: 100px;
   border: none;
   background: transparent;
-  color: white;
+  color: #fff;
   font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0;
   cursor: pointer;
-  transition: transform 150ms, filter 150ms;
+  transition: transform 0.15s ease, filter 0.15s ease;
   white-space: nowrap;
   flex-shrink: 0;
   position: relative;
   overflow: visible;
+  pointer-events: auto;
 }
-/* Background layers like Cluely — inactive: grey gradient */
-.mh-wide-btn .mh-wide-bg-inactive {
+.mh-wide-btn:hover  { transform: scale(1.05); filter: brightness(1.25); }
+.mh-wide-btn:active { transform: scale(0.94); }
+.mh-wide-btn svg { opacity: 1; }
+.mh-wide-btn::before,
+.mh-wide-btn::after {
+  content: '';
   pointer-events: none;
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  background: linear-gradient(#2e3039, #272a31);
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021,
-              0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
-  transition: opacity 200ms ease-out;
+  transition: opacity 0.2s ease-out;
 }
-/* Active (ask open): blue gradient */
-.mh-wide-btn .mh-wide-bg-active {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  background: linear-gradient(#0544a9, #022c70);
-  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014,
-              0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
-  transition: opacity 200ms ease-out;
+.mh-wide-btn::before {
+  background: linear-gradient(#2e3039,#272a31);
+  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
+  opacity: 0;
 }
-.mh-wide-btn .mh-wide-label {
+.mh-wide-btn::after {
+  background: linear-gradient(#0544a9,#022c70);
+  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
+  opacity: 1;
+}
+.mh-wide-btn.chat-visible::before { opacity: 1; }
+.mh-wide-btn.chat-visible::after { opacity: 0; }
+.mh-wide-content {
   position: relative;
-  z-index: 10;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 4px;
 }
-.mh-wide-btn:hover { transform: scale(1.05); filter: brightness(1.25); }
-.mh-wide-btn:active { transform: scale(0.97); }
 
-/* ── LISTEN SECTION ── */
-.mh-listen-section {
-  -webkit-app-region: no-drag;
-  display: flex;
-  align-items: center;
-  padding: 0 2px 0 2px;
-}
-
-/* ── STATUS DOT ── */
-.mh-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(74, 222, 128, 0.9);
-  animation: mh-pulse-dot 2s ease-in-out infinite;
-  flex-shrink: 0;
-}
-@keyframes mh-pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.6; transform: scale(0.85); }
-}
-.mh-status-dot.recording {
-  background: rgba(248, 113, 113, 0.9);
-}
-
-/* ── RECORDING WAVEFORM ── */
-.mh-rec-wave {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 14px;
-  flex-shrink: 0;
-}
-.mh-rec-wave span {
-  display: block;
-  width: 2.5px;
-  height: 14px;
-  border-radius: 99px;
-  background: rgba(255, 255, 255, 0.72);
-  transform-origin: center;
-  animation: mh-wave-bar 1.6s ease-in-out infinite;
-  transition: transform 0.7s cubic-bezier(0.4,0,0.2,1), opacity 0.6s cubic-bezier(0.4,0,0.2,1);
-}
-.mh-rec-wave span:nth-child(1) { animation-delay: 0s; }
-.mh-rec-wave span:nth-child(2) { animation-delay: 0.32s; }
-.mh-rec-wave span:nth-child(3) { animation-delay: 0.16s; }
-.mh-rec-wave.paused span {
-  animation: mh-wave-settle 0.7s cubic-bezier(0.4,0,0.2,1) forwards;
-  opacity: 0.28;
-}
-@keyframes mh-wave-settle {
-  0%   { transform: scaleY(var(--bar-scale, 0.55)); }
-  60%  { transform: scaleY(0.18); }
-  100% { transform: scaleY(0.12); }
-}
-@keyframes mh-wave-bar {
-  0%, 100% { transform: scaleY(0.28); opacity: 0.45; }
-  50% { transform: scaleY(1); opacity: 0.80; }
-}
-
-/* ── SHORTCUT BADGE ── */
-.mh-shortcut {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 3px;
-}
-.mh-key {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 16px;
-  height: 14px;
-  padding: 0 3px;
-  background: rgba(255,255,255,0.09);
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 3px;
-  font-size: 9px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.5);
-  letter-spacing: 0.02em;
-}
-
-/* ── LISTEN CONTROLS ── */
-@keyframes mh-spin { to { transform: rotate(360deg); } }
-.mh-spinner {
-  width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,0.2);
-  border-top-color: rgba(255,255,255,0.8);
-  border-radius: 50%;
-  animation: mh-spin 0.7s linear infinite;
-}
-
-/* Cluely: pointer-events-auto flex size-8 shrink-0 items-center justify-center rounded-full
-   bg-[linear-gradient(#2e3039,#272a31)] text-white shadow-[...] transition duration-150
-   hover:scale-105 hover:brightness-125 disabled:opacity-60 */
-.mh-ctrl {
-  -webkit-app-region: no-drag;
-  display: flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px;
-  border-radius: 9999px;
-  border: none;
-  background: linear-gradient(#2e3039, #272a31);
-  color: white;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform 150ms, filter 150ms;
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021,
-              0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
-}
-.mh-ctrl:hover { transform: scale(1.05); filter: brightness(1.25); }
-.mh-ctrl:active { transform: scale(0.95); }
-.mh-ctrl:disabled { opacity: 0.60; cursor: default; pointer-events: none; }
-.mh-ctrl.mic { }
-.mh-ctrl.stop { }
-.mh-listen-controls { display: flex; align-items: center; gap: 6px; }
-@keyframes ctrl-pop {
-  0%   { opacity: 0; transform: scale(0.55); }
-  70%  { transform: scale(1.08); }
-  100% { opacity: 1; transform: scale(1); }
-}
-@keyframes ctrl-pop2 {
-  0%   { opacity: 0; transform: scale(0.55); }
-  70%  { transform: scale(1.08); }
-  100% { opacity: 1; transform: scale(1); }
-}
-.mh-ctrl-pop  { animation: ctrl-pop  0.22s cubic-bezier(0.34,1.4,0.64,1) both; }
-.mh-ctrl-pop2 { animation: ctrl-pop2 0.22s cubic-bezier(0.34,1.4,0.64,1) 0.05s both; }
-
-/* ── LOGIN PILL ── */
-.mh-login-pill {
-  -webkit-app-region: drag;
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  padding: 2px;
-  border-radius: 9999px;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  box-shadow: 0 0 0 1px rgba(207,226,255,0.24), 0 -0.5px 0 0 rgba(255,255,255,0.8);
-  flex-wrap: nowrap !important;
-  white-space: nowrap !important;
-  position: relative;
-  overflow: visible;
-}
-.mh-login-pill .mh-pill-bg {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  background: linear-gradient(#2e3039, #272a31);
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021,
-              0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
-}
-.mh-sign-in-btn {
-  -webkit-app-region: no-drag;
-  height: 28px;
-  padding: 0 14px;
-  border-radius: 100px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.88);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.12s ease;
-  letter-spacing: 0.01em;
-  white-space: nowrap !important;
-  flex-shrink: 0 !important;
-  min-width: 120px;
-}
-.mh-sign-in-btn:hover { background: rgba(255,255,255,0.11); }
-.mh-sign-in-btn:disabled { opacity: 0.5; cursor: default; }
-
-/* ── QUIT BUTTON (sibling to pill, detached) ── */
-.mh-quit-btn {
+/* ── ACTION BUTTON (Mic / Stop) ── */
+.mh-action-btn {
   -webkit-app-region: no-drag;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  flex-shrink: 0;
-  border-radius: 9999px;
-  border: none;
-  background: linear-gradient(#2e3039, #272a31);
-  color: rgba(255,255,255,0.6);
+  border-radius: 50%;
+  border: 0;
+  background: linear-gradient(#2e3039,#272a31);
+  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
+  color: #fff;
   cursor: pointer;
-  margin-left: 6px;
-  transition: transform 150ms, filter 150ms;
-  box-shadow: 0 0 0 1px rgba(207,226,255,0.24), 0 85px 34px #00000005, 0 48px 29px #00000014,
-              0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
+  transition: filter 0.15s ease, transform 0.12s ease;
+  flex-shrink: 0;
+  pointer-events: auto;
 }
-.mh-quit-btn:hover { transform: scale(1.05); filter: brightness(1.25); color: white; }
+.mh-action-btn:hover  { filter: brightness(1.25); color: #fff; }
+.mh-action-btn:active { transform: scale(0.94); }
+.mh-action-btn:disabled { opacity: 0.60; cursor: default; pointer-events: none; }
+
+/* ── SPINNER ── */
+@keyframes mh-spin { to { transform: rotate(360deg); } }
+.mh-spinner {
+  width: 13px; height: 13px;
+  border: 2px solid rgba(255,255,255,0.20);
+  border-top-color: rgba(255,255,255,0.80);
+  border-radius: 50%;
+  animation: mh-spin 0.7s linear infinite;
+}
+
+/* ── LOGIN PILL ── */
+.mh-login-pill {
+  -webkit-app-region: drag;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0;
+  border-radius: 100px;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.mh-sign-in-btn {
+  -webkit-app-region: no-drag;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 100px;
+  border: 0;
+  background: linear-gradient(#0544a9,#022c70);
+  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
+  color: rgba(255,255,255,0.88);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 110px;
+}
+.mh-sign-in-btn:hover    { filter: brightness(1.18); }
+.mh-sign-in-btn:disabled { opacity: 0.5; cursor: default; }
+
+/* Login mic icon placeholder */
+.mh-login-mic {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: linear-gradient(#2e3039,#272a31);
+  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
+  color: rgba(255,255,255,0.40);
+  flex-shrink: 0;
+}
+
+/* ── QUIT BUTTON ── */
+.mh-quit-btn {
+  -webkit-app-region: no-drag;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 0;
+  background: linear-gradient(#2e3039,#272a31);
+  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  margin-left: 8px;
+  transition: filter 0.12s ease, color 0.12s ease;
+}
+.mh-quit-btn:hover { filter: brightness(1.18); color: rgba(255,255,255,0.95); }
 `;
 
-const KEY_MAP = {
-  'Cmd':'⌘','Command':'⌘','Ctrl':'⌃','Control':'⌃',
-  'Alt':'⌥','Option':'⌥','Shift':'⇧','Enter':'↵',
-  'Backspace':'⌫','Tab':'⇥','Escape':'⎋',
-  'Up':'↑','Down':'↓','Left':'←','Right':'→',
-};
-
-function ShortcutBadge({ accelerator }) {
-  if (!accelerator) return null;
-  return (
-    <span className="mh-shortcut">
-      {accelerator.split('+').map((k, i) => (
-        <span key={i} className="mh-key">{KEY_MAP[k] || k}</span>
-      ))}
-    </span>
-  );
-}
-
 /* ── ICONS ── */
-const IconEye = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-    <circle cx="12" cy="12" r="3"/>
+const IconSparkles = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
   </svg>
 );
-const IconAsk = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+
+const IconChevronDown = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="6 9 12 15 18 9"/>
   </svg>
 );
-const IconScreen = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="3" width="20" height="14" rx="2"/>
-    <path d="M8 21h8M12 17v4"/>
-  </svg>
-);
-const IconClear = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-  </svg>
-);
-const IconAgents = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="8" r="4"/>
-    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-    <line x1="17" y1="14" x2="17" y2="20"/><line x1="14" y1="17" x2="20" y2="17"/>
-  </svg>
-);
-const IconSettings = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-  </svg>
-);
+
 const IconMic = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -474,22 +306,14 @@ const IconMic = () => (
     <line x1="8" y1="23" x2="16" y2="23"/>
   </svg>
 );
-const IconPause = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-    <rect x="5" y="3" width="5" height="18" rx="1.5"/>
-    <rect x="14" y="3" width="5" height="18" rx="1.5"/>
-  </svg>
-);
-const IconPlay = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M5 3l14 9-14 9V3z"/>
-  </svg>
-);
+
 const IconStop = () => (
   <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
     <rect x="4" y="4" width="16" height="16" rx="2.5"/>
   </svg>
 );
+
+const LOGO_SRC = '../assets/logo.png';
 
 export default function MainHeader({
   overlayMode = false,
@@ -500,86 +324,46 @@ export default function MainHeader({
   onOverlayDragStart = null,
 } = {}) {
   const [isTogglingSession, setIsTogglingSession] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [shortcuts, setShortcuts] = useState({});
+  const [isPaused, setIsPaused]                   = useState(false);
   const [listenSessionStatus, setListenSessionStatus] = useState('beforeSession');
-  const [hasPersistentArea, setHasPersistentArea] = useState(false);
-  const [askScreenContext, setAskScreenContext] = useState(false);
-  const [ttsEnabled, setTtsEnabled] = useState(localStorage.getItem('claire_tts_enabled') === 'true');
-  const [agentModeActive, setAgentModeActive] = useState(false);
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [animClass, setAnimClass] = useState('sliding-in');
-  const waveBar0 = useRef(null);
-  const waveBar1 = useRef(null);
-  const waveBar2 = useRef(null);
-  const waveBarRefs = [waveBar0, waveBar1, waveBar2];
+  const [isUserLoggedIn, setIsUserLoggedIn]        = useState(false);
+  const [isAuthenticating, setIsAuthenticating]    = useState(false);
+  const [animClass, setAnimClass]                  = useState('sliding-in');
+  const [justLoggedIn, setJustLoggedIn]            = useState(false);
+  const [showChat, setShowChat]                    = useState(false);
 
-  const hostRef = useRef(null);
-  const wasJustDraggedRef = useRef(false);
-  const dragStateRef = useRef(null);
-  const lastSettingsToggleRef = useRef(0);
-  // Overlay mode: keep refs in sync with props for drag start position
-  const overlayPosXRef = useRef(overlayPosX);
-  const overlayPosYRef = useRef(overlayPosY);
-  const onOverlayPosChangeRef = useRef(onOverlayPosChange);
-  const onOverlayDragEndRef = useRef(onOverlayDragEnd);
-  const onOverlayDragStartRef = useRef(onOverlayDragStart);
-  useEffect(() => { overlayPosXRef.current = overlayPosX; }, [overlayPosX]);
-  useEffect(() => { overlayPosYRef.current = overlayPosY; }, [overlayPosY]);
+  const hostRef                = useRef(null);
+  const wasJustDraggedRef      = useRef(false);
+  const dragStateRef           = useRef(null);
+  const prevIsUserLoggedIn     = useRef(isUserLoggedIn);
+  const listenStatusRef        = useRef('beforeSession');
+
+  const overlayPosXRef         = useRef(overlayPosX);
+  const overlayPosYRef         = useRef(overlayPosY);
+  const onOverlayPosChangeRef  = useRef(onOverlayPosChange);
+  const onOverlayDragEndRef    = useRef(onOverlayDragEnd);
+  const onOverlayDragStartRef  = useRef(onOverlayDragStart);
+
+  useEffect(() => { overlayPosXRef.current        = overlayPosX; },        [overlayPosX]);
+  useEffect(() => { overlayPosYRef.current        = overlayPosY; },        [overlayPosY]);
   useEffect(() => { onOverlayPosChangeRef.current = onOverlayPosChange; }, [onOverlayPosChange]);
-  useEffect(() => { onOverlayDragEndRef.current = onOverlayDragEnd; }, [onOverlayDragEnd]);
+  useEffect(() => { onOverlayDragEndRef.current   = onOverlayDragEnd; },   [onOverlayDragEnd]);
   useEffect(() => { onOverlayDragStartRef.current = onOverlayDragStart; }, [onOverlayDragStart]);
-  const listenStatusRef = useRef('beforeSession');
-  const agentModeRef = useRef(false);
+  useEffect(() => { listenStatusRef.current       = listenSessionStatus; }, [listenSessionStatus]);
 
-  // Animation post-login state
-  const [justLoggedIn, setJustLoggedIn] = useState(false);
-  const prevIsUserLoggedIn = useRef(isUserLoggedIn);
+  injectStyles('mh-styles-v3', CSS);
+
+  // Post-login animation
   useEffect(() => {
     if (!prevIsUserLoggedIn.current && isUserLoggedIn) {
       setJustLoggedIn(true);
-      const t = setTimeout(() => setJustLoggedIn(false), 1000);
+      const t = setTimeout(() => setJustLoggedIn(false), 900);
       return () => clearTimeout(t);
     }
     prevIsUserLoggedIn.current = isUserLoggedIn;
   }, [isUserLoggedIn]);
 
-  injectStyles('mh-styles-v2', CSS);
-
-  useEffect(() => { listenStatusRef.current = listenSessionStatus; }, [listenSessionStatus]);
-  useEffect(() => { agentModeRef.current = agentModeActive; }, [agentModeActive]);
-
-  // ── Audio level → waveform bars ────────────────────────
-  useEffect(() => {
-    const HEIGHTS = [0.28, 0.28, 0.28]; // resting scale per bar
-    const PHASES  = [0, 0.32, 0.16];    // animation phase offsets (seconds)
-    let animFrameId = null;
-
-    const handleAudioLevel = (e) => {
-      const rms = e.detail?.rms ?? 0;
-      // Map RMS (0–0.15 typical) to a 0–1 range and boost it visually
-      const level = Math.min(1, rms / 0.08);
-      const now = performance.now() / 1000;
-
-      waveBarRefs.forEach((ref, i) => {
-        if (!ref.current) return;
-        // Add a slow sine wobble + the live audio level
-        const wobble = Math.sin((now + PHASES[i]) * 2.5) * 0.2;
-        const scale = HEIGHTS[i] + level * 0.72 + Math.max(0, wobble) * level;
-        ref.current.style.transform = `scaleY(${Math.max(0.12, Math.min(1, scale))})`;
-        ref.current.style.opacity = (0.35 + level * 0.55).toFixed(2);
-      });
-    };
-
-    window.addEventListener('audio-level', handleAudioLevel);
-    return () => {
-      window.removeEventListener('audio-level', handleAudioLevel);
-      if (animFrameId) cancelAnimationFrame(animFrameId);
-    };
-  }, []);
-
-  // ── Drag ──────────────────────────────────────────────
+  // ── Drag ──────────────────────────────────────────────────────────────────
   const handleMouseMove = useCallback((e) => {
     if (!dragStateRef.current) return;
     const dx = Math.abs(e.screenX - dragStateRef.current.iMouseX);
@@ -590,17 +374,14 @@ export default function MainHeader({
       if (!dragStateRef.current) return;
       const nx = dragStateRef.current.iWinX + (e.screenX - dragStateRef.current.iMouseX);
       const ny = dragStateRef.current.iWinY + (e.screenY - dragStateRef.current.iMouseY);
-      const cx = nx;
-      const cy = ny;
-      if (cx !== dragStateRef.current.lastX || cy !== dragStateRef.current.lastY) {
+      if (nx !== dragStateRef.current.lastX || ny !== dragStateRef.current.lastY) {
         if (onOverlayPosChangeRef.current) {
-          // Overlay mode: pure React state update — zero IPC, zero OS window calls
-          onOverlayPosChangeRef.current(cx, cy);
+          onOverlayPosChangeRef.current(nx, ny);
         } else {
-          window.api?.mainHeader?.moveHeaderTo(cx, cy, true);
+          window.api?.mainHeader?.moveHeaderTo(nx, ny, true);
         }
-        dragStateRef.current.lastX = cx;
-        dragStateRef.current.lastY = cy;
+        dragStateRef.current.lastX = nx;
+        dragStateRef.current.lastY = ny;
       }
       dragStateRef.current.rafId = null;
     });
@@ -622,7 +403,6 @@ export default function MainHeader({
       wasJustDraggedRef.current = true;
       setTimeout(() => { wasJustDraggedRef.current = false; }, 0);
     } else if (onOverlayPosChangeRef.current) {
-      // Clic sans mouvement : libérer le main process (sinon _overlayDragging reste bloqué)
       onOverlayDragEndRef.current?.(lastX, lastY);
     }
   }, [handleMouseMove]);
@@ -631,17 +411,13 @@ export default function MainHeader({
     const path = e.composedPath?.() || [];
     const isInteractive = path.some(n =>
       n?.classList?.contains('no-drag') ||
-      n?.tagName === 'BUTTON' ||
-      n?.classList?.contains('mh-btn') ||
-      n?.classList?.contains('mh-wide-btn') ||
-      n?.classList?.contains('marble-btn-container')
+      n?.tagName === 'BUTTON'
     );
     if (isInteractive) return;
     e.preventDefault();
 
-    // Overlay mode: no async IPC needed — use current pill position from refs
     if (onOverlayPosChangeRef.current) {
-      onOverlayDragStartRef.current?.(); // notify OverlayRoot: lock click-through OFF
+      onOverlayDragStartRef.current?.();
       dragStateRef.current = {
         iMouseX: e.screenX, iMouseY: e.screenY,
         iWinX: overlayPosXRef.current, iWinY: overlayPosYRef.current,
@@ -654,12 +430,9 @@ export default function MainHeader({
     }
 
     if (!window.api?.mainHeader?.getHeaderPosition) return;
-
-    // Guard: if user releases before IPC resolves, don't start drag
     let cancelled = false;
     const earlyUp = () => { cancelled = true; };
     window.addEventListener('mouseup', earlyUp, { once: true, capture: true });
-
     const pos = await window.api.mainHeader.getHeaderPosition();
     window.removeEventListener('mouseup', earlyUp, { capture: true });
     if (cancelled) return;
@@ -674,61 +447,75 @@ export default function MainHeader({
     window.addEventListener('mouseup', handleMouseUp, { once: true, capture: true });
   }, [handleMouseMove, handleMouseUp]);
 
-  // ── IPC ──────────────────────────────────────────────
+  // ── IPC ───────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!window.api) return;
+    let disposed = false;
+
+    const syncFromState = (state) => {
+      if (!state || disposed) return;
+      if (state.isListenRunning === true && listenStatusRef.current !== 'inSession') {
+        setListenSessionStatus('inSession');
+        setIsTogglingSession(false);
+      }
+      if (state.isListenRunning === false && listenStatusRef.current === 'inSession') {
+        setListenSessionStatus('beforeSession');
+        setIsTogglingSession(false);
+      }
+      setShowChat(Boolean(state.showChat));
+    };
+    try {
+      const result = window.api.sharedState?.get?.();
+      if (result && typeof result.then === 'function') {
+        result.then(syncFromState).catch(() => {});
+      } else if (result) {
+        syncFromState(result);
+      }
+    } catch {}
+
+    const unsubSharedState = window.api.sharedState?.subscribe?.(syncFromState);
+
     const onUserState = (_, s) => { setIsUserLoggedIn(s.isLoggedIn); setIsAuthenticating(false); };
     window.api.common?.onUserStateChanged?.(onUserState);
     window.api.common?.getCurrentUser?.().then(s => setIsUserLoggedIn(s?.isLoggedIn ?? false)).catch(() => {});
+
     const onAuthFailed = () => setIsAuthenticating(false);
     window.api.on?.('auth-failed', onAuthFailed);
 
-    const onSession = (_, { success }) => {
+    const onSession = (_, { success, state }) => {
       if (success) {
-        setListenSessionStatus(prev => {
-          const next = ({ beforeSession:'inSession', inSession:'afterSession', afterSession:'beforeSession' })[prev] || 'beforeSession';
-          if (prev === 'afterSession') { setAgentModeActive(false); window.api?.mainHeader?.setAgentMode(false); setIsPaused(false); }
-          return next;
-        });
+        const next = ['beforeSession', 'inSession', 'afterSession'].includes(state) ? state : 'beforeSession';
+        setListenSessionStatus(next);
+        if (next === 'beforeSession') setIsPaused(false);
       } else {
         setListenSessionStatus('beforeSession');
-        setAgentModeActive(false);
-        window.api?.mainHeader?.setAgentMode(false);
       }
       setIsTogglingSession(false);
     };
     window.api.mainHeader?.onListenChangeSessionResult?.(onSession);
 
-    const onShortcuts = (_, kb) => setShortcuts(kb);
-    window.api.mainHeader?.onShortcutsUpdated?.(onShortcuts);
-
-    const onAreaSet = () => setHasPersistentArea(true);
-    const onAreaCleared = () => setHasPersistentArea(false);
-    window.api.common?.onPersistentAreaSet?.(onAreaSet);
-    window.api.common?.onPersistentAreaCleared?.(onAreaCleared);
-    window.api.common?.getPersistentAreaStatus?.().then(s => setHasPersistentArea(s.hasPersistentArea)).catch(() => {});
-
     const onPointer = (e) => window.api?.mainHeader?.notifyGlobalPointerDown?.({ x: e.screenX, y: e.screenY });
     window.addEventListener('pointerdown', onPointer, true);
 
     return () => {
+      disposed = true;
+      if (typeof unsubSharedState === 'function') unsubSharedState();
       window.api.common?.removeOnUserStateChanged?.(onUserState);
       window.api.mainHeader?.removeOnListenChangeSessionResult?.(onSession);
-      window.api.mainHeader?.removeOnShortcutsUpdated?.(onShortcuts);
-      window.api.common?.removeOnPersistentAreaSet?.(onAreaSet);
-      window.api.common?.removeOnPersistentAreaCleared?.(onAreaCleared);
       window.removeEventListener('pointerdown', onPointer, true);
     };
   }, []);
 
-  // ── Resize window to match pill size ──────────────────
+  // ── Window resize to match pill ──────────────────────────────────────────
   useEffect(() => {
     if (!window.api?.headerController?.resizeHeaderWindow) return;
-    // Login pill is ~220px; main pill is 580px
-    window.api.headerController.resizeHeaderWindow({ width: isUserLoggedIn ? 580 : 190, height: 60 }).catch(() => {});
+    window.api.headerController.resizeHeaderWindow({
+      width:  isUserLoggedIn ? 163 : 190,
+      height: isUserLoggedIn ? 50 : 60,
+    }).catch(() => {});
   }, [isUserLoggedIn]);
 
-  // ── Animation ─────────────────────────────────────────
+  // ── Animation end ─────────────────────────────────────────────────────────
   useEffect(() => {
     const el = hostRef.current;
     if (!el) return;
@@ -745,114 +532,23 @@ export default function MainHeader({
     return () => el.removeEventListener('animationend', onEnd);
   }, []);
 
-  // ── Handlers ─────────────────────────────────────────
-  const handleListen = useCallback(async () => {
-    if (wasJustDraggedRef.current || isTogglingSession) return;
-    const currentStatus = listenStatusRef.current;
-    setIsTogglingSession(true);
-    try {
-      if (currentStatus === 'beforeSession') {
-        await window.api.mainHeader.sendListenButtonClick('Listen');
-      } else if (currentStatus === 'inSession') {
-        // Stop recording then immediately close the listen panel in one click
-        await window.api.mainHeader.sendListenButtonClick('Stop');
-        await window.api.mainHeader.sendListenButtonClick('Done');
-      } else if (currentStatus === 'afterSession') {
-        await window.api.mainHeader.sendListenButtonClick('Done');
-      }
-      setTimeout(() => setIsTogglingSession(false), 500);
-    } catch { setIsTogglingSession(false); }
-  }, [isTogglingSession]);
-
-  const handleAsk = useCallback(async () => {
-    if (wasJustDraggedRef.current) return;
-    try {
-      await window.api.mainHeader.sendAskButtonClick();
-    } catch {}
-  }, []);
-
-  const handleToggle = useCallback(async () => {
-    if (wasJustDraggedRef.current) return;
-    try { await window.api.mainHeader.sendToggleAllWindowsVisibility(); } catch {}
-  }, []);
-
-  const handleScreenContext = useCallback(() => {
-    if (wasJustDraggedRef.current) return;
-    const next = !askScreenContext;
-    setAskScreenContext(next);
-    window.dispatchEvent(new CustomEvent('ask:setScreenContext', { detail: { active: next } }));
-  }, [askScreenContext]);
-
-  const handleAppQuit = useCallback(() => {
-    setAnimClass('hiding');
-    setTimeout(() => {
-      window.api.common.quitApplication();
-    }, 280);
-  }, []);
-
-  const handleAgents = useCallback((e) => {
-    e?.stopPropagation();
-    if (wasJustDraggedRef.current) return;
-    window.api?.mainHeader?.toggleAgentSelectorWindow?.();
-  }, []);
-
-  const handleSettings = useCallback((e) => {
-    if (wasJustDraggedRef.current) return;
-    e.stopPropagation();
-    const now = Date.now();
-    if (now - lastSettingsToggleRef.current < 400) return;
-    lastSettingsToggleRef.current = now;
-    window.api?.mainHeader?.toggleSettingsWindow?.();
-  }, []);
-
-  const handleLogin = useCallback(async () => {
-    if (wasJustDraggedRef.current || isAuthenticating) return;
-    setIsAuthenticating(true);
-    // Auto-reset after 2 min if deeplink never comes back
-    const authTimeout = setTimeout(() => setIsAuthenticating(false), 120_000);
-    try {
-      const r = await window.api.common.startFirebaseAuth();
-      if (!r?.success) { clearTimeout(authTimeout); setIsAuthenticating(false); }
-    } catch { clearTimeout(authTimeout); setIsAuthenticating(false); }
-  }, [isAuthenticating]);
-
-  const handlePauseToggle = useCallback(async () => {
-    const newPaused = !isPaused;
-    setIsPaused(newPaused);
-    try {
-      if (newPaused) {
-        await window.api.invoke?.('listen:pause-microphone');
-        await window.api.invoke?.('listen:pause-system-audio');
-      } else {
-        await window.api.invoke?.('listen:resume-microphone');
-        await window.api.invoke?.('listen:resume-system-audio');
-      }
-    } catch(e) {}
-  }, [isPaused]);
-
-  const handleTTSToggle = useCallback(({ ttsEnabled: v, originalState }) => {
-    setTtsEnabled(v);
-    if (v) { setAgentModeActive(true); window.api?.mainHeader?.setAgentMode(true); }
-    else { setAgentModeActive(false); window.api?.mainHeader?.setAgentMode(false); }
-  }, []);
-
-  const isListening = listenSessionStatus === 'inSession';
-
-  // ── Click-through: transparent area passes clicks, only pill is interactive ──
-  // (In overlay mode, OverlayRoot handles click-through for the whole overlay.)
+  // ── Click-through ─────────────────────────────────────────────────────────
   const clickThroughRef = useRef(true);
   const updateClickThrough = useCallback((e) => {
-    if (overlayMode) return; // Handled by OverlayRoot
+    if (overlayMode) return;
     if (!window.api?.mainHeader?.setHeaderClickThrough) return;
     const pill = document.querySelector('.mh-pill, .mh-login-pill');
     const quitBtn = document.querySelector('.mh-quit-btn');
     if (!pill) return;
-    const rect = pill.getBoundingClientRect();
+    const rect  = pill.getBoundingClientRect();
     const qRect = quitBtn?.getBoundingClientRect();
-    const inside = (e.clientX >= rect.left && e.clientX <= rect.right &&
-                    e.clientY >= rect.top  && e.clientY <= rect.bottom) ||
-                   !!(qRect && e.clientX >= qRect.left && e.clientX <= qRect.right &&
-                      e.clientY >= qRect.top && e.clientY <= qRect.bottom);
+    const inside = (
+      e.clientX >= rect.left && e.clientX <= rect.right &&
+      e.clientY >= rect.top  && e.clientY <= rect.bottom
+    ) || !!(qRect &&
+      e.clientX >= qRect.left && e.clientX <= qRect.right &&
+      e.clientY >= qRect.top  && e.clientY <= qRect.bottom
+    );
     if (inside && clickThroughRef.current) {
       clickThroughRef.current = false;
       window.api.mainHeader.setHeaderClickThrough(false);
@@ -866,109 +562,133 @@ export default function MainHeader({
     return () => window.removeEventListener('mousemove', updateClickThrough);
   }, [updateClickThrough]);
 
+  // ── Handlers ──────────────────────────────────────────────────────────────
+  const handleListen = useCallback(async () => {
+    if (wasJustDraggedRef.current || isTogglingSession) return;
+    const currentStatus = listenStatusRef.current;
+    setIsTogglingSession(true);
+    try {
+      if (currentStatus === 'beforeSession') {
+        await window.api.mainHeader.sendListenButtonClick('Listen');
+      } else if (currentStatus === 'inSession') {
+        await window.api.mainHeader.sendListenButtonClick('Stop');
+        await window.api.mainHeader.sendListenButtonClick('Done');
+      } else if (currentStatus === 'afterSession') {
+        await window.api.mainHeader.sendListenButtonClick('Done');
+      }
+      setTimeout(() => setIsTogglingSession(false), 500);
+    } catch { setIsTogglingSession(false); }
+  }, [isTogglingSession]);
+
+  const handleAsk = useCallback(async () => {
+    if (wasJustDraggedRef.current) return;
+    try {
+      await window.api.sharedState?.patch?.({ showChat: true });
+    } catch {}
+  }, []);
+
+  const handleChatToggle = useCallback(async () => {
+    if (wasJustDraggedRef.current) return;
+    try { await window.api.sharedState?.patch?.({ showChat: !showChat }); } catch {}
+  }, [showChat]);
+
+  const handlePillClick = useCallback(async (e) => {
+    if (wasJustDraggedRef.current) return;
+    const path = e.composedPath?.() || [];
+    const isInteractive = path.some(n =>
+      n?.classList?.contains('no-drag') ||
+      n?.tagName === 'BUTTON'
+    );
+    if (isInteractive) return;
+    try {
+      const state = await window.api.sharedState?.get?.();
+      await window.api.sharedState?.patch?.({
+        showDashboard: true,
+        dashboardFocusCount: (state?.dashboardFocusCount || 0) + 1,
+      });
+    } catch {}
+  }, []);
+
+  const handleLogin = useCallback(async () => {
+    if (wasJustDraggedRef.current || isAuthenticating) return;
+    setIsAuthenticating(true);
+    const authTimeout = setTimeout(() => setIsAuthenticating(false), 120_000);
+    try {
+      const r = await window.api.common.startFirebaseAuth();
+      if (!r?.success) { clearTimeout(authTimeout); setIsAuthenticating(false); }
+    } catch { clearTimeout(authTimeout); setIsAuthenticating(false); }
+  }, [isAuthenticating]);
+
+  const handleAppQuit = useCallback(() => {
+    setAnimClass('hiding');
+    setTimeout(() => { window.api.common.quitApplication(); }, 280);
+  }, []);
+
+  const isListening = listenSessionStatus === 'inSession';
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div ref={hostRef} className={`mh-root ${animClass}${overlayMode ? ' overlay-mode' : ''}`}>
       {!isUserLoggedIn ? (
-        /* ── Login pill ── */
         <>
           <div className="mh-login-pill" onMouseDown={handleMouseDown}>
-            <div className="mh-pill-bg" />
-            <div className="mh-listen-section" style={{ position: 'relative', zIndex: 10 }}>
-              <button className="mh-ctrl mic no-drag" disabled title="Start listening">
-                <IconMic />
-              </button>
+            <div className="mh-login-mic">
+              <IconMic />
             </div>
-            <button className="mh-sign-in-btn no-drag" style={{ position: 'relative', zIndex: 10 }} onClick={handleLogin} disabled={isAuthenticating}>
+            <button
+              className="mh-sign-in-btn no-drag"
+              onClick={handleLogin}
+              disabled={isAuthenticating}
+            >
               {isAuthenticating ? 'Connexion…' : 'Connexion'}
             </button>
           </div>
-          <button
-            className="mh-quit-btn"
-            onClick={handleAppQuit}
-            title="Quitter"
-          >
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <button className="mh-quit-btn" onClick={handleAppQuit} title="Quitter">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
               <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
             </svg>
           </button>
         </>
       ) : (
-        /* ── Main pill ── */
-        <div className={`mh-pill ${justLoggedIn ? 'animating-in' : ''}`} onMouseDown={handleMouseDown}>
+        <div
+          className={`mh-pill${justLoggedIn ? ' animating-in' : ''}`}
+          onMouseDown={handleMouseDown}
+          onClick={handlePillClick}
+        >
+          {/* Logo */}
+          <img className="mh-logo" src={LOGO_SRC} alt="" draggable={false} />
 
-          {/* Background layer (Cluely: absolute inset-0 rounded-full) */}
-          <div className="mh-pill-bg" />
-
-          {/* Listen controls */}
-          <div className="mh-listen-section" style={{ position: 'relative', zIndex: 10 }}>
-            {listenSessionStatus === 'beforeSession' ? (
-              <button
-                key="mic"
-                className="mh-ctrl mic mh-ctrl-pop no-drag"
-                onClick={handleListen}
-                disabled={isTogglingSession}
-                title="Start listening"
-              >
-                {isTogglingSession ? <div className="mh-spinner" /> : <IconMic />}
-              </button>
-            ) : (
-              <div key="controls" className="mh-listen-controls">
-                <button
-                  className="mh-ctrl mh-ctrl-pop no-drag"
-                  onClick={handlePauseToggle}
-                  title={isPaused ? 'Resume' : 'Pause'}
-                >
-                  {isPaused ? <IconPlay /> : <IconPause />}
-                </button>
-                <button
-                  className="mh-ctrl stop mh-ctrl-pop2 no-drag"
-                  onClick={handleListen}
-                  disabled={isTogglingSession}
-                  title="Stop"
-                >
-                  <IconStop />
-                </button>
-              </div>
-            )}
-          </div>
-
-          {isListening && (
-            <div className={`mh-rec-wave${isPaused ? ' paused' : ''}`} style={{ marginLeft: 6, marginRight: 4, position: 'relative', zIndex: 10 }}>
-              <span ref={waveBarRefs[0]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
-              <span ref={waveBarRefs[1]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
-              <span ref={waveBarRefs[2]} style={isPaused ? undefined : { animation: 'none', transform: 'scaleY(0.28)', opacity: 0.45 }} />
-            </div>
-          )}
-
-          <div className="mh-divider" style={{ position: 'relative', zIndex: 10 }} />
-
-          {/* Ask / Hide button — Cluely: h-8 w-[66px] rounded-full font-semibold */}
-          <button className="mh-wide-btn no-drag" onClick={handleAsk} title="Ask AI">
-            <span className="mh-wide-bg-inactive" style={{ opacity: 1 }} />
-            <span className="mh-wide-bg-active" style={{ opacity: 0 }} />
-            <span className="mh-wide-label">
-              <IconAsk />
-              Ask
+          <div className="mh-controls">
+          {/* Wide button: Ask ↔ Cacher */}
+          <button
+              className={`mh-wide-btn no-drag${isListening && showChat ? ' chat-visible' : ''}`}
+            onClick={isListening ? handleChatToggle : handleAsk}
+            tabIndex={-1}
+            type="button"
+          >
+            <span className="mh-wide-content">
+              {isListening && showChat ? <IconChevronDown /> : <IconSparkles />}
+              {isListening && showChat ? 'Hide' : 'Ask'}
             </span>
           </button>
 
-          {/* Screen context for Ask */}
+          {/* Action button: Mic ↔ Stop */}
           <button
-            className={`mh-btn no-drag${askScreenContext ? ' accent' : ''}`}
-            onClick={handleScreenContext}
-            title={askScreenContext ? "Contexte écran activé" : "Inclure l'écran dans Ask"}
-            style={{ position: 'relative', zIndex: 10 }}
+            className="mh-action-btn no-drag"
+            onClick={handleListen}
+            disabled={isTogglingSession}
+            title={isListening ? 'Arrêter' : 'Démarrer'}
+            tabIndex={-1}
+            type="button"
           >
-            <IconScreen />
+            {isTogglingSession
+              ? <div className="mh-spinner" />
+              : isListening
+                ? <IconStop />
+                : <IconMic />
+            }
           </button>
-
-          <div className="mh-divider" style={{ position: 'relative', zIndex: 10 }} />
-
-          {/* Settings */}
-          <button className="mh-btn no-drag" onClick={handleSettings} title="Settings" style={{ position: 'relative', zIndex: 10 }}>
-            <IconSettings />
-          </button>
-
+          </div>
         </div>
       )}
     </div>

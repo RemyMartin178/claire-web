@@ -39,7 +39,7 @@ files:
 
 # Additional resources to be copied into the app's resources directory
 extraResources:
-    - from: pickleglass_web/out
+    - from: apps/renderer/out
       to: out
     - from: src/common/config/production-config.js
       to: config/production-config.js
@@ -50,15 +50,15 @@ afterPack: "./copy-env-prod.js"
 
 asarUnpack:
     - "src/ui/assets/SystemAudioDump"
+    - "src/ui/splash/**"
     - "**/node_modules/sharp/**/*"
     - "**/node_modules/@img/**/*"
-    - "build/icon.ico"
     - "build/icon.png"
 
 # Windows configuration (electron-builder converts PNG to .ico)
 win:
     executableName: Claire
-    icon: build/icon.ico
+    icon: build/icon.png
     artifactName: "${productName} Setup ${version}.${ext}"
     target:
         - target: nsis
@@ -75,8 +75,8 @@ nsis:
     createDesktopShortcut: always
     createStartMenuShortcut: true
     shortcutName: Claire
-    installerIcon: build/icon.ico
-    uninstallerIcon: build/icon.ico
+    installerIcon: build/icon.png
+    uninstallerIcon: build/icon.png
     include: build/installer.nsh
 
 # macOS specific configuration

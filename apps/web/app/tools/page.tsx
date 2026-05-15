@@ -1,0 +1,691 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
+import Image from 'next/image'
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, AlertCircle, X } from 'lucide-react'
+import {
+  Search,
+  Calculator,
+  Clock,
+  Monitor,
+  FileText,
+  Globe,
+  Network,
+  Settings,
+  PlayCircle,
+  BarChart3,
+  RefreshCw,
+  Filter,
+  CheckCircle,
+  AlertTriangle,
+  ExternalLink,
+  Square,
+  Info,
+  Wrench
+} from 'lucide-react'
+import { getApiHeaders } from '@/utils/api'
+import { toast } from 'react-hot-toast'
+import { Page, PageHeader } from '@/components/Page'
+import { PremiumGate } from '@/components/PremiumGate'
+import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth'
+import { useAuth } from '@/contexts/AuthContext'
+
+interface Tool {
+  id: string
+  name: string
+  tool_name?: string
+  display_name?: string
+  description: string
+  icon: string
+  icon_url?: string
+  category: string
+  status: 'active' | 'inactive'
+  is_enabled: boolean
+  usage_count: number
+  execution_count?: number
+  last_used: string | null
+  last_executed_at?: string
+  execution_time_avg: number
+  avg_execution_time?: number
+  success_rate: number
+  parameters: any
+  configuration?: any
+  provider: string
+  version: string
+  requires_auth?: boolean
+  auth_type?: 'oauth' | 'api_key' | null | string
+  is_configured?: boolean
+  token_info?: {
+    expires_at?: string | null
+    has_refresh_token?: boolean
+  } | null
+  auth_status_checked?: boolean
+  mcp_server?: boolean
+  mcp_server_id?: string
+  server_status?: 'running' | 'stopped'
+  capabilities?: string[]
+  tool_count?: number
+  docker_image?: string
+  api_endpoint?: string
+  oauth_configured?: boolean
+  oauth_token_expires?: string
+  oauth_token_valid?: boolean
+  authentication_status?: 'authenticated' | 'not_configured'
+}
+
+const getApiUrl = async () => {
+  try {
+    const response = await fetch('/runtime-config.json')
+    if (response.ok) {
+      const config = await response.json()
+      return config.API_URL
+    }
+  } catch (error) {
+    console.warn('Failed to fetch runtime config, using fallback')
+  }
+  return 'http://localhost:64952/api/v1'
+}
+
+export default function ToolsPage() {
+  const pathname = usePathname()
+  const { isAdmin, loading: authLoading } = useAuth()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [tools, setTools] = useState<Tool[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [operatingTools, setOperatingTools] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    fetchTools()
+  }, [])
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && tools.length === 0 && !loading && !error) {
+        const lastFetch = sessionStorage.getItem('last_tools_fetch')
+        const now = Date.now()
+        if (!lastFetch || (now - parseInt(lastFetch)) > 30000) {
+          fetchTools()
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [tools.length, loading, error])
+
+  const fetchTools = async () => {
+    try {
+      const lastFetch = sessionStorage.getItem('last_tools_fetch')
+      const now = Date.now()
+      if (lastFetch && (now - parseInt(lastFetch)) < 2000) {
+        return
+      }
+
+      sessionStorage.setItem('last_tools_fetch', now.toString())
+      setLoading(true)
+
+      try {
+        const response = await fetch('/api/v1/tools', {
+          headers: await getApiHeaders()
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch tools')
+        }
+
+        const toolsData = await response.json()
+
+        const mappedTools = toolsData.map((tool: any) => ({
+          id: tool.id?.toString() || tool.tool_name,
+          name: tool.name || tool.display_name || tool.tool_name || 'Unnamed Tool',
+          tool_name: tool.tool_name,
+          display_name: tool.display_name,
+          description: tool.description || '',
+          icon: tool.icon || '🔧',
+          icon_url: tool.icon_url,
+          category: tool.category || 'utility',
+          status: tool.status || (tool.is_enabled ? 'active' : 'inactive'),
+          is_enabled: tool.is_enabled || false,
+          usage_count: tool.usage_count || 0,
+          execution_count: tool.execution_count,
+          last_used: tool.last_used_at || null,
+          last_executed_at: tool.last_executed_at,
+          execution_time_avg: tool.execution_time_avg || 0,
+          avg_execution_time: tool.avg_execution_time,
+          success_rate: tool.success_rate || 0,
+          configuration: tool.configuration || {},
+          parameters: tool.parameters || [],
+          provider: tool.provider || 'unknown',
+          version: tool.version || '1.0.0',
+          requires_auth: tool.requires_auth || false,
+          auth_type: tool.auth_type || null,
+          is_configured: tool.is_configured || false,
+          api_endpoint: tool.api_endpoint || null,
+          mcp_server: tool.mcp_server || false,
+          mcp_server_id: tool.mcp_server_id || null,
+          server_status: tool.server_status || null,
+          capabilities: tool.capabilities || [],
+          tool_count: tool.tool_count || 0,
+          oauth_configured: tool.oauth_configured || false,
+          oauth_token_expires: tool.oauth_token_expires || null,
+          oauth_token_valid: tool.oauth_token_valid || false,
+          authentication_status: tool.authentication_status || 'not_configured',
+          token_info: null,
+          auth_status_checked: false
+        }))
+
+        setTools(mappedTools)
+      } catch (err) {
+        console.warn('Failed to fetch via proxy, trying direct backend...')
+
+        const apiUrl = await getApiUrl()
+        const directResponse = await fetch(`${apiUrl}/tools`, {
+          headers: await getApiHeaders()
+        })
+
+        if (!directResponse.ok) {
+          throw new Error('Failed to fetch tools')
+        }
+
+        const toolsData = await directResponse.json()
+        const mappedTools = toolsData.map((tool: any) => ({
+          id: tool.id?.toString() || tool.tool_name,
+          name: tool.name || tool.display_name || tool.tool_name || 'Unnamed Tool',
+          tool_name: tool.tool_name,
+          display_name: tool.display_name,
+          description: tool.description || '',
+          icon: tool.icon || '🔧',
+          icon_url: tool.icon_url,
+          category: tool.category || 'utility',
+          status: tool.status || (tool.is_enabled ? 'active' : 'inactive'),
+          is_enabled: tool.is_enabled || false,
+          usage_count: tool.usage_count || 0,
+          execution_count: tool.execution_count,
+          last_used: tool.last_used_at || null,
+          last_executed_at: tool.last_executed_at,
+          execution_time_avg: tool.execution_time_avg || 0,
+          avg_execution_time: tool.avg_execution_time,
+          success_rate: tool.success_rate || 0,
+          configuration: tool.configuration || {},
+          parameters: tool.parameters || [],
+          provider: tool.provider || 'unknown',
+          version: tool.version || '1.0.0',
+          requires_auth: tool.requires_auth || false,
+          auth_type: tool.auth_type || null,
+          is_configured: tool.is_configured || false,
+          api_endpoint: tool.api_endpoint || null,
+          mcp_server: tool.mcp_server || false,
+          mcp_server_id: tool.mcp_server_id || null,
+          server_status: tool.server_status || null,
+          capabilities: tool.capabilities || [],
+          tool_count: tool.tool_count || 0,
+          oauth_configured: tool.oauth_configured || false,
+          oauth_token_expires: tool.oauth_token_expires || null,
+          oauth_token_valid: tool.oauth_token_valid || false,
+          authentication_status: tool.authentication_status || 'not_configured',
+          token_info: null,
+          auth_status_checked: false
+        }))
+
+        setTools(mappedTools)
+      }
+
+      setLoading(false)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch tools')
+      console.warn('Tools endpoint not available:', err)
+      setTools([])
+      setLoading(false)
+    }
+  }
+
+  const handleToolToggle = async (toolId: string, enabled: boolean) => {
+    setOperatingTools(prev => new Set(Array.from(prev).concat([toolId])))
+
+    try {
+      const toolName = tools.find(t => t.id === toolId)?.tool_name || toolId
+
+      try {
+        const response = await fetch(`/api/v1/tools/${toolName}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(await getApiHeaders())
+          },
+          body: JSON.stringify({ is_enabled: enabled })
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to toggle tool')
+        }
+      } catch (err) {
+        const apiUrl = await getApiUrl()
+        const directResponse = await fetch(`${apiUrl}/tools/${toolName}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(await getApiHeaders())
+          },
+          body: JSON.stringify({ is_enabled: enabled })
+        })
+
+        if (!directResponse.ok) {
+          throw new Error('Failed to toggle tool')
+        }
+      }
+
+      setTools(prevTools =>
+        prevTools.map(tool =>
+          tool.id === toolId ? { ...tool, is_enabled: enabled, status: enabled ? 'active' : 'inactive' } : tool
+        )
+      )
+    } catch (err) {
+      console.error('Failed to toggle tool:', err)
+      toast.error('Échec de l\'activation')
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(toolId)
+        return newSet
+      })
+    }
+  }
+
+  const handleAuthConfigure = async (tool: Tool) => {
+    try {
+      setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
+
+      // Get user ID from auth context
+      const { auth } = await import('@/utils/firebase')
+      const currentUser = auth.currentUser
+      const userId = currentUser?.uid
+
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      await openOAuthPopup({
+        toolName: tool.tool_name || tool.name,
+        provider: tool.provider
+      }, userId)
+
+      // Refresh auth status after a short delay
+      setTimeout(() => {
+        checkAuthStatus(tool.tool_name || tool.name, userId).then(status => {
+          setTools(prevTools =>
+            prevTools.map(t =>
+              t.id === tool.id
+                ? {
+                  ...t,
+                  is_configured: status.authenticated,
+                  authentication_status: status.authenticated ? 'authenticated' : 'not_configured'
+                }
+                : t
+            )
+          )
+        })
+      }, 3000)
+    } catch (error) {
+      console.error('Failed to configure auth:', error)
+      toast.error('Échec de la configuration')
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(tool.id)
+        return newSet
+      })
+    }
+  }
+
+  const handleAuthRevoke = async (tool: Tool) => {
+    try {
+      setOperatingTools(prev => new Set(Array.from(prev).concat([tool.id])))
+
+      // Get user ID from auth context
+      const { auth } = await import('@/utils/firebase')
+      const currentUser = auth.currentUser
+      const userId = currentUser?.uid
+
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+
+      await revokeAuth(tool.tool_name || tool.name, userId)
+
+      // Update tool state
+      setTools(prevTools =>
+        prevTools.map(t =>
+          t.id === tool.id
+            ? {
+              ...t,
+              is_configured: false,
+              authentication_status: 'not_configured'
+            }
+            : t
+        )
+      )
+
+      toast.success('Accès révoqué')
+    } catch (error) {
+      console.error('Failed to revoke auth:', error)
+      toast.error('Échec de la révocation')
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(tool.id)
+        return newSet
+      })
+    }
+  }
+
+  const executeToolTest = async (toolName: string) => {
+    setOperatingTools(prev => new Set(Array.from(prev).concat([`${toolName}_test`])))
+
+    try {
+      toast.error('Non implémenté')
+    } catch (err) {
+      console.error('Tool execution error:', err)
+      toast.error('Échec de l\'exécution')
+    } finally {
+      setOperatingTools(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(`${toolName}_test`)
+        return newSet
+      })
+    }
+  }
+
+  const getToolIcon = (iconName: string) => {
+    const iconMap: { [key: string]: any } = {
+      '🔍': Globe,
+      '🕷️': Network,
+      '⏰': Clock,
+      '💻': Monitor,
+      '🧮': Calculator,
+      '📄': FileText,
+      '🔢': Calculator,
+      '📧': Globe,
+      '📅': Clock,
+      '📁': FileText,
+      '🎫': Globe,
+      '💬': Globe,
+      '📝': FileText,
+      '🎨': Globe
+    }
+    return iconMap[iconName] || Wrench
+  }
+
+  const categories = ['all', 'web_search', 'calculation', 'utility', 'system', 'productivity', 'communication', 'development', 'design', 'storage']
+
+  const filteredTools = tools.filter(tool => {
+    const toolName = tool.name || tool.tool_name || ''
+    const toolDescription = tool.description || ''
+
+    const matchesSearch = toolName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      toolDescription.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesCategory = selectedCategory === 'all' || tool.category === selectedCategory
+    return matchesSearch && matchesCategory
+  })
+
+  if (loading || authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Chargement des outils...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Si pas admin, afficher message "Bientôt disponible"
+  if (!isAdmin) {
+    return (
+      <Page>
+        <PageHeader title="Outils & Intégrations" description="Gérez et configurez les outils Claire" />
+
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Wrench className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              Fonctionnalité bientôt disponible
+            </h3>
+            <p className="text-gray-600 max-w-md">
+              Les intégrations externes (Google Calendar, Gmail, GitHub, etc.) seront bientôt disponibles pour tous les utilisateurs.
+            </p>
+          </div>
+        </div>
+      </Page>
+    )
+  }
+
+  return (
+    <Page>
+      <PageHeader title="Outils & Intégrations" description="Gérez et configurez les outils Claire" />
+
+      <PremiumGate
+        feature="Intégrations avec des outils externes"
+        plan="plus"
+        className="mb-6"
+      >
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Rechercher des outils..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg w-full text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                title="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <main>
+          {/* Category Filter */}
+          <div className="mb-8">
+            <div className="flex flex-wrap gap-3">
+              {categories.map(category => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category)}
+                  className={`capitalize font-medium transition-colors ${selectedCategory === category
+                    ? 'bg-[#3b82f6] text-white hover:bg-[#2563eb] shadow-sm'
+                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:text-gray-900'
+                    }`}
+                >
+                  {category.replace('_', ' ')}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border border-orange-200 p-6 mb-6">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-medium text-orange-800 mb-1">Backend non disponible</h3>
+                  <p className="text-sm text-orange-700">
+                    La connexion au backend Claire n'est pas disponible. Pour utiliser les outils, veuillez configurer le backend.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Tools Grid */}
+          {filteredTools.length === 0 ? (
+            <Card className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors p-12 text-center">
+              <div className="mx-auto w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                <Wrench className="h-12 w-12 text-primary" />
+              </div>
+              <h3 className="text-2xl font-heading font-semibold text-[#282828] mb-3">
+                Aucun outil disponible
+              </h3>
+              <p className="text-gray-600 max-w-md mx-auto mb-8">
+                Les outils et intégrations Claire seront disponibles une fois le backend configuré.
+                Connectez des services externes pour étendre les capacités de Claire.
+              </p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTools.map((tool) => {
+                const IconComponent = getToolIcon(tool.icon)
+                return (
+                  <Card key={tool.id} className="bg-transparent shadow-none border-neutral-200 dark:border-neutral-800 transition-colors border border-gray-200 rounded-xl p-4 h-[240px] flex flex-col">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-1 overflow-hidden border border-blue-100">
+                          {tool.icon_url ? (
+                            <img
+                              src={tool.icon_url}
+                              alt={tool.name}
+                              className="w-10 h-10 object-contain"
+                              onError={(e) => {
+                                // Fallback to emoji if image fails
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : tool.icon ? (
+                            <span className="text-2xl">{tool.icon}</span>
+                          ) : (
+                            <Wrench className="w-6 h-6 text-blue-600" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2 mb-1">
+                            <h3 className="text-lg font-semibold text-gray-800 truncate">{tool.name}</h3>
+                          </div>
+                          {tool.mcp_server && (
+                            <Badge variant="secondary" className="text-xs">
+                              MCP
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={tool.is_enabled}
+                          onCheckedChange={(enabled) => handleToolToggle(tool.id, enabled)}
+                          disabled={operatingTools.has(tool.id)}
+                          className="data-[state=checked]:bg-primary"
+                        />
+                        {operatingTools.has(tool.id) && (
+                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 mb-3 flex-1 overflow-hidden" style={{
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {tool.description}
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3 mb-3 text-xs flex-shrink-0">
+                      <div>
+                        <span className="text-gray-500">Succès:</span>
+                        <span className="ml-1 font-medium">{tool.success_rate}%</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Utilisations:</span>
+                        <span className="ml-1 font-medium">{tool.usage_count}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Avg Time:</span>
+                        <span className="ml-1 font-medium">{tool.execution_time_avg}ms</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Fournisseur:</span>
+                        <span className="ml-1 font-medium">{tool.provider}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-2 mt-auto flex-shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => executeToolTest(tool.id || tool.tool_name || tool.name)}
+                        disabled={!tool.is_enabled || operatingTools.has(`${tool.id || tool.tool_name || tool.name}_test`)}
+                        className="flex-1 bg-[#3b82f6] text-white hover:bg-[#2563eb]"
+                      >
+                        {operatingTools.has(`${tool.id || tool.tool_name || tool.name}_test`) ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <PlayCircle className="w-4 h-4 mr-1" />
+                        )}
+                        Tester
+                      </Button>
+                      {tool.auth_type === 'oauth' && (
+                        tool.is_configured && tool.authentication_status === 'authenticated' ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAuthRevoke(tool)}
+                            disabled={operatingTools.has(tool.id)}
+                            className="px-3 text-red-600 border-red-300 hover:bg-red-50"
+                          >
+                            {operatingTools.has(tool.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <X className="w-4 h-4" />
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAuthConfigure(tool)}
+                            disabled={operatingTools.has(tool.id)}
+                            className="px-3 text-green-600 border-green-300 hover:bg-green-50"
+                          >
+                            {operatingTools.has(tool.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="px-3 text-[#374151] border-gray-300 hover:bg-gray-50"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </main>
+      </PremiumGate>
+    </Page>
+  )
+}

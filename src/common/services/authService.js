@@ -105,15 +105,15 @@ class AuthService {
                     // ** Initialize encryption key for the logged-in user **
                     await encryptionService.initializeKey(user.uid);
 
-                    // --- DECRYPTION MIGRATION INJECTION ---
-                    try {
-                        logger.info(`[AuthService] Running decryption migration for UID: ${user.uid}`);
-                        const { decryptUserData } = require('../../scripts/decrypt_firestore');
-                        decryptUserData(user.uid); // run async in background
-                    } catch (e) {
-                        logger.error('[AuthService] Decryption migration failed to start:', e);
+                    if (process.env.RUN_DECRYPTION_MIGRATION === 'true') {
+                        try {
+                            logger.info(`[AuthService] Running opt-in decryption migration for UID: ${user.uid}`);
+                            const { decryptUserData } = require('../../scripts/decrypt_firestore');
+                            decryptUserData(user.uid); // run async in background
+                        } catch (e) {
+                            logger.error('[AuthService] Decryption migration failed to start:', e);
+                        }
                     }
-                    // --------------------------------------
 
                     // ** Check for and run data migration for the user **
                     // No 'await' here, so it runs in the background without blocking startup.

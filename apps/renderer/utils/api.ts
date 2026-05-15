@@ -8,6 +8,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 declare global {
   interface Window {
     __API_URL__?: string;
+    __CLAIRE_ELECTRON_USER__?: UserProfile;
   }
 }
 
@@ -83,8 +84,185 @@ export interface SessionDetails {
   summary: Summary | null;
 }
 
+const SESSION_DETAILS_CACHE_TTL_MS = 5 * 60 * 1000;
+const SESSIONS_CACHE_TTL_MS = 5 * 60 * 1000;
+const sessionsCache = new Map<string, { fetchedAt: number; data: Session[] }>();
+const sessionsRequests = new Map<string, Promise<Session[]>>();
+const sessionDetailsCache = new Map<string, { fetchedAt: number; data: SessionDetails }>();
+const sessionDetailsRequests = new Map<string, Promise<SessionDetails>>();
+
+const getSessionsStorageKey = (uid: string) => `sessions:${uid}`;
+const getSessionDetailsCacheKey = (uid: string, sessionId: string) => `${uid}:${sessionId}`;
+const getSessionDetailsStorageKey = (uid: string, sessionId: string) => `session-details:${uid}:${sessionId}`;
+
+const isFreshCacheEntry = (fetchedAt: number) => Date.now() - fetchedAt < SESSION_DETAILS_CACHE_TTL_MS;
+const isFreshSessionsEntry = (fetchedAt: number) => Date.now() - fetchedAt < SESSIONS_CACHE_TTL_MS;
+
+const readStoredSessions = (uid: string): Session[] | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getSessionsStorageKey(uid));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { fetchedAt?: number; data?: Session[] };
+    if (!parsed.fetchedAt || !parsed.data || !isFreshSessionsEntry(parsed.fetchedAt)) {
+      window.sessionStorage.removeItem(getSessionsStorageKey(uid));
+      return null;
+    }
+
+    return parsed.data;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredSessions = (uid: string, data: Session[]) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(
+      getSessionsStorageKey(uid),
+      JSON.stringify({ fetchedAt: Date.now(), data })
+    );
+  } catch {}
+};
+
+const cacheSessions = (uid: string, data: Session[]) => {
+  sessionsCache.set(uid, {
+    fetchedAt: Date.now(),
+    data,
+  });
+  writeStoredSessions(uid, data);
+};
+
+const clearSessionsCache = (uid: string) => {
+  sessionsCache.delete(uid);
+  sessionsRequests.delete(uid);
+  if (typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.removeItem(getSessionsStorageKey(uid));
+    } catch {}
+  }
+};
+
+const patchCachedSession = (uid: string, session: Session) => {
+  const memoryEntry = sessionsCache.get(uid);
+  if (memoryEntry) {
+    const data = memoryEntry.data.map((item) => item.id === session.id ? { ...item, ...session } : item);
+    cacheSessions(uid, data);
+    return;
+  }
+
+  const stored = readStoredSessions(uid);
+  if (stored) {
+    const data = stored.map((item) => item.id === session.id ? { ...item, ...session } : item);
+    cacheSessions(uid, data);
+  }
+};
+
+export const getCachedSessions = (): Session[] | null => {
+  const uid = getCurrentUid();
+  if (!uid) return null;
+
+  const memoryEntry = sessionsCache.get(uid);
+  if (memoryEntry && isFreshSessionsEntry(memoryEntry.fetchedAt)) {
+    return memoryEntry.data;
+  }
+
+  if (memoryEntry) {
+    sessionsCache.delete(uid);
+  }
+
+  const stored = readStoredSessions(uid);
+  if (stored) {
+    sessionsCache.set(uid, { fetchedAt: Date.now(), data: stored });
+    return stored;
+  }
+
+  return null;
+};
+
+const readStoredSessionDetails = (uid: string, sessionId: string): SessionDetails | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(getSessionDetailsStorageKey(uid, sessionId));
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as { fetchedAt?: number; data?: SessionDetails };
+    if (!parsed.fetchedAt || !parsed.data || !isFreshCacheEntry(parsed.fetchedAt)) {
+      window.sessionStorage.removeItem(getSessionDetailsStorageKey(uid, sessionId));
+      return null;
+    }
+
+    return parsed.data;
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredSessionDetails = (uid: string, sessionId: string, data: SessionDetails) => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(
+      getSessionDetailsStorageKey(uid, sessionId),
+      JSON.stringify({ fetchedAt: Date.now(), data })
+    );
+  } catch {
+    // Ignore quota/security errors. The in-memory cache still covers this app run.
+  }
+};
+
+const cacheSessionDetails = (uid: string, sessionId: string, data: SessionDetails) => {
+  sessionDetailsCache.set(getSessionDetailsCacheKey(uid, sessionId), {
+    fetchedAt: Date.now(),
+    data,
+  });
+  patchCachedSession(uid, data.session);
+  writeStoredSessionDetails(uid, sessionId, data);
+};
+
+export const getCachedSessionDetails = (sessionId: string): SessionDetails | null => {
+  const uid = getCurrentUid();
+  if (!uid) return null;
+
+  const cacheKey = getSessionDetailsCacheKey(uid, sessionId);
+  const memoryEntry = sessionDetailsCache.get(cacheKey);
+  if (memoryEntry && isFreshCacheEntry(memoryEntry.fetchedAt)) {
+    return memoryEntry.data;
+  }
+
+  if (memoryEntry) {
+    sessionDetailsCache.delete(cacheKey);
+  }
+
+  const stored = readStoredSessionDetails(uid, sessionId);
+  if (stored) {
+    sessionDetailsCache.set(cacheKey, { fetchedAt: Date.now(), data: stored });
+    return stored;
+  }
+
+  return null;
+};
+
 const isFirebaseMode = (): boolean => {
   return true; // Always use Firebase mode
+};
+
+const getElectronFallbackUser = (): UserProfile | null => {
+  if (typeof window === 'undefined') return null;
+  return window.__CLAIRE_ELECTRON_USER__ || null;
+};
+
+const getCurrentUid = (): string | null => {
+  return auth.currentUser?.uid || getElectronFallbackUser()?.uid || null;
+};
+
+const getElectronDashboardApi = (): any => {
+  if (typeof window === 'undefined') return null;
+  return (window as any).api?.dashboard || null;
 };
 
 const timestampToUnix = (timestamp: Timestamp | any): number => {
@@ -263,10 +441,27 @@ export const searchConversations = async (query: string): Promise<Session[]> => 
   }
 };
 
-export const getSessions = async (): Promise<Session[]> => {
+export const getSessions = async (options: { forceRefresh?: boolean } = {}): Promise<Session[]> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
+
+    if (!options.forceRefresh) {
+      const cached = getCachedSessions();
+      if (cached) return cached;
+
+      const pending = sessionsRequests.get(uid);
+      if (pending) return pending;
+    }
+
+    const request = (async () => {
+    const dashboardApi = getElectronDashboardApi();
+    if (dashboardApi?.getSessions) {
+      const ipcSessions = await dashboardApi.getSessions(uid);
+      const sessions = (Array.isArray(ipcSessions) ? ipcSessions : []).map(session => convertFirestoreSession(session, uid));
+      cacheSessions(uid, sessions);
+      return sessions;
+    }
 
     const firestoreSessions = await FirestoreSessionService.getSessions(uid);
     const sessions = firestoreSessions.map(session => convertFirestoreSession(session, uid));
@@ -293,7 +488,14 @@ export const getSessions = async (): Promise<Session[]> => {
       }
     }));
 
+    cacheSessions(uid, sessions);
     return sessions;
+    })().finally(() => {
+      sessionsRequests.delete(uid);
+    });
+
+    sessionsRequests.set(uid, request);
+    return request;
   } else {
     const response = await apiCall('/api/sessions');
     if (!response.ok) throw new Error('Failed to fetch sessions');
@@ -301,24 +503,61 @@ export const getSessions = async (): Promise<Session[]> => {
   }
 };
 
-export const getSessionDetails = async (sessionId: string): Promise<SessionDetails> => {
+export const getSessionDetails = async (
+  sessionId: string,
+  options: { forceRefresh?: boolean } = {}
+): Promise<SessionDetails> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
-    const session = await FirestoreSessionService.getSession(uid, sessionId);
-    if (!session) throw new Error('Session not found');
+    if (!options.forceRefresh) {
+      const cached = getCachedSessionDetails(sessionId);
+      if (cached) return cached;
 
-    const transcripts = await FirestoreTranscriptService.getTranscripts(uid, sessionId);
-    const aiMessages = await FirestoreAiMessageService.getAiMessages(uid, sessionId);
-    const summary = await FirestoreSummaryService.getSummary(uid, sessionId);
+      const pending = sessionDetailsRequests.get(getSessionDetailsCacheKey(uid, sessionId));
+      if (pending) return pending;
+    }
 
-    return {
-      session: convertFirestoreSession({ id: sessionId, ...session }, uid),
-      transcripts: transcripts.map(convertFirestoreTranscript),
-      ai_messages: aiMessages.map(convertFirestoreAiMessage),
-      summary: summary ? convertFirestoreSummary(summary, sessionId) : null
-    };
+    const dashboardApi = getElectronDashboardApi();
+    if (dashboardApi?.getSessionDetails) {
+      const ipcDetails = await dashboardApi.getSessionDetails(uid, sessionId);
+      if (!ipcDetails?.session) throw new Error('Session not found');
+
+      const details = {
+        session: convertFirestoreSession({ id: sessionId, ...ipcDetails.session }, uid),
+        transcripts: (ipcDetails.transcripts || []).map(convertFirestoreTranscript),
+        ai_messages: (ipcDetails.aiMessages || ipcDetails.ai_messages || []).map(convertFirestoreAiMessage),
+        summary: ipcDetails.summary ? convertFirestoreSummary(ipcDetails.summary, sessionId) : null
+      };
+
+      cacheSessionDetails(uid, sessionId, details);
+      return details;
+    }
+
+    const request = Promise.all([
+      FirestoreSessionService.getSession(uid, sessionId),
+      FirestoreTranscriptService.getTranscripts(uid, sessionId),
+      FirestoreAiMessageService.getAiMessages(uid, sessionId),
+      FirestoreSummaryService.getSummary(uid, sessionId),
+    ]).then(([session, transcripts, aiMessages, summary]) => {
+      if (!session) throw new Error('Session not found');
+
+      const details = {
+        session: convertFirestoreSession({ id: sessionId, ...session }, uid),
+        transcripts: transcripts.map(convertFirestoreTranscript),
+        ai_messages: aiMessages.map(convertFirestoreAiMessage),
+        summary: summary ? convertFirestoreSummary(summary, sessionId) : null
+      };
+
+      cacheSessionDetails(uid, sessionId, details);
+      return details;
+    }).finally(() => {
+      sessionDetailsRequests.delete(getSessionDetailsCacheKey(uid, sessionId));
+    });
+
+    sessionDetailsRequests.set(getSessionDetailsCacheKey(uid, sessionId), request);
+    return request;
   } else {
     const response = await apiCall(`/api/sessions/${sessionId}`);
     if (!response.ok) throw new Error('Failed to fetch session details');
@@ -326,15 +565,20 @@ export const getSessionDetails = async (sessionId: string): Promise<SessionDetai
   }
 };
 
+export const prefetchSessionDetails = async (sessionId: string): Promise<void> => {
+  await getSessionDetails(sessionId).catch(() => undefined);
+};
+
 export const createSession = async (title?: string): Promise<{ id: string }> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
     const sessionId = await FirestoreSessionService.createSession(uid, {
       title: title || 'New Session',
       session_type: 'conversation'
     });
+    clearSessionsCache(uid);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('claire:session-created', {
         detail: {
@@ -364,10 +608,33 @@ export const createSession = async (title?: string): Promise<{ id: string }> => 
 
 export const deleteSession = async (sessionId: string): Promise<void> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
+    const dashboardApi = getElectronDashboardApi();
+    if (dashboardApi?.deleteSession) {
+      const result = await dashboardApi.deleteSession(uid, sessionId);
+      if (result && result.success === false) {
+        throw new Error(result.error || 'Failed to delete session');
+      }
+      clearSessionsCache(uid);
+      sessionDetailsCache.delete(getSessionDetailsCacheKey(uid, sessionId));
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.removeItem(getSessionDetailsStorageKey(uid, sessionId));
+        } catch {}
+      }
+      return;
+    }
+
     await FirestoreSessionService.deleteSession(uid, sessionId);
+    clearSessionsCache(uid);
+    sessionDetailsCache.delete(getSessionDetailsCacheKey(uid, sessionId));
+    if (typeof window !== 'undefined') {
+      try {
+        window.sessionStorage.removeItem(getSessionDetailsStorageKey(uid, sessionId));
+      } catch {}
+    }
   } else {
     const response = await apiCall(`/api/sessions/${sessionId}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete session');
@@ -377,8 +644,9 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
 export const getUserProfile = async (): Promise<UserProfile | null> => {
   if (isFirebaseMode()) {
     const user = auth.currentUser;
+    const electronUser = getElectronFallbackUser();
     if (!user) {
-      return null;
+      return electronUser;
     }
 
     try {
@@ -414,7 +682,7 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
 
 export const updateUserProfile = async (data: { displayName: string }): Promise<void> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
     await FirestoreUserService.updateUser(uid, { displayName: data.displayName });
@@ -429,7 +697,7 @@ export const updateUserProfile = async (data: { displayName: string }): Promise<
 
 export const findOrCreateUser = async (user: UserProfile): Promise<UserProfile> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
     try {
@@ -538,7 +806,7 @@ export const deleteAccount = async (): Promise<void> => {
 
 export const getPresets = async (): Promise<PromptPreset[]> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
     const firestorePresets = await FirestorePromptPresetService.getPresets(uid);
@@ -552,7 +820,7 @@ export const getPresets = async (): Promise<PromptPreset[]> => {
 
 export const createPreset = async (data: { title: string, prompt: string }): Promise<{ id: string }> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
     const presetId = await FirestorePromptPresetService.createPreset(uid, {
@@ -573,7 +841,7 @@ export const createPreset = async (data: { title: string, prompt: string }): Pro
 
 export const updatePreset = async (id: string, data: { title: string, prompt: string }): Promise<void> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
     await FirestorePromptPresetService.updatePreset(uid, id, {
@@ -591,7 +859,7 @@ export const updatePreset = async (id: string, data: { title: string, prompt: st
 
 export const deletePreset = async (id: string): Promise<void> => {
   if (isFirebaseMode()) {
-    const uid = auth.currentUser?.uid;
+    const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
     await FirestorePromptPresetService.deletePreset(uid, id);
@@ -825,20 +1093,21 @@ export interface UserSettings {
   colorTheme?: 'Système' | 'Clair' | 'Sombre'
   screenUse?: boolean
   hideWidget?: boolean
+  autoMeetingDetection?: boolean
   transcriptionLang?: string
   outputLang?: string
   shortcuts?: Array<{ id: string; group: string; label: string; keys: string[] }>
 }
 
 export const getUserSettings = async (): Promise<UserSettings> => {
-  const uid = auth.currentUser?.uid
+  const uid = getCurrentUid()
   if (!uid) return {}
   const userData = await FirestoreUserService.getUser(uid)
   return (userData as any)?.settings || {}
 }
 
 export const updateUserSettings = async (data: Partial<UserSettings>): Promise<void> => {
-  const uid = auth.currentUser?.uid
+  const uid = getCurrentUid()
   if (!uid) throw new Error('No authenticated user')
   const userData = await FirestoreUserService.getUser(uid)
   const currentSettings: UserSettings = (userData as any)?.settings || {}
@@ -852,6 +1121,25 @@ export const deleteAssistant = async (id: string): Promise<void> => {
     headers: await getApiHeaders(),
   })
   if (!response.ok) throw new Error('Failed to delete assistant')
+}
+
+// --- ANALYTICS / MONETIZATION ---
+export const captureAnalyticsEvent = async (event: string, properties: Record<string, unknown> = {}): Promise<void> => {
+  await apiCall('/api/analytics/capture', {
+    method: 'POST',
+    body: JSON.stringify({ event, properties }),
+  }).catch(() => undefined)
+}
+
+export const getRevenueCatStatus = async (): Promise<{
+  configured: boolean
+  hasPro: boolean
+  activeEntitlements: string[]
+  customer?: unknown
+}> => {
+  const response = await apiCall('/api/revenuecat/status')
+  if (!response.ok) throw new Error('Failed to fetch RevenueCat status')
+  return response.json()
 }
 
 // --- KNOWLEDGE BASE API ---

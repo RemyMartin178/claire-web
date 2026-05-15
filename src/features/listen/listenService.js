@@ -369,6 +369,14 @@ class ListenService {
         }
     }
 
+    sendToHeader(channel, data) {
+        const { getPillWindow } = require('../../window/windowManager');
+        const headerWindow = getPillWindow?.();
+        if (headerWindow && !headerWindow.isDestroyed()) {
+            headerWindow.webContents.send(channel, data);
+        }
+    }
+
     /**
      * Set up IPC handlers for enhanced audio features
      */
@@ -430,52 +438,34 @@ class ListenService {
         logger.info('[ListenService] Initialized and ready.');
     }
 
-    async handleListenRequest(listenButtonText) {
+    async handleListenRequest(listenButtonText, options = {}) {
         logger.info('[SEARCH] DEBUG: handleListenRequest called with:', listenButtonText);
+        const { revealListen = true } = options;
 
-        const { windowPool, updateLayout, getPillWindow } = require('../../window/windowManager');
-        const listenWindow = windowPool.get('listen');
-        const header = getPillWindow();
-
-        logger.info('[SEARCH] DEBUG: Windows obtained:', {
-            listenWindow: !!listenWindow,
-            header: !!header
-        });
+        const nextHeaderStateByAction = {
+            Listen: 'inSession',
+            Stop: 'afterSession',
+            Done: 'beforeSession',
+        };
 
         try {
             switch (listenButtonText) {
                 case 'Listen':
-                    logger.info('[ListenService] [SEARCH] DEBUG: Processing "Listen" case');
                     logger.info('[ListenService] [START] Enhanced session start with pre-initialization');
-
-                    logger.info('[SEARCH] DEBUG: About to emit window:requestVisibility');
-                    internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
-                    logger.info('[SEARCH] DEBUG: window:requestVisibility emitted successfully');
-
-                    logger.info('[SEARCH] DEBUG: About to call preInitializeComponents');
-                    // [TOOL] Pre-initialize critical components before session start
+                    if (revealListen) {
+                        internalBridge.emit('window:requestVisibility', { name: 'listen', visible: true });
+                    }
                     await this.preInitializeComponents();
-                    logger.info('[SEARCH] DEBUG: preInitializeComponents completed');
 
-                    logger.info('[SEARCH] DEBUG: About to call initializeSession');
                     const sessionInitialized = await this.initializeSession();
-                    logger.info('[SEARCH] DEBUG: initializeSession returned:', sessionInitialized);
 
                     if (sessionInitialized) {
-                        logger.info('[SEARCH] DEBUG: Session initialized successfully, sending session-state-changed');
-                        listenWindow.webContents.send('session-state-changed', { isActive: true });
-                        logger.info('[SEARCH] DEBUG: session-state-changed sent successfully');
-
-                        // Start audio capture when user actually clicks the listen button
+                        this.sendToRenderer('session-state-changed', { isActive: true });
                         logger.info('[ListenService] Starting audio capture for user-initiated listen request');
-                        logger.info('[SEARCH] DEBUG: About to call sendToRenderer with change-listen-capture-state');
-                        this.sendToRenderer('change-listen-capture-state', { status: "start", provider: this.sttService?.modelInfo?.provider });
-                        logger.info('[SEARCH] DEBUG: change-listen-capture-state sent successfully');
-
+                        this.sendToRenderer('change-listen-capture-state', { status: 'start', provider: this.sttService?.modelInfo?.provider });
                         logger.info('[ListenService] Session successfully started and activated');
                     } else {
-                        logger.error('[ListenService] [SEARCH] DEBUG: Session initialization failed - not activating');
-                        listenWindow.webContents.send('session-state-changed', { isActive: false });
+                        this.sendToRenderer('session-state-changed', { isActive: false });
                         throw new Error('Session initialization failed');
                     }
                     break;
@@ -483,28 +473,27 @@ class ListenService {
                 case 'Stop':
                     logger.info('[ListenService] changeSession to "Stop"');
                     await this.closeSession();
-                    listenWindow.webContents.send('session-state-changed', { isActive: false });
+                    this.sendToRenderer('session-state-changed', { isActive: false });
                     break;
 
                 case 'Done':
                     logger.info('[ListenService] changeSession to "Done"');
                     internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
-                    listenWindow.webContents.send('session-state-changed', { isActive: false });
+                    this.sendToRenderer('session-state-changed', { isActive: false });
                     break;
 
                 default:
                     throw new Error(`[ListenService] unknown listenButtonText: ${listenButtonText}`);
             }
 
-            logger.info('[SEARCH] DEBUG: About to send listen:changeSessionResult success to header');
-            header.webContents.send('listen:changeSessionResult', { success: true });
-            logger.info('[SEARCH] DEBUG: listen:changeSessionResult success sent successfully');
+            this.sendToHeader('listen:changeSessionResult', {
+                success: true,
+                state: nextHeaderStateByAction[listenButtonText] || 'beforeSession',
+            });
 
         } catch (error) {
-            logger.error('[SEARCH] DEBUG: error in handleListenRequest:', { error });
-            logger.error('[SEARCH] DEBUG: About to send listen:changeSessionResult failure to header');
-            header.webContents.send('listen:changeSessionResult', { success: false });
-            logger.error('[SEARCH] DEBUG: listen:changeSessionResult failure sent successfully');
+            logger.error('[ListenService] handleListenRequest error:', error.message);
+            this.sendToHeader('listen:changeSessionResult', { success: false });
             throw error;
         }
     }

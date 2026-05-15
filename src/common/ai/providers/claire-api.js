@@ -1,10 +1,10 @@
-// claire-api.js — routes all AI/STT through renderer.clairia.app (keys stay server-side)
+// claire-api.js — routes all AI/STT through api.clairia.app (keys stay server-side)
 const WebSocket = require('ws');
 const { createLogger } = require('../../services/logger.js');
 
 const logger = createLogger('ClaireAPI');
 
-const RENDERER_URL = process.env.RENDERER_URL || 'https://renderer.clairia.app';
+const API_URL = process.env.CLAIRE_API_URL || 'https://api.clairia.app';
 
 async function getIdToken() {
   try {
@@ -31,7 +31,7 @@ function createLLM({ model = 'gpt-4o' } = {}) {
   return {
     generateContent: async ({ messages, temperature = 0.7, max_tokens } = {}) => {
       const headers = await authHeaders();
-      const res = await fetch(`${RENDERER_URL}/api/ai/complete`, {
+      const res = await fetch(`${API_URL}/api/ai/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({ messages, model, temperature, max_tokens, stream: false }),
@@ -47,7 +47,7 @@ function createStreamingLLM({ model = 'gpt-4o' } = {}) {
   return {
     streamChat: async function* ({ messages, temperature = 0.7, signal } = {}) {
       const headers = await authHeaders();
-      const res = await fetch(`${RENDERER_URL}/api/ai/complete`, {
+      const res = await fetch(`${API_URL}/api/ai/complete`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify({ messages, model, temperature, stream: true }),
@@ -85,12 +85,23 @@ function createStreamingLLM({ model = 'gpt-4o' } = {}) {
 
 async function fetchAssemblyAIToken() {
   const headers = await authHeaders();
-  const res = await fetch(`${RENDERER_URL}/api/token/assemblyai`, {
+  const res = await fetch(`${API_URL}/api/token/assemblyai`, {
     headers,
   });
   if (!res.ok) throw new Error(`Failed to get AssemblyAI token: ${res.status}`);
   const { token } = await res.json();
   return token;
+}
+
+async function createRecallSdkUpload({ window, metadata = {} } = {}) {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_URL}/api/recall/sdk-upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ window, metadata }),
+  });
+  if (!res.ok) throw new Error(`Failed to create Recall SDK upload: ${res.status}`);
+  return await res.json();
 }
 
 async function createSTT({
@@ -159,4 +170,4 @@ async function createSTT({
   });
 }
 
-module.exports = { createLLM, createStreamingLLM, createSTT };
+module.exports = { createLLM, createStreamingLLM, createSTT, createRecallSdkUpload };

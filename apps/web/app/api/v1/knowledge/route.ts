@@ -1,0 +1,93 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+// Get backend URL dynamically from runtime config
+function getBackendUrl(): string {
+  try {
+    // In Electron, config is in temp directory
+    const tempDir = process.env.APPDATA || process.env.TEMP || '/tmp'
+    const configPath = join(tempDir, 'runtime-config.json')
+    const config = JSON.parse(readFileSync(configPath, 'utf-8'))
+    return config.API_URL || 'http://localhost:64952'
+  } catch (error) {
+    console.warn('Failed to read runtime config, using default:', error)
+    return 'http://localhost:64952'
+  }
+}
+
+const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || getBackendUrl()
+
+function forwardAuthHeaders(req: NextRequest): HeadersInit {
+  const incoming = req.headers
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+  const auth = incoming.get('authorization')
+  if (auth) headers['authorization'] = auth
+  const cookie = incoming.get('cookie')
+  if (cookie) headers['cookie'] = cookie
+  const passThroughKeys = [
+    'x-user-id',
+    'x-claire-uid',
+    'x-firebase-token',
+  ]
+  for (const key of passThroughKeys) {
+    const val = incoming.get(key)
+    if (val) headers[key] = val
+  }
+  return headers
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const queryString = searchParams.toString()
+    const url = queryString 
+      ? `${BACKEND_URL}/api/v1/knowledge?${queryString}` 
+      : `${BACKEND_URL}/api/v1/knowledge`
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: forwardAuthHeaders(request),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Backend responded with status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error proxying to backend:', error)
+    return NextResponse.json(
+      { error: 'Backend not available' },
+      { status: 503 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    
+    const response = await fetch(`${BACKEND_URL}/api/v1/knowledge`, {
+      method: 'POST',
+      headers: forwardAuthHeaders(request),
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Backend responded with status: ${response.status}`)
+    }
+
+    const data = await response.json()
+    return NextResponse.json(data)
+  } catch (error) {
+    console.error('Error proxying to backend:', error)
+    return NextResponse.json(
+      { error: 'Backend not available' },
+      { status: 503 }
+    )
+  }
+}

@@ -65,14 +65,15 @@ if (isDev) {
     }
 }
 
-// Claire routes AI/STT through renderer.clairia.app (server-side keys),
+// Claire routes AI/STT through api.clairia.app (server-side keys),
 // so local .env keys are only used as a BYOK fallback for power users.
 console.log('[STARTUP] AI provider: claire-api (server-side, via Vercel proxy)');
 
-const { createDashboardWindow } = require('./window/windowManager.js');
+const { createDashboardWindow, createSplashWindow, closeSplashWindow, getDashboardWindow } = require('./window/windowManager.js');
 
 const listenService = require('./features/listen/listenService');
 const sharedStateService = require('./common/services/sharedStateService');
+const recallService = require('./common/services/recallService');
 
 const { initializeFirebase } = require('./common/services/firebaseClient');
 // const databaseInitializer = require('./common/services/databaseInitializer'); // Phase 1 Fix: SQLite removed
@@ -98,6 +99,7 @@ const sessionRepository = require('./common/repositories/session');
 const modelStateService = require('./common/services/modelStateService');
 
 const featureBridge = require('./bridge/featureBridge');
+const windowReconciler = require('./window/windowReconciler');
 
 const windowBridge = require('./bridge/windowBridge');
 // Import context IPC handlers for context management functionality  
@@ -365,12 +367,64 @@ app.on('web-contents-created', (_, contents) => {
     });
 });
 
+// ── Boot IPC handlers (registered once, before any window loads) ─────────────
+let _bootPhase = 'idle'; // 'idle' | 'booting' | 'done'
+
+function _resolveBoot() {
+    if (_bootPhase === 'done') return;
+    _bootPhase = 'done';
+    logger.info('[Boot] Resolving boot — closing splash, showing dashboard');
+    const dash = getDashboardWindow();
+    if (dash && !dash.isDestroyed()) {
+        dash.show();
+        dash.focus();
+    }
+    setTimeout(() => closeSplashWindow(), 120);
+}
+
+ipcMain.handle('electron-boot:dashboard-ready', () => {
+    logger.info('[Boot] Renderer → dashboardReady');
+    _resolveBoot();
+});
+
+ipcMain.handle('electron-boot:needs-login', () => {
+    logger.info('[Boot] Renderer → needsLogin');
+    _resolveBoot();
+});
+
+ipcMain.handle('electron-boot:login-success', () => {
+    logger.info('[Boot] Renderer → loginSuccess (no-op, auth flow handles navigation)');
+});
+
+async function bootApp() {
+    // Only run on cold start
+    if (_bootPhase !== 'idle') {
+        createDashboardWindow();
+        return;
+    }
+    _bootPhase = 'booting';
+
+    logger.info('[Boot] Cold start — creating splash window');
+    createSplashWindow();
+
+    logger.info('[Boot] Creating dashboard window (hidden)');
+    createDashboardWindow({ skipAutoShow: true });
+
+    // Timeout fallback: if renderer doesn't signal within 15s, force show
+    setTimeout(() => {
+        if (_bootPhase !== 'done') {
+            logger.warn('[Boot] Timeout — forcing boot resolution');
+            _resolveBoot();
+        }
+    }, 15000);
+}
+
 app.whenReady().then(async () => {
 
     // Serve the static Next.js export via app://renderer/
     const rendererDir = app.isPackaged
         ? path.join(process.resourcesPath, 'out')
-        : path.join(__dirname, '..', 'pickleglass_web', 'out');
+        : path.join(__dirname, '..', 'apps', 'renderer', 'out');
 
     protocol.handle('app', (request) => {
         const url = new URL(request.url);
@@ -392,7 +446,17 @@ app.whenReady().then(async () => {
         // SPA fallback: return the requested page HTML (Next.js static export)
         const pageHtml = path.join(rendererDir, filePath.replace(/\/$/, '') + '.html');
         if (fs.existsSync(pageHtml)) return net.fetch('file://' + pageHtml);
-        return net.fetch('file://' + path.join(rendererDir, 'electron-login.html'));
+        const fallbackCandidates = [
+            path.join(rendererDir, 'electron-login.html'),
+            path.join(rendererDir, 'electron-login', 'index.html'),
+            path.join(rendererDir, 'index.html'),
+        ];
+        for (const candidate of fallbackCandidates) {
+            if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                return net.fetch('file://' + candidate);
+            }
+        }
+        return new Response('Renderer page not found', { status: 404 });
     });
 
     // Allow app://renderer to call app.clairia.app APIs without CORS errors
@@ -441,41 +505,18 @@ app.whenReady().then(async () => {
             await authService.initialize();
             logger.info('[Index] DEBUG: authService.initialize() completed');
 
-            // --- DECRYPTION MIGRATION INJECTION ---
-            const waitForUserReady = async (maxAttempts = 15) => {
-                for (let i = 0; i < maxAttempts; i++) {
-                    const id = authService.getCurrentUserId ? authService.getCurrentUserId() : (authService.getCurrentUser()?.uid);
-                    // Only start migration for real Firebase UIDs, skip for null or default_user
-                    if (id && id !== 'default_user') {
-                        // Ensure encryption key is also initialized
-                        const encryptionService = require('./common/services/encryptionService');
-                        try {
-                            await encryptionService.initializeKey(id);
-                            return id;
-                        } catch (e) {
-                            logger.warn(`[Index] Encryption key for ${id} not ready yet (attempt ${i + 1}): ${e.message}`);
-                        }
-                    } else if (id === 'default_user') {
-                        // Skip migration for default local user
-                        return 'SKIP';
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 800));
+            if (process.env.RUN_DECRYPTION_MIGRATION === 'true') {
+                const id = authService.getCurrentUserId ? authService.getCurrentUserId() : (authService.getCurrentUser()?.uid);
+                if (id && id !== 'default_user') {
+                    logger.info(`[Migration] Starting opt-in decryption migration for userUID: ${id}`);
+                    const { decryptUserData } = require('./scripts/decrypt_firestore');
+                    decryptUserData(id).then(() => {
+                        logger.info(`[Migration] Decryption migration attempt finished for user: ${id}`);
+                    }).catch((error) => {
+                        logger.warn('[Migration] Opt-in migration failed', { error: error.message });
+                    });
                 }
-                return null;
-            };
-
-            const uidResult = await waitForUserReady();
-            if (uidResult && uidResult !== 'SKIP') {
-                logger.info(`[Migration] Starting decryption migration for userUID: ${uidResult}`);
-                const { decryptUserData } = require('./scripts/decrypt_firestore');
-                await decryptUserData(uidResult);
-                logger.info(`[Migration] Decryption migration attempt finished for user: ${uidResult}`);
-            } else if (uidResult === 'SKIP') {
-                logger.info('[Migration] Bypassing decryption migration for default local user.');
-            } else {
-                logger.warn('[Migration] Skipped migration: No real user or key ready after timeout.');
             }
-            // --------------------------------------
 
         } catch (error) {
             logger.error('[Index] ERROR: authService.initialize() failed:', error.message);
@@ -496,6 +537,7 @@ app.whenReady().then(async () => {
         } catch (err) {
             logger.warn('[Index] sharedStateService.init() failed (continuing):', err.message);
         }
+        windowReconciler.initialize();
 
         logger.info('[Index] DEBUG: About to initialize featureBridge and windowBridge...');
         featureBridge.initialize();  // [Korean comment translated]: featureBridge Initialize
@@ -512,9 +554,8 @@ app.whenReady().then(async () => {
 
         ensureAuxiliaryWebStackStarted().catch(() => {});
 
-        // Onboarding window opens first (1100×720 frameless).
-        // It pre-warms the hidden dashboard window and closes itself once auth is done.
-        createDashboardWindow();
+        // ── Boot orchestration (Cluely-style splash) ──────────────────────────
+        await bootApp();
 
     } catch (err) {
         logger.error('>>> [index.js] Database initialization failed - some features may not work', {
@@ -583,11 +624,16 @@ app.on('before-quit', async (event) => {
             logger.warn('[Shutdown] sharedStateService.flush() failed:', e.message);
         }
 
-        // 1. Stop audio capture first (immediate)
+        // 1. Stop Recall SDK before closing local audio/session services
+        try { await recallService.shutdown(); } catch (e) {
+            logger.warn('[Shutdown] recallService.shutdown() failed:', e.message);
+        }
+
+        // 2. Stop audio capture
         await listenService.closeSession();
         logger.info('[Shutdown] Audio capture stopped');
 
-        // 2. End all active sessions (database operations) - with error handling
+        // 3. End all active sessions (database operations) - with error handling
         try {
             await sessionRepository.endAllActiveSessions();
             logger.info('[Shutdown] Active sessions ended');
@@ -1166,7 +1212,7 @@ async function startWebStack() {
 
     const staticDir = app.isPackaged
         ? path.join(process.resourcesPath, 'out')
-        : path.resolve(__dirname, '..', 'pickleglass_web', 'out');
+        : path.resolve(__dirname, '..', 'apps', 'renderer', 'out');
     const devFrontendOrigin = 'http://127.0.0.1:3000';
     let useLiveDevFrontend = false;
 
@@ -1328,9 +1374,14 @@ async function startWebStack() {
     if (!useLiveDevFrontend) {
         frontSrv.use((req, res, next) => {
             if (req.path.indexOf('.') === -1 && req.path !== '/') {
-                const htmlPath = path.join(staticDir, req.path + '.html');
-                if (fs.existsSync(htmlPath)) {
-                    return res.sendFile(htmlPath);
+                const htmlCandidates = [
+                    path.join(staticDir, req.path + '.html'),
+                    path.join(staticDir, req.path, 'index.html'),
+                ];
+                for (const htmlPath of htmlCandidates) {
+                    if (fs.existsSync(htmlPath)) {
+                        return res.sendFile(htmlPath);
+                    }
                 }
             }
             next();

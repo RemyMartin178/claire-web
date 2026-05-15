@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, signInWithCustomToken, signOut, type User } from "firebase/auth"
 import { auth } from "../utils/firebase"
 import { getUserProfile, type UserProfile } from "../utils/api"
+import { identifyPostHog, resetPostHog } from "../lib/posthog"
 
 interface AuthContextType {
   user: UserProfile | null
@@ -34,6 +35,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
+  const applyElectronUserState = (state?: any) => {
+    const source = state?.user || state
+    const isLoggedIn = Boolean(state?.user || state?.isLoggedIn)
+    if (!isLoggedIn || !source?.uid) return false
+
+    const email = source.email || 'no-email@example.com'
+    const displayName = source.displayName || source.display_name || email.split('@')[0] || 'Utilisateur'
+    const electronProfile: UserProfile = {
+      uid: source.uid,
+      email,
+      display_name: displayName,
+      isAdmin: source.isAdmin === true || state?.isAdmin === true,
+    }
+
+    if (typeof window !== 'undefined') {
+      ;(window as any).__CLAIRE_ELECTRON_USER__ = electronProfile
+    }
+    setUser(electronProfile)
+    setIsAuthenticated(true)
+    setIsAdmin(electronProfile.isAdmin === true)
+    identifyPostHog(electronProfile)
+    setLoading(false)
+    return true
+  }
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__claireElectronSignIn = async (customToken: string) => {
@@ -47,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (typeof window !== 'undefined') {
         delete (window as any).__claireElectronSignIn
         delete (window as any).__claireElectronSignOut
+        delete (window as any).__CLAIRE_ELECTRON_USER__
       }
     }
   }, [])
@@ -62,6 +89,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       sessionStorage.removeItem('manuallyLoggedOut')
     }
 
+    const loadElectronUser = async () => {
+      if (typeof window === 'undefined') return false
+      try {
+        const state = await (window as any).api?.dashboard?.getUser?.()
+        return applyElectronUserState(state)
+      } catch {
+        return false
+      }
+    }
+
     const initTimer = setTimeout(() => {
       const currentUser = auth.currentUser
       if (currentUser) {
@@ -73,8 +110,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(false)
         setIsAdmin(false)
         setLoading(false)
+      } else {
+        void loadElectronUser()
       }
     }, 100)
+
+    const handleElectronUserChanged = (state?: any) => {
+      if (wasManuallyLoggedOut()) return
+      applyElectronUserState(state)
+    }
+
+    const unsubscribeElectronUser =
+      typeof window !== 'undefined'
+        ? (window as any).api?.dashboard?.onUserChanged?.(handleElectronUserChanged)
+        : undefined
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -88,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null)
         setIsAuthenticated(false)
         setIsAdmin(false)
+        resetPostHog()
         setLoading(false)
         return
       } else {
@@ -96,16 +146,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // redirect to /electron-login (avoids the onboarding flash).
         const isElectron = typeof window !== 'undefined' && Boolean((window as any).api?.dashboard?.getUser)
         if (isElectron) {
+          const electronUserApplied = await loadElectronUser()
+          if (electronUserApplied) return
+
           setTimeout(() => {
             if (!auth.currentUser) {
               setUser(null)
               setIsAuthenticated(false)
+              resetPostHog()
               setLoading(false)
             }
           }, 4000)
         } else {
           setUser(null)
           setIsAuthenticated(false)
+          resetPostHog()
           setLoading(false)
         }
       }
@@ -114,6 +169,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       clearTimeout(initTimer)
       unsubscribe()
+      if (typeof unsubscribeElectronUser === 'function') {
+        unsubscribeElectronUser()
+      }
     }
   }, [])
 
@@ -133,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Définir l'utilisateur immédiatement
       setUser(fallbackProfile)
       setIsAuthenticated(true)
+      identifyPostHog(fallbackProfile)
       // On garde loading à true jusqu'à la fin de la récupération du profil Firestore
       
       // Ensuite, essayer de récupérer le profil complet en arrière-plan
@@ -140,6 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userProfile = await getUserProfile()
         if (userProfile) {
           setUser(userProfile)
+          identifyPostHog(userProfile)
           const adminFlag = userProfile.isAdmin === true
           setIsAdmin(adminFlag)
         }
@@ -153,6 +213,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null)
       setIsAuthenticated(false)
       setIsAdmin(false)
+      resetPostHog()
       setLoading(false)
     }
   }

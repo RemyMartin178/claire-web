@@ -19,54 +19,19 @@ const CSS = `
 
 .ask-view-root {
   display: flex; flex-direction: column; width: 100%;
-  /* Cluely font: Geist Variable, sans-serif */
   font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased; color: white;
-  /* Cluely dark glass: bg-[hsla(252,10%,10%,0.8)] equivalent */
-  background: hsla(252, 10%, 10%, 0.82);
+  background: rgba(11,11,14,0.88);
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.09);
   backdrop-filter: blur(28px) saturate(190%); -webkit-backdrop-filter: blur(28px) saturate(190%);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.05) inset;
   overflow: hidden; position: relative;
 }
 .ask-view-root::before {
   content: ''; position: absolute; top: 0; left: 14px; right: 14px; height: 1px; pointer-events: none; z-index: 2;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10) 40%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.10) 60%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.13) 40%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.13) 60%, transparent);
 }
 .ask-view-root * { font-family: inherit; cursor: default; user-select: none; }
-
-/* === CLUELY-STYLE TOP TABS ("Assist · What should I say? · Follow-up questions · Recap") === */
-.ask-top-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 10px 12px 0;
-  flex-shrink: 0;
-}
-.ask-tab-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.45);
-  cursor: pointer;
-  transition: color 0.14s, background 0.14s;
-  white-space: nowrap;
-}
-.ask-tab-item:hover { color: rgba(255,255,255,0.80); background: rgba(255,255,255,0.06); }
-.ask-tab-item.active { color: rgba(255,255,255,0.92); background: rgba(255,255,255,0.08); }
-.ask-tab-item svg { opacity: 0.7; flex-shrink: 0; }
-.ask-tab-item.active svg { opacity: 1; }
-.ask-tab-dot {
-  width: 3px; height: 3px; border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  flex-shrink: 0;
-  margin: 0 2px;
-}
 
 /* === RESPONSE PANEL === */
 .ask-response-panel {
@@ -340,33 +305,25 @@ const CSS = `
 .ask-suggestion-chip:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.92); border-color: rgba(255,255,255,0.20); }
 .ask-suggestion-chip.sending { animation: ask-chip-send 0.22s ease-out forwards; pointer-events: none; }
 
-/* === INPUT BAR === */
-/* Cluely: flex items-end gap-2 px-2 py-2.5 pr-11 + footer with Smart/ellipsis/send */
+/* === FLOATING BAR === */
 .ask-bar {
-  display: flex; flex-direction: column;
+  display: flex; align-items: center; gap: 8px;
   background: transparent;
   border: none;
   box-shadow: none;
-  padding: 2px 0 0;
+  padding: 8px 10px 10px 12px;
   position: relative;
 }
 
-/* Textarea row — matches Cluely's ThreadPrimitive textarea */
-.ask-bar-input-row {
-  display: flex; align-items: flex-end; gap: 6px;
-  padding: 6px 10px 6px 12px;
-}
-
-/* Cluely: block w-full resize-none bg-transparent px-2 py-2.5 font-medium text-[13px] text-foreground outline-none */
 .ask-text-input {
   flex: 1; background: transparent; border: none; outline: none;
-  color: rgba(255,255,255,0.88); font-size: 13px; font-family: inherit; font-weight: 500;
-  padding: 4px 0; min-width: 0; resize: none;
+  color: rgba(255,255,255,0.88); font-size: 13px; font-family: inherit; font-weight: 400;
+  padding: 2px 0; min-width: 0;
   user-select: text !important; cursor: text !important;
   -webkit-appearance: none;
-  box-shadow: none; line-height: 1.5;
+  box-shadow: none;
 }
-.ask-text-input::placeholder { color: rgba(255,255,255,0.28); font-weight: 400; }
+.ask-text-input::placeholder { color: rgba(255,255,255,0.28); }
 .ask-text-input:-webkit-autofill,
 .ask-text-input:-webkit-autofill:hover,
 .ask-text-input:-webkit-autofill:focus {
@@ -376,47 +333,144 @@ const CSS = `
   caret-color: rgba(255,255,255,0.88);
 }
 
-/* Footer row: Smart · ... · send */
-.ask-bar-footer {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 10px 10px 12px;
-  gap: 6px;
-}
-.ask-bar-footer-left { display: flex; align-items: center; gap: 4px; }
-.ask-bar-footer-right { display: flex; align-items: center; gap: 6px; }
 
-/* "Smart" mode label (like Cluely's mode indicator) */
-.ask-smart-label {
-  display: flex; align-items: center; gap: 4px;
-  padding: 3px 8px; border-radius: 9999px;
-  font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.40);
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-  cursor: default; transition: color 0.12s, background 0.12s;
-}
-.ask-smart-label:hover { color: rgba(255,255,255,0.70); background: rgba(255,255,255,0.09); }
-
-/* Ellipsis button (Cluely: "Open more chat actions") */
-.ask-more-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 9999px;
-  background: transparent; border: none;
-  color: rgba(255,255,255,0.40); cursor: pointer;
-  transition: background 0.15s, color 0.15s, transform 0.15s;
-}
-.ask-more-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); transform: scale(1.05); }
-
-/* Cluely send button: rounded-full bg-[linear-gradient(#0544a9,#022c70)] */
 .ask-send-btn {
-  width: 28px; height: 28px; flex-shrink: 0; border-radius: 9999px;
-  background: linear-gradient(#0544a9, #022c70);
-  border: none; color: white; cursor: pointer;
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+  background: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0, #0c26a8 100%);
+  border: none; color: #CBE3FF; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: opacity 0.12s, transform 0.12s;
-  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014,
-              0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
+  box-shadow: 0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6ff;
 }
-.ask-send-btn:hover { transform: scale(1.05); filter: brightness(1.25); }
+.ask-send-btn:hover { opacity: 0.88; transform: scale(0.96); }
 .ask-send-btn svg { width: 13px; height: 13px; }
+
+/* === CLUELY-STYLE ASK PANEL === */
+.ask-view-root {
+  min-height: 168px;
+  background: rgba(11,11,14,0.88);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.60), 0 1px 0 rgba(255,255,255,0.05) inset;
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+}
+.ask-view-root::before {
+  display: block;
+  left: 14px; right: 14px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10) 40%, rgba(255,255,255,0.14) 50%, rgba(255,255,255,0.10) 60%, transparent);
+}
+.ask-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 10px 6px;
+  min-height: 40px;
+  overflow: hidden;
+}
+.ask-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 100px;
+  background: transparent;
+  color: rgba(255,255,255,0.62);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer !important;
+  transition: background 0.15s ease, color 0.12s ease;
+}
+.ask-mode-btn:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.92); }
+.ask-mode-btn svg {
+  width: 13px;
+  height: 13px;
+  color: currentColor;
+}
+.ask-mode-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  flex: 0 0 auto;
+  margin: 0 2px;
+}
+.ask-suggestions { display: none; }
+.ask-composer {
+  margin: 0 10px 10px;
+  min-height: 80px;
+  border-radius: 8px;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  box-shadow: inset 0 1px rgba(255,255,255,0.04);
+  display: flex;
+  flex-direction: column;
+}
+.ask-bar {
+  min-height: 44px;
+  align-items: flex-start;
+  padding: 10px 10px 4px 12px;
+}
+.ask-text-input {
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.88);
+  line-height: 1.5;
+}
+.ask-text-input::placeholder { color: rgba(255,255,255,0.32); }
+.ask-send-btn {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(#0544a9,#022c70);
+  box-shadow: 0 0 0 0.5px #0c44a1, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
+  margin-top: 2px;
+}
+.ask-send-btn svg { width: 11px; height: 11px; }
+.ask-composer-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+.ask-smart-chip {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.72);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer !important;
+  transition: background 0.12s, color 0.12s;
+}
+.ask-smart-chip:hover { background: rgba(255,255,255,0.16); color: #fff; }
+.ask-smart-chip.active {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+}
+.ask-more-btn {
+  width: 28px;
+  height: 24px;
+  border: 0;
+  border-radius: 100px;
+  background: transparent;
+  color: rgba(255,255,255,0.50);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer !important;
+  transition: color 0.12s;
+}
+.ask-more-btn:hover { color: rgba(255,255,255,0.88); }
+.ask-more-btn.active { color: #8fd4bf; }
+.ask-composer .ask-web-btn,
+.ask-composer .ask-think-btn {
+  display: none;
+}
 
 /* === MATH BLOCKS === */
 .ask-math-block {
@@ -502,6 +556,51 @@ const SUGGESTED_QUESTIONS = [
   "Donne-moi un résumé rapide",
 ];
 
+const CLUELY_ACTIONS = [
+  {
+    label: 'Assist',
+    prompt: 'Assist me based on my screen and the current conversation.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1.7 5.1L19 10l-5.3 1.9L12 17l-1.7-5.1L5 10l5.3-1.9L12 3z"/>
+        <path d="M5 3v4"/>
+        <path d="M3 5h4"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'What should I say?',
+    prompt: 'What should I say next? Answer with only the words I should say.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"/>
+        <path d="M19 11l.7 2.3L22 14l-2.3.7L19 17l-.7-2.3L16 14l2.3-.7L19 11z"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Follow-up questions',
+    prompt: 'Suggest concise follow-up questions for this screen or conversation.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="5" width="16" height="13" rx="2"/>
+        <path d="M8 9h8"/>
+        <path d="M8 13h5"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Recap',
+    prompt: 'Recap the current screen or conversation clearly and briefly.',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12a9 9 0 1 1-3-6.7"/>
+        <path d="M21 3v6h-6"/>
+      </svg>
+    ),
+  },
+];
+
 export default function AskView() {
   const [currentResponse, setCurrentResponse] = useState('');
   const [currentQuestion, setCurrentQuestion] = useState('');
@@ -520,8 +619,6 @@ export default function AskView() {
   const [quotaRemaining, setQuotaRemaining] = useState(null); // null = unlimited
   const [proUnlocked, setProUnlocked] = useState(false);
   const [proHiding, setProHiding] = useState(false);
-  // Cluely-style top tabs: Assist · What should I say? · Follow-up questions · Recap
-  const [activeTab, setActiveTab] = useState('assist');
 
   const isQuotaExceededRef = useRef(false);
   const responseContainerRef = useRef(null);
@@ -578,7 +675,7 @@ export default function AskView() {
     if (!window.api) return;
     isResizingRef.current = true;
     if (document.querySelector('.mh-root.overlay-mode') || document.body.classList.contains('has-glass')) {
-      window.dispatchEvent(new CustomEvent('local-panel-resize', { detail: { name: 'ask', width: 600, height: targetHeight } }));
+      window.dispatchEvent(new CustomEvent('local-panel-resize', { detail: { name: 'ask', width: 670, height: targetHeight } }));
     } else {
       window.api.askView.adjustWindowHeight(targetHeight);
     }
@@ -589,15 +686,15 @@ export default function AskView() {
     if (!window.api) return;
     requestAnimationFrame(() => {
       const panelEl = document.querySelector('.ask-response-panel');
-      const suggestEl = document.querySelector('.ask-suggestions');
-      const barEl = document.querySelector('.ask-bar');
+      const tabsEl = document.querySelector('.ask-mode-tabs');
+      const composerEl = document.querySelector('.ask-composer');
       const panelHeight = panelEl ? panelEl.offsetHeight : 0;
-      const suggestHeight = suggestEl ? suggestEl.offsetHeight : 0;
-      const barHeight = barEl ? barEl.offsetHeight : 0;
+      const tabsHeight = tabsEl ? tabsEl.offsetHeight : 0;
+      const composerHeight = composerEl ? composerEl.offsetHeight : 0;
       const gap = panelEl ? 8 : 0;
-      const idealHeight = panelHeight + gap + suggestHeight + barHeight + 4;
+      const idealHeight = panelHeight + gap + tabsHeight + composerHeight + 4;
       // Quota overlay needs extra space so CTA is always fully visible
-      const minHeight = isQuotaExceededRef.current ? 320 : 50;
+      const minHeight = isQuotaExceededRef.current ? 320 : 168;
       requestWindowResize(Math.min(700, Math.max(minHeight, idealHeight)));
     });
   }, [requestWindowResize]);
@@ -833,73 +930,23 @@ export default function AskView() {
     }, 220);
   }, [handleSendText]);
 
-  // Cluely-style tab quick-send handlers
-  const handleTabAssist = useCallback(() => {
-    setActiveTab('assist');
-    handleSendText('Based on what\'s on my screen, infer and provide me with the best information to help me at the current moment.');
-  }, [handleSendText]);
-  const handleTabWhatSay = useCallback(() => {
-    setActiveTab('whatsay');
-    handleSendText('Que devrais-je dire ensuite ? Donne-moi uniquement les mots à dire.');
-  }, [handleSendText]);
-  const handleTabFollowup = useCallback(() => {
-    setActiveTab('followup');
-    handleSendText('Suggère deux questions de suivi que je peux poser pour faire avancer la conversation. Présente sous forme de deux points.');
-  }, [handleSendText]);
-  const handleTabRecap = useCallback(() => {
-    setActiveTab('recap');
-    handleSendText('Récapitule ce qui vient de se passer dans la conversation.');
-  }, [handleSendText]);
-
   return (
     <div className="ask-view-root">
-
-      {/* ── Cluely-style top tabs: Assist · What should I say? · Follow-up questions · Recap ── */}
-      <div className="ask-top-tabs">
-        <div
-          className={`ask-tab-item${activeTab === 'assist' ? ' active' : ''}`}
-          onClick={handleTabAssist}
-        >
-          {/* Sparkles icon */}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3L13.9 8.1L19 10L13.9 11.9L12 17L10.1 11.9L5 10L10.1 8.1L12 3Z"/>
-          </svg>
-          Assister
-        </div>
-        <div className="ask-tab-dot" />
-        <div
-          className={`ask-tab-item${activeTab === 'whatsay' ? ' active' : ''}`}
-          onClick={handleTabWhatSay}
-        >
-          {/* Wand icon */}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 4V2M15 16v-2M8 9h2M20 9h2M17.8 11.8L19 13M17.8 6.2L19 5M3 21l9-9M12.2 6.2L11 5"/>
-          </svg>
-          Que dire ?
-        </div>
-        <div className="ask-tab-dot" />
-        <div
-          className={`ask-tab-item${activeTab === 'followup' ? ' active' : ''}`}
-          onClick={handleTabFollowup}
-        >
-          {/* Message icon */}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            <path d="M8 10h.01M12 10h.01M16 10h.01"/>
-          </svg>
-          Questions
-        </div>
-        <div className="ask-tab-dot" />
-        <div
-          className={`ask-tab-item${activeTab === 'recap' ? ' active' : ''}`}
-          onClick={handleTabRecap}
-        >
-          {/* Rotate icon */}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-          Récap
-        </div>
+      <div className="ask-mode-tabs">
+        {CLUELY_ACTIONS.map((action, index) => (
+          <React.Fragment key={action.label}>
+            <button
+              className="ask-mode-btn"
+              onClick={() => !isBlocked && handleSendText(action.prompt)}
+              disabled={isBlocked}
+              title={action.label}
+            >
+              {action.icon}
+              <span>{action.label}</span>
+            </button>
+            {index < CLUELY_ACTIONS.length - 1 && <span className="ask-mode-dot" />}
+          </React.Fragment>
+        ))}
       </div>
 
       {hasContent && (
@@ -992,90 +1039,88 @@ export default function AskView() {
         </div>
       )}
 
-      {!hasContent && (
-        <div className="ask-suggestions" style={{ opacity: suggestionsVisible ? 1 : 0, transition: 'opacity 0.25s ease' }}>
-          {visibleSuggestions.map((q, i) => (
-            <div
-              key={`${suggestionOffset}-${i}`}
-              className={`ask-suggestion-chip${animatingChip === q ? ' sending' : ''}`}
-              onClick={() => handleChipClick(q)}
-            >
-              {q}
-            </div>
-          ))}
-        </div>
-      )}
-
+      <div className="ask-composer">
       <div className="ask-bar">
-        {/* Input row */}
-        <div className="ask-bar-input-row">
-          <input
-            type="text"
-            className="ask-text-input"
-            placeholder={isBlocked ? "Limite atteinte — Passez à Pro" : "Posez votre question…"}
-            ref={textInputRef}
-            onKeyDown={handleTextKeydown}
-            disabled={isBlocked}
-            autoComplete="new-password"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            inputMode="none"
-            data-lpignore="true"
-            data-form-type="other"
-            style={isBlocked ? { opacity: 0.35, cursor: 'default' } : undefined}
-          />
-        </div>
-        {/* Footer row: Smart · modes · send — matches Cluely layout */}
-        <div className="ask-bar-footer">
-          <div className="ask-bar-footer-left">
-            {/* "Smart" mode indicator */}
-            <button
-              className={`ask-smart-label${maxMode ? ' active' : ''}`}
-              style={isBlocked ? { opacity: 0.32, cursor: 'default' } : undefined}
-              onClick={() => !isBlocked && setMaxMode(prev => !prev)}
-              title="Mode Réflexion"
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 18h6M10 22h4"/><path d="M15 14c.2-1 .7-1.7 1.5-2.5A5 5 0 1 0 7.5 11.5c.8.8 1.3 1.5 1.5 2.5"/>
-              </svg>
-              Smart
-            </button>
-          </div>
-          <div className="ask-bar-footer-right">
-            {/* Web search button */}
-            <button
-              className={`ask-web-btn${webSearchMode ? ' active' : ''}`}
-              title="Recherche web"
-              disabled={isBlocked}
-              style={isBlocked ? { opacity: 0.32, cursor: 'default' } : undefined}
-              onClick={() => !isBlocked && setWebSearchMode(prev => !prev)}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
-              </svg>
-            </button>
-            {/* Ellipsis — more actions (Cluely: "Open more chat actions") */}
-            <button className="ask-more-btn" title="Plus d'options">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>
-              </svg>
-            </button>
-            {/* Send button — Cluely: rounded-full bg-[linear-gradient(#0544a9,#022c70)] */}
-            <button
-              className="ask-send-btn"
-              onClick={() => handleSendText()}
-              disabled={isBlocked}
-              style={isBlocked ? { opacity: 0.30, cursor: 'default' } : undefined}
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" width="13" height="13">
-                <path d="M3.105 2.288a.75.75 0 0 0-.826.95l1.414 4.926A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.897 28.897 0 0 0 15.293-7.155.75.75 0 0 0 0-1.114A28.897 28.897 0 0 0 3.105 2.288Z"/>
-              </svg>
-            </button>
-          </div>
-        </div>
+        <input
+          type="text"
+          className="ask-text-input"
+          placeholder={isBlocked ? "Limit reached - Upgrade to Pro" : "Ask about your screen or conversation, or Ctrl Enter for Assist"}
+          ref={textInputRef}
+          onKeyDown={handleTextKeydown}
+          disabled={isBlocked}
+          autoComplete="new-password"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          inputMode="none"
+          data-lpignore="true"
+          data-form-type="other"
+          style={isBlocked ? { opacity: 0.35, cursor: 'default' } : undefined}
+        />
+        {/* Web search button — icon only */}
+        <button
+          className={`ask-web-btn${webSearchMode ? ' active' : ''}`}
+          title="Recherche web"
+          disabled={isBlocked}
+          style={isBlocked ? { opacity: 0.32, cursor: 'default' } : undefined}
+          onClick={() => !isBlocked && setWebSearchMode(prev => !prev)}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+          </svg>
+        </button>
+        {/* Think button — best reasoning model, icon only */}
+        <button
+          className={`ask-think-btn${maxMode ? ' active' : ''}`}
+          title="Mode Réflexion — meilleur modèle de raisonnement"
+          disabled={isBlocked}
+          style={isBlocked ? { opacity: 0.32, cursor: 'default' } : undefined}
+          onClick={() => !isBlocked && setMaxMode(prev => !prev)}
+        >
+          {/* Lightbulb with rays */}
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="19.78" y1="4.22" x2="18.36" y2="5.64"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <path d="M9 18h6M10 22h4"/>
+            <path d="M15 14c.2-1 .7-1.7 1.5-2.5A5 5 0 1 0 7.5 11.5c.8.8 1.3 1.5 1.5 2.5"/>
+          </svg>
+        </button>
+        <button
+          className="ask-send-btn"
+          onClick={() => handleSendText()}
+          disabled={isBlocked}
+          style={isBlocked ? { opacity: 0.30, cursor: 'default' } : undefined}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </div>
+      <div className="ask-composer-footer">
+        <button
+          className={`ask-smart-chip${maxMode ? ' active' : ''}`}
+          onClick={() => !isBlocked && setMaxMode(prev => !prev)}
+          disabled={isBlocked}
+          title="Smart"
+        >
+          Smart
+        </button>
+        <button
+          className={`ask-more-btn${webSearchMode ? ' active' : ''}`}
+          onClick={() => !isBlocked && setWebSearchMode(prev => !prev)}
+          disabled={isBlocked}
+          title="Web search"
+        >
+          ...
+        </button>
+      </div>
       </div>
     </div>
   );

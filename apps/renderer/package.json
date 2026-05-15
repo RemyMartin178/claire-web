@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:unit": "vitest run",
     "favicon": "node scripts/generate-favicon.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
@@ -24,8 +25,10 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.7",
+    "@revenuecat/purchases-js": "^1.39.1",
     "@sentry/nextjs": "^10.47.0",
     "@stripe/stripe-js": "^8.0.0",
+    "@tanstack/react-query": "^5.100.9",
     "@types/sqlite3": "^3.1.11",
     "@vercel/kv": "^3.0.0",
     "autoprefixer": "^10.4.16",
@@ -50,6 +53,7 @@
     "pg": "^8.16.3",
     "pickle-glass": "file:..",
     "postcss": "^8.4.32",
+    "posthog-js": "^1.372.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
@@ -72,6 +76,7 @@
     "eslint": "^8",
     "eslint-config-next": "^15",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }

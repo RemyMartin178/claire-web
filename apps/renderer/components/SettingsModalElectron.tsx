@@ -20,6 +20,7 @@ import { auth, storage } from '@/utils/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential, updateProfile } from 'firebase/auth';
 import Avatar from './Avatar';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -156,13 +157,17 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const { setTheme } = useTheme();
   const [screenUse, setScreenUse] = useState(false);
   const [hideWidget, setHideWidget] = useState(false);
+  const [autoMeetingDetection, setAutoMeetingDetection] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   // Mic
   const [micDeviceName, setMicDeviceName] = useState('Microphone par défaut');
   const [isMicTesting, setIsMicTesting] = useState(false);
+  const [micStatus, setMicStatus] = useState('Connexion au microphone...');
   const micLevelRef = useRef<HTMLDivElement | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const micAnimRef = useRef<number>(0);
+  const micSmoothedRef = useRef<number>(0);
+  const micHistoryRef = useRef<number[]>(Array.from({ length: 17 }, () => 0));
 
   // Billing
   const [billingAnnual, setBillingAnnual] = useState(true);
@@ -224,6 +229,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       if (s.colorTheme) setColorTheme(s.colorTheme);
       if (s.screenUse !== undefined) setScreenUse(s.screenUse);
       if (s.hideWidget !== undefined) setHideWidget(s.hideWidget);
+      if (s.autoMeetingDetection !== undefined) setAutoMeetingDetection(s.autoMeetingDetection);
       if (s.transcriptionLang) setTranscriptionLang(s.transcriptionLang);
       if (s.outputLang) setOutputLang(s.outputLang);
       if (s.shortcuts?.length) setShortcutsList(s.shortcuts);
@@ -346,8 +352,15 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   // ── CONTENT PROTECTION (détectable toggle) ────────────────────────────────
   useEffect(() => {
     const api = (window as any).api;
-    void api?.dashboard?.setContentProtection?.(!detectable);
-  }, [detectable]);
+    if (api?.sharedState?.patch) {
+      void api.sharedState.patch({
+        contentProtectionEnabled: !detectable,
+        autoMeetingDetectionEnabled: autoMeetingDetection,
+      });
+    } else {
+      void api?.dashboard?.setContentProtection?.(!detectable);
+    }
+  }, [detectable, autoMeetingDetection]);
 
   // ── ESC + SCROLL LOCK ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -444,54 +457,65 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
   const handleMicTest = async () => {
     if (isMicTesting) {
-      // Stop
+      cancelAnimationFrame(micAnimRef.current);
       micStreamRef.current?.getTracks().forEach(t => t.stop());
       micStreamRef.current = null;
-      cancelAnimationFrame(micAnimRef.current);
+      micSmoothedRef.current = 0;
+      micHistoryRef.current = Array.from({ length: 17 }, () => 0);
       if (micLevelRef.current) {
-        Array.from(micLevelRef.current.children).forEach((bar) => {
-          (bar as HTMLElement).style.backgroundColor = '#e5e7eb';
+        Array.from(micLevelRef.current.children).forEach(bar => {
+          (bar as HTMLElement).style.height = '8px';
+          (bar as HTMLElement).style.opacity = '0.2';
         });
       }
       setIsMicTesting(false);
       return;
     }
+    setMicStatus('Connexion au microphone...');
+    setIsMicTesting(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
-      // Get device name
       const devices = await navigator.mediaDevices.enumerateDevices();
-      const mic = devices.find(d => d.kind === 'audioinput');
+      const mic = devices.find(d => d.kind === 'audioinput' && d.deviceId === 'default') ?? devices.find(d => d.kind === 'audioinput');
       if (mic) setMicDeviceName(mic.label || 'Microphone par défaut');
 
       const ctx = new AudioContext();
-      const source = ctx.createMediaStreamSource(stream);
+      await ctx.resume();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 256;
-      source.connect(analyser);
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      setIsMicTesting(true);
+      analyser.smoothingTimeConstant = 0.85;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      const data = new Uint8Array(analyser.fftSize);
+      setMicStatus('Parlez dans votre microphone pour tester le niveau d\'entrée.');
 
-      const BARS = 12;
       const tick = () => {
-        analyser.getByteFrequencyData(data);
-        const avg = data.reduce((a, b) => a + b, 0) / data.length;
-        const level = Math.min(100, (avg / 128) * 100 * 2);
+        analyser.getByteTimeDomainData(data);
+        let rms = 0;
+        for (let i = 0; i < data.length; i++) {
+          const norm = (data[i] - 128) / 128;
+          rms += norm * norm;
+        }
+        const level = Math.min(1, Math.sqrt(rms / data.length) * 6);
+        micSmoothedRef.current = micSmoothedRef.current * 0.65 + level * 0.35;
+        const val = micSmoothedRef.current < 0.01 ? 0 : micSmoothedRef.current;
+        micHistoryRef.current = [...micHistoryRef.current.slice(1), val];
         if (micLevelRef.current) {
           const bars = micLevelRef.current.children;
           for (let i = 0; i < bars.length; i++) {
             const bar = bars[i] as HTMLElement;
-            const threshold = (i / BARS) * 100;
-            const active = level > threshold;
-            bar.style.backgroundColor = active
-              ? (i < 8 ? '#34d399' : i < 10 ? '#fbbf24' : '#f87171')
-              : '#e5e7eb';
+            const v = micHistoryRef.current[i];
+            bar.style.height = `${8 + v * 28}px`;
+            bar.style.opacity = `${0.2 + v * 0.8}`;
           }
         }
         micAnimRef.current = requestAnimationFrame(tick);
       };
       micAnimRef.current = requestAnimationFrame(tick);
-    } catch { toast.error('Impossible d\'accéder au microphone.'); }
+    } catch {
+      setIsMicTesting(false);
+      toast.error('Impossible d\'accéder au microphone.');
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -570,10 +594,10 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <button
         type="button"
         onClick={e => { e.preventDefault(); e.stopPropagation(); setActiveTab(tabId); }}
-        className={`flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150
+        className={`flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-[0.99]
           ${isActive
             ? 'bg-[#f4f4f5] text-[#18181b] font-medium dark:bg-white/10 dark:text-white'
-            : 'text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#f4f4f5] hover:text-[#18181b] dark:hover:bg-[#27272a] dark:hover:text-white'}`}
+            : 'text-[#71717a] dark:text-[#a1a1aa] font-medium hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white'}`}
         style={{ fontSize: '13.5px' }}
       >
         <Icon size={14} className="shrink-0" strokeWidth={isActive ? 2.5 : 2} />
@@ -665,29 +689,36 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <div className="mb-8">
         <p className="text-[14px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1">Paramètres audio</p>
         <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa] mb-3">Testez votre entrée audio avant de rejoindre un appel</p>
-        <div className="flex items-center justify-between gap-4 py-2">
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1">Source du microphone</p>
-            <div className="flex items-center gap-2">
-              <Mic size={13} className="text-neutral-400 dark:text-neutral-400 shrink-0" />
-              <p className="text-[12px] text-[#71717a] dark:text-[#a1a1aa] truncate">{micDeviceName}</p>
-            </div>
-            {isMicTesting && (
-              <div className="mt-2">
-                <div ref={micLevelRef} className="flex gap-0.5 items-end h-5">
-                  {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="w-1.5 rounded-sm bg-neutral-200" style={{ height: `${40 + i * 5}%`, transition: 'background-color 0.05s' }} />
-                  ))}
-                </div>
+        <div className="space-y-4 rounded-lg bg-[#f9f9f9] dark:bg-[#18181b] border border-[#e4e4e7] dark:border-white/10 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">Source du microphone</p>
+              <div className="flex items-center gap-1.5">
+                <Mic size={14} className="text-[#71717a] dark:text-[#a1a1aa] shrink-0" />
+                <p className="text-[12px] text-[#71717a] dark:text-[#a1a1aa] leading-[1.35]">{micDeviceName || ' '}</p>
               </div>
-            )}
+            </div>
+            <button
+              onClick={handleMicTest}
+              className={`shrink-0 px-3 py-1.5 border shadow-sm transition-colors rounded-[6px] text-[13px] font-semibold ${isMicTesting ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/50' : 'bg-white dark:bg-[#27272a] border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-neutral-100 hover:bg-[#f4f4f5] dark:hover:bg-[#3f3f46]'}`}
+            >
+              {isMicTesting ? 'Arrêter le test' : 'Tester le microphone'}
+            </button>
           </div>
-          <button
-            onClick={handleMicTest}
-            className={`shrink-0 px-3 py-1.5 border text-neutral-900 dark:text-neutral-100 shadow-sm transition-colors rounded-[6px] text-[13px] font-bold ${isMicTesting ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100' : 'bg-white dark:bg-[#18181b]/50 border-neutral-200 dark:border-white/10 hover:bg-[#f4f4f5]'}`}
-          >
-            {isMicTesting ? 'Arrêter' : 'Tester le microphone'}
-          </button>
+          {isMicTesting && (
+            <div className="space-y-2 rounded-md border border-[#e4e4e7] dark:border-white/10 bg-white/70 dark:bg-black/20 p-3">
+              <div className="flex h-14 items-end justify-center gap-1 rounded-md" ref={micLevelRef}>
+                {Array.from({ length: 17 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="w-1.5 rounded-full bg-[#18181b] dark:bg-white"
+                    style={{ height: '8px', opacity: 0.2, transition: 'height 75ms ease, opacity 75ms ease' }}
+                  />
+                ))}
+              </div>
+              <p className="text-center text-[12px] text-[#71717a] dark:text-[#a1a1aa] leading-[1.35]">{micStatus}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -748,7 +779,16 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <h2 className="text-[22px] font-bold text-[#18181b] dark:text-[#fafafa] tracking-tight mb-2">Calendrier</h2>
       <p className="text-[14px] text-[#71717a] dark:text-[#a1a1aa] mb-8">Gérez le compte calendrier que Claire utilise pour les réunions et rappels.</p>
       {isLoadingCalendar ? (
-        <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa]">Chargement...</p>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-4 items-center">
+            <Skeleton className="w-12 h-12 rounded-md shrink-0" />
+            <div className="space-y-2">
+              <Skeleton className="h-[13px] w-32" />
+              <Skeleton className="h-[12px] w-56" />
+            </div>
+          </div>
+          <Skeleton className="h-8 w-24 rounded-[6px]" />
+        </div>
       ) : (
         <div className="flex items-center justify-between">
           <div className="flex gap-4 items-center">
@@ -988,22 +1028,22 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
                   <div className="flex gap-4 mb-8">
                     <div className="flex-1">
-                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">First name</label>
+                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Prénom</label>
                       <input type="text" value={profileFirstName} onChange={e => setProfileFirstName(e.target.value)} placeholder="Prénom"
                         className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Last name</label>
-                      <input type="text" value={profileLastName} onChange={e => setProfileLastName(e.target.value)} placeholder="Last name"
+                      <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Nom</label>
+                      <input type="text" value={profileLastName} onChange={e => setProfileLastName(e.target.value)} placeholder="Nom"
                         className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400" />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-end gap-4 mt-4 pt-4 border-t border-[#e4e4e7] dark:border-white/10">
-                    <button type="button" onClick={() => setIsEditingProfile(false)} className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                    <button type="button" onClick={() => setIsEditingProfile(false)} className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">Annuler</button>
                     <button type="button" onClick={handleSaveProfile} disabled={isSavingProfile}
-                      className="px-5 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60">
-                      {isSavingProfile ? 'Saving...' : 'Save'}
+                      className="px-5 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white dark:text-[#18181b] text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60">
+                      {isSavingProfile ? 'Enregistrement...' : 'Enregistrer'}
                     </button>
                   </div>
                 </motion.div>
@@ -1024,7 +1064,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
               <div className="relative">
                 <button 
                   onClick={() => setShowEmailOptions(!showEmailOptions)}
-                  className="text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 transition-colors p-1 rounded-md hover:bg-[#f4f4f5] dark:bg-[#27272a]"
+                  className="text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 transition-colors p-1 rounded-md hover:bg-transparent"
                 >
                   <MoreHorizontal size={18} />
                 </button>
@@ -1040,7 +1080,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       >
                         <button 
                           onClick={() => { setIsEditingEmail(true); setShowEmailOptions(false); }}
-                          className="w-full text-left px-4 py-2 text-[13px] font-medium text-neutral-700 hover:bg-[#f4f4f5] dark:bg-[#18181b]/50 transition-colors"
+                          className="w-full text-left px-4 py-2 text-[13px] font-medium text-neutral-700 dark:text-[#fafafa] hover:bg-[#f4f4f5] dark:hover:bg-white/5 transition-colors"
                         >
                           Changer l'adresse e-mail
                         </button>
@@ -1088,7 +1128,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                         type="button"
                         onClick={() => { setIsSavingEmail(true); setTimeout(() => { setIsSavingEmail(false); setIsEditingEmail(false); setNewEmailInput(''); }, 1000); }}
                         disabled={!newEmailInput || isSavingEmail}
-                        className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
+                        className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white dark:text-[#18181b] text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
                       >
                         {isSavingEmail ? 'Mise à jour...' : 'Mettre à jour'}
                       </button>
@@ -1276,7 +1316,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       type="button"
                       onClick={handleSavePassword}
                       disabled={isSavingPassword}
-                      className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
+                      className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white dark:text-[#18181b] text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
                     >
                       {isSavingPassword ? 'Sauvegarde...' : 'Sauvegarder'}
                     </button>
@@ -1293,7 +1333,25 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         <div className="pb-8 border-b border-[#e4e4e7] dark:border-white/10">
           <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-6">Appareils actifs</p>
           {isLoadingDevices ? (
-            <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa]">Chargement des appareils...</p>
+            <div className="space-y-6">
+              {[0, 1].map((item) => (
+                <div key={item} className="flex items-start gap-4">
+                  <Skeleton className="mt-0.5 h-6 w-8 shrink-0 rounded border border-neutral-200 dark:border-white/10" />
+                  <div className="flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-[15px] w-20" />
+                        {item === 0 && <Skeleton className="h-5 w-20 rounded-md" />}
+                      </div>
+                      {item === 1 && <Skeleton className="h-4 w-4 rounded" />}
+                    </div>
+                    <Skeleton className="mb-1.5 h-[13px] w-28" />
+                    <Skeleton className="mb-2 h-[13px] w-44" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="space-y-6">
               {devices.map(device => (
@@ -1527,7 +1585,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <h2 className="text-[22px] font-bold text-[#18181b] dark:text-[#fafafa] tracking-tight mb-2">Centre d'aide</h2>
       <p className="text-[14px] text-[#71717a] dark:text-[#a1a1aa] mb-8">Trouvez des réponses à vos questions.</p>
       <button
-        onClick={() => window.open('https://support.clairia.app', '_blank', 'noopener,noreferrer')}
+        onClick={() => openInBrowser('https://support.clairia.app')}
         className="flex items-center justify-between w-full px-4 py-3.5 bg-[#f9f9f9] border border-[#e4e4e7] dark:border-white/10 rounded-[8px] hover:bg-[#f4f4f5] dark:bg-[#18181b] dark:hover:bg-[#3f3f46] transition-colors"
       >
         <div className="flex items-center gap-3">
@@ -1544,7 +1602,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       <h2 className="text-[22px] font-bold text-[#18181b] dark:text-[#fafafa] tracking-tight mb-2">Contact Support</h2>
       <p className="text-[14px] text-[#71717a] dark:text-[#a1a1aa] mb-8">Notre équipe est disponible pour vous aider.</p>
       <button
-        onClick={() => window.open('mailto:support@clairia.app', '_blank')}
+        onClick={() => openInBrowser('mailto:support@clairia.app')}
         className="flex items-center justify-between w-full px-4 py-3.5 bg-[#f9f9f9] border border-[#e4e4e7] dark:border-white/10 rounded-[8px] hover:bg-[#f4f4f5] dark:bg-[#18181b] dark:hover:bg-[#3f3f46] transition-colors"
       >
         <div className="flex items-center gap-3">
@@ -1578,7 +1636,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         <motion.div
           key="settings-modal-backdrop"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
           className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
           onClick={handleBackdropClick}
         >
@@ -1586,14 +1644,14 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             initial={{ opacity: 0, scale: 0.97, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.97, y: 10 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-[860px] h-[620px] max-h-[92vh] bg-white dark:bg-[#09090b] rounded-xl flex overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-black/5 dark:ring-white/10"
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-[860px] h-[620px] max-h-[92vh] bg-white dark:bg-[#09090b] rounded-xl flex overflow-hidden shadow-2xl shadow-black/30 ring-1 ring-black/5 dark:ring-white/10 transform-gpu"
             onClick={e => e.stopPropagation()}
           >
             {/* LEFT SIDEBAR */}
             <div className="w-[220px] bg-[#fafafa] dark:bg-[#18181b] border-r border-[#e4e4e7] dark:border-white/10 flex flex-col pt-3 pb-4 overflow-hidden shrink-0">
               <div className="px-3 mb-4">
-                <button onClick={onClose} className="flex items-center justify-center w-8 h-8 rounded text-[#a1a1aa] dark:text-[#a1a1aa] hover:text-[#18181b] dark:hover:text-white hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transition duration-150">
+                <button onClick={onClose} className="flex items-center justify-center w-8 h-8 rounded text-[#a1a1aa] dark:text-[#a1a1aa] hover:text-[#18181b] dark:hover:text-white hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-95">
                   <X size={16} strokeWidth={2} />
                 </button>
               </div>
@@ -1614,7 +1672,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 <button
                   type="button"
                   onClick={() => openInBrowser('https://support.clairia.app')}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#f4f4f5] hover:text-[#18181b] dark:hover:bg-[#27272a] dark:hover:text-white"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transform-gpu transition-[background-color,color,transform] duration-180 ease-apple text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <Globe size={14} className="shrink-0" strokeWidth={2} />
@@ -1623,7 +1681,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 <button
                   type="button"
                   onClick={() => openInBrowser('mailto:support@clairia.app')}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left transition duration-150 text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#f4f4f5] hover:text-[#18181b] dark:hover:bg-[#27272a] dark:hover:text-white"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium transform-gpu transition-[background-color,color,transform] duration-180 ease-apple text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <HelpCircle size={14} className="shrink-0" strokeWidth={2} />
@@ -1633,7 +1691,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
               <div className="mt-auto pt-4 pb-4 flex flex-col gap-0.5 px-3">
                 <button
                   onClick={() => { handleLogout(); onClose(); }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left text-[#71717a] dark:text-[#a1a1aa] hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition duration-150"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-red-600 dark:hover:bg-transparent dark:hover:text-red-400 transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <LogOut size={14} strokeWidth={2} className="shrink-0" />
@@ -1647,7 +1705,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       onClose();
                     }
                   }}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left text-[#71717a] dark:text-[#a1a1aa] hover:bg-[#f4f4f5] hover:text-[#18181b] dark:hover:bg-[#27272a] dark:hover:text-white transition duration-150"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded w-full text-left font-medium text-[#71717a] dark:text-[#a1a1aa] hover:bg-transparent hover:text-[#18181b] dark:hover:bg-transparent dark:hover:text-white transform-gpu transition-[background-color,color,transform] duration-180 ease-apple active:scale-[0.99]"
                   style={{ fontSize: '13.5px' }}
                 >
                   <Power size={14} strokeWidth={2} className="shrink-0" />
@@ -1657,7 +1715,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             </div>
 
             {/* RIGHT CONTENT */}
-            <div key={activeTab} className="flex-1 bg-white dark:bg-[#09090b] overflow-y-auto px-12 py-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div key={activeTab} className="flex-1 bg-white dark:bg-[#09090b] overflow-y-auto px-12 py-10 motion-safe:animate-page-enter">
               {renderContent()}
             </div>
           </motion.div>

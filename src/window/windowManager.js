@@ -8,6 +8,7 @@ const shortcutsService = require('../features/shortcuts/shortcutsService');
 const internalBridge = require('../bridge/internalBridge');
 const permissionRepository = require('../common/repositories/permission');
 const { themeService } = require('../domains/ui');
+const sharedStateService = require('../common/services/sharedStateService');
 
 /* ────────────────[ ENHANCED GLASS SYSTEM ]─────────────── */
 const { platformManager } = require('../main/platform-manager');
@@ -138,8 +139,33 @@ let currentHeaderState = 'apikey';
 const windowPool = new Map();
 
 let dashboardWindow = null;
-// Dev: override via DASHBOARD_DEV_URL. Prod: load from renderer.clairia.app.
-const DASHBOARD_URL = process.env.DASHBOARD_DEV_URL || 'https://renderer.clairia.app/electron-login';
+// Dev: load from the local auxiliary frontend. Prod: load the packaged static renderer.
+function getInitialDashboardPath() {
+    try {
+        const authService = require('../common/services/authService');
+        const userState = authService.getCurrentUser();
+        if (userState?.isLoggedIn) return '/activity';
+    } catch (_) { }
+    return '/electron-login';
+}
+
+function getDashboardUrl() {
+    const initialPath = getInitialDashboardPath();
+
+    if (app.isPackaged) {
+        return process.env.DASHBOARD_URL || `app://renderer${initialPath}`;
+    }
+
+    // DASHBOARD_DEV_URL takes top priority for local dev (may include a path, so extract origin only)
+    if (process.env.DASHBOARD_DEV_URL) {
+        try {
+            const devOrigin = new URL(process.env.DASHBOARD_DEV_URL).origin;
+            return `${devOrigin}${initialPath}`;
+        } catch (_) { /* fall through */ }
+    }
+    const baseUrl = (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000').trim();
+    return `${baseUrl.replace(/\/$/, '')}${initialPath}`;
+}
 
 let settingsHideTimer = null;
 let agentSelectorHideTimer = null;
@@ -252,7 +278,7 @@ function createOverlayWindow() {
             devTools: !app.isPackaged,
             spellcheck: false,
         },
-        icon: path.join(__dirname, '../../build/icon.ico'),
+        icon: path.join(__dirname, '../../build/icon.png'),
     });
 
     // Use 'screen-saver' level so the overlay stays above all other windows (including Chrome)
@@ -267,6 +293,9 @@ function createOverlayWindow() {
     _startOverlayPolling();
 
     overlayWindow.loadFile(path.join(__dirname, '../ui/app/overlay.html'));
+    overlayWindow.webContents.once('did-finish-load', () => {
+        sharedStateService.patch({ isHeaderLoaded: true, isListenLoaded: true });
+    });
     overlayWindow.show();
 
     // Hide instead of close (keep process alive in background)
@@ -332,7 +361,7 @@ const getOverlayInitialState = () => {
         return { pillX: x, pillY: y };
     }
     const display = screen.getPrimaryDisplay();
-    return { pillX: Math.round((display.workArea.width - 353) / 2), pillY: 21 };
+    return { pillX: Math.round((display.workArea.width - 163) / 2), pillY: 25 };
 };
 
 const getOverlayWindow = () => overlayWindow;
@@ -950,6 +979,10 @@ const setContentProtection = (status) => {
             win.setContentProtection(isContentProtectionOn);
         }
     });
+    // Dashboard is not in windowPool — apply separately
+    if (dashboardWindow && !dashboardWindow.isDestroyed()) {
+        try { dashboardWindow.setContentProtection(isContentProtectionOn); } catch (_) { }
+    }
 };
 
 const getContentProtectionStatus = () => isContentProtectionOn;
@@ -1051,7 +1084,7 @@ function createFeatureWindows(header, namesToCreate) {
             devTools: !app.isPackaged,
             spellcheck: false,
         },
-        icon: path.join(__dirname, '../../build/icon.ico'),
+        icon: path.join(__dirname, '../../build/icon.png'),
     };
 
     const createFeatureWindow = (name) => {
@@ -1071,11 +1104,15 @@ function createFeatureWindows(header, namesToCreate) {
                 const listenLoadOptions = { query: { view: 'listen' } };
                 if (!shouldUseLiquidGlass) {
                     listen.loadFile(path.join(__dirname, '../ui/app/content.html'), listenLoadOptions);
+                    listen.webContents.once('did-finish-load', () => {
+                        sharedStateService.patch({ isListenLoaded: true });
+                    });
                 }
                 else {
                     listenLoadOptions.query.glass = 'true';
                     listen.loadFile(path.join(__dirname, '../ui/app/content.html'), listenLoadOptions);
                     listen.webContents.once('did-finish-load', () => {
+                        sharedStateService.patch({ isListenLoaded: true });
                         const viewId = liquidGlass.addView(listen.getNativeWindowHandle());
                         if (viewId !== -1) {
                             liquidGlass.unstable_setVariant(viewId, liquidGlass.GlassMaterialVariant.bubbles);
@@ -1331,15 +1368,16 @@ function getDisplayById(displayId) {
 
 
 
-function createWindows() {
-    const HEADER_HEIGHT = 47;
-    const DEFAULT_WINDOW_WIDTH = 353;
+function createWindows(options = {}) {
+    const { showHeader = true } = options;
+    const HEADER_HEIGHT = 50;
+    const DEFAULT_WINDOW_WIDTH = 163;
 
     const primaryDisplay = screen.getPrimaryDisplay();
     const { y: workAreaY, width: screenWidth } = primaryDisplay.workArea;
 
     const initialX = Math.round((screenWidth - DEFAULT_WINDOW_WIDTH) / 2);
-    const initialY = workAreaY + 21;
+    const initialY = workAreaY + 25;
     movementManager = new SmoothMovementManager(windowPool, getDisplayById, getCurrentDisplay, updateLayout);
 
     const header = new BrowserWindow({
@@ -1355,6 +1393,7 @@ function createWindows() {
         skipTaskbar: true,
         hiddenInMissionControl: true,
         resizable: false,
+        show: showHeader,
         focusable: true,
         acceptFirstMouse: true,
         webPreferences: {
@@ -1371,7 +1410,7 @@ function createWindows() {
         // Prevent pixelation and ensure proper rendering
         useContentSize: true,
         disableAutoHideCursor: true,
-        icon: path.join(__dirname, '../../build/icon.ico'),
+        icon: path.join(__dirname, '../../build/icon.png'),
     });
     if (process.platform === 'darwin') {
         header.setWindowButtonVisibility(false);
@@ -1405,6 +1444,7 @@ function createWindows() {
     layoutManager = new WindowLayoutManager(windowPool, movementManager);
 
     header.webContents.once('dom-ready', () => {
+        sharedStateService.patch({ isHeaderLoaded: true });
         shortcutsService.initialize(windowPool);
         shortcutsService.registerShortcuts();
     });
@@ -1808,9 +1848,50 @@ const setWindowOpacity = (opacity) => {
 };
 
 
+// ─── Splash window (boot loader) ─────────────────────────────────────────────
+
+let splashWindow = null;
+
+function createSplashWindow() {
+    if (splashWindow && !splashWindow.isDestroyed()) return splashWindow;
+
+    splashWindow = new BrowserWindow({
+        width: 360,
+        height: 500,
+        frame: false,
+        transparent: true,
+        resizable: false,
+        center: true,
+        show: false,
+        alwaysOnTop: false,
+        skipTaskbar: true,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            devTools: false,
+        },
+    });
+
+    splashWindow.once('ready-to-show', () => {
+        if (!splashWindow.isDestroyed()) splashWindow.show();
+    });
+
+    splashWindow.on('closed', () => { splashWindow = null; });
+
+    splashWindow.loadFile(path.join(__dirname, '../ui/splash/splash.html'));
+    return splashWindow;
+}
+
+function closeSplashWindow() {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.destroy();
+        splashWindow = null;
+    }
+}
+
 // ─── Dashboard window (renderer desktop) ────────────────────────────────────
 
-function createDashboardWindow() {
+function createDashboardWindow({ skipAutoShow = false } = {}) {
     if (dashboardWindow && !dashboardWindow.isDestroyed()) {
         if (!dashboardWindow.isVisible()) dashboardWindow.show();
         dashboardWindow.focus();
@@ -1845,16 +1926,20 @@ function createDashboardWindow() {
             webSecurity: true,
             allowRunningInsecureContent: false,
         },
-        icon: path.join(__dirname, '../../build/icon.ico'),
+        icon: path.join(__dirname, '../../build/icon.png'),
     });
 
     if (process.platform === 'darwin') {
         dashboardWindow.setWindowButtonVisibility(false);
     }
 
-    // Content protection: hide window from screen capture / recording by default.
+    // Content protection: respect persisted user preference (default true = undetectable).
     // Toggle via dashboard:setContentProtection IPC (e.g. "détectable" setting).
-    try { dashboardWindow.setContentProtection(true); } catch (_) { }
+    {
+        const savedProtection = sharedStateService.get()?.contentProtectionEnabled;
+        const initialProtection = savedProtection === false ? false : true;
+        try { dashboardWindow.setContentProtection(initialProtection); } catch (_) { }
+    }
 
     dashboardWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
         if (level >= 3) {
@@ -1866,8 +1951,9 @@ function createDashboardWindow() {
     dashboardWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
         logger.error('[Dashboard] did-fail-load', { errorCode, errorDescription, validatedURL });
     });
-    logger.info('[Dashboard] Loading dashboard URL', { url: DASHBOARD_URL });
-    void dashboardWindow.loadURL(DASHBOARD_URL);
+    const dashboardUrl = getDashboardUrl();
+    logger.info('[Dashboard] Loading dashboard URL', { url: dashboardUrl });
+    void dashboardWindow.loadURL(dashboardUrl);
 
     // Adapter dynamiquement le titleBarOverlay et les bounds selon la route,
     // AVANT que React ne monte. Évite le flicker des boutons natifs.
@@ -1888,12 +1974,12 @@ function createDashboardWindow() {
             logger.warn('[Dashboard] applyChromeForUrl failed', { error: e.message });
         }
     };
-    applyChromeForUrl(DASHBOARD_URL);
+    applyChromeForUrl(dashboardUrl);
     dashboardWindow.webContents.on('did-navigate', (_e, url) => applyChromeForUrl(url));
     dashboardWindow.webContents.on('did-navigate-in-page', (_e, url) => applyChromeForUrl(url));
 
     dashboardWindow.once('ready-to-show', () => {
-        dashboardWindow.show();
+        if (!skipAutoShow) dashboardWindow.show();
         if (!app.isPackaged) {
             dashboardWindow.webContents.openDevTools({ mode: 'detach' });
         }
@@ -1902,6 +1988,7 @@ function createDashboardWindow() {
     // Push current auth state once the page has fully loaded, so the renderer
     // gets the user even if it missed the broadcast that fired before the window existed.
     dashboardWindow.webContents.on('did-finish-load', () => {
+        sharedStateService.patch({ isDashboardLoaded: true });
         try {
             const authService = require('../common/services/authService');
             const userState = authService.getCurrentUser();
@@ -2008,9 +2095,11 @@ function createMeetingNotificationWindow() {
         },
     });
 
-    const baseUrl = process.env.DASHBOARD_DEV_URL
-        ? new URL(process.env.DASHBOARD_DEV_URL).origin
-        : 'https://renderer.clairia.app';
+    const baseUrl = app.isPackaged
+        ? 'app://renderer'
+        : (process.env.DASHBOARD_DEV_URL
+            ? new URL(process.env.DASHBOARD_DEV_URL).origin
+            : (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000').replace(/\/$/, ''));
     void meetingNotificationWindow.loadURL(`${baseUrl}/notification`);
 
     meetingNotificationWindow.setAlwaysOnTop(true, 'floating');
@@ -2069,6 +2158,7 @@ module.exports = {
     updateLayout,
     createWindows,
     windowPool,
+    setContentProtection,
     toggleContentProtection,
     resizeHeaderWindow,
     getContentProtectionStatus,
@@ -2111,6 +2201,8 @@ module.exports = {
     setOverlayDragging,
     stopOverlayPolling: _stopOverlayPolling,
     startOverlayPolling: _startOverlayPolling,
+    createSplashWindow,
+    closeSplashWindow,
     createDashboardWindow,
     setDashboardOnboardingMode,
     showMeetingNotification,

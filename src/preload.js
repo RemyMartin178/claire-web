@@ -11,8 +11,10 @@ const dashboardApi = {
   },
   getSessions: (uid) => ipcRenderer.invoke('dashboard:getSessions', uid),
   getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
+  getSessionDetails: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSessionDetails', uid, sessionId),
   deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
   startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
+  stopClaire: () => ipcRenderer.invoke('dashboard:stopClaire'),
   minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
   closeWindow: () => ipcRenderer.invoke('dashboard:close'),
@@ -23,8 +25,18 @@ const dashboardApi = {
   showMeetingNotification: (meeting) => ipcRenderer.invoke('meeting:showNotification', meeting),
   hideMeetingNotification: () => ipcRenderer.invoke('meeting:hideNotification'),
   onMeetingNotificationData: (cb) => ipcRenderer.on('meeting-notification:data', (_e, data) => cb(data)),
-  onUserChanged: (cb) => ipcRenderer.on('user-state-changed', (_e, state) => cb(state, state)),
-  removeUserChanged: () => ipcRenderer.removeAllListeners('user-state-changed'),
+  onUserChanged: (cb) => {
+    const handler = (_e, state) => cb(state, state);
+    ipcRenderer.on('user-state-changed', handler);
+    return () => ipcRenderer.removeListener('user-state-changed', handler);
+  },
+  removeUserChanged: (unsubscribe) => {
+    if (typeof unsubscribe === 'function') {
+      unsubscribe();
+      return;
+    }
+    ipcRenderer.removeAllListeners('user-state-changed');
+  },
   onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', (_e, data) => cb(data)),
   removeOnNavigateToSession: () => ipcRenderer.removeAllListeners('dashboard:navigateToSession'),
   onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', (_e, data) => cb(data)),
@@ -32,6 +44,13 @@ const dashboardApi = {
 };
 
 contextBridge.exposeInMainWorld('api', {
+  // Boot orchestration signals (renderer → main)
+  electronBoot: {
+    dashboardReady: () => ipcRenderer.invoke('electron-boot:dashboard-ready'),
+    needsLogin:     () => ipcRenderer.invoke('electron-boot:needs-login'),
+    loginSuccess:   () => ipcRenderer.invoke('electron-boot:login-success'),
+  },
+
   // Platform information for renderer processes
   platform: {
     isLinux: process.platform === 'linux',

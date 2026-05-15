@@ -10,7 +10,7 @@ const path = require('path')
 
 const root = path.resolve(__dirname, '..')
 const apiDir = path.join(root, 'app', 'api')
-const apiDirHidden = path.join(root, 'app', '_api_electron_hidden')
+const apiDirHidden = path.join(root, '.api_electron_hidden')
 
 function restore() {
   if (fs.existsSync(apiDirHidden)) {

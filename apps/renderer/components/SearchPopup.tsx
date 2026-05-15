@@ -69,10 +69,10 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
 
   return (
     <div
-      className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-start justify-center pt-16 z-50"
+      className="fixed inset-0 bg-neutral-900/40 backdrop-blur-sm flex items-start justify-center pt-16 z-50 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-180"
       onClick={handleBackgroundClick}
     >
-      <div className="bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden border border-neutral-200 dark:border-white/10">
+      <div className="bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden border border-neutral-200 dark:border-white/10 transform-gpu motion-safe:animate-in motion-safe:fade-in-0 motion-safe:zoom-in-95 motion-safe:slide-in-from-top-2 motion-safe:duration-180">
         <div className="flex items-center px-4 py-3 border-b border-neutral-100 dark:border-neutral-800">
           <Search className="h-5 w-5 text-gray-400 mr-3 flex-shrink-0" />
           <input
@@ -85,7 +85,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
           />
           <button
             onClick={onClose}
-            className="ml-3 p-1 hover:bg-gray-100 rounded-full flex-shrink-0"
+            className="ml-3 p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-full flex-shrink-0 transform-gpu transition-[background-color,transform] duration-180 ease-apple active:scale-95"
           >
             <X className="h-4 w-4 text-gray-400" />
           </button>
@@ -107,7 +107,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
                   return (
                     <div
                       key={result.id}
-                      className="p-3 hover:bg-[#f4f4f5] dark:hover:bg-[#27272a]/50 cursor-pointer transition-colors"
+                      className="p-3 hover:bg-[#f4f4f5] dark:hover:bg-[#27272a]/50 cursor-pointer transform-gpu transition-[background-color,transform] duration-180 ease-apple active:scale-[0.995]"
                       onClick={() => {
                         router.push(`/activity/${result.id}`)
                         onClose()
