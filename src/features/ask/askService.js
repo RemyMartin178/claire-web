@@ -973,7 +973,11 @@ class AskService {
                             context: screenshotBase64 ? {
                                 image: screenshotBase64,
                                 imageContext: screenshotContext
-                            } : {}
+                            } : {},
+                            // Vision queries: nudge the backend toward gpt-4o-mini —
+                            // ~3x faster than gpt-4o on image input, quality is
+                            // identical for "what's on my screen" use-cases.
+                            modelOverride: screenshotBase64 ? 'gpt-4o-mini' : undefined,
                         }, (chunk) => {
                             // Called for each SSE chunk — append content and push to UI
                             if (chunk.content) {

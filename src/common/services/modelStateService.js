@@ -7,7 +7,10 @@ const { createLogger } = require('./logger.js');
 
 const logger = createLogger('ModelStateService');
 
-const DEFAULT_LLM_MODEL = 'gpt-4o';
+// gpt-4o-mini is ~3x faster than gpt-4o on vision and roughly equivalent on
+// the short reasoning we use for Ask / title-stream / summary. Switch the
+// default so all client-side LLM calls benefit.
+const DEFAULT_LLM_MODEL = 'gpt-4o-mini';
 const DEFAULT_STT_MODEL = 'u3-rt-pro';
 
 class ModelStateService extends EventEmitter {

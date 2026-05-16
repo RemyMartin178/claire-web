@@ -391,7 +391,11 @@ class AgentsApiClient {
         const payload = {
             input: chatRequest.message,
             conversation_history: chatRequest.conversationHistory || [],
-            context: chatRequest.context || {}
+            context: chatRequest.context || {},
+            // Optional client-side model override (e.g. 'gpt-4o-mini' for fast
+            // vision queries). Backend may or may not honor it; if it does,
+            // we gain ~1.5s on Ask-with-screen. If not, no change.
+            ...(chatRequest.modelOverride ? { model_override: chatRequest.modelOverride } : {}),
         };
 
         const headers = {
