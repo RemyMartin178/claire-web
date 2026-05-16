@@ -389,23 +389,23 @@ function _resolveBoot() {
     _bootPhase = 'done';
     logger.info('[Boot] Resolving boot — fading splash, then revealing dashboard');
 
-    // closeSplashWindow now returns a promise: it enforces a minimum visible
-    // duration (so we always see the swipe-up animation) and plays the CSS
-    // fade-out before destroying the window. We chain the dashboard reveal
-    // off that so there is no white flash, no skeleton, no overlap.
-    Promise.resolve(closeSplashWindow()).then(() => {
-        const dash = getDashboardWindow();
-        if (!dash || dash.isDestroyed()) return;
-        dash.setOpacity(0);
-        dash.show();
-        setTimeout(() => {
-            if (!dash.isDestroyed()) {
-                dash.setOpacity(1);
-                dash.focus();
-                sharedStateService.patch({ showDashboard: true });
-            }
-        }, 30);
-    }).catch((err) => {
+    // Cross-fade strategy: by the time _resolveBoot runs the renderer has
+    // already signaled dashboardReady — i.e. the Next.js view is fully painted.
+    // Reveal the dashboard at opacity 1 FIRST (it sits below the splash which is
+    // alwaysOnTop), then fade the splash out over it. There is no black gap
+    // because the splash always covers the dashboard until its fade completes.
+    const dash = getDashboardWindow();
+    if (dash && !dash.isDestroyed()) {
+        try {
+            dash.setOpacity(1);
+            dash.show();
+            dash.focus();
+            sharedStateService.patch({ showDashboard: true });
+        } catch (e) {
+            logger.warn('[Boot] dashboard reveal failed', { error: e?.message });
+        }
+    }
+    Promise.resolve(closeSplashWindow()).catch((err) => {
         logger.warn('[Boot] _resolveBoot reveal failed', { error: err?.message });
     });
 }

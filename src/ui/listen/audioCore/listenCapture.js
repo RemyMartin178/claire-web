@@ -487,10 +487,14 @@ function setupSystemAudioProcessing(systemStream) {
 // Main capture functions (exact from renderer.js)
 // ---------------------------
 async function startCapture(screenshotIntervalSeconds = 5, imageQuality = 'medium', provider = null) {
-    // AssemblyAI requires min 50ms chunks; Deepgram works with 25ms
+    // AssemblyAI requires min 50ms chunks; Deepgram works with 25ms.
+    // 'claire-api' is our backend proxy that delegates streaming to AssemblyAI,
+    // so it MUST also use the 100ms chunk size — otherwise the underlying
+    // WebSocket rejects every frame with "Input Duration Violation: 25.0 ms".
     if (provider !== null) _lastKnownProvider = provider;
     const resolvedProvider = _lastKnownProvider;
-    AUDIO_CHUNK_DURATION = (resolvedProvider === 'assemblyai') ? 0.1 : 0.025;
+    const isAssemblyBacked = resolvedProvider === 'assemblyai' || resolvedProvider === 'claire-api';
+    AUDIO_CHUNK_DURATION = isAssemblyBacked ? 0.1 : 0.025;
 
     // Reset token tracker when starting new capture session
     tokenTracker.reset();
@@ -1092,7 +1096,8 @@ if (typeof window !== 'undefined') {
 
             // Set chunk duration based on provider BEFORE setupSystemAudioProcessing
             if (provider !== undefined && provider !== null) _lastKnownProvider = provider;
-            AUDIO_CHUNK_DURATION = (_lastKnownProvider === 'assemblyai') ? 0.1 : 0.025;
+            const _isAssemblyBacked = _lastKnownProvider === 'assemblyai' || _lastKnownProvider === 'claire-api';
+            AUDIO_CHUNK_DURATION = _isAssemblyBacked ? 0.1 : 0.025;
             logger.info(`[AUDIO] Using chunk duration ${AUDIO_CHUNK_DURATION}s for provider=${_lastKnownProvider}`);
 
             try {

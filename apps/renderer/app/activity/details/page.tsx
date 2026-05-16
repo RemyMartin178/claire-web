@@ -584,7 +584,6 @@ function SessionDetailsContent() {
   const displayTitle =
     isAnalyzingSession && streamingTitle ? streamingTitle : helperTitle;
   const titleValue = editableTitle || displayTitle;
-  const statusLabel = getSessionStatusLabel(phase);
 
 
   // Helper to remove emojis and redundant prefixes from summary text
@@ -648,32 +647,17 @@ function SessionDetailsContent() {
           <div className="max-w-none">
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
-        ) : progressiveSummaryText !== null ? (
-          progressiveSummaryText.length === 0 ? (
-            <div className="space-y-5">
-              <div className="summary-waiting">
-                <span className="summary-dot" />
-                <span>Claire rédige le résumé</span>
-              </div>
-            </div>
-          ) : (
-            <div className="max-w-none summary-streaming">
-              {parseMarkdown(stripEmojisAndPrefixes(progressiveSummaryText), handleCopySummary)}
-            </div>
-          )
+        ) : progressiveSummaryText !== null && progressiveSummaryText.length > 0 ? (
+          <div className="max-w-none summary-streaming">
+            {parseMarkdown(stripEmojisAndPrefixes(progressiveSummaryText), handleCopySummary)}
+          </div>
         ) : phase === 'ongoing' ? (
           <p className="text-muted-foreground/50 text-sm">Terminez la session pour voir vos notes.</p>
         ) : phase === 'analyzing' ? (
-          <div className="space-y-5">
-            <div className="summary-waiting">
-              <span className="summary-dot" />
-              <span>Claire prépare le résumé</span>
-            </div>
-            <div className="space-y-3">
-              <div className="summary-skeleton-line w-[92%]" />
-              <div className="summary-skeleton-line w-[76%]" />
-              <div className="summary-skeleton-line w-[84%]" />
-            </div>
+          <div className="space-y-3">
+            <div className="summary-skeleton-line w-[92%]" />
+            <div className="summary-skeleton-line w-[76%]" />
+            <div className="summary-skeleton-line w-[84%]" />
           </div>
         ) : (
           <p className="text-muted-foreground/80 text-sm">Aucun résumé disponible.</p>
@@ -767,39 +751,25 @@ function SessionDetailsContent() {
             </div>
           </div>
 
-          {/* Title — input ONLY when phase=completed. Live/analyzing use h1 + shimmer
-              so we avoid all caret/focus/selection glitches on a non-editable input. */}
-          {isCompletedSession ? (
-            <input
-              value={titleValue}
-              onChange={(event) => setEditableTitle(event.target.value)}
-              aria-label="Titre de l'activité"
-              className="mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none text-foreground"
-            />
-          ) : (
+          {/* Title — always an editable <input>, even during analyzing.
+              Shimmer is applied via class for ongoing/analyzing phases. */}
+          {isLiveSession ? (
             <h1
               className="mt-2 w-full select-none truncate font-medium text-3xl leading-[1.03] tracking-tight cluely-text-shimmer"
               aria-label="Titre de l'activité"
             >
-              {isLiveSession
-                ? 'Session en cours'
-                : (titleValue || 'Sans titre')}
-              {isAnalyzingSession && streamingTitle ? (
-                <span className="title-caret" aria-hidden="true">|</span>
-              ) : null}
+              Session en cours
             </h1>
-          )}
-
-          {/* Phase status label (Cluely-style: "Résumé en cours" / "Session en cours") */}
-          {!isCompletedSession && (
-            <p
+          ) : (
+            <input
+              value={titleValue}
+              onChange={(event) => setEditableTitle(event.target.value)}
+              aria-label="Titre de l'activité"
               className={[
-                'mt-2 text-sm font-medium',
-                isLiveSession || isAnalyzingSession ? 'cluely-text-shimmer' : 'text-muted-foreground',
+                'mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none',
+                isAnalyzingSession ? 'cluely-text-shimmer' : 'text-foreground',
               ].join(' ')}
-            >
-              {statusLabel}
-            </p>
+            />
           )}
 
           {/* Tabs row + copy button */}

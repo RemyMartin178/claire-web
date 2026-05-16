@@ -392,12 +392,19 @@ module.exports = {
                                 logger.warn('[FeatureBridge] Recall session preparation failed', { error: e.message });
                             }
                         }
+                        // Hide the dashboard FIRST so the user doesn't see the
+                        // pill briefly overlapping it (Cluely-style transition).
+                        const _dashWin = windowManager.getDashboardWindow();
+                        if (_dashWin && !_dashWin.isDestroyed() && _dashWin.isVisible()) {
+                            try { _dashWin.hide(); } catch (_) {}
+                        }
                         sharedStateService.patch({
                             session: { id: newId, startedAt, ...(recallSdkRecording && { recallSdkRecording }) },
                             isListenRunning: true,
                             showHeader: true,
                             showListen: false,
                             showChat: true,
+                            showDashboard: false,
                         });
                     }
                 }
