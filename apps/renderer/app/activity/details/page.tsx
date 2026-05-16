@@ -266,6 +266,52 @@ function SessionDetailsContent() {
   // 30s timeout — the visual stops naturally as soon as the summary lands and
   // phase becomes 'completed'.
 
+  // Listen to main-process session-phase events (Cluely-style: 'analyzing' as
+  // soon as the user stops recording, 'summary-completed' the moment the
+  // final summary lands). Both trigger a fresh fetch so the local cache and
+  // the UI stay in sync without polling.
+  useEffect(() => {
+    if (!sessionId) return
+    const api = (window as any).api?.dashboard
+    if (!api) return
+
+    const offAnalyzing = api.onSessionAnalyzing?.((payload: { sessionId?: string }) => {
+      if (payload?.sessionId !== sessionId) return
+      // Optimistically mark the session as ended so phase becomes 'analyzing'
+      // before the next fetch returns. Summary stays null.
+      setSessionDetails((prev) => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          session: {
+            ...prev.session,
+            ended_at: prev.session.ended_at || Date.now(),
+          },
+          summary: null,
+        }
+      })
+      void detailsQuery.refetch()
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+    })
+
+    const offCompleted = api.onSessionSummaryCompleted?.((payload: { sessionId?: string }) => {
+      if (payload?.sessionId !== sessionId) return
+      void detailsQuery.refetch()
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+    })
+
+    const offFailed = api.onSessionSummaryFailed?.((payload: { sessionId?: string }) => {
+      if (payload?.sessionId !== sessionId) return
+      void detailsQuery.refetch()
+    })
+
+    return () => {
+      try { offAnalyzing?.() } catch {}
+      try { offCompleted?.() } catch {}
+      try { offFailed?.() } catch {}
+    }
+  }, [sessionId, detailsQuery, queryClient])
+
   const handleDeleteClick = async () => {
     if (!sessionId) return;
     setIsDeleting(true);

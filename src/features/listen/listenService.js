@@ -900,14 +900,62 @@ class ListenService {
         return this.sttService.isSessionActive();
     }
 
+    /**
+     * Broadcast `session:analyzing` to every BrowserWindow so the dashboard
+     * can flip its UI to the "analyzing" phase immediately, even before the
+     * sessionRepository.end() write lands.
+     */
+    _broadcastSessionAnalyzing(sessionId) {
+        try {
+            const { BrowserWindow } = require('electron');
+            const payload = { sessionId, updatedAt: Date.now() };
+            BrowserWindow.getAllWindows().forEach((win) => {
+                if (win && !win.isDestroyed()) {
+                    win.webContents.send('session:analyzing', payload);
+                }
+            });
+        } catch (e) {
+            logger.warn('[ListenService] broadcast analyzing failed', { error: e?.message });
+        }
+    }
+
+    /**
+     * Bring the dashboard window to the foreground on /activity/details for
+     * the just-ended session. Delegates to windowManager so platform-specific
+     * focus rules stay in one place.
+     */
+    _openDashboardOnSession(sessionId) {
+        try {
+            const windowManager = require('../../window/windowManager');
+            if (typeof windowManager.openDashboardOnSession === 'function') {
+                windowManager.openDashboardOnSession(sessionId);
+            }
+        } catch (e) {
+            logger.warn('[ListenService] openDashboardOnSession failed', { error: e?.message });
+        }
+    }
+
     async closeSession() {
+        // Snapshot critical refs BEFORE any cleanup — the rest of the routine
+        // resets state, but the final summary generation still needs them.
+        const endedSessionId = this.currentSessionId;
+        const conversationSnapshot = endedSessionId
+            ? [...this.summaryService.getConversationHistory()]
+            : [];
+
         try {
             this.sendToRenderer('change-listen-capture-state', { status: "stop" });
 
-            // End database session FIRST — before any cleanup that might throw
-            if (this.currentSessionId) {
+            if (endedSessionId) {
+                // 1. Immediately tell the dashboard that this session is now analyzing,
+                //    and bring the dashboard to /activity/details for this session.
+                //    This must run BEFORE the long awaits below.
+                this._broadcastSessionAnalyzing(endedSessionId);
+                this._openDashboardOnSession(endedSessionId);
+
+                // 2. Stamp ended_at in the repository.
                 try {
-                    await sessionRepository.end(this.currentSessionId);
+                    await sessionRepository.end(endedSessionId);
                     logger.info('Session ended.');
                 } catch (endError) {
                     logger.error('Failed to record session end time:', { error: endError.message });
@@ -924,7 +972,27 @@ class ListenService {
 
             await this.stopMacOSAudioCapture();
 
-            // Reset state
+            // 3. Kick off the final summary in the background — never block the
+            //    UI on this. The dashboard already shows its analyzing skeleton.
+            if (endedSessionId && conversationSnapshot.length > 0) {
+                this.summaryService
+                    .generateFinalSummaryForSession(endedSessionId, conversationSnapshot)
+                    .catch((err) => {
+                        logger.error('[ListenService] final summary failed', {
+                            sessionId: endedSessionId,
+                            error: err?.message,
+                        });
+                    });
+            } else if (endedSessionId) {
+                // No conversation captured → broadcast "completed empty" so the UI
+                // exits the analyzing state instead of waiting forever.
+                this.summaryService._broadcastSessionStatus('session:summary-completed', {
+                    sessionId: endedSessionId,
+                    empty: true,
+                });
+            }
+
+            // Reset state (after the snapshot above)
             this.currentSessionId = null;
             this.enhancedAudioEnabled = false;
             this.voiceCommandsEnabled = false;
@@ -934,12 +1002,11 @@ class ListenService {
 
             logger.info('Listen service session closed.');
 
-            // Show session stopped notification (if available)
             if (notificationManager) {
                 notificationManager.showSessionChange('stopped');
             }
 
-            return { success: true };
+            return { success: true, sessionId: endedSessionId };
         } catch (error) {
             logger.error('Error occurred', { error });
 

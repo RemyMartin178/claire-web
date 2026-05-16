@@ -47,6 +47,38 @@ const dashboardApi = {
   removeOnNavigateToSession: () => ipcRenderer.removeAllListeners('dashboard:navigateToSession'),
   onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', (_e, data) => cb(data)),
   removeOnShowDashboard: () => ipcRenderer.removeAllListeners('dashboard:show'),
+
+  // ── Cluely-style session phase events (fired by ListenService.closeSession +
+  // SummaryService.generateFinalSummaryForSession). The renderer uses these to
+  // flip the dashboard into 'analyzing' immediately and reveal the summary the
+  // moment it lands, without polling.
+  onSessionAnalyzing: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('session:analyzing', handler);
+    return () => ipcRenderer.removeListener('session:analyzing', handler);
+  },
+  onSessionSummaryStarted: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('session:summary-started', handler);
+    return () => ipcRenderer.removeListener('session:summary-started', handler);
+  },
+  onSessionSummaryCompleted: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('session:summary-completed', handler);
+    return () => ipcRenderer.removeListener('session:summary-completed', handler);
+  },
+  onSessionSummaryFailed: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('session:summary-failed', handler);
+    return () => ipcRenderer.removeListener('session:summary-failed', handler);
+  },
+  // Dispatched by ListenService.closeSession → windowManager.openDashboardOnSession
+  // to route the dashboard renderer to /activity/details for a specific session.
+  onNavigateToSessionFromMain: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('dashboard:navigate-to-session', handler);
+    return () => ipcRenderer.removeListener('dashboard:navigate-to-session', handler);
+  },
 };
 
 contextBridge.exposeInMainWorld('api', {

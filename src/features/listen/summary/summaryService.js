@@ -408,6 +408,71 @@ RÈGLES :
     }
 
     /**
+     * Final summary pass triggered when the user explicitly ends the session.
+     * Broadcasts progress to every BrowserWindow so the dashboard can show
+     * its "analyzing" UI immediately and reveal the result the moment it's ready.
+     *
+     * @param {string} sessionId
+     * @param {string[]} conversationTexts  snapshot captured BEFORE state reset
+     */
+    async generateFinalSummaryForSession(sessionId, conversationTexts) {
+        if (!sessionId) {
+            logger.warn('[SummaryService] generateFinalSummaryForSession: no sessionId, skipping');
+            return null;
+        }
+
+        // Make sure saveSummary inside makeOutlineAndRequests targets the right session.
+        const previousSessionId = this.currentSessionId;
+        this.setSessionId(sessionId);
+
+        this._broadcastSessionStatus('session:summary-started', { sessionId });
+
+        try {
+            if (!conversationTexts || conversationTexts.length === 0) {
+                logger.info('[SummaryService] No conversation to summarize for session ' + sessionId);
+                this._broadcastSessionStatus('session:summary-completed', { sessionId, empty: true });
+                return null;
+            }
+
+            const data = await this.makeOutlineAndRequests(conversationTexts);
+
+            if (!data) {
+                this._broadcastSessionStatus('session:summary-failed', {
+                    sessionId,
+                    error: 'No data returned',
+                });
+                return null;
+            }
+
+            this._broadcastSessionStatus('session:summary-completed', { sessionId, data });
+            return data;
+        } catch (error) {
+            logger.error('[SummaryService] final summary failed:', { error: error?.message, sessionId });
+            this._broadcastSessionStatus('session:summary-failed', {
+                sessionId,
+                error: error?.message || String(error),
+            });
+            throw error;
+        } finally {
+            // Restore whatever sessionId was set before (usually null after closeSession).
+            this.currentSessionId = previousSessionId;
+        }
+    }
+
+    _broadcastSessionStatus(channel, payload) {
+        try {
+            const { BrowserWindow } = require('electron');
+            BrowserWindow.getAllWindows().forEach((win) => {
+                if (win && !win.isDestroyed()) {
+                    win.webContents.send(channel, payload);
+                }
+            });
+        } catch (e) {
+            logger.warn('[SummaryService] broadcast failed', { error: e?.message, channel });
+        }
+    }
+
+    /**
      * Debug method to manually trigger analysis for testing
      */
     async forceAnalysis() {

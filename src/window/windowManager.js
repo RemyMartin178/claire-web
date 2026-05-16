@@ -2127,6 +2127,42 @@ function getDashboardWindow() {
     return dashboardWindow && !dashboardWindow.isDestroyed() ? dashboardWindow : null;
 }
 
+/**
+ * Bring the dashboard window to the foreground on /activity/details for a
+ * specific session. Called by ListenService.closeSession() so the user lands
+ * directly on the session that just ended (Cluely behavior).
+ *
+ * - If the window is already on that route, just show/focus.
+ * - Otherwise send a 'dashboard:navigate-to-session' IPC; the renderer (which
+ *   already listens for navigation events) routes to /activity/details.
+ */
+function openDashboardOnSession(sessionId) {
+    if (!sessionId) return;
+    const dash = getDashboardWindow();
+    if (!dash) {
+        // No dashboard window yet — create one and queue the navigation for
+        // after did-finish-load.
+        const created = createDashboardWindow({ skipAutoShow: false });
+        if (!created) return;
+        const send = () => {
+            try {
+                created.webContents.send('dashboard:navigate-to-session', { sessionId });
+            } catch (_) {}
+        };
+        created.webContents.once('did-finish-load', send);
+        return;
+    }
+
+    if (!dash.isVisible()) {
+        dash.setOpacity(0);
+        dash.show();
+        setTimeout(() => { if (!dash.isDestroyed()) dash.setOpacity(1); }, 30);
+    }
+    try { dash.focus(); } catch (_) {}
+    try { dash.webContents.send('dashboard:navigate-to-session', { sessionId }); } catch (_) {}
+    sharedStateService.patch({ showDashboard: true });
+}
+
 // ─── Onboarding mode (resize dashboard pour /electron-login) ────────────────
 let _previousDashboardBounds = null;
 
@@ -2312,5 +2348,6 @@ module.exports = {
     hideMeetingNotification,
     getDashboardWindow,
     getDashboardUrlForPath,
+    openDashboardOnSession,
     ensureListenWindow,
 };

@@ -87,6 +87,26 @@ export default function ElectronClientLayout({
     }
   }, [router])
 
+  // ListenService.closeSession → windowManager.openDashboardOnSession sends
+  // 'dashboard:navigate-to-session'. Route to /activity/details for that id.
+  useEffect(() => {
+    const api = (window as any).api
+    const onNav = api?.dashboard?.onNavigateToSessionFromMain
+    if (typeof onNav !== 'function') return
+    const off = onNav((payload: { sessionId?: string } | undefined) => {
+      const id = payload?.sessionId
+      if (!id) return
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+      const current = window.location.pathname + window.location.search
+      if (!current.includes(id)) {
+        router.push(`/activity/details?sessionId=${id}&new=1`)
+      }
+    })
+    return () => {
+      try { off?.() } catch { /* noop */ }
+    }
+  }, [router, queryClient])
+
   const pathname = usePathname()
   const isOnboarding = pathname?.startsWith('/onboarding')
   const isAtRoot = pathname === '/' || pathname === '/activity'
