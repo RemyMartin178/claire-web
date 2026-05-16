@@ -62,6 +62,18 @@ const dashboardApi = {
     ipcRenderer.on('session:summary-started', handler);
     return () => ipcRenderer.removeListener('session:summary-started', handler);
   },
+  // Cluely-style staged reveal: title streams in token-by-token, then 'ready'
+  // fires when it's persisted on session.title.
+  onSessionTitleStream: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('session:title-stream', handler);
+    return () => ipcRenderer.removeListener('session:title-stream', handler);
+  },
+  onSessionTitleReady: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('session:title-ready', handler);
+    return () => ipcRenderer.removeListener('session:title-ready', handler);
+  },
   onSessionSummaryCompleted: (cb) => {
     const handler = (_e, payload) => cb(payload || {});
     ipcRenderer.on('session:summary-completed', handler);

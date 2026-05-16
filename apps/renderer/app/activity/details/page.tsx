@@ -193,6 +193,10 @@ function SessionDetailsContent() {
 
   const isNewSession = searchParams.get('new') === '1'
   const [titleShimmer, setTitleShimmer] = useState(isNewSession)
+  // Live, token-by-token title coming from the main process while the summary
+  // is generating. Cleared once 'session:title-ready' fires and the persisted
+  // session.title takes over (or when the session reaches 'completed').
+  const [streamingTitle, setStreamingTitle] = useState<string>('')
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(() => cachedDetails);
   const [isLoading, setIsLoading] = useState(() => !cachedDetails)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -290,23 +294,49 @@ function SessionDetailsContent() {
           summary: null,
         }
       })
+      setStreamingTitle('')
       void detailsQuery.refetch()
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+    })
+
+    const offTitleStream = api.onSessionTitleStream?.((payload: { sessionId?: string; partial?: string }) => {
+      if (payload?.sessionId !== sessionId) return
+      if (typeof payload.partial === 'string') {
+        setStreamingTitle(payload.partial)
+      }
+    })
+
+    const offTitleReady = api.onSessionTitleReady?.((payload: { sessionId?: string; title?: string }) => {
+      if (payload?.sessionId !== sessionId) return
+      // Patch session.title locally so getSessionDisplayTitle picks it up
+      // even before the next refetch lands.
+      if (payload.title) {
+        setSessionDetails((prev) => {
+          if (!prev) return prev
+          return { ...prev, session: { ...prev.session, title: payload.title! } }
+        })
+        setStreamingTitle(payload.title)
+      }
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
 
     const offCompleted = api.onSessionSummaryCompleted?.((payload: { sessionId?: string }) => {
       if (payload?.sessionId !== sessionId) return
+      setStreamingTitle('')
       void detailsQuery.refetch()
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
 
     const offFailed = api.onSessionSummaryFailed?.((payload: { sessionId?: string }) => {
       if (payload?.sessionId !== sessionId) return
+      setStreamingTitle('')
       void detailsQuery.refetch()
     })
 
     return () => {
       try { offAnalyzing?.() } catch {}
+      try { offTitleStream?.() } catch {}
+      try { offTitleReady?.() } catch {}
       try { offCompleted?.() } catch {}
       try { offFailed?.() } catch {}
     }
@@ -501,7 +531,12 @@ function SessionDetailsContent() {
   }
 
   const helperTitle = getSessionDisplayTitle(sessionDetails?.session, sessionDetails?.summary);
-  const displayTitle = helperTitle;
+  // During the analyzing phase, prefer the token-stream coming from main over
+  // the helper fallback ("Sans titre"), so the user sees the title being
+  // written character by character. Once 'session:title-ready' fires, the
+  // session.title is patched and the helper resolves to the real title.
+  const displayTitle =
+    isAnalyzingSession && streamingTitle ? streamingTitle : helperTitle;
   const titleValue = editableTitle || displayTitle;
   const statusLabel = getSessionStatusLabel(phase);
 
@@ -683,7 +718,12 @@ function SessionDetailsContent() {
               className="mt-2 w-full select-none truncate font-medium text-3xl leading-[1.03] tracking-tight cluely-text-shimmer"
               aria-label="Titre de l'activité"
             >
-              {isLiveSession ? 'Session en cours' : (titleValue || 'Sans titre')}
+              {isLiveSession
+                ? 'Session en cours'
+                : (titleValue || 'Sans titre')}
+              {isAnalyzingSession && streamingTitle ? (
+                <span className="title-caret" aria-hidden="true">|</span>
+              ) : null}
             </h1>
           )}
 

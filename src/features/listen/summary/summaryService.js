@@ -1,7 +1,7 @@
 const { BrowserWindow } = require('electron');
 // Use simple prompt builder instead of domain prompt manager
 const { getSystemPrompt } = require('../../../common/prompts/promptBuilder.js');
-const { createLLM } = require('../../../common/ai/factory');
+const { createLLM, createStreamingLLM } = require('../../../common/ai/factory');
 const sessionRepository = require('../../../common/repositories/session');
 const summaryRepository = require('./repositories');
 const modelStateService = require('../../../common/services/modelStateService');
@@ -409,8 +409,13 @@ RÈGLES :
 
     /**
      * Final summary pass triggered when the user explicitly ends the session.
-     * Broadcasts progress to every BrowserWindow so the dashboard can show
-     * its "analyzing" UI immediately and reveal the result the moment it's ready.
+     *
+     * Cluely-style two-stage reveal:
+     *   1. session:title-stream → tokens of the title stream in, the dashboard
+     *      shows them progressively while keeping the shimmer
+     *   2. session:title-ready  → final title is persisted on session.title
+     *   3. session:summary-completed → bullets + full markdown summary land,
+     *      the shimmer turns off
      *
      * @param {string} sessionId
      * @param {string[]} conversationTexts  snapshot captured BEFORE state reset
@@ -434,6 +439,15 @@ RÈGLES :
                 return null;
             }
 
+            // Stage 1: stream the title (3-6 words). Best-effort — failures don't
+            // block the full summary, the renderer will use the summary tldr as fallback.
+            try {
+                await this.generateTitleStream(sessionId, conversationTexts);
+            } catch (titleErr) {
+                logger.warn('[SummaryService] title stream failed (non-blocking):', { error: titleErr?.message });
+            }
+
+            // Stage 2: full summary (existing path — bullets + actions + markdown).
             const data = await this.makeOutlineAndRequests(conversationTexts);
 
             if (!data) {
@@ -456,6 +470,136 @@ RÈGLES :
         } finally {
             // Restore whatever sessionId was set before (usually null after closeSession).
             this.currentSessionId = previousSessionId;
+        }
+    }
+
+    /**
+     * Stream a short title (3-6 words) for the session. Broadcasts each token
+     * via 'session:title-stream' and the final value via 'session:title-ready'.
+     * Persists the final title on session.title via sessionRepository.updateTitle.
+     */
+    async generateTitleStream(sessionId, conversationTexts) {
+        if (!sessionId || !conversationTexts || conversationTexts.length === 0) return null;
+
+        const modelInfo = modelStateService.getCurrentModelInfo('llm');
+        if (!modelInfo?.provider || !modelInfo?.apiKey || !modelInfo?.model) {
+            logger.warn('[SummaryService] generateTitleStream: no LLM configured');
+            return null;
+        }
+
+        // Cap conversation for the title prompt — only need enough context for
+        // a 3-6 word headline, no need to send 30 turns.
+        const formatted = conversationTexts.slice(-12).join('\n');
+        const messages = [
+            {
+                role: 'system',
+                content: `Tu génères un titre court (3 à 6 mots) qui résume une conversation.
+Règles strictes :
+- Réponds UNIQUEMENT avec le titre, sans guillemets, sans ponctuation finale.
+- Pas de prefixe (pas de "Titre :", pas de "La conversation porte sur").
+- Rédige dans la langue principale de la conversation.
+- Sois spécifique : noms, sujets concrets si possible.`,
+            },
+            {
+                role: 'user',
+                content: `Voici les derniers échanges :\n\n${formatted}\n\nGénère le titre maintenant.`,
+            },
+        ];
+
+        let streamingLLM;
+        try {
+            streamingLLM = createStreamingLLM(modelInfo.provider, {
+                apiKey: modelInfo.apiKey,
+                model: modelInfo.model,
+                temperature: 0.6,
+                maxTokens: 40,
+            });
+        } catch (e) {
+            logger.warn('[SummaryService] streaming LLM not available, falling back to non-stream', { error: e?.message });
+            return this._generateTitleNonStreaming(sessionId, messages, modelInfo);
+        }
+
+        let accumulated = '';
+        try {
+            const response = await streamingLLM.streamChat(messages);
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n').filter(l => l.trim() !== '');
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const data = line.substring(6);
+                    if (data === '[DONE]') break;
+                    try {
+                        const json = JSON.parse(data);
+                        const token = json.choices?.[0]?.delta?.content || '';
+                        if (token) {
+                            accumulated += token;
+                            this._broadcastSessionStatus('session:title-stream', {
+                                sessionId,
+                                partial: accumulated,
+                            });
+                        }
+                    } catch (_) { /* keep streaming */ }
+                }
+            }
+        } catch (e) {
+            logger.warn('[SummaryService] title stream errored, falling back', { error: e?.message });
+            return this._generateTitleNonStreaming(sessionId, messages, modelInfo);
+        }
+
+        const finalTitle = this._cleanGeneratedTitle(accumulated);
+        if (finalTitle) {
+            await this._persistSessionTitle(sessionId, finalTitle);
+            this._broadcastSessionStatus('session:title-ready', { sessionId, title: finalTitle });
+        }
+        return finalTitle;
+    }
+
+    async _generateTitleNonStreaming(sessionId, messages, modelInfo) {
+        try {
+            const llm = createLLM(modelInfo.provider, {
+                apiKey: modelInfo.apiKey,
+                model: modelInfo.model,
+                temperature: 0.6,
+                maxTokens: 40,
+            });
+            const completion = await llm.chat(messages);
+            const finalTitle = this._cleanGeneratedTitle(completion?.content || '');
+            if (finalTitle) {
+                // No streaming tokens available — still emit the partial=final once so
+                // the renderer can update its progressive display in one shot.
+                this._broadcastSessionStatus('session:title-stream', { sessionId, partial: finalTitle });
+                await this._persistSessionTitle(sessionId, finalTitle);
+                this._broadcastSessionStatus('session:title-ready', { sessionId, title: finalTitle });
+            }
+            return finalTitle;
+        } catch (e) {
+            logger.warn('[SummaryService] non-streaming title generation failed', { error: e?.message });
+            return null;
+        }
+    }
+
+    _cleanGeneratedTitle(raw) {
+        if (!raw) return '';
+        return String(raw)
+            .replace(/^["'`«»]+|["'`«»]+$/g, '')
+            .replace(/^(Titre\s*:\s*|Title\s*:\s*)/i, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 80);
+    }
+
+    async _persistSessionTitle(sessionId, title) {
+        try {
+            if (typeof sessionRepository.updateTitle === 'function') {
+                await sessionRepository.updateTitle(sessionId, title);
+            }
+        } catch (e) {
+            logger.warn('[SummaryService] persistSessionTitle failed', { error: e?.message });
         }
     }
 
