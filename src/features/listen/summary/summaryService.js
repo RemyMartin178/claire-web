@@ -256,6 +256,13 @@ RÈGLES :
                 this.analysisHistory.shift();
             }
 
+            // Include the full markdown so the renderer can do a progressive
+            // reveal via setInterval. Without this, only parsed arrays are
+            // available downstream — which is fine for a normal display but
+            // useless for an animated "typing" effect.
+            structuredData.rawText = responseText;
+            structuredData.markdown = responseText;
+
             return structuredData;
         } catch (error) {
             logger.error('[ERROR] Error during analysis generation:', { message: error.message });
@@ -439,26 +446,35 @@ RÈGLES :
                 return null;
             }
 
-            // Stage 1: stream the title (3-6 words). Best-effort — failures don't
-            // block the full summary, the renderer will use the summary tldr as fallback.
-            try {
-                await this.generateTitleStream(sessionId, conversationTexts);
-            } catch (titleErr) {
-                logger.warn('[SummaryService] title stream failed (non-blocking):', { error: titleErr?.message });
-            }
+            // Run title stream + full summary IN PARALLEL — the title is just polish,
+            // its failure must never block the summary. allSettled lets us land each
+            // result independently and still surface a single 'summary-completed' event.
+            const titlePromise = this.generateTitleStream(sessionId, conversationTexts)
+                .catch((titleErr) => {
+                    logger.warn('[SummaryService] title stream failed (non-blocking):', { error: titleErr?.message });
+                    return null;
+                });
+            const summaryPromise = this.makeOutlineAndRequests(conversationTexts);
 
-            // Stage 2: full summary (existing path — bullets + actions + markdown).
-            const data = await this.makeOutlineAndRequests(conversationTexts);
+            const [titleResult, summaryResult] = await Promise.allSettled([titlePromise, summaryPromise]);
+
+            const data = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
 
             if (!data) {
                 this._broadcastSessionStatus('session:summary-failed', {
                     sessionId,
-                    error: 'No data returned',
+                    error: summaryResult.status === 'rejected'
+                        ? (summaryResult.reason?.message || String(summaryResult.reason))
+                        : 'No data returned',
                 });
                 return null;
             }
 
-            this._broadcastSessionStatus('session:summary-completed', { sessionId, data });
+            this._broadcastSessionStatus('session:summary-completed', {
+                sessionId,
+                data,
+                title: titleResult.status === 'fulfilled' ? titleResult.value : null,
+            });
             return data;
         } catch (error) {
             logger.error('[SummaryService] final summary failed:', { error: error?.message, sessionId });

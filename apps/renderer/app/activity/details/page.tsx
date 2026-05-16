@@ -194,9 +194,13 @@ function SessionDetailsContent() {
   const isNewSession = searchParams.get('new') === '1'
   const [titleShimmer, setTitleShimmer] = useState(isNewSession)
   // Live, token-by-token title coming from the main process while the summary
-  // is generating. Cleared once 'session:title-ready' fires and the persisted
-  // session.title takes over (or when the session reaches 'completed').
+  // is generating. Cleared once the progressive reveal of the summary finishes.
   const [streamingTitle, setStreamingTitle] = useState<string>('')
+  // Renderer-side "fake stream" of the summary markdown — kicked off when
+  // session:summary-completed arrives. Until it finishes, the shimmer + caret
+  // stay on so the whole reveal feels continuous.
+  const [progressiveSummaryText, setProgressiveSummaryText] = useState<string | null>(null)
+  const progressiveTimerRef = useRef<number | null>(null)
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(() => cachedDetails);
   const [isLoading, setIsLoading] = useState(() => !cachedDetails)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -320,8 +324,46 @@ function SessionDetailsContent() {
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
 
-    const offCompleted = api.onSessionSummaryCompleted?.((payload: { sessionId?: string }) => {
+    const offCompleted = api.onSessionSummaryCompleted?.((payload: { sessionId?: string; data?: any }) => {
       if (payload?.sessionId !== sessionId) return
+
+      const finalText =
+        payload?.data?.rawText ||
+        payload?.data?.markdown ||
+        payload?.data?.text ||
+        ''
+
+      // Cancel any in-flight reveal before starting a new one.
+      if (progressiveTimerRef.current) {
+        window.clearInterval(progressiveTimerRef.current)
+        progressiveTimerRef.current = null
+      }
+
+      if (finalText) {
+        setProgressiveSummaryText('')
+        let index = 0
+        const chunkSize = 12
+        const tickMs = 16
+        progressiveTimerRef.current = window.setInterval(() => {
+          index += chunkSize
+          setProgressiveSummaryText(finalText.slice(0, index))
+          if (index >= finalText.length) {
+            if (progressiveTimerRef.current) {
+              window.clearInterval(progressiveTimerRef.current)
+              progressiveTimerRef.current = null
+            }
+            // Reveal complete → only NOW turn the shimmer/caret off and pull
+            // the fully-parsed summary from the backend so bullets/markdown
+            // replace the streamed text.
+            setStreamingTitle('')
+            void detailsQuery.refetch()
+            void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+          }
+        }, tickMs)
+        return
+      }
+
+      // No raw text in payload → fall back to immediate refetch.
       setStreamingTitle('')
       void detailsQuery.refetch()
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
@@ -339,6 +381,10 @@ function SessionDetailsContent() {
       try { offTitleReady?.() } catch {}
       try { offCompleted?.() } catch {}
       try { offFailed?.() } catch {}
+      if (progressiveTimerRef.current) {
+        window.clearInterval(progressiveTimerRef.current)
+        progressiveTimerRef.current = null
+      }
     }
   }, [sessionId, detailsQuery, queryClient])
 
@@ -586,6 +632,10 @@ function SessionDetailsContent() {
 
     switch (activeTab) {
       case 'summary':
+        // Priority order:
+        //  1. Final bullets / persisted markdown (from refetched summary)
+        //  2. Progressive reveal stream (between summary-completed and refetch)
+        //  3. Analyzing skeleton / ongoing placeholder
         return bulletPoints.length > 0 ? (
           <ul className="list-disc pl-4 space-y-3 marker:text-muted-foreground">
             {bulletPoints.map((item: string, i: number) => (
@@ -598,6 +648,19 @@ function SessionDetailsContent() {
           <div className="max-w-none">
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
+        ) : progressiveSummaryText !== null ? (
+          progressiveSummaryText.length === 0 ? (
+            <div className="space-y-5">
+              <div className="summary-waiting">
+                <span className="summary-dot" />
+                <span>Claire rédige le résumé</span>
+              </div>
+            </div>
+          ) : (
+            <div className="max-w-none summary-streaming">
+              {parseMarkdown(stripEmojisAndPrefixes(progressiveSummaryText), handleCopySummary)}
+            </div>
+          )
         ) : phase === 'ongoing' ? (
           <p className="text-muted-foreground/50 text-sm">Terminez la session pour voir vos notes.</p>
         ) : phase === 'analyzing' ? (
