@@ -577,12 +577,13 @@ function SessionDetailsContent() {
   }
 
   const helperTitle = getSessionDisplayTitle(sessionDetails?.session, sessionDetails?.summary);
-  // During the analyzing phase, prefer the token-stream coming from main over
-  // the helper fallback ("Sans titre"), so the user sees the title being
-  // written character by character. Once 'session:title-ready' fires, the
-  // session.title is patched and the helper resolves to the real title.
-  const displayTitle =
-    isAnalyzingSession && streamingTitle ? streamingTitle : helperTitle;
+  // Priority during analyzing:
+  //   1. streamingTitle (live token-by-token from main)
+  //   2. "Résumé en cours" placeholder while waiting for the first tokens
+  // Outside analyzing, fall back to the helper-derived title.
+  const displayTitle = isAnalyzingSession
+    ? (streamingTitle || 'Résumé en cours')
+    : helperTitle;
   const titleValue = editableTitle || displayTitle;
 
 
