@@ -1,6 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
+import {
+  getSessionPhase,
+  getSessionStatusLabel,
+  getSessionDisplayTitle,
+} from '@/utils/sessionDisplay'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
@@ -257,12 +262,9 @@ function SessionDetailsContent() {
     }
   }, [sharedState?.isListenRunning, sharedState?.session?.id, sessionId, detailsQuery])
 
-  // Fallback: stop shimmer after 30s even if summary never arrives
-  useEffect(() => {
-    if (!titleShimmer) return
-    const t = setTimeout(() => setTitleShimmer(false), 30000)
-    return () => clearTimeout(t)
-  }, [titleShimmer])
+  // Title shimmer is now derived from phase (ongoing/analyzing). No arbitrary
+  // 30s timeout — the visual stops naturally as soon as the summary lands and
+  // phase becomes 'completed'.
 
   const handleDeleteClick = async () => {
     if (!sessionId) return;
@@ -436,42 +438,26 @@ function SessionDetailsContent() {
     durationFormatted = "En cours";
   }
 
-  // const askMessages = sessionDetails.ai_messages || []; // This is now handled by chatHistory state
-
-  let displayTitle = sessionDetails?.session.title || routeTitle || 'En cours';
-  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'Résumé en cours', 'Sans titre', 'En cours'];
-  const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
+  // Phase-derived state (single source of truth — matches Cluely).
+  const phase = getSessionPhase(sessionDetails?.session, sessionDetails?.summary);
+  const isAnalyzingSession = phase === 'analyzing';
+  const isCompletedSession = phase === 'completed';
 
   let rawSummaryText = sessionDetails?.summary?.text || '';
 
-  // Use tldr (short title, 3-6 words) as primary title source when session title is generic
-  if (isGeneric && sessionDetails?.summary?.tldr) {
-    const tldr = sessionDetails.summary.tldr.split('\n')[0].trim(); // Take first line only
-    const cleanTldr = tldr
-      .replace(/\*\*/g, '')
-      .replace(/^(La discussion porte sur|La conversation porte sur|Ce \w+ porte sur|Le sujet est)\s*/i, '')
-      .trim();
-    if (cleanTldr && cleanTldr.length > 0) {
-      // Cap at 40 chars (3-6 words max)
-      displayTitle = cleanTldr.length > 40 ? cleanTldr.substring(0, 40).trimEnd() + '…' : cleanTldr;
-    }
-  }
-
-  // Fallback: extract **Title** from raw summary text
-  if (isGeneric || !displayTitle) {
+  // Extract title from **Title** marker in raw summary if present.
+  {
     const titleRegex = /\*\*Title\*\*\s*\n+([^\n]+)/i;
     const titleMatch = rawSummaryText.match(titleRegex);
     if (titleMatch) {
-      displayTitle = titleMatch[1].replace(/\*\*/g, '').trim();
       rawSummaryText = rawSummaryText.replace(/\*\*Title\*\*\s*\n+[^\n]+\n?/, '');
     }
   }
 
-  const finalTitleIsGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
-  if (finalTitleIsGeneric) {
-    displayTitle = (isNewSession && titleShimmer) ? 'Résumé en cours...' : 'Sans titre';
-  }
+  const helperTitle = getSessionDisplayTitle(sessionDetails?.session, sessionDetails?.summary);
+  const displayTitle = helperTitle;
   const titleValue = editableTitle || displayTitle;
+  const statusLabel = getSessionStatusLabel(phase);
 
 
   // Helper to remove emojis and redundant prefixes from summary text
@@ -494,21 +480,15 @@ function SessionDetailsContent() {
     // Remove emojis and prefixes from extracted bullets
     if (matches) bulletPoints = matches.map(m => stripEmojisAndPrefixes(m.replace(/^- /, '')));
   }
-  // isGeneratingSummary is true when either:
-  //  - the page was opened with ?new=1 (fresh from a Listen flow)
-  //  - OR we just observed listen stop on this session (titleShimmer was flipped)
-  // and the summary content is still missing.
+  // Summary is "generating" whenever the session is in analyzing phase, regardless
+  // of how the user arrived at this page (no longer dependent on ?new=1).
   const isGeneratingSummary =
-    (isNewSession || titleShimmer) && !rawSummaryText && bulletPoints.length === 0;
+    isAnalyzingSession && !rawSummaryText && bulletPoints.length === 0;
 
   // Live ONLY while listen actually runs AND the backend hasn't stamped ended_at.
-  // The previous logic could keep "Session en cours" stuck in the header when
-  // sharedState wasn't refreshed but the session was actually closed.
-  const sessionEnded = Boolean(sessionDetails?.session?.ended_at)
-  const isLiveSession = isNewSession
+  const isLiveSession = phase === 'ongoing'
     && (sharedState?.isListenRunning ?? false)
     && sharedState?.session?.id === sessionId
-    && !sessionEnded
 
   const missedOpportunitiesCount = 6;
 
@@ -537,10 +517,20 @@ function SessionDetailsContent() {
           <div className="max-w-none">
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
           </div>
-        ) : isGeneratingSummary ? (
-          isLiveSession
-            ? <p className="text-muted-foreground/50 text-sm">Terminez la session pour voir vos notes.</p>
-            : <p className="text-muted-foreground/60 text-sm motion-safe:animate-pulse">Génération des notes en cours…</p>
+        ) : phase === 'ongoing' ? (
+          <p className="text-muted-foreground/50 text-sm">Terminez la session pour voir vos notes.</p>
+        ) : phase === 'analyzing' ? (
+          <div className="space-y-5">
+            <div className="summary-waiting">
+              <span className="summary-dot" />
+              <span>Claire prépare le résumé</span>
+            </div>
+            <div className="space-y-3">
+              <div className="summary-skeleton-line w-[92%]" />
+              <div className="summary-skeleton-line w-[76%]" />
+              <div className="summary-skeleton-line w-[84%]" />
+            </div>
+          </div>
         ) : (
           <p className="text-muted-foreground/80 text-sm">Aucun résumé disponible.</p>
         );
@@ -633,24 +623,35 @@ function SessionDetailsContent() {
             </div>
           </div>
 
-          {/* Title */}
-          {(() => {
-            const titleClass = isLiveSession
-              ? 'text-muted-foreground/50 animate-pulse'
-              : titleShimmer
-              ? 'text-muted-foreground/50 title-shimmer'
-              : 'text-foreground'
-            const liveTitle = isLiveSession ? 'Session en cours' : titleValue
-            return (
-              <input
-                value={liveTitle}
-                onChange={(event) => { if (!isLiveSession) setEditableTitle(event.target.value) }}
-                readOnly={isLiveSession}
-                aria-label="Titre de l'activite"
-                className={`mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none transition-colors duration-500 ${titleClass}`}
-              />
-            )
-          })()}
+          {/* Title — input ONLY when phase=completed. Live/analyzing use h1 + shimmer
+              so we avoid all caret/focus/selection glitches on a non-editable input. */}
+          {isCompletedSession ? (
+            <input
+              value={titleValue}
+              onChange={(event) => setEditableTitle(event.target.value)}
+              aria-label="Titre de l'activité"
+              className="mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none text-foreground"
+            />
+          ) : (
+            <h1
+              className="mt-2 w-full select-none truncate font-medium text-3xl leading-[1.03] tracking-tight cluely-text-shimmer"
+              aria-label="Titre de l'activité"
+            >
+              {isLiveSession ? 'Session en cours' : (titleValue || 'Sans titre')}
+            </h1>
+          )}
+
+          {/* Phase status label (Cluely-style: "Résumé en cours" / "Session en cours") */}
+          {!isCompletedSession && (
+            <p
+              className={[
+                'mt-2 text-sm font-medium',
+                isLiveSession || isAnalyzingSession ? 'cluely-text-shimmer' : 'text-muted-foreground',
+              ].join(' ')}
+            >
+              {statusLabel}
+            </p>
+          )}
 
           {/* Tabs row + copy button */}
           <div className="mt-4 flex items-center justify-between gap-4">

@@ -468,7 +468,10 @@ export const getSessions = async (options: { forceRefresh?: boolean } = {}): Pro
 
     // Enrich with fallback titles from Summary if needed
     await Promise.all(sessions.map(async (session) => {
-      let displayTitle = session.title;
+      // Enrich session.title ONLY when a meaningful summary tldr exists.
+      // Never inject a generic UI fallback ("Discussion avec Claire", etc.)
+      // — the renderer derives the display title via utils/sessionDisplay.ts.
+      const displayTitle = session.title;
       const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'La discussion porte sur', 'La conversation porte sur'];
       const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
 
@@ -477,13 +480,17 @@ export const getSessions = async (options: { forceRefresh?: boolean } = {}): Pro
           const summary = await FirestoreSummaryService.getSummary(uid, session.id);
           if (summary && summary.tldr) {
             const firstLine = summary.tldr.split('\n')[0].trim();
-            let cleanTldr = firstLine.replace(/^(La discussion porte sur|La conversation porte sur|Ce \w+ porte sur|Le sujet est)\s*/i, '').replace(/\*\*/g, '').trim();
-            session.title = cleanTldr.length > 40 ? cleanTldr.substring(0, 40).trimEnd() + '…' : cleanTldr || 'Discussion avec Claire';
-          } else {
-            session.title = 'Discussion avec Claire';
+            const cleanTldr = firstLine
+              .replace(/^(La discussion porte sur|La conversation porte sur|Ce \w+ porte sur|Le sujet est)\s*/i, '')
+              .replace(/\*\*/g, '')
+              .trim();
+            if (cleanTldr) {
+              session.title = cleanTldr.length > 40 ? cleanTldr.substring(0, 40).trimEnd() + '…' : cleanTldr;
+            }
+            // else: leave session.title as-is, renderer will pick the right fallback
           }
         } catch (e) {
-          session.title = 'Discussion avec Claire';
+          // Network/Firestore error → keep raw title, renderer falls back to phase-based label
         }
       }
     }));

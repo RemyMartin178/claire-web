@@ -1214,6 +1214,59 @@ a:hover {
 .shimmer-speed-250 { animation-duration: 2.5s; }
 .shimmer-speed-200 { animation-duration: 2.0s; }
 
+/* ─── Summary "waiting / analyzing" UI (Cluely-style) ─────────────────── */
+.summary-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(120, 120, 130, 0.85);
+  font-size: 13px;
+  font-weight: 500;
+}
+.dark .summary-waiting { color: rgba(255, 255, 255, 0.52); }
+
+.summary-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(120, 120, 130, 0.85);
+  animation: summary-dot-pulse 1s linear infinite;
+}
+.dark .summary-dot { background: rgba(255, 255, 255, 0.82); }
+
+@keyframes summary-dot-pulse {
+  0%, 42.5% { opacity: 1; }
+  50%, 92.5% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.summary-skeleton-line {
+  height: 12px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.04),
+    rgba(0, 0, 0, 0.12),
+    rgba(0, 0, 0, 0.04)
+  );
+  background-size: 220% 100%;
+  animation: claire-skeleton-shimmer 1.25s linear infinite;
+}
+.dark .summary-skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.055),
+    rgba(255, 255, 255, 0.13),
+    rgba(255, 255, 255, 0.055)
+  );
+  background-size: 220% 100%;
+}
+
+@keyframes claire-skeleton-shimmer {
+  from { background-position: 120% 0; }
+  to   { background-position: -120% 0; }
+}
+
 /* ─── Cluely blue gradient button (reusable utility) ─── */
 .claire-btn-blue {
   background: var(--claire-btn-active-bg);

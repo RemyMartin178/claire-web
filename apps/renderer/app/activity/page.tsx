@@ -17,6 +17,11 @@ import {
   useSessionsQuery,
 } from '@/hooks/useSessionQueries'
 import { useSharedState } from '@/contexts/SharedStateContext'
+import {
+  getSessionPhase,
+  getSessionDisplayTitle,
+  getSessionBadgeLabel,
+} from '@/utils/sessionDisplay'
 
 export default function ActivityPage() {
   const { user: userInfo, loading } = useAuth();
@@ -43,7 +48,9 @@ export default function ActivityPage() {
   const focusCount = sharedState?.dashboardFocusCount ?? 0
   const prevFocusCount = useRef<number | null>(null)
 
-  // Auto-navigate to active/recent session when dashboard is shown
+  // Auto-navigate to the active session on explicit dashboard focus.
+  // No sessionStorage lock — it was preventing legitimate re-opens after the user
+  // came back to the activity list and re-focused the dashboard.
   useEffect(() => {
     if (!sharedReady) return
     const sessionId = sharedState?.session?.id
@@ -51,12 +58,9 @@ export default function ActivityPage() {
     const isFirst = prevFocusCount.current === null
     const didFocus = !isFirst && focusCount > (prevFocusCount.current ?? 0)
     prevFocusCount.current = focusCount
-    if (!isFirst && !didFocus) return
-    const key = `dashboard:redirected:${sessionId}`
-    if (sessionStorage.getItem(key)) return
-    sessionStorage.setItem(key, '1')
+    if (!didFocus) return
     router.push(`/activity/details?sessionId=${sessionId}&title=Session+en+cours&new=1`)
-  }, [sharedReady, focusCount])
+  }, [sharedReady, focusCount, sharedState?.session?.id, router])
 
   useEffect(() => {
     if (!sharedState?.lastSessionId) return
@@ -438,20 +442,16 @@ export default function ActivityPage() {
                         durationStr = 'En cours'
                       }
 
-                      const isLive = !session.ended_at
-
-                      let displayTitle = session.title
-                      if (
-                        !displayTitle ||
-                        displayTitle.includes('Session @') ||
-                        displayTitle === 'Session Sans Titre' ||
-                        displayTitle === 'Discussion avec Claire'
-                      ) {
-                        displayTitle = isLive ? 'En cours' : 'Session sans titre'
-                      }
-                      if (displayTitle && displayTitle.length > 45) {
+                      // Phase is the single source of truth (ongoing/analyzing/completed).
+                      // No more page-level "Discussion avec Claire" fallback.
+                      const phase = getSessionPhase(session, null)
+                      const isLive = phase === 'ongoing'
+                      const isAnalyzing = phase === 'analyzing'
+                      let displayTitle = getSessionDisplayTitle(session, null)
+                      if (displayTitle.length > 45) {
                         displayTitle = displayTitle.substring(0, 42).trimEnd() + '…'
                       }
+                      const badgeLabel = getSessionBadgeLabel(phase, durationStr)
 
                       return (
                         <li key={session.id} className="group/row relative">
@@ -471,12 +471,26 @@ export default function ActivityPage() {
                             onPointerDown={() => warmSessionNavigation(session, displayTitle)}
                             className="flex cursor-default items-center justify-between rounded-lg px-3 py-2.5 transform-gpu transition-[background-color,filter,opacity] duration-180 ease-apple group-hover/row:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
                           >
-                            <span className={`truncate pr-3 font-medium text-sm flex-1 block${isLive ? ' cluely-text-shimmer' : ' text-foreground'}`}>
+                            <span
+                              className={[
+                                'truncate pr-3 font-medium text-sm flex-1 block',
+                                isLive || isAnalyzing ? 'cluely-text-shimmer' : 'text-foreground',
+                              ].join(' ')}
+                            >
                               {displayTitle}
                             </span>
                             <span className="flex shrink-0 items-center gap-3">
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums bg-muted text-muted-foreground">
-                                {durationStr}
+                              <span
+                                className={[
+                                  'inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums',
+                                  isLive
+                                    ? 'bg-muted text-muted-foreground animate-pulse'
+                                    : isAnalyzing
+                                      ? 'bg-muted cluely-text-shimmer'
+                                      : 'bg-muted text-muted-foreground',
+                                ].join(' ')}
+                              >
+                                {badgeLabel}
                               </span>
                               <span className="text-[11px] text-muted-foreground tabular-nums lowercase transition-all duration-200 group-hover/row:-translate-x-1.5 group-hover/row:opacity-0">
                                 {timeStr}
