@@ -337,20 +337,29 @@ export default function ActivityPage() {
             </div>
 
             {canStartClaire && (
-              <div className="flex flex-col items-end gap-1">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col items-end gap-1.5">
+                <div className="flex items-center gap-3">
                   {isStartingClaire && (
                     <span aria-label="Demarrage en cours" className="size-4 rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground/70 animate-spin" />
                   )}
+                  {/* Cluely-style premium Start button: taller, radial+linear gradient stack, inset highlights */}
                   <button
-                  onClick={handleStartClaire}
-                  disabled={isStartingClaire}
-                  aria-label="Démarrer Claire"
-                  className="inline-flex h-10 items-center gap-2 rounded-full px-5 text-[14px] font-semibold text-white transition-all duration-200 hover:scale-[1.04] hover:brightness-105 active:scale-[0.97] disabled:opacity-70 disabled:hover:scale-100 focus-visible:outline-none"
-                  style={{ background: 'radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%)', boxShadow: '0 0 0 0.678px #0c44a1, inset 0 -1.355px #022c70, inset 0 0.678px #81b6ff' }}
-                >
-                  <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="10 8 16 12 10 16 10 8" /></svg>
-                  Démarrer Claire
+                    onClick={handleStartClaire}
+                    disabled={isStartingClaire}
+                    aria-label="Démarrer Claire"
+                    className="group relative inline-flex h-[52px] items-center gap-2.5 rounded-full px-6 text-[15px] font-semibold text-white transition-[transform,filter,box-shadow] duration-200 ease-out hover:scale-[1.04] hover:brightness-105 active:scale-[0.97] disabled:opacity-70 disabled:hover:scale-100 focus-visible:outline-none"
+                    style={{
+                      background:
+                        'radial-gradient(120% 130% at 50% -10%, rgba(255,255,255,0.18), rgba(255,255,255,0.04) 35%, transparent 70%), radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0%, #0c26a8 100%)',
+                      boxShadow:
+                        '0 18px 38px rgba(8, 30, 105, 0.45), 0 6px 14px rgba(0,0,0,0.25), 0 0 0 0.678px #0c44a1, inset 0 -1.355px #022c70, inset 0 0.678px #81b6ff',
+                    }}
+                  >
+                    <svg className="size-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="10 8 16 12 10 16 10 8" />
+                    </svg>
+                    Démarrer Claire
                   </button>
                 </div>
                 <span className="text-[11px] text-muted-foreground/60 tabular-nums pr-1">
@@ -429,9 +438,16 @@ export default function ActivityPage() {
                         durationStr = 'En cours'
                       }
 
+                      const isLive = !session.ended_at
+
                       let displayTitle = session.title
-                      if (!displayTitle || displayTitle.includes('Session @') || displayTitle === 'Session Sans Titre') {
-                        displayTitle = 'Discussion avec Claire'
+                      if (
+                        !displayTitle ||
+                        displayTitle.includes('Session @') ||
+                        displayTitle === 'Session Sans Titre' ||
+                        displayTitle === 'Discussion avec Claire'
+                      ) {
+                        displayTitle = isLive ? 'En cours' : 'Session sans titre'
                       }
                       if (displayTitle && displayTitle.length > 45) {
                         displayTitle = displayTitle.substring(0, 42).trimEnd() + '…'
@@ -455,14 +471,14 @@ export default function ActivityPage() {
                             onPointerDown={() => warmSessionNavigation(session, displayTitle)}
                             className="flex cursor-default items-center justify-between rounded-lg px-3 py-2.5 transform-gpu transition-[background-color,filter,opacity] duration-180 ease-apple group-hover/row:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30"
                           >
-                            <span className="truncate pr-3 font-medium text-sm text-foreground flex-1 block">
+                            <span className={`truncate pr-3 font-medium text-sm flex-1 block${isLive ? ' cluely-text-shimmer' : ' text-foreground'}`}>
                               {displayTitle}
                             </span>
                             <span className="flex shrink-0 items-center gap-3">
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums bg-muted text-foreground">
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums bg-muted text-muted-foreground">
                                 {durationStr}
                               </span>
-                              <span className="text-[11px] text-muted-foreground w-[5ch] text-right">
+                              <span className="text-[11px] text-muted-foreground tabular-nums lowercase transition-all duration-200 group-hover/row:-translate-x-1.5 group-hover/row:opacity-0">
                                 {timeStr}
                               </span>
                               <Button
@@ -471,7 +487,7 @@ export default function ActivityPage() {
                                 disabled={deletingId === session.id}
                                 variant="ghost"
                                 size="icon"
-                                className="opacity-0 translate-x-1 group-hover/row:translate-x-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-[background-color,color,opacity,transform] duration-180 ease-apple"
+                                className="absolute right-1 opacity-0 translate-x-1 group-hover/row:translate-x-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-[background-color,color,opacity,transform] duration-180 ease-apple"
                               >
                                 {deletingId === session.id ? (
                                   <div className="animate-spin h-3.5 w-3.5 border-2 border-red-500 rounded-full border-t-transparent" />

@@ -11,6 +11,11 @@ import UpgradeOverlay from './UpgradeOverlay.jsx';
 
 const PAD = 8;
 
+// Cluely-parity dimensions for the Ask panel
+export const CLUELY_ASK_WIDTH = 660;
+export const CLUELY_ASK_MIN_HEIGHT = 168;
+export const CLUELY_ASK_MAX_HEIGHT = 700;
+
 function computeLayout(pillX, pillY, pillW, pillH, screenW, screenH, panels, panelSizes) {
     const result = {};
     const headerBottomRel = pillY + pillH;
@@ -24,8 +29,8 @@ function computeLayout(pillX, pillY, pillW, pillH, screenW, screenH, panels, pan
     const listenVis = panels.listen;
 
     if (askVis || listenVis) {
-        const askW = panelSizes.ask?.w ?? 670;
-        const askH = panelSizes.ask?.h ?? 168;
+        const askW = panelSizes.ask?.w ?? CLUELY_ASK_WIDTH;
+        const askH = panelSizes.ask?.h ?? CLUELY_ASK_MIN_HEIGHT;
         const listenW = panelSizes.listen?.w ?? 400;
         const listenH = panelSizes.listen?.h ?? 400;
 
@@ -60,7 +65,7 @@ function computeLayout(pillX, pillY, pillW, pillH, screenW, screenH, panels, pan
         let x;
         if (panels.ask && result.ask) {
             // Ask is open: place Settings to the right of Ask panel
-            x = result.ask.x + (panelSizes.ask?.w ?? 670) + PAD;
+            x = result.ask.x + (panelSizes.ask?.w ?? CLUELY_ASK_WIDTH) + PAD;
         } else if (panels.listen && result.listen) {
             // Listen is open: place Settings to the right of Listen panel
             x = result.listen.x + (panelSizes.listen?.w ?? 400) + PAD;
@@ -158,13 +163,13 @@ export default function OverlayRoot() {
     const [panelAnimClass, setPanelAnimClass] = useState({});
 
     const [panelSizes, setPanelSizes] = useState({
-        ask: { w: 670, h: 168 },
+        ask: { w: CLUELY_ASK_WIDTH, h: CLUELY_ASK_MIN_HEIGHT },
         listen: { w: 400, h: 400 },
         settings: { w: 240, h: 500 },
         'agent-selector': { w: 320, h: 380 },
     });
     const panelSizesRef = useRef({
-        ask: { w: 670, h: 168 },
+        ask: { w: CLUELY_ASK_WIDTH, h: CLUELY_ASK_MIN_HEIGHT },
         listen: { w: 400, h: 400 },
         settings: { w: 240, h: 500 },
         'agent-selector': { w: 320, h: 380 },

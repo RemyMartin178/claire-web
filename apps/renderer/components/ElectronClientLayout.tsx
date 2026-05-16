@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, type CSSProperties } from 'react'
+import { ActiveRecordingWidget } from '@/components/ActiveRecordingWidget'
 import SearchPopup from '@/components/SearchPopup'
 import PasswordModal from '@/components/PasswordModal'
 import SettingsModalElectron from '@/components/SettingsModalElectron'
@@ -66,6 +67,23 @@ export default function ElectronClientLayout({
 
     return () => {
       try { offNavigate?.() } catch { /* noop */ }
+    }
+  }, [router])
+
+  // Cluely-style reopen: when the user closes the dashboard window and later
+  // brings the app back to the foreground (taskbar/dock click → second-instance
+  // or activate in main), we route to /activity.
+  useEffect(() => {
+    const api = (window as any).api
+    const onReopen = api?.dashboard?.onReopen
+    if (typeof onReopen !== 'function') return
+    const off = onReopen((payload: { route?: string } | undefined) => {
+      const target = payload?.route || '/activity'
+      const current = window.location.pathname
+      if (current !== target) router.push(target)
+    })
+    return () => {
+      try { off?.() } catch { /* noop */ }
     }
   }, [router])
 
@@ -151,6 +169,8 @@ export default function ElectronClientLayout({
         </div>
       </div>
       </div>
+
+      <ActiveRecordingWidget />
 
       <SearchPopup
         isOpen={isSearchOpen}

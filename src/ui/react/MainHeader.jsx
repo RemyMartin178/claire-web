@@ -75,10 +75,18 @@ const CSS = `
   position: absolute;
   inset: 0;
   border-radius: 9999px;
+  /* Match Cluely exactly (control-B2uUqqtY.js):
+     bg-[hsla(252,10%,10%,0.8)] transition duration-75 peer-hover:brightness-300
+     NO backdrop-filter — keeping desktop colors un-desaturated behind the pill */
   background: hsla(252, 10%, 10%, 0.8);
   transition: filter 75ms ease;
 }
 .mh-pill:hover::before { filter: brightness(3); }
+/* Ne pas surbriller la pill quand on survole un bouton (sinon "feedback dashboard" trompeur) */
+.mh-pill:has(button:hover)::before { filter: none !important; }
+/* Single flex layout: logo + buttons. The logo uses margin-right: auto to
+   sit at the left while the rest is pushed flex-end. Matches Cluely's
+   justify-end gap-1.5 pr-[9px] pl-2 layout when the logo has mr-auto. */
 .mh-controls {
   pointer-events: none;
   position: absolute;
@@ -114,12 +122,31 @@ const CSS = `
 
 /* ── LOGO ── */
 .mh-logo {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
   pointer-events: none;
   margin-right: auto;
   overflow: visible;
+}
+
+/* ── SHIMMER (Ask while listening) ── */
+@keyframes mh-shimmer {
+  0%   { background-position: 120% 0; }
+  100% { background-position: -120% 0; }
+}
+.mh-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.70),
+    rgba(255,255,255,1),
+    rgba(255,255,255,0.70)
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: mh-shimmer 1.6s linear infinite;
 }
 
 /* ── WIDE BUTTON (Ask / Cacher) ── */
@@ -200,6 +227,8 @@ const CSS = `
 .mh-action-btn:hover  { filter: brightness(1.25); color: #fff; }
 .mh-action-btn:active { transform: scale(0.94); }
 .mh-action-btn:disabled { opacity: 0.60; cursor: default; pointer-events: none; }
+.mh-action-btn > svg { display: block; }
+.mh-wide-btn > .mh-wide-content > svg { display: block; }
 
 /* ── SPINNER ── */
 @keyframes mh-spin { to { transform: rotate(360deg); } }
@@ -304,8 +333,8 @@ const IconMic = () => (
 );
 
 const IconStop = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-    <rect x="4" y="4" width="16" height="16" rx="2.5"/>
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor" style={{ display: 'block' }}>
+    <rect width="12" height="12" rx="2"/>
   </svg>
 );
 
@@ -565,7 +594,8 @@ export default function MainHeader({
   }, [updateClickThrough]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleListen = useCallback(async () => {
+  const handleListen = useCallback(async (e) => {
+    if (e) e.stopPropagation();
     if (wasJustDraggedRef.current || isTogglingSession) return;
     const currentStatus = listenStatusRef.current;
     setIsTogglingSession(true);
@@ -582,7 +612,8 @@ export default function MainHeader({
     } catch { setIsTogglingSession(false); }
   }, [isTogglingSession]);
 
-  const handleAsk = useCallback(async () => {
+  const handleAsk = useCallback(async (e) => {
+    if (e) e.stopPropagation();
     if (wasJustDraggedRef.current) return;
     try {
       await window.api.sharedState?.patch?.({ showChat: true });
@@ -659,18 +690,22 @@ export default function MainHeader({
           onClick={handlePillClick}
         >
           <div className="mh-controls">
-          {/* Logo — inline SVG, no image load delay */}
+          {/* Logo — inline SVG, mr-auto pushes it to the left of the flex row */}
           <ClaireMark />
-          {/* Wide button: IA ↔ Masquer */}
+          {/* Wide button: Ask ↔ Hide */}
           <button
-              className={`mh-wide-btn no-drag${isListening && showChat ? ' chat-visible' : ''}`}
-            onClick={isListening ? handleChatToggle : handleAsk}
+              className={`mh-wide-btn no-drag${showChat ? ' chat-visible' : ''}`}
+            onClick={showChat ? handleChatToggle : handleAsk}
             tabIndex={-1}
             type="button"
           >
             <span className="mh-wide-content">
-              {isListening && showChat ? <IconChevronDown /> : <IconSparkles />}
-              {isListening && showChat ? 'Masquer' : 'IA'}
+              {showChat ? <IconChevronDown /> : <IconSparkles />}
+              {showChat ? (
+                'Hide'
+              ) : (
+                <span className={isListening ? 'mh-shimmer' : ''}>Ask</span>
+              )}
             </span>
           </button>
 

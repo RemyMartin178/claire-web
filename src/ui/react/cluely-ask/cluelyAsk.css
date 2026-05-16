@@ -1,0 +1,464 @@
+/* Cluely-parity Ask View — scoped, no global side effects */
+
+.cluely-ask-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 168px;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(11, 11, 14, 0.88);
+  color: rgba(255, 255, 255, 0.90);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.60),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Thread ────────────────────────────────────────────────────────────── */
+
+.cluely-thread {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  background: transparent;
+}
+
+.cluely-thread-viewport {
+  position: relative;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-left: 6px;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black calc(100% - var(--viewport-bottom-mask-size, 0px)),
+    transparent 100%
+  );
+}
+.cluely-thread-viewport::-webkit-scrollbar { width: 8px; }
+.cluely-thread-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 9999px;
+}
+.cluely-thread-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ── User row ──────────────────────────────────────────────────────────── */
+
+.cluely-user-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 8px 20px 8px;
+}
+.cluely-user-bubble-wrap {
+  position: relative;
+  max-width: 70%;
+  cursor: default;
+  user-select: text;
+}
+.cluely-user-bubble {
+  position: relative;
+  padding: 6px 10px;
+  border-radius: 11px 11px 4px 11px;
+  background: linear-gradient(#0544a9, #022c70);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.16),
+    0 0 0 0.5px #0c44a1,
+    inset 0 -1px #022c70,
+    inset 0 0.5px #81b6ff;
+}
+.cluely-user-bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* ── Assistant row ─────────────────────────────────────────────────────── */
+
+.cluely-assistant-row {
+  padding: 0 12px 14px 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 140px;
+}
+.cluely-assistant-content {
+  cursor: default;
+  user-select: text;
+  font-size: 13px;
+  line-height: 1.58;
+  color: rgba(255, 255, 255, 0.86);
+}
+.cluely-assistant-content p { margin: 0 0 8px 0; }
+.cluely-assistant-content p:last-child { margin-bottom: 0; }
+.cluely-assistant-content code {
+  background: rgba(255, 255, 255, 0.07);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;
+  font-size: 12px;
+}
+.cluely-assistant-content pre {
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ── Viewed screen / files label ───────────────────────────────────────── */
+
+.cluely-viewed-trigger {
+  position: relative;
+  width: fit-content;
+}
+.cluely-viewed-label {
+  margin: 0 0 4px 0;
+  width: fit-content;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 12px;
+  line-height: 1;
+  cursor: default;
+  transition: color 150ms ease;
+}
+.cluely-viewed-label:hover {
+  color: rgba(255, 255, 255, 0.74);
+}
+.cluely-viewed-preview {
+  pointer-events: none;
+  position: absolute;
+  top: 22px;
+  left: 0;
+  z-index: 40;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(14, 14, 18, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms ease-out;
+}
+.cluely-viewed-trigger:hover .cluely-viewed-preview {
+  opacity: 1;
+  transform: translateY(0);
+}
+.cluely-viewed-image-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.cluely-viewed-image-wrap.loading {
+  width: 320px;
+  aspect-ratio: 16 / 9;
+}
+.cluely-viewed-image-wrap.loaded {
+  width: fit-content;
+}
+.cluely-viewed-img {
+  width: 320px;
+  object-fit: contain;
+  transition: opacity 150ms ease;
+}
+.cluely-viewed-img.visible {
+  height: auto;
+  max-height: 320px;
+  opacity: 1;
+}
+.cluely-viewed-img.hidden {
+  width: 320px;
+  height: 100%;
+  opacity: 0;
+}
+.cluely-viewed-error {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+}
+
+/* ── Loading dot ───────────────────────────────────────────────────────── */
+
+@keyframes cluely-loading-dot {
+  0%, 42.5% { opacity: 1; }
+  50%, 92.5% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.cluely-loading-dot {
+  margin-top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.90);
+  animation: cluely-loading-dot 1s linear infinite;
+}
+
+/* ── Copy button ───────────────────────────────────────────────────────── */
+
+.cluely-copy-btn {
+  margin-top: 4px;
+  margin-left: -2px;
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.38);
+  opacity: 0;
+  transform: scale(0.88);
+  cursor: pointer;
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms ease-out,
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.cluely-assistant-row:hover .cluely-copy-btn,
+.cluely-user-row:hover .cluely-copy-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+.cluely-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.74);
+}
+.cluely-copy-btn:active {
+  transform: scale(0.96);
+}
+
+/* ── Quick actions ─────────────────────────────────────────────────────── */
+
+.cluely-actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px 10px 2px 10px;
+  overflow: hidden;
+}
+.cluely-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.80);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    color 120ms ease,
+    transform 120ms ease;
+}
+.cluely-action-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+  color: rgba(255, 255, 255, 0.96);
+}
+.cluely-action-btn:disabled {
+  opacity: 0.50;
+  cursor: default;
+}
+.cluely-action-dot {
+  width: 3px;
+  height: 3px;
+  margin: 0 3px;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Composer ──────────────────────────────────────────────────────────── */
+
+.cluely-composer {
+  margin: auto 10px 10px 10px;
+  min-height: 80px;
+  border-radius: 8px;
+  border: 0.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+.cluely-textarea-wrap {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+.cluely-textarea {
+  display: block;
+  width: 100%;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 10px 44px 10px 10px;
+  max-height: 50px;
+  overflow-y: hidden;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  font-family: inherit;
+  scrollbar-width: thin;
+}
+.cluely-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+.cluely-send-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: linear-gradient(#0544a9, #022c70);
+  color: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 0.5px #0c44a1,
+    inset 0 -1px #022c70,
+    inset 0 0.5px #81b6ff;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease,
+    opacity 120ms ease;
+}
+.cluely-send-btn:hover {
+  transform: scale(1.05);
+  filter: brightness(1.18);
+}
+.cluely-send-btn:active {
+  transform: scale(0.94);
+}
+.cluely-send-btn:disabled {
+  opacity: 0.50;
+  cursor: default;
+  filter: grayscale(0.4);
+}
+.cluely-composer-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 8px 10px;
+}
+.cluely-smart-chip {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.13);
+  color: rgba(255, 255, 255, 0.70);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    transform 120ms ease;
+}
+.cluely-smart-chip:hover {
+  background: rgba(255, 255, 255, 0.20);
+  color: #fff;
+  transform: scale(1.04);
+}
+.cluely-smart-chip.active {
+  background: rgba(255, 193, 7, 0.22);
+  color: #ffd54a;
+}
+.cluely-more-btn {
+  display: inline-flex;
+  width: 28px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.50);
+  cursor: pointer;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease,
+    transform 120ms ease;
+}
+.cluely-more-btn:hover {
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Scroll-to-bottom ──────────────────────────────────────────────────── */
+
+.cluely-scroll-bottom-wrap {
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  padding-right: 14px;
+  padding-bottom: 12px;
+}
+.cluely-scroll-bottom {
+  pointer-events: auto;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: linear-gradient(#2e3039, #272a31);
+  color: rgba(255, 255, 255, 0.88);
+  cursor: pointer;
+  box-shadow:
+    0 85px 34px #00000005,
+    0 48px 29px #00000014,
+    0 21px 21px #00000021,
+    0 5px 12px #00000029,
+    inset 0 -1px #16171a,
+    inset 0 0.5px #afb3c4;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease,
+    filter 150ms ease;
+}
+.cluely-scroll-bottom:hover {
+  transform: scale(1.05);
+  filter: brightness(1.25);
+}

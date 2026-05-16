@@ -149,6 +149,31 @@ function getInitialDashboardPath() {
     return '/electron-login';
 }
 
+function getDashboardUrlForPath(targetPath) {
+    const initialPath = targetPath || getInitialDashboardPath();
+
+    if (app.isPackaged) {
+        const base = process.env.DASHBOARD_URL || `app://renderer`;
+        // If a full URL was provided via env, swap its path; else append path to base.
+        try {
+            const u = new URL(base);
+            u.pathname = initialPath;
+            return u.toString();
+        } catch (_) {
+            return `app://renderer${initialPath}`;
+        }
+    }
+
+    if (process.env.DASHBOARD_DEV_URL) {
+        try {
+            const devOrigin = new URL(process.env.DASHBOARD_DEV_URL).origin;
+            return `${devOrigin}${initialPath}`;
+        } catch (_) { /* fall through */ }
+    }
+    const baseUrl = (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000').trim();
+    return `${baseUrl.replace(/\/$/, '')}${initialPath}`;
+}
+
 function getDashboardUrl() {
     const initialPath = getInitialDashboardPath();
 
@@ -296,7 +321,17 @@ function createOverlayWindow() {
     overlayWindow.webContents.once('did-finish-load', () => {
         sharedStateService.patch({ isHeaderLoaded: true, isListenLoaded: true });
     });
-    overlayWindow.show();
+    // Only auto-show the overlay if sharedState says it should be visible.
+    // During cold start bootApp patches showHeader=false, so without this guard
+    // the pill flashes on top of the splash before the dashboard is even shown.
+    let _initiallyVisible = true;
+    try {
+        const _ss = sharedStateService.get?.();
+        if (_ss && _ss.showHeader === false) _initiallyVisible = false;
+    } catch (_) { /* fall back to visible */ }
+    if (_initiallyVisible) {
+        overlayWindow.show();
+    }
 
     // Hide instead of close (keep process alive in background)
     overlayWindow.on('close', (e) => {
@@ -1853,6 +1888,12 @@ const setWindowOpacity = (opacity) => {
 // ─── Splash window (boot loader) ─────────────────────────────────────────────
 
 let splashWindow = null;
+let splashShownAt = 0;
+// Cluely-parity: the splash must always feel intentional. Even on a hot boot
+// where the dashboard is ready in <100ms we keep the splash visible long
+// enough to play the swipe-up + fade-out animation cleanly.
+const SPLASH_MIN_VISIBLE_MS = 1200;
+const SPLASH_FADE_OUT_MS = 320;
 
 function createSplashWindow() {
     if (splashWindow && !splashWindow.isDestroyed()) return splashWindow;
@@ -1878,21 +1919,57 @@ function createSplashWindow() {
         if (!splashWindow.isDestroyed()) {
             splashWindow.setOpacity(0);
             splashWindow.show();
-            setTimeout(() => { if (!splashWindow.isDestroyed()) splashWindow.setOpacity(1); }, 30);
+            setTimeout(() => {
+                if (!splashWindow.isDestroyed()) splashWindow.setOpacity(1);
+            }, 30);
+            splashShownAt = Date.now();
         }
     });
 
-    splashWindow.on('closed', () => { splashWindow = null; });
+    splashWindow.on('closed', () => { splashWindow = null; splashShownAt = 0; });
 
     splashWindow.loadFile(path.join(__dirname, '../ui/splash/splash.html'));
     return splashWindow;
 }
 
+// Smooth close — fade the HTML out via a body class, then destroy.
+// Returns a promise that resolves once the window is gone so callers can
+// chain the dashboard reveal without timing races.
 function closeSplashWindow() {
-    if (splashWindow && !splashWindow.isDestroyed()) {
-        splashWindow.destroy();
-        splashWindow = null;
-    }
+    return new Promise((resolve) => {
+        if (!splashWindow || splashWindow.isDestroyed()) {
+            splashWindow = null;
+            resolve();
+            return;
+        }
+
+        const elapsed = splashShownAt ? Date.now() - splashShownAt : SPLASH_MIN_VISIBLE_MS;
+        const waitBeforeFade = Math.max(0, SPLASH_MIN_VISIBLE_MS - elapsed);
+
+        setTimeout(() => {
+            if (!splashWindow || splashWindow.isDestroyed()) {
+                splashWindow = null;
+                resolve();
+                return;
+            }
+
+            // Trigger the CSS fade-out inside the splash document.
+            splashWindow.webContents
+                .executeJavaScript(
+                    "document.body && document.body.classList.add('splash-exit'); true",
+                    true
+                )
+                .catch(() => { /* if exec fails we still destroy on time */ });
+
+            setTimeout(() => {
+                if (splashWindow && !splashWindow.isDestroyed()) {
+                    splashWindow.destroy();
+                }
+                splashWindow = null;
+                resolve();
+            }, SPLASH_FADE_OUT_MS);
+        }, waitBeforeFade);
+    });
 }
 
 // ─── Dashboard window (renderer desktop) ────────────────────────────────────
@@ -1904,8 +1981,9 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
         return dashboardWindow;
     }
 
-    const { nativeTheme } = require('electron');
-    const isDark = nativeTheme.shouldUseDarkColors;
+    // The dashboard renderer is dark-themed regardless of the OS theme,
+    // so we hardcode white control symbols — black ones on dark bg are invisible
+    // when Windows is set to light mode (the cause of the "boutons cliquables mais invisibles" bug).
     dashboardWindow = new BrowserWindow({
         width: 1050,
         height: 700,
@@ -1918,10 +1996,10 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
         titleBarStyle: 'hidden',
         titleBarOverlay: {
             color: '#00000000',
-            symbolColor: isDark ? '#FFFFFF' : '#000000',
+            symbolColor: '#FFFFFF',
             height: 38,
         },
-        backgroundColor: isDark ? '#09090B' : '#FFFFFF',
+        backgroundColor: '#09090B',
         show: false,
         webPreferences: {
             nodeIntegration: false,
@@ -1967,12 +2045,10 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
         if (process.platform !== 'win32') return;
         const isAuthPage = /\/(electron-login|auth|login|register)/.test(url);
         try {
-            const { nativeTheme } = require('electron');
-            const isDark = nativeTheme.shouldUseDarkColors;
-            // Always keep buttons visible — user needs min/max/close even on login page
+            // Hardcoded white symbols — the dashboard is dark-themed end-to-end.
             dashboardWindow.setTitleBarOverlay({
                 color: '#00000000',
-                symbolColor: isDark ? '#FFFFFF' : '#000000',
+                symbolColor: '#FFFFFF',
                 height: 38,
             });
             setDashboardOnboardingMode(isAuthPage);
@@ -1989,6 +2065,27 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
         if (!app.isPackaged) {
             dashboardWindow.webContents.openDevTools({ mode: 'detach' });
         }
+    });
+
+    // Cluely-style close: hide the window instead of destroying it, except
+    // during onboarding (auth pages) where close should fully quit the app.
+    // The `_dashboardForceClose` flag lets graceful shutdown actually destroy
+    // the window when `before-quit` fires.
+    dashboardWindow.on('close', (event) => {
+        if (dashboardWindow?._dashboardForceClose) return;
+        try {
+            const currentUrl = dashboardWindow.webContents.getURL() || '';
+            const isAuthPage = /\/(electron-login|auth|login|register)/.test(currentUrl);
+            if (isAuthPage) {
+                // Onboarding: close = quit the entire app
+                event.preventDefault();
+                app.quit();
+                return;
+            }
+        } catch (_) { /* fall through to hide */ }
+        event.preventDefault();
+        dashboardWindow.hide();
+        sharedStateService.patch({ showDashboard: false });
     });
 
     // Push current auth state once the page has fully loaded, so the renderer
@@ -2214,5 +2311,6 @@ module.exports = {
     showMeetingNotification,
     hideMeetingNotification,
     getDashboardWindow,
+    getDashboardUrlForPath,
     ensureListenWindow,
 };

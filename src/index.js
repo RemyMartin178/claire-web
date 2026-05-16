@@ -268,7 +268,21 @@ function setupProtocolHandling() {
 }
 
 function focusMainWindow() {
-    const { windowPool, getOverlayWindow, startOverlayPolling } = require('./window/windowManager.js');
+    const { windowPool, getOverlayWindow, startOverlayPolling, getDashboardWindow } = require('./window/windowManager.js');
+
+    // Cluely-style reopen: if a hidden dashboard window exists (user closed it
+    // and the app stayed in background), show it again and tell the renderer
+    // to land on /activity. The overlay floating bar is restored too.
+    const dash = getDashboardWindow ? getDashboardWindow() : null;
+    if (dash && !dash.isDestroyed() && !dash.isVisible()) {
+        dash.setOpacity(0);
+        dash.show();
+        setTimeout(() => {
+            if (!dash.isDestroyed()) dash.setOpacity(1);
+        }, 30);
+        try { dash.webContents.send('dashboard:reopen', { route: '/activity' }); } catch (_) {}
+        // fall through to also show the overlay if it was hidden
+    }
 
     // Show overlay window if hidden (background mode)
     const overlay = getOverlayWindow ? getOverlayWindow() : null;
@@ -373,15 +387,27 @@ let _bootPhase = 'idle'; // 'idle' | 'booting' | 'done'
 function _resolveBoot() {
     if (_bootPhase === 'done') return;
     _bootPhase = 'done';
-    logger.info('[Boot] Resolving boot — closing splash, desktop gap, then showing dashboard');
-    closeSplashWindow();
-    setTimeout(() => {
+    logger.info('[Boot] Resolving boot — fading splash, then revealing dashboard');
+
+    // closeSplashWindow now returns a promise: it enforces a minimum visible
+    // duration (so we always see the swipe-up animation) and plays the CSS
+    // fade-out before destroying the window. We chain the dashboard reveal
+    // off that so there is no white flash, no skeleton, no overlap.
+    Promise.resolve(closeSplashWindow()).then(() => {
         const dash = getDashboardWindow();
         if (!dash || dash.isDestroyed()) return;
         dash.setOpacity(0);
         dash.show();
-        setTimeout(() => { if (!dash.isDestroyed()) { dash.setOpacity(1); dash.focus(); } }, 30);
-    }, 700);
+        setTimeout(() => {
+            if (!dash.isDestroyed()) {
+                dash.setOpacity(1);
+                dash.focus();
+                sharedStateService.patch({ showDashboard: true });
+            }
+        }, 30);
+    }).catch((err) => {
+        logger.warn('[Boot] _resolveBoot reveal failed', { error: err?.message });
+    });
 }
 
 ipcMain.handle('electron-boot:dashboard-ready', () => {
@@ -391,6 +417,43 @@ ipcMain.handle('electron-boot:dashboard-ready', () => {
 
 ipcMain.handle('electron-boot:needs-login', () => {
     logger.info('[Boot] Renderer → needsLogin');
+    // The renderer might still be displaying the /activity skeleton when it
+    // realizes the user is not authenticated. Force-load /electron-login in
+    // the (still hidden) dashboard window and only resolve boot once that
+    // page has fully rendered, so the user never sees the activity skeleton.
+    try {
+        const { getDashboardWindow, getDashboardUrlForPath } = require('./window/windowManager.js');
+        const dash = getDashboardWindow ? getDashboardWindow() : null;
+        if (dash && !dash.isDestroyed()) {
+            const currentUrl = dash.webContents.getURL() || '';
+            const alreadyOnLogin = /\/(electron-login|auth|login|register)/.test(currentUrl);
+            if (alreadyOnLogin) {
+                _resolveBoot();
+                return;
+            }
+            const targetUrl = getDashboardUrlForPath ? getDashboardUrlForPath('/electron-login') : null;
+            if (!targetUrl) {
+                _resolveBoot();
+                return;
+            }
+            let resolved = false;
+            const onLoaded = () => {
+                if (resolved) return;
+                resolved = true;
+                _resolveBoot();
+            };
+            dash.webContents.once('did-finish-load', onLoaded);
+            // Safety net in case did-finish-load doesn't fire
+            setTimeout(() => onLoaded(), 4000);
+            dash.loadURL(targetUrl).catch((err) => {
+                logger.warn('[Boot] forced loadURL to /electron-login failed', { error: err?.message });
+                onLoaded();
+            });
+            return;
+        }
+    } catch (err) {
+        logger.warn('[Boot] needs-login pre-nav failed', { error: err?.message });
+    }
     _resolveBoot();
 });
 
@@ -412,16 +475,46 @@ async function bootApp() {
     logger.info('[Boot] Cold start — creating splash window');
     createSplashWindow();
 
+    // Wait for the auxiliary web stack to allocate `pickleglass_WEB_URL` before
+    // creating the dashboard window. Otherwise getDashboardUrl() falls back to
+    // http://localhost:3000 (the default Next.js dev port), which ERR_CONNECTION_REFUSEDs
+    // when no dev server is running — producing a black dashboard and a 15s splash hang.
+    try {
+        await Promise.race([
+            ensureAuxiliaryWebStackStarted(),
+            new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
+    } catch (err) {
+        logger.warn('[Boot] auxiliary web stack failed to start in time', { error: err?.message });
+    }
+
     logger.info('[Boot] Creating dashboard window (hidden)');
     createDashboardWindow({ skipAutoShow: true });
 
-    // Timeout fallback: if renderer doesn't signal within 15s, force show
+    // Fail-fast: if the renderer URL doesn't load (no dev server, bad URL), don't
+    // wait the full timeout — resolve the boot immediately so the user at least
+    // sees the dashboard window (or the error toast we may show later) instead
+    // of staring at the splash for 15 seconds.
+    try {
+        const { getDashboardWindow } = require('./window/windowManager.js');
+        const dash = getDashboardWindow ? getDashboardWindow() : null;
+        if (dash && !dash.isDestroyed()) {
+            dash.webContents.once('did-fail-load', (_e, code, desc, url, isMain) => {
+                if (!isMain) return;
+                logger.warn('[Boot] dashboard did-fail-load — resolving boot early', { code, desc, url });
+                if (_bootPhase !== 'done') _resolveBoot();
+            });
+        }
+    } catch (_) { /* non-blocking */ }
+
+    // Timeout fallback shortened from 15s → 6s. With the aux-web await above,
+    // a healthy boot resolves in <2s; 6s is plenty for slow disks.
     setTimeout(() => {
         if (_bootPhase !== 'done') {
             logger.warn('[Boot] Timeout — forcing boot resolution');
             _resolveBoot();
         }
-    }, 15000);
+    }, 6000);
 }
 
 app.whenReady().then(async () => {
@@ -606,6 +699,14 @@ app.on('window-all-closed', () => { /* stay in background */ });
 
 app.on('before-quit', async (event) => {
     global.isQuitting = true;
+    // Mark the dashboard window as force-closable so the close interceptor
+    // (which normally hides it for the "background" behaviour) lets quit proceed.
+    try {
+        const { getDashboardWindow } = require('./window/windowManager.js');
+        const dash = getDashboardWindow ? getDashboardWindow() : null;
+        if (dash && !dash.isDestroyed()) dash._dashboardForceClose = true;
+    } catch (_) { /* ignore */ }
+
     // Prevent infinite loop by checking if shutdown is already in progress
     if (isShuttingDown) {
         logger.info('[Shutdown] [LOADING] Shutdown already in progress, allowing quit...');

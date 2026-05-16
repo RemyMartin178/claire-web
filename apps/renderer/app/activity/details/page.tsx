@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
@@ -208,7 +208,7 @@ function SessionDetailsContent() {
     setChatHistory(detailsQuery.data.ai_messages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })));
     setIsLoading(false);
     const loadedTitle = detailsQuery.data.session?.title || '';
-    const loadedTitleIsGeneric = !loadedTitle || ['Session @', 'Session Sans Titre', 'Discussion avec Claire'].some(t => loadedTitle.includes(t));
+    const loadedTitleIsGeneric = !loadedTitle || ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'En cours'].some(t => loadedTitle.includes(t));
     if (detailsQuery.data.summary || !loadedTitleIsGeneric) {
       setTitleShimmer(false);
     }
@@ -234,6 +234,28 @@ function SessionDetailsContent() {
     }, 2500)
     return () => window.clearInterval(interval)
   }, [detailsQuery.refetch, isNewSession, sessionDetails?.summary, sessionId])
+
+  // When listen stops on the active session, immediately refetch so the UI sees
+  // the new ended_at and any newly-generated summary without waiting for the
+  // next 2.5s poll tick.
+  const prevIsListenRunningRef = useRef<boolean | null>(null)
+  useEffect(() => {
+    if (!sessionId) return
+    const running = Boolean(sharedState?.isListenRunning)
+    const wasRunning = prevIsListenRunningRef.current
+    prevIsListenRunningRef.current = running
+    if (wasRunning === true && running === false && sharedState?.session?.id === sessionId) {
+      // Mark the session as having a pending summary so the UI shows the
+      // shimmer/loading state instead of "Aucun résumé disponible".
+      setTitleShimmer(true)
+      void detailsQuery.refetch()
+      // Re-poll a couple more times in the next few seconds to catch the
+      // backend summary as soon as it lands.
+      const t1 = setTimeout(() => detailsQuery.refetch(), 1500)
+      const t2 = setTimeout(() => detailsQuery.refetch(), 4000)
+      return () => { clearTimeout(t1); clearTimeout(t2); }
+    }
+  }, [sharedState?.isListenRunning, sharedState?.session?.id, sessionId, detailsQuery])
 
   // Fallback: stop shimmer after 30s even if summary never arrives
   useEffect(() => {
@@ -416,8 +438,8 @@ function SessionDetailsContent() {
 
   // const askMessages = sessionDetails.ai_messages || []; // This is now handled by chatHistory state
 
-  let displayTitle = sessionDetails?.session.title || routeTitle || 'Discussion avec Claire';
-  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'Résumé en cours', 'Sans titre'];
+  let displayTitle = sessionDetails?.session.title || routeTitle || 'En cours';
+  const genericTitles = ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'Résumé en cours', 'Sans titre', 'En cours'];
   const isGeneric = !displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t));
 
   let rawSummaryText = sessionDetails?.summary?.text || '';
@@ -472,9 +494,21 @@ function SessionDetailsContent() {
     // Remove emojis and prefixes from extracted bullets
     if (matches) bulletPoints = matches.map(m => stripEmojisAndPrefixes(m.replace(/^- /, '')));
   }
-  const isGeneratingSummary = isNewSession && !rawSummaryText && bulletPoints.length === 0;
+  // isGeneratingSummary is true when either:
+  //  - the page was opened with ?new=1 (fresh from a Listen flow)
+  //  - OR we just observed listen stop on this session (titleShimmer was flipped)
+  // and the summary content is still missing.
+  const isGeneratingSummary =
+    (isNewSession || titleShimmer) && !rawSummaryText && bulletPoints.length === 0;
 
-  const isLiveSession = isNewSession && (sharedState?.isListenRunning ?? false) && sharedState?.session?.id === sessionId
+  // Live ONLY while listen actually runs AND the backend hasn't stamped ended_at.
+  // The previous logic could keep "Session en cours" stuck in the header when
+  // sharedState wasn't refreshed but the session was actually closed.
+  const sessionEnded = Boolean(sessionDetails?.session?.ended_at)
+  const isLiveSession = isNewSession
+    && (sharedState?.isListenRunning ?? false)
+    && sharedState?.session?.id === sessionId
+    && !sessionEnded
 
   const missedOpportunitiesCount = 6;
 

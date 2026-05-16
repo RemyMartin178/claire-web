@@ -18,6 +18,12 @@ const dashboardApi = {
   minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
   maximizeWindow: () => ipcRenderer.invoke('dashboard:maximize'),
   closeWindow: () => ipcRenderer.invoke('dashboard:close'),
+  logoutToLogin: () => ipcRenderer.invoke('dashboard:logoutToLogin'),
+  onReopen: (cb) => {
+    const handler = (_e, payload) => cb(payload || {});
+    ipcRenderer.on('dashboard:reopen', handler);
+    return () => ipcRenderer.removeListener('dashboard:reopen', handler);
+  },
   setTitleBarOverlayVisible: (visible) => ipcRenderer.invoke('dashboard:setTitleBarOverlayVisible', visible),
   setTheme: (theme) => ipcRenderer.invoke('dashboard:setTheme', theme),
   setContentProtection: (enabled) => ipcRenderer.invoke('dashboard:setContentProtection', enabled),

@@ -224,6 +224,7 @@ class AskService {
             currentQuestion: '',
             currentResponse: '',
             currentScreenshotUrl: null,
+            currentMessageMetadata: null,
             showTextInput: true,
             currentProvider: null,
             contextOptimized: false,
@@ -464,6 +465,7 @@ class AskService {
                 currentQuestion: String(this.state.currentQuestion || ''),
                 currentResponse: String(this.state.currentResponse || ''),
                 currentScreenshotUrl: this.state.currentScreenshotUrl ? String(this.state.currentScreenshotUrl) : null,
+                currentMessageMetadata: this.state.currentMessageMetadata || null,
                 showTextInput: Boolean(this.state.showTextInput),
                 currentProvider: this.state.currentProvider ? String(this.state.currentProvider) : null,
                 contextOptimized: Boolean(this.state.contextOptimized),
@@ -514,24 +516,18 @@ class AskService {
     }
 
     async closeAskWindow () {
-            if (this.abortController) {
+            // Cluely behavior: closing the panel = hide, not clear.
+            // Conversation, screenshot preview, metadata stay in state and reappear when reopened.
+            if (this.abortController && this.state.isStreaming) {
                 this.abortController.abort('Window closed by user');
                 this.abortController = null;
             }
-    
-            this.state = {
-                isVisible      : false,
-                isLoading      : false,
-                isStreaming    : false,
-                currentQuestion: '',
-                currentResponse: '',
-                currentScreenshotUrl: null,
-                showTextInput  : true,
-            };
+
+            this.state.isVisible = false;
             this._broadcastState();
-    
+
             internalBridge.emit('window:requestVisibility', { name: 'ask', visible: false });
-    
+
             return { success: true };
         }
     
@@ -561,51 +557,10 @@ class AskService {
         // Extract original prompt for screenshot detection (to avoid false positives from enriched context)
         const promptForScreenshotDetection = options.originalPrompt || userPrompt;
         
-        // Vérifier le quota avant de traiter la requête
-        const requestQuotaService = require('../../common/services/requestQuotaService');
-        const quotaCheck = await requestQuotaService.checkQuota();
-        
-        // Update remaining count for the UI (shared between max mode and normal requests)
-        if (typeof quotaCheck.remaining === 'number') {
-            this.state.quotaRemaining = quotaCheck.remaining;
-        }
-
-        if (!quotaCheck.allowed) {
-            logger.warn('[AskService] Request blocked by quota:', {
-                used: quotaCheck.used,
-                limit: quotaCheck.limit,
-                remaining: quotaCheck.remaining
-            });
-
-            // Show toast notification (not in Ask panel)
-            const { BrowserWindow } = require('electron');
-            BrowserWindow.getAllWindows().forEach(win => {
-                if (!win.isDestroyed()) {
-                    win.webContents.send('show-toast', {
-                        icon: 'warn',
-                        subtitle: 'Claire',
-                        title: 'Limite quotidienne atteinte',
-                        duration: 5000,
-                    });
-                }
-            });
-
-            // Show CTA in Ask panel (not an error message)
-            this.state.isLoading = false;
-            this.state.isStreaming = false;
-            this.state.currentResponse = '';
-            this.state.isQuotaExceeded = true;
-            this.state.quotaRemaining = 0;
-            this.state.showTextInput = true;
-            this._broadcastState();
-
-            throw new Error('quota_exceeded');
-        }
-
-        logger.debug('[AskService] Quota check passed:', {
-            remaining: quotaCheck.remaining,
-            plan: quotaCheck.plan
-        });
+        // Daily-quota check intentionally disabled (user request) — accept every prompt.
+        // To re-enable, restore the requestQuotaService.checkQuota() call below.
+        this.state.quotaRemaining = null;
+        this.state.isQuotaExceeded = false;
         
         internalBridge.emit('window:requestVisibility', { name: 'ask', visible: true });
         this.state = {
@@ -615,6 +570,7 @@ class AskService {
             currentQuestion: options.displayPrompt || options.originalPrompt || userPrompt,
             currentResponse: '',
             currentScreenshotUrl: null,
+            currentMessageMetadata: null,
             showTextInput: false,
             contextOptimized: false,
             isQuotaExceeded: false,
@@ -648,9 +604,10 @@ class AskService {
             // Local app-managed mode: use the provider keys already loaded in the desktop app.
             logger.info('[AskService] Using local LLM execution with app-managed API keys');
             
-            // SMART OPTIMIZATION: Analyze prompt to decide if screenshot is needed
-            // Use original prompt (not enriched context) to avoid false positives
-            let needsScreenshot = this._promptNeedsScreenshot(promptForScreenshotDetection.trim()) || !!options.forceScreenshot;
+            // Cluely-parity: always capture a screenshot for every Ask request,
+            // unless caller explicitly opts out via { skipScreenshot: true }.
+            // This guarantees the "Viewed screen" metadata is attached to every assistant message.
+            let needsScreenshot = options.skipScreenshot === true ? false : true;
             
             let screenshotResult;
             let screenshotBase64 = null;
@@ -756,9 +713,20 @@ class AskService {
             } // END needsScreenshot
 
             if (screenshotBase64) {
-                this.state.currentScreenshotUrl = `data:image/jpeg;base64,${screenshotBase64}`;
+                const dataUrl = `data:image/jpeg;base64,${screenshotBase64}`;
+                this.state.currentScreenshotUrl = dataUrl;
+                this.state.currentMessageMetadata = {
+                    ...(this.state.currentMessageMetadata || {}),
+                    requiredScreenshot: {
+                        url: dataUrl,
+                        source: screenshotContext,
+                        width: screenshotResult?.width || screenshotResult?.metadata?.area?.width || null,
+                        height: screenshotResult?.height || screenshotResult?.metadata?.area?.height || null,
+                    },
+                    viewedFiles: [],
+                    toolCalls: [],
+                };
                 this._broadcastState();
-                this.state.currentScreenshotUrl = null;
             }
 
             // Add user message to context manager (non bloquant)
@@ -967,12 +935,11 @@ class AskService {
                 isActive: subscription.isActive
             });
             
-            // Keep the legacy backend block disabled and use local execution below.
+            // Backend execution via Railway / claire-api
             {
-                logger.info('[AskService] Railway backend execution disabled');
                 const agentIdToUse = this.selectedAgentId || 1;
-                
-                if (false && agentIdToUse) {
+
+                if (agentIdToUse) {
                     logger.info('[AskService] Using backend agent execution (streaming) for agent ID:', agentIdToUse);
                     try {
                         const { agentsApiClient } = require('../../domains/agents');
@@ -1042,17 +1009,7 @@ class AskService {
 
                             logger.info('[AskService] Backend agent stream completed successfully');
 
-                            // Consume quota
-                            const requestQuotaService = require('../../common/services/requestQuotaService');
-                            const consumed = await requestQuotaService.consumeRequest();
-                            if (typeof consumed.remaining === 'number') {
-                                this.state.quotaRemaining = consumed.remaining;
-                                if (consumed.remaining === 0) {
-                                    this.state.isQuotaExceeded = true;
-                                }
-                                this._broadcastState();
-                            }
-
+                            // Quota consumption disabled (user request).
                             return { success: true, response: agentResponse.response };
                         } else {
                             logger.error('[AskService] Backend agent stream failed - Invalid response:', {

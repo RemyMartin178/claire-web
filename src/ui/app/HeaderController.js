@@ -133,12 +133,10 @@ function HeaderApp() {
                 transitionToPermissionHeader();
                 return;
             }
-
-            const tutorialDone = localStorage.getItem(getTutorialDoneKey(userState)) === 'true';
-            if (!tutorialDone) {
-                transitionToTutorialHeader();
-                return;
-            }
+            // Tutorial is disabled — new accounts go straight to the floating bar.
+            // The Cluely-parity onboarding does not include the "Démarrer Claire"
+            // welcome card. We mark it done so we never re-trigger the legacy flow.
+            try { localStorage.setItem(getTutorialDoneKey(userState), 'true'); } catch (_) {}
         }
 
         transitionToMainHeader();
@@ -179,8 +177,10 @@ function HeaderApp() {
     }
 
     if (currentHeader === 'permission') {
+        // After permissions are granted, skip the tutorial card and go straight
+        // to the floating bar (Cluely-parity onboarding).
         return React.createElement(PermissionHeader, {
-            continueCallback: transitionToTutorialHeader,
+            continueCallback: transitionToMainHeader,
         });
     }
 

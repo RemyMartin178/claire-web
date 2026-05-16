@@ -212,7 +212,11 @@ export default function ElectronLoginPage() {
   }
 
   return (
-    <div style={{
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
+      style={{
       display: 'flex',
       height: '100vh',
       width: '100vw',
@@ -240,7 +244,7 @@ export default function ElectronLoginPage() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/claire_logo-removebg-preview.png" alt="Claire Logo" style={{ width: 56, height: 56 }} />
+            <img src="/claire_logo-removebg-preview.png" alt="Claire Logo" style={{ width: 56, height: 56, borderRadius: 14 }} />
             <span style={{
               fontSize: '1.4rem',
               fontWeight: 500,
@@ -508,6 +512,6 @@ export default function ElectronLoginPage() {
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+    </motion.div>
   )
 }

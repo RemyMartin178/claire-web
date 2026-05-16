@@ -848,6 +848,33 @@ module.exports = {
             if (dashWin && !dashWin.isDestroyed()) dashWin.close();
         });
 
+        // Logout → /electron-login without flashing the activity skeleton.
+        // Hide the window, navigate, then reveal again via the existing
+        // did-finish-load handler in windowManager.
+        ipcMain.handle('dashboard:logoutToLogin', () => {
+            const dashWin = windowManager.getDashboardWindow();
+            if (!dashWin || dashWin.isDestroyed()) return { success: false };
+            try {
+                dashWin.setOpacity(0);
+            } catch (_) { /* fade still possible */ }
+            // The window is hidden visually; the page swap happens in the
+            // renderer immediately after this IPC resolves.
+            // Restore opacity once the destination page has fully loaded.
+            const onceLoaded = () => {
+                if (!dashWin.isDestroyed()) {
+                    setTimeout(() => {
+                        if (!dashWin.isDestroyed()) dashWin.setOpacity(1);
+                    }, 30);
+                }
+            };
+            dashWin.webContents.once('did-finish-load', onceLoaded);
+            // Safety net: in case did-finish-load doesn't fire (e.g. already loaded)
+            setTimeout(() => {
+                if (!dashWin.isDestroyed()) dashWin.setOpacity(1);
+            }, 1500);
+            return { success: true };
+        });
+
         ipcMain.handle('dashboard:setTitleBarOverlayVisible', (_event, visible) => {
             sharedStateService.patch({ titleBarVisible: Boolean(visible) });
             return { success: true };

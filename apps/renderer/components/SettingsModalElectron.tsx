@@ -410,8 +410,16 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   // ── HANDLERS ─────────────────────────────────────────────────────────────
 
   const handleLogout = useCallback(async () => {
-    try { trackLogout(); await logout(); window.location.href = isElectronRuntime === true ? getElectronLoginPath() : '/auth/login'; }
-    catch (e) { console.error(e); }
+    try {
+      trackLogout();
+      // In Electron, hide the dashboard window before navigating so the
+      // activity skeleton never flashes between sign-out and /electron-login.
+      if (isElectronRuntime === true && typeof window !== 'undefined') {
+        try { await (window as any).api?.dashboard?.logoutToLogin?.(); } catch (_) {}
+      }
+      await logout();
+      window.location.href = isElectronRuntime === true ? getElectronLoginPath() : '/auth/login';
+    } catch (e) { console.error(e); }
   }, [isElectronRuntime]);
 
   const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => { if (e.target === e.currentTarget) onClose(); };
