@@ -384,16 +384,16 @@ app.on('web-contents-created', (_, contents) => {
 // ── Boot IPC handlers (registered once, before any window loads) ─────────────
 let _bootPhase = 'idle'; // 'idle' | 'booting' | 'done'
 
-function _resolveBoot() {
+async function _resolveBoot() {
     if (_bootPhase === 'done') return;
     _bootPhase = 'done';
-    logger.info('[Boot] Resolving boot — fading splash, then revealing dashboard');
+    logger.info('[Boot] Resolving boot - fading splash before revealing dashboard');
+    try {
+        await closeSplashWindow();
+    } catch (err) {
+        logger.warn('[Boot] splash close failed', { error: err?.message });
+    }
 
-    // Cross-fade strategy: by the time _resolveBoot runs the renderer has
-    // already signaled dashboardReady — i.e. the Next.js view is fully painted.
-    // Reveal the dashboard at opacity 1 FIRST (it sits below the splash which is
-    // alwaysOnTop), then fade the splash out over it. There is no black gap
-    // because the splash always covers the dashboard until its fade completes.
     const dash = getDashboardWindow();
     if (dash && !dash.isDestroyed()) {
         try {
@@ -405,14 +405,11 @@ function _resolveBoot() {
             logger.warn('[Boot] dashboard reveal failed', { error: e?.message });
         }
     }
-    Promise.resolve(closeSplashWindow()).catch((err) => {
-        logger.warn('[Boot] _resolveBoot reveal failed', { error: err?.message });
-    });
 }
 
 ipcMain.handle('electron-boot:dashboard-ready', () => {
     logger.info('[Boot] Renderer → dashboardReady');
-    _resolveBoot();
+    void _resolveBoot();
 });
 
 ipcMain.handle('electron-boot:needs-login', () => {
@@ -428,19 +425,19 @@ ipcMain.handle('electron-boot:needs-login', () => {
             const currentUrl = dash.webContents.getURL() || '';
             const alreadyOnLogin = /\/(electron-login|auth|login|register)/.test(currentUrl);
             if (alreadyOnLogin) {
-                _resolveBoot();
+                void _resolveBoot();
                 return;
             }
             const targetUrl = getDashboardUrlForPath ? getDashboardUrlForPath('/electron-login') : null;
             if (!targetUrl) {
-                _resolveBoot();
+                void _resolveBoot();
                 return;
             }
             let resolved = false;
             const onLoaded = () => {
                 if (resolved) return;
                 resolved = true;
-                _resolveBoot();
+                void _resolveBoot();
             };
             dash.webContents.once('did-finish-load', onLoaded);
             // Safety net in case did-finish-load doesn't fire
@@ -454,7 +451,7 @@ ipcMain.handle('electron-boot:needs-login', () => {
     } catch (err) {
         logger.warn('[Boot] needs-login pre-nav failed', { error: err?.message });
     }
-    _resolveBoot();
+    void _resolveBoot();
 });
 
 ipcMain.handle('electron-boot:login-success', () => {
@@ -502,7 +499,7 @@ async function bootApp() {
             dash.webContents.once('did-fail-load', (_e, code, desc, url, isMain) => {
                 if (!isMain) return;
                 logger.warn('[Boot] dashboard did-fail-load — resolving boot early', { code, desc, url });
-                if (_bootPhase !== 'done') _resolveBoot();
+                if (_bootPhase !== 'done') void _resolveBoot();
             });
         }
     } catch (_) { /* non-blocking */ }
@@ -512,7 +509,7 @@ async function bootApp() {
     setTimeout(() => {
         if (_bootPhase !== 'done') {
             logger.warn('[Boot] Timeout — forcing boot resolution');
-            _resolveBoot();
+            void _resolveBoot();
         }
     }, 6000);
 }

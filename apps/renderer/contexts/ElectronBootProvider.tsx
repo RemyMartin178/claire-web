@@ -15,10 +15,34 @@ export function ElectronBootProvider({ children }: { children: React.ReactNode }
 
     signalledRef.current = true
 
-    if (isAuthenticated) {
-      api.dashboardReady().catch(() => {})
-    } else {
-      api.needsLogin().catch(() => {})
+    let cancelled = false
+    const waitForStablePaint = () => {
+      const afterFrames = new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            window.setTimeout(resolve, 80)
+          })
+        })
+      })
+      const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, 260))
+      return Promise.race([afterFrames, timeout])
+    }
+
+    const signalBootReady = async () => {
+      await waitForStablePaint()
+      if (cancelled) return
+
+      if (isAuthenticated) {
+        api.dashboardReady().catch(() => {})
+      } else {
+        api.needsLogin().catch(() => {})
+      }
+    }
+
+    void signalBootReady()
+
+    return () => {
+      cancelled = true
     }
   }, [loading, isAuthenticated])
 

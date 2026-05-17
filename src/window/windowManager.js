@@ -2011,7 +2011,7 @@ let splashShownAt = 0;
 // where the dashboard is ready in <100ms we keep the splash visible long
 // enough to play the swipe-up + fade-out animation cleanly.
 const SPLASH_MIN_VISIBLE_MS = 1200;
-const SPLASH_FADE_OUT_MS = 320;
+const SPLASH_FADE_OUT_MS = 560;
 
 function createSplashWindow() {
     if (splashWindow && !splashWindow.isDestroyed()) return splashWindow;

@@ -15,6 +15,8 @@
     --spinner-track: rgba(255,255,255,0.18);
     --spinner-arc: rgba(255,255,255,0.95);
     --sheen: rgba(255,255,255,0.10);
+    --entry-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --exit-ease: cubic-bezier(0.16, 1, 0.3, 1);
   }
   * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
   html, body {
@@ -37,10 +39,14 @@
     box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset;
     background: var(--bg);
     opacity: 1;
-    transition: opacity 320ms ease-out;
+    transform: translateY(0) scale(1);
+    will-change: opacity, transform;
+    animation: splash-shell-in 620ms var(--entry-ease) both;
   }
   /* Exit fade — toggled by the main process via document.body.classList */
-  body.splash-exit .splash { opacity: 0; }
+  body.splash-exit .splash {
+    animation: splash-shell-out 520ms var(--exit-ease) both;
+  }
 
   .splash::before {
     content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -53,38 +59,80 @@
   }
 
   /* ── Entry animation: swipe up (translateY ↑) + fade in ─────────────── */
-  @keyframes splash-rise {
-    0%   { opacity: 0; transform: translateY(28px); }
-    60%  { opacity: 1; transform: translateY(-2px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
   .mark-svg, .wordmark, .spinner-wrap {
     position: relative; z-index: 1;
-    animation: splash-rise 540ms cubic-bezier(0.34, 1.3, 0.64, 1) both;
+    will-change: opacity, transform;
   }
-  .mark-svg   { animation-delay: 60ms; }
-  .wordmark   { animation-delay: 140ms; }
-  .spinner-wrap { animation-delay: 220ms; }
+
+  body.splash-exit .mark-svg,
+  body.splash-exit .wordmark,
+  body.splash-exit .spinner-wrap {
+    animation: splash-content-out 340ms var(--exit-ease) both;
+  }
+  body.splash-exit .spinner-wrap { animation-delay: 0ms; }
+  body.splash-exit .wordmark { animation-delay: 35ms; }
+  body.splash-exit .mark-svg { animation-delay: 70ms; }
 
   .mark-svg {
     width: 96px; height: 96px; display: block;
     margin-bottom: 24px;
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+    animation: splash-item-in 560ms var(--entry-ease) 100ms both;
   }
   .wordmark {
     font-weight: 600; font-size: 40px;
-    letter-spacing: -0.045em;
+    letter-spacing: 0;
     color: var(--word);
     line-height: 1; margin: 0;
+    opacity: 0;
+    transform: translateY(14px);
+    animation: splash-item-in 560ms var(--entry-ease) 210ms both;
   }
   .spinner-wrap {
     margin-top: 78px;
     width: 26px; height: 26px;
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+    animation: splash-item-in 520ms var(--entry-ease) 420ms both;
   }
   .spinner-wrap svg {
     width: 100%; height: 100%;
-    animation: spin 0.95s linear infinite;
+    animation: spin 1.05s linear infinite;
+  }
+  .spinner-arc {
+    stroke-dasharray: 0.26 1;
+    stroke-dashoffset: 0;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes splash-shell-in {
+    0%   { opacity: 0; transform: translateY(10px) scale(0.985); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes splash-item-in {
+    0%   { opacity: 0; transform: translateY(18px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes splash-content-out {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-8px) scale(0.985); }
+  }
+  @keyframes splash-shell-out {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    45%  { opacity: 0.96; transform: translateY(-3px) scale(0.997); }
+    100% { opacity: 0; transform: translateY(-14px) scale(0.982); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .splash,
+    .mark-svg,
+    .wordmark,
+    .spinner-wrap,
+    .spinner-arc {
+      animation-duration: 1ms !important;
+      animation-delay: 0ms !important;
+    }
+    .spinner-wrap svg { animation: none; }
+  }
 </style>
 </head>
 <body>
@@ -98,8 +146,7 @@
     <div class="spinner-wrap">
       <svg viewBox="0 0 50 50">
         <circle cx="25" cy="25" r="20" fill="none" stroke="var(--spinner-track)" stroke-width="3"/>
-        <circle cx="25" cy="25" r="20" fill="none" stroke="var(--spinner-arc)" stroke-width="3" stroke-linecap="round"
-          stroke-dasharray="32 130"/>
+        <circle class="spinner-arc" cx="25" cy="25" r="20" pathLength="1" fill="none" stroke="var(--spinner-arc)" stroke-width="3" stroke-linecap="round"/>
       </svg>
     </div>
   </div>
