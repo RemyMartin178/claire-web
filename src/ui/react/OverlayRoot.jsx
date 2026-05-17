@@ -15,6 +15,13 @@ const PAD = 8;
 export const CLUELY_ASK_WIDTH = 660;
 export const CLUELY_ASK_MIN_HEIGHT = 168;
 export const CLUELY_ASK_MAX_HEIGHT = 700;
+const INITIAL_PANELS = Object.freeze({
+    header: false,
+    listen: false,
+    ask: false,
+    settings: false,
+    'agent-selector': false,
+});
 
 function computeLayout(pillX, pillY, pillW, pillH, screenW, screenH, panels, panelSizes) {
     const result = {};
@@ -152,14 +159,11 @@ export default function OverlayRoot() {
 
     const [showUpgradeOverlay, setShowUpgradeOverlay] = useState(false);
 
-    const [panels, setPanels] = useState({
-        header: true,             // floating bar — visible by default, can be hidden when a session ends
-        listen: false,
-        ask: false,
-        settings: false,
-        'agent-selector': false,
-    });
-    const panelsRef = useRef({ header: true, listen: false, ask: false, settings: false, 'agent-selector': false });
+    const [visibilityHydrated, setVisibilityHydrated] = useState(false);
+    const visibilityHydratedRef = useRef(false);
+    const receivedVisibilityRef = useRef({});
+    const [panels, setPanels] = useState(() => ({ ...INITIAL_PANELS }));
+    const panelsRef = useRef({ ...INITIAL_PANELS });
     const [panelAnimClass, setPanelAnimClass] = useState({});
 
     const [panelSizes, setPanelSizes] = useState({
@@ -218,8 +222,76 @@ export default function OverlayRoot() {
         window.api?.overlay?.setDragging?.(true);
     }, []);
 
+    useEffect(() => {
+        let cancelled = false;
+
+        async function hydrateVisibility() {
+            const sharedStatePromise = window.api?.sharedState?.get
+                ? window.api.sharedState.get().catch(() => null)
+                : Promise.resolve(null);
+            const overlayStatePromise = window.api?.overlay?.getInitialState
+                ? window.api.overlay.getInitialState().catch(() => null)
+                : Promise.resolve(null);
+
+            try {
+                const [sharedState, overlayState] = await Promise.all([sharedStatePromise, overlayStatePromise]);
+                if (cancelled) return;
+
+                if (overlayState?.pillX != null && overlayState?.pillY != null) {
+                    const pos = { x: overlayState.pillX, y: overlayState.pillY };
+                    pillPosRef.current = pos;
+                    setPillPos(pos);
+                }
+
+                const nextPanels = {
+                    ...INITIAL_PANELS,
+                    header: Boolean(sharedState?.showHeader),
+                    listen: Boolean(sharedState?.showListen),
+                    ask: Boolean(sharedState?.showChat),
+                };
+
+                const initialVisibility = overlayState?.visibility;
+                if (initialVisibility && typeof initialVisibility === 'object') {
+                    for (const name of Object.keys(INITIAL_PANELS)) {
+                        if (typeof initialVisibility[name] === 'boolean') {
+                            nextPanels[name] = initialVisibility[name];
+                        }
+                    }
+                }
+
+                for (const [name, visible] of Object.entries(receivedVisibilityRef.current)) {
+                    if (name in nextPanels && typeof visible === 'boolean') {
+                        nextPanels[name] = visible;
+                    }
+                }
+
+                const initialAnimClass = {};
+                for (const [name, visible] of Object.entries(nextPanels)) {
+                    if (visible) initialAnimClass[name] = 'overlay-panel-entering';
+                }
+
+                panelsRef.current = nextPanels;
+                setPanels(nextPanels);
+                setPanelAnimClass(initialAnimClass);
+            } finally {
+                if (!cancelled) {
+                    visibilityHydratedRef.current = true;
+                    setVisibilityHydrated(true);
+                    requestAnimationFrame(updateHitRects);
+                }
+            }
+        }
+
+        hydrateVisibility();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [updateHitRects]);
+
     // Dynamically track the actual size of the pill to avoid clamping issues
     useEffect(() => {
+        if (!visibilityHydrated || !panels.header) return;
         if (!pillContainerRef.current) return;
         const observer = new ResizeObserver((entries) => {
             const entry = entries[0];
@@ -250,18 +322,32 @@ export default function OverlayRoot() {
             clearTimeout(timer);
             observer.disconnect();
         };
-    }, [updateHitRects]);
+    }, [panels.header, updateHitRects, visibilityHydrated]);
 
     // ── IPC: panel visibility & resize ────────────────────────────────────────
     useEffect(() => {
         if (!window.api) return;
 
         const onPanelVisibility = (_, { name, visible }) => {
-            if (visible) {
+            if (!name) return;
+            const normalizedVisible = Boolean(visible);
+            receivedVisibilityRef.current = {
+                ...receivedVisibilityRef.current,
+                [name]: normalizedVisible,
+            };
+
+            if (!visibilityHydratedRef.current) {
+                panelsRef.current = { ...panelsRef.current, [name]: normalizedVisible };
+                setPanels(prev => ({ ...prev, [name]: normalizedVisible }));
+                return;
+            }
+
+            if (normalizedVisible) {
                 panelsRef.current = { ...panelsRef.current, [name]: true };
                 setPanels(prev => ({ ...prev, [name]: true }));
                 setPanelAnimClass(prev => ({ ...prev, [name]: 'overlay-panel-entering' }));
             } else {
+                if (!panelsRef.current[name]) return;
                 setPanelAnimClass(prev => ({ ...prev, [name]: 'overlay-panel-exiting' }));
                 setTimeout(() => {
                     panelsRef.current = { ...panelsRef.current, [name]: false };
@@ -318,18 +404,6 @@ export default function OverlayRoot() {
 
         const onUpgradeOpen = () => setShowUpgradeOverlay(true);
         window.addEventListener('upgrade-overlay-open', onUpgradeOpen);
-
-        window.api.overlay?.getInitialState?.().then(state => {
-            if (state?.pillX != null && state?.pillY != null) {
-                const pos = { x: state.pillX, y: state.pillY };
-                pillPosRef.current = pos;
-                setPillPos(pos);
-            }
-            requestAnimationFrame(updateHitRects);
-        }).catch(() => {});
-
-        // Send initial rects once the first render is painted
-        requestAnimationFrame(updateHitRects);
 
         return () => {
             window.removeEventListener('local-panel-resize', onLocalPanelResize);
@@ -395,10 +469,17 @@ export default function OverlayRoot() {
         requestAnimationFrame(updateHitRects);
     }, [screenW, screenH, updateHitRects]);
 
-    const positions = computeLayout(
-        pillPos.x, pillPos.y, pillSizeRef.current.w, pillSizeRef.current.h,
-        screenW, screenH, panels, panelSizes
-    );
+    const rootStyle = {
+        position: 'fixed',
+        inset: 0,
+        overflow: 'hidden',
+        background: 'transparent',
+        pointerEvents: 'none',
+    };
+
+    if (!visibilityHydrated) {
+        return <div style={rootStyle} data-visibility-hydrated="false" />;
+    }
 
     const panelStyle = (pos, size, zIndex = 900) => ({
         position: 'absolute',
@@ -412,17 +493,17 @@ export default function OverlayRoot() {
         borderRadius: 16,
     });
 
+    const positions = computeLayout(
+        pillPos.x, pillPos.y, pillSizeRef.current.w, pillSizeRef.current.h,
+        screenW, screenH, panels, panelSizes
+    );
+
     return (
-        <div style={{
-            position: 'fixed',
-            inset: 0,
-            overflow: 'hidden',
-            background: 'transparent',
-            pointerEvents: 'none', // transparent areas pass events to apps below
-        }}>
+        <div style={rootStyle} data-visibility-hydrated="true">
             {panels.header && (
                 <div
                     ref={pillContainerRef}
+                    className={panelAnimClass.header || ''}
                     style={{
                         position: 'absolute',
                         left: pillPos.x,

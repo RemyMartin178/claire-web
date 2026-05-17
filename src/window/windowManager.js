@@ -209,6 +209,20 @@ let layoutManager = null;
 let overlayMode = false;
 let overlayWindow = null;
 let overlayPillPos = null; // pill position tracked for layout calculations
+const OVERLAY_PANEL_NAMES = ['header', 'listen', 'ask', 'settings', 'agent-selector', 'shortcut-settings'];
+const OVERLAY_SHARED_STATE_KEYS = { header: 'showHeader', listen: 'showListen', ask: 'showChat' };
+
+function createOverlayPanelVisibilityMap(value) {
+    return OVERLAY_PANEL_NAMES.reduce((acc, name) => {
+        acc[name] = value;
+        return acc;
+    }, {});
+}
+
+let overlayRendererReady = false;
+let overlayInitialVisibilityApplied = false;
+let overlayPanelVisibility = createOverlayPanelVisibilityMap(false);
+let pendingOverlayVisibility = createOverlayPanelVisibilityMap(null);
 
 // Polling: hit-test rects sent by renderer; main process toggles setIgnoreMouseEvents
 // directly without any IPC round-trip latency.
@@ -235,13 +249,11 @@ class OverlayPanel {
     isVisible() { return this._visible; }
     show() {
         this._visible = true;
-        if (!this._overlayWin.isDestroyed())
-            this._overlayWin.webContents.send('overlay:panel-visibility', { name: this.name, visible: true });
+        sendOverlayPanelVisibility(this.name, true);
     }
     hide() {
         this._visible = false;
-        if (!this._overlayWin.isDestroyed())
-            this._overlayWin.webContents.send('overlay:panel-visibility', { name: this.name, visible: false });
+        sendOverlayPanelVisibility(this.name, false);
     }
     // Geometry: OverlayRoot handles layout — these are safe no-ops
     getBounds() { return { x: 0, y: 0, width: 600, height: 400 }; }
@@ -271,6 +283,115 @@ class OverlayPanel {
     once(ev, fn) { if (!this._overlayWin.isDestroyed()) this._overlayWin.once(ev, fn); }
 }
 
+function isOverlayPanelName(name) {
+    return OVERLAY_PANEL_NAMES.includes(name);
+}
+
+function setOverlayPanelVisible(name, visible) {
+    if (!isOverlayPanelName(name)) return;
+    overlayPanelVisibility[name] = Boolean(visible);
+    const panel = windowPool.get(name);
+    if (panel instanceof OverlayPanel) {
+        panel._visible = Boolean(visible);
+    }
+}
+
+function hasVisibleOverlayPanel() {
+    return OVERLAY_PANEL_NAMES.some(name => Boolean(overlayPanelVisibility[name]));
+}
+
+function updateOverlayWindowVisibility({ logShowAfterHydration = false } = {}) {
+    if (!overlayWindow || overlayWindow.isDestroyed() || !overlayRendererReady) return;
+
+    if (hasVisibleOverlayPanel()) {
+        if (!overlayWindow.isVisible()) {
+            if (logShowAfterHydration) logger.info('[Overlay] showing overlay after hydration');
+            overlayWindow.show();
+        }
+    } else if (overlayWindow.isVisible()) {
+        overlayWindow.hide();
+    }
+}
+
+function queueOverlayVisibilityRequest(name, visible) {
+    if (!isOverlayPanelName(name)) return false;
+    const normalizedVisible = Boolean(visible);
+    pendingOverlayVisibility[name] = normalizedVisible;
+    setOverlayPanelVisible(name, normalizedVisible);
+    logger.info('[Overlay] queued visibility request before window ready', { name, visible: normalizedVisible });
+    return true;
+}
+
+function sendOverlayPanelVisibility(name, visible) {
+    if (!isOverlayPanelName(name)) return false;
+    const normalizedVisible = Boolean(visible);
+
+    if (!overlayWindow || overlayWindow.isDestroyed() || !overlayRendererReady) {
+        return queueOverlayVisibilityRequest(name, normalizedVisible);
+    }
+
+    setOverlayPanelVisible(name, normalizedVisible);
+    try {
+        overlayWindow.webContents.send('overlay:panel-visibility', { name, visible: normalizedVisible });
+    } catch (e) {
+        logger.warn('[Overlay] panel visibility IPC failed:', e.message);
+        return queueOverlayVisibilityRequest(name, normalizedVisible);
+    }
+    updateOverlayWindowVisibility();
+    return true;
+}
+
+function getInitialOverlayVisibility() {
+    if (overlayInitialVisibilityApplied) {
+        return { ...overlayPanelVisibility };
+    }
+
+    const state = sharedStateService.get?.() || {};
+    const nextVisibility = createOverlayPanelVisibilityMap(false);
+
+    for (const name of Object.keys(OVERLAY_SHARED_STATE_KEYS)) {
+        const stateKey = OVERLAY_SHARED_STATE_KEYS[name];
+        nextVisibility[name] = pendingOverlayVisibility[name] ?? Boolean(state[stateKey]);
+    }
+
+    for (const name of OVERLAY_PANEL_NAMES) {
+        if (!(name in OVERLAY_SHARED_STATE_KEYS)) {
+            nextVisibility[name] = pendingOverlayVisibility[name] ?? false;
+        }
+    }
+
+    return nextVisibility;
+}
+
+function applyInitialOverlayVisibility() {
+    if (!overlayWindow || overlayWindow.isDestroyed()) return;
+
+    const nextVisibility = getInitialOverlayVisibility();
+    overlayPanelVisibility = { ...nextVisibility };
+
+    for (const name of OVERLAY_PANEL_NAMES) {
+        setOverlayPanelVisible(name, nextVisibility[name]);
+    }
+
+    for (const name of Object.keys(OVERLAY_SHARED_STATE_KEYS)) {
+        try {
+            overlayWindow.webContents.send('overlay:panel-visibility', { name, visible: nextVisibility[name] });
+        } catch (e) {
+            logger.warn('[Overlay] initial visibility IPC failed:', e.message);
+            queueOverlayVisibilityRequest(name, nextVisibility[name]);
+        }
+    }
+
+    pendingOverlayVisibility = createOverlayPanelVisibilityMap(null);
+    overlayInitialVisibilityApplied = true;
+    logger.info('[Overlay] initial visibility applied', {
+        header: nextVisibility.header,
+        listen: nextVisibility.listen,
+        ask: nextVisibility.ask,
+    });
+    updateOverlayWindowVisibility({ logShowAfterHydration: true });
+}
+
 function createOverlayWindow() {
     if (overlayWindow && !overlayWindow.isDestroyed()) {
         logger.info('[Overlay] Already exists, skipping creation');
@@ -279,6 +400,10 @@ function createOverlayWindow() {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { x: dX, y: dY, width: dW, height: dH } = primaryDisplay.bounds;
 
+    logger.info('[Overlay] creating hidden overlay window');
+    overlayRendererReady = false;
+    overlayInitialVisibilityApplied = false;
+    overlayPanelVisibility = createOverlayPanelVisibilityMap(false);
     overlayWindow = new BrowserWindow({
         x: dX, y: dY, width: dW, height: dH,
         frame: false,
@@ -291,6 +416,7 @@ function createOverlayWindow() {
         hiddenInMissionControl: true,
         resizable: false,
         movable: false,
+        show: false,
         focusable: true,
         acceptFirstMouse: true,
         webPreferences: {
@@ -319,19 +445,11 @@ function createOverlayWindow() {
 
     overlayWindow.loadFile(path.join(__dirname, '../ui/app/overlay.html'));
     overlayWindow.webContents.once('did-finish-load', () => {
+        logger.info('[Overlay] renderer did-finish-load');
+        overlayRendererReady = true;
         sharedStateService.patch({ isHeaderLoaded: true, isListenLoaded: true });
+        applyInitialOverlayVisibility();
     });
-    // Only auto-show the overlay if sharedState says it should be visible.
-    // During cold start bootApp patches showHeader=false, so without this guard
-    // the pill flashes on top of the splash before the dashboard is even shown.
-    let _initiallyVisible = true;
-    try {
-        const _ss = sharedStateService.get?.();
-        if (_ss && _ss.showHeader === false) _initiallyVisible = false;
-    } catch (_) { /* fall back to visible */ }
-    if (_initiallyVisible) {
-        overlayWindow.show();
-    }
 
     // Hide instead of close (keep process alive in background)
     overlayWindow.on('close', (e) => {
@@ -364,6 +482,9 @@ function destroyOverlayWindow() {
     });
     overlayWindow.destroy();
     overlayWindow = null;
+    overlayRendererReady = false;
+    overlayInitialVisibilityApplied = false;
+    overlayPanelVisibility = createOverlayPanelVisibilityMap(false);
     overlayMode = false;
     overlayPillPos = null;
     logger.info('[Overlay] Destroyed overlay window');
@@ -391,12 +512,13 @@ const setOverlayPillPosition = (x, y) => {
 
 const getOverlayInitialState = () => {
     const header = windowPool.get('header');
+    const visibility = getInitialOverlayVisibility();
     if (header && !header.isDestroyed()) {
         const [x, y] = header.getPosition();
-        return { pillX: x, pillY: y };
+        return { pillX: x, pillY: y, visibility };
     }
     const display = screen.getPrimaryDisplay();
-    return { pillX: Math.round((display.workArea.width - 163) / 2), pillY: 25 };
+    return { pillX: Math.round((display.workArea.width - 163) / 2), pillY: 25, visibility };
 };
 
 const getOverlayWindow = () => overlayWindow;
@@ -626,12 +748,16 @@ function setupWindowController(windowPool, layoutManager, movementManager) {
 function changeAllWindowsVisibility(windowPool, targetVisibility) {
     // Overlay mode: toggle the overlay window directly
     if (overlayMode && overlayWindow && !overlayWindow.isDestroyed()) {
+        if (!overlayRendererReady || !overlayInitialVisibilityApplied) {
+            if (targetVisibility === false) overlayWindow.hide();
+            return;
+        }
         const isVisible = overlayWindow.isVisible();
         if (typeof targetVisibility === 'boolean' && isVisible === targetVisibility) return;
         if (isVisible) {
             overlayWindow.hide();
         } else {
-            overlayWindow.show();
+            updateOverlayWindowVisibility();
         }
         return;
     }
@@ -681,15 +807,15 @@ function changeAllWindowsVisibility(windowPool, targetVisibility) {
 async function handleWindowVisibilityRequest(windowPool, layoutManager, movementManager, name, shouldBeVisible) {
     logger.info('Request: set window visibility to', { name, shouldBeVisible });
 
-    // 'header' in overlay mode is a React panel rendered inside OverlayRoot,
-    // not a BrowserWindow. Skip the windowPool lookup and just dispatch the
-    // overlay:panel-visibility IPC that OverlayRoot listens for.
-    if (name === 'header' && overlayMode && overlayWindow && !overlayWindow.isDestroyed()) {
-        try {
-            overlayWindow.webContents.send('overlay:panel-visibility', { name: 'header', visible: shouldBeVisible });
-        } catch (e) {
-            logger.warn('[Overlay] header visibility IPC failed:', e.message);
-        }
+    // Overlay panels are React panels rendered inside OverlayRoot. If the
+    // BrowserWindow or renderer is not ready yet, remember the request.
+    if (overlayMode && isOverlayPanelName(name)) {
+        sendOverlayPanelVisibility(name, shouldBeVisible);
+        return;
+    }
+
+    if (!overlayMode && isOverlayPanelName(name) && !overlayWindow && !windowPool.get('header')) {
+        queueOverlayVisibilityRequest(name, shouldBeVisible);
         return;
     }
 
@@ -755,14 +881,6 @@ async function handleWindowVisibilityRequest(windowPool, layoutManager, movement
     // send the same overlay:panel-visibility IPC OverlayPanel.show()/hide()
     // would send. In window mode we just toggle the BrowserWindow.
     if (name === 'header') {
-        if (overlayMode && overlayWindow && !overlayWindow.isDestroyed()) {
-            try {
-                overlayWindow.webContents.send('overlay:panel-visibility', { name: 'header', visible: shouldBeVisible });
-            } catch (e) {
-                logger.warn('[Overlay] header visibility IPC failed:', e.message);
-            }
-            return;
-        }
         if (shouldBeVisible) {
             win.setOpacity(0);
             win.show();
