@@ -51,8 +51,7 @@ const CSS = `
   width: 163px;
   height: 50px;
 }
-.mh-root.overlay-mode .mh-pill,
-.mh-root.overlay-mode .mh-login-pill {
+.mh-root.overlay-mode .mh-pill {
   -webkit-app-region: no-drag;
 }
 
@@ -240,74 +239,6 @@ const CSS = `
   animation: mh-spin 0.7s linear infinite;
 }
 
-/* ── LOGIN PILL ── */
-.mh-login-pill {
-  -webkit-app-region: drag;
-  display: inline-flex;
-  align-items: center;
-  height: 32px;
-  padding: 0;
-  border-radius: 100px;
-  gap: 8px;
-  background: transparent;
-  border: 0;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-.mh-sign-in-btn {
-  -webkit-app-region: no-drag;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 100px;
-  border: 0;
-  background: linear-gradient(#0544a9,#022c70);
-  box-shadow: 0 0 0 0.5px #0c44a1, 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #022c70, inset 0 0.5px #81b6ff;
-  color: rgba(255,255,255,0.88);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.12s ease;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  flex-shrink: 0;
-  min-width: 110px;
-}
-.mh-sign-in-btn:hover    { filter: brightness(1.18); }
-.mh-sign-in-btn:disabled { opacity: 0.5; cursor: default; }
-
-/* Login mic icon placeholder */
-.mh-login-mic {
-  -webkit-app-region: no-drag;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  border: 0;
-  background: linear-gradient(#2e3039,#272a31);
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
-  color: rgba(255,255,255,0.40);
-  flex-shrink: 0;
-}
-
-/* ── QUIT BUTTON ── */
-.mh-quit-btn {
-  -webkit-app-region: no-drag;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px; height: 28px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 0;
-  background: linear-gradient(#2e3039,#272a31);
-  box-shadow: 0 85px 34px #00000005, 0 48px 29px #00000014, 0 21px 21px #00000021, 0 5px 12px #00000029, inset 0 -1px #16171a, inset 0 0.5px #afb3c4;
-  color: rgba(255,255,255,0.55);
-  cursor: pointer;
-  margin-left: 8px;
-  transition: filter 0.12s ease, color 0.12s ease;
-}
-.mh-quit-btn:hover { filter: brightness(1.18); color: rgba(255,255,255,0.95); }
 `;
 
 /* ── ICONS ── */
@@ -355,18 +286,12 @@ export default function MainHeader({
   onOverlayDragStart = null,
 } = {}) {
   const [isTogglingSession, setIsTogglingSession] = useState(false);
-  const [isPaused, setIsPaused]                   = useState(false);
   const [listenSessionStatus, setListenSessionStatus] = useState('beforeSession');
-  const [isUserLoggedIn, setIsUserLoggedIn]        = useState(false);
-  const [isAuthenticating, setIsAuthenticating]    = useState(false);
-  const [animClass, setAnimClass]                  = useState('');
-  const [justLoggedIn, setJustLoggedIn]            = useState(false);
   const [showChat, setShowChat]                    = useState(false);
 
   const hostRef                = useRef(null);
   const wasJustDraggedRef      = useRef(false);
   const dragStateRef           = useRef(null);
-  const prevIsUserLoggedIn     = useRef(isUserLoggedIn);
   const listenStatusRef        = useRef('beforeSession');
 
   const overlayPosXRef         = useRef(overlayPosX);
@@ -383,16 +308,6 @@ export default function MainHeader({
   useEffect(() => { listenStatusRef.current       = listenSessionStatus; }, [listenSessionStatus]);
 
   injectStyles('mh-styles-v3', CSS);
-
-  // Post-login animation
-  useEffect(() => {
-    if (!prevIsUserLoggedIn.current && isUserLoggedIn) {
-      setJustLoggedIn(true);
-      const t = setTimeout(() => setJustLoggedIn(false), 900);
-      return () => clearTimeout(t);
-    }
-    prevIsUserLoggedIn.current = isUserLoggedIn;
-  }, [isUserLoggedIn]);
 
   // ── Drag ──────────────────────────────────────────────────────────────────
   const handleMouseMove = useCallback((e) => {
@@ -506,18 +421,10 @@ export default function MainHeader({
 
     const unsubSharedState = window.api.sharedState?.subscribe?.(syncFromState);
 
-    const onUserState = (_, s) => { setIsUserLoggedIn(s.isLoggedIn); setIsAuthenticating(false); };
-    window.api.common?.onUserStateChanged?.(onUserState);
-    window.api.common?.getCurrentUser?.().then(s => setIsUserLoggedIn(s?.isLoggedIn ?? false)).catch(() => {});
-
-    const onAuthFailed = () => setIsAuthenticating(false);
-    window.api.on?.('auth-failed', onAuthFailed);
-
     const onSession = (_, { success, state }) => {
       if (success) {
         const next = ['beforeSession', 'inSession', 'afterSession'].includes(state) ? state : 'beforeSession';
         setListenSessionStatus(next);
-        if (next === 'beforeSession') setIsPaused(false);
       } else {
         setListenSessionStatus('beforeSession');
       }
@@ -531,7 +438,6 @@ export default function MainHeader({
     return () => {
       disposed = true;
       if (typeof unsubSharedState === 'function') unsubSharedState();
-      window.api.common?.removeOnUserStateChanged?.(onUserState);
       window.api.mainHeader?.removeOnListenChangeSessionResult?.(onSession);
       window.removeEventListener('pointerdown', onPointer, true);
     };
@@ -541,10 +447,10 @@ export default function MainHeader({
   useEffect(() => {
     if (!window.api?.headerController?.resizeHeaderWindow) return;
     window.api.headerController.resizeHeaderWindow({
-      width:  isUserLoggedIn ? 163 : 190,
-      height: isUserLoggedIn ? 50 : 60,
+      width:  163,
+      height: 50,
     }).catch(() => {});
-  }, [isUserLoggedIn]);
+  }, []);
 
   // ── Animation end ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -568,17 +474,12 @@ export default function MainHeader({
   const updateClickThrough = useCallback((e) => {
     if (overlayMode) return;
     if (!window.api?.mainHeader?.setHeaderClickThrough) return;
-    const pill = document.querySelector('.mh-pill, .mh-login-pill');
-    const quitBtn = document.querySelector('.mh-quit-btn');
+    const pill = document.querySelector('.mh-pill');
     if (!pill) return;
     const rect  = pill.getBoundingClientRect();
-    const qRect = quitBtn?.getBoundingClientRect();
     const inside = (
       e.clientX >= rect.left && e.clientX <= rect.right &&
       e.clientY >= rect.top  && e.clientY <= rect.bottom
-    ) || !!(qRect &&
-      e.clientX >= qRect.left && e.clientX <= qRect.right &&
-      e.clientY >= qRect.top  && e.clientY <= qRect.bottom
     );
     if (inside && clickThroughRef.current) {
       clickThroughRef.current = false;
@@ -643,58 +544,22 @@ export default function MainHeader({
     } catch {}
   }, []);
 
-  const handleLogin = useCallback(async () => {
-    if (wasJustDraggedRef.current || isAuthenticating) return;
-    setIsAuthenticating(true);
-    const authTimeout = setTimeout(() => setIsAuthenticating(false), 120_000);
-    try {
-      const r = await window.api.common.startFirebaseAuth();
-      if (!r?.success) { clearTimeout(authTimeout); setIsAuthenticating(false); }
-    } catch { clearTimeout(authTimeout); setIsAuthenticating(false); }
-  }, [isAuthenticating]);
-
-  const handleAppQuit = useCallback(() => {
-    setAnimClass('hiding');
-    setTimeout(() => { window.api.common.quitApplication(); }, 280);
-  }, []);
-
   const isListening = listenSessionStatus === 'inSession';
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div ref={hostRef} className={`mh-root ${animClass}${overlayMode ? ' overlay-mode' : ''}`}>
-      {!isUserLoggedIn ? (
-        <>
-          <div className="mh-login-pill" onMouseDown={handleMouseDown}>
-            <div className="mh-login-mic">
-              <IconMic />
-            </div>
-            <button
-              className="mh-sign-in-btn no-drag"
-              onClick={handleLogin}
-              disabled={isAuthenticating}
-            >
-              {isAuthenticating ? 'Connexion…' : 'Connexion'}
-            </button>
-          </div>
-          <button className="mh-quit-btn" onClick={handleAppQuit} title="Quitter">
-            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-              <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </button>
-        </>
-      ) : (
-        <div
-          className={`mh-pill${justLoggedIn ? ' animating-in' : ''}`}
-          onMouseDown={handleMouseDown}
-          onClick={handlePillClick}
-        >
-          <div className="mh-controls">
+    <div ref={hostRef} className={`mh-root${overlayMode ? ' overlay-mode' : ''}`}>
+      <div
+        className="mh-pill"
+        onMouseDown={handleMouseDown}
+        onClick={handlePillClick}
+      >
+        <div className="mh-controls">
           {/* Logo — inline SVG, mr-auto pushes it to the left of the flex row */}
           <ClaireMark />
           {/* Wide button: Ask ↔ Hide */}
           <button
-              className={`mh-wide-btn no-drag${showChat ? ' chat-visible' : ''}`}
+            className={`mh-wide-btn no-drag${showChat ? ' chat-visible' : ''}`}
             onClick={showChat ? handleChatToggle : handleAsk}
             tabIndex={-1}
             type="button"
@@ -725,9 +590,8 @@ export default function MainHeader({
                 : <IconMic />
             }
           </button>
-          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

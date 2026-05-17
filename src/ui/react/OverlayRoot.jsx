@@ -107,20 +107,90 @@ const injectStyles = (id, css) => {
 
 const PANEL_CSS = `
 @keyframes overlay-panel-in {
-  0%   { opacity: 0; transform: translateY(-10px) scale(0.95); }
-  70%  { transform: translateY(2px) scale(1.01); }
+  0%   { opacity: 0; transform: translateY(-14px) scale(0.975); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes overlay-header-in {
+  0%   { opacity: 0; transform: translate3d(0, -18px, 0) scale(0.88); }
+  58%  { opacity: 1; transform: translate3d(0, 2px, 0) scale(1.015); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes overlay-panel-out {
   from { opacity: 1; transform: translateY(0) scale(1); }
   to   { opacity: 0; transform: translateY(-8px) scale(0.96); }
 }
-.overlay-panel-entering { animation: overlay-panel-in 0.26s cubic-bezier(0.34,1.3,0.64,1) both; }
-.overlay-panel-exiting  { animation: overlay-panel-out 0.18s ease-in both; pointer-events: none !important; }
+@keyframes overlay-header-item-in {
+  0%   { opacity: 0; transform: translate3d(0, -6px, 0) scale(0.94); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes overlay-ask-in {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 0 18% 0 round 16px);
+    transform: translate3d(0, -10px, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0 round 16px);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+.overlay-panel-entering { animation: overlay-panel-in 0.34s cubic-bezier(0.16,1,0.3,1) both; }
+.overlay-panel-exiting  { animation: overlay-panel-out 0.18s cubic-bezier(0.4,0,1,1) both; pointer-events: none !important; }
+
+.overlay-header-panel {
+  transform-origin: 50% 0;
+  will-change: transform, opacity;
+}
+.overlay-header-panel.overlay-panel-entering {
+  animation: overlay-header-in 0.42s cubic-bezier(0.16,1,0.3,1) both;
+}
+.overlay-header-panel.overlay-panel-exiting {
+  animation: overlay-panel-out 0.18s cubic-bezier(0.4,0,1,1) both;
+  pointer-events: none !important;
+}
+.overlay-header-panel.overlay-panel-entering .mh-logo,
+.overlay-header-panel.overlay-panel-entering .mh-wide-btn,
+.overlay-header-panel.overlay-panel-entering .mh-action-btn {
+  animation: overlay-header-item-in 0.34s cubic-bezier(0.16,1,0.3,1) both;
+}
+.overlay-header-panel.overlay-panel-entering .mh-logo { animation-delay: 0.06s; }
+.overlay-header-panel.overlay-panel-entering .mh-wide-btn { animation-delay: 0.11s; }
+.overlay-header-panel.overlay-panel-entering .mh-action-btn { animation-delay: 0.15s; }
+
+.overlay-ask-panel {
+  transform-origin: 50% 0;
+  will-change: transform, opacity, clip-path;
+}
+.overlay-ask-panel.overlay-panel-entering {
+  animation: overlay-ask-in 0.36s cubic-bezier(0.16,1,0.3,1) both;
+}
+.overlay-ask-panel.overlay-panel-exiting {
+  animation: overlay-panel-out 0.18s cubic-bezier(0.4,0,1,1) both;
+  pointer-events: none !important;
+}
 
 /* Slide transition for repositioning */
 .overlay-panel-common {
-  transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: left 0.36s cubic-bezier(0.16, 1, 0.3, 1), top 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-panel-entering,
+  .overlay-panel-exiting,
+  .overlay-header-panel.overlay-panel-entering,
+  .overlay-header-panel.overlay-panel-exiting,
+  .overlay-ask-panel.overlay-panel-entering,
+  .overlay-ask-panel.overlay-panel-exiting,
+  .overlay-header-panel.overlay-panel-entering .mh-logo,
+  .overlay-header-panel.overlay-panel-entering .mh-wide-btn,
+  .overlay-header-panel.overlay-panel-entering .mh-action-btn {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+  }
+  .overlay-panel-common {
+    transition: none !important;
+  }
 }
 
 `;
@@ -135,6 +205,9 @@ const PANEL_CSS = `
 //   No IPC round-trip on click events → zero latency for button presses.
 
 
+
+const PANEL_EXIT_MS = 200;
+const ASK_AFTER_HEADER_DELAY_MS = 170;
 
 export default function OverlayRoot() {
     const screenW = window.screen.width;
@@ -165,6 +238,17 @@ export default function OverlayRoot() {
     const [panels, setPanels] = useState(() => ({ ...INITIAL_PANELS }));
     const panelsRef = useRef({ ...INITIAL_PANELS });
     const [panelAnimClass, setPanelAnimClass] = useState({});
+    const panelTimersRef = useRef({});
+    const headerRevealUntilRef = useRef(0);
+
+    useEffect(() => {
+        return () => {
+            for (const timer of Object.values(panelTimersRef.current)) {
+                clearTimeout(timer);
+            }
+            panelTimersRef.current = {};
+        };
+    }, []);
 
     const [panelSizes, setPanelSizes] = useState({
         ask: { w: CLUELY_ASK_WIDTH, h: CLUELY_ASK_MIN_HEIGHT },
@@ -218,6 +302,54 @@ export default function OverlayRoot() {
         window.api.overlay.setHitRects(rects);
     }, []);
 
+    const clearPanelTimer = useCallback((name) => {
+        if (panelTimersRef.current[name]) {
+            clearTimeout(panelTimersRef.current[name]);
+            delete panelTimersRef.current[name];
+        }
+    }, []);
+
+    const showPanel = useCallback((name) => {
+        clearPanelTimer(name);
+        panelsRef.current = { ...panelsRef.current, [name]: true };
+        setPanels(prev => ({ ...prev, [name]: true }));
+        setPanelAnimClass(prev => ({ ...prev, [name]: 'overlay-panel-entering' }));
+
+        if (name === 'header') {
+            headerRevealUntilRef.current = Date.now() + ASK_AFTER_HEADER_DELAY_MS;
+        }
+    }, [clearPanelTimer]);
+
+    const hidePanel = useCallback((name) => {
+        clearPanelTimer(name);
+        if (!panelsRef.current[name]) return;
+
+        setPanelAnimClass(prev => ({ ...prev, [name]: 'overlay-panel-exiting' }));
+        panelTimersRef.current[name] = setTimeout(() => {
+            delete panelTimersRef.current[name];
+            panelsRef.current = { ...panelsRef.current, [name]: false };
+            setPanels(prev => ({ ...prev, [name]: false }));
+            setPanelAnimClass(prev => {
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
+        }, PANEL_EXIT_MS);
+    }, [clearPanelTimer]);
+
+    const showAskAfterHeaderReveal = useCallback(() => {
+        clearPanelTimer('ask');
+        const delay = Math.max(0, headerRevealUntilRef.current - Date.now());
+        if (delay <= 0) {
+            showPanel('ask');
+            return;
+        }
+        panelTimersRef.current.ask = setTimeout(() => {
+            delete panelTimersRef.current.ask;
+            showPanel('ask');
+        }, delay);
+    }, [clearPanelTimer, showPanel]);
+
     const handleDragStart = useCallback(() => {
         window.api?.overlay?.setDragging?.(true);
     }, []);
@@ -265,6 +397,12 @@ export default function OverlayRoot() {
                     }
                 }
 
+                const shouldStageAsk = nextPanels.header && nextPanels.ask;
+                if (shouldStageAsk) {
+                    nextPanels.ask = false;
+                    headerRevealUntilRef.current = Date.now() + ASK_AFTER_HEADER_DELAY_MS;
+                }
+
                 const initialAnimClass = {};
                 for (const [name, visible] of Object.entries(nextPanels)) {
                     if (visible) initialAnimClass[name] = 'overlay-panel-entering';
@@ -273,6 +411,10 @@ export default function OverlayRoot() {
                 panelsRef.current = nextPanels;
                 setPanels(nextPanels);
                 setPanelAnimClass(initialAnimClass);
+
+                if (shouldStageAsk) {
+                    showAskAfterHeaderReveal();
+                }
             } finally {
                 if (!cancelled) {
                     visibilityHydratedRef.current = true;
@@ -287,7 +429,7 @@ export default function OverlayRoot() {
         return () => {
             cancelled = true;
         };
-    }, [updateHitRects]);
+    }, [showAskAfterHeaderReveal, updateHitRects]);
 
     // Dynamically track the actual size of the pill to avoid clamping issues
     useEffect(() => {
@@ -343,17 +485,18 @@ export default function OverlayRoot() {
             }
 
             if (normalizedVisible) {
-                panelsRef.current = { ...panelsRef.current, [name]: true };
-                setPanels(prev => ({ ...prev, [name]: true }));
-                setPanelAnimClass(prev => ({ ...prev, [name]: 'overlay-panel-entering' }));
+                if (
+                    name === 'ask' &&
+                    !panelsRef.current.ask &&
+                    panelsRef.current.header &&
+                    Date.now() < headerRevealUntilRef.current
+                ) {
+                    showAskAfterHeaderReveal();
+                    return;
+                }
+                showPanel(name);
             } else {
-                if (!panelsRef.current[name]) return;
-                setPanelAnimClass(prev => ({ ...prev, [name]: 'overlay-panel-exiting' }));
-                setTimeout(() => {
-                    panelsRef.current = { ...panelsRef.current, [name]: false };
-                    setPanels(prev => ({ ...prev, [name]: false }));
-                    setPanelAnimClass(prev => { const n = { ...prev }; delete n[name]; return n; });
-                }, 200);
+                hidePanel(name);
             }
         };
         window.api.on('overlay:panel-visibility', onPanelVisibility);
@@ -411,7 +554,7 @@ export default function OverlayRoot() {
             window.removeEventListener('claire-toast-changed', onToastChanged);
             window.removeEventListener('upgrade-overlay-open', onUpgradeOpen);
         };
-    }, [updateHitRects]);
+    }, [hidePanel, showAskAfterHeaderReveal, showPanel, updateHitRects]);
 
     // ── Hit-rects : mise à jour après chaque commit DOM ───────────────────────
     // useEffect garantit que les refs des panels sont valides (divs dans le DOM)
@@ -503,7 +646,7 @@ export default function OverlayRoot() {
             {panels.header && (
                 <div
                     ref={pillContainerRef}
-                    className={panelAnimClass.header || ''}
+                    className={`overlay-header-panel ${panelAnimClass.header || ''}`.trim()}
                     style={{
                         position: 'absolute',
                         left: pillPos.x,
@@ -530,7 +673,7 @@ export default function OverlayRoot() {
             )}
 
             {panels.ask && positions.ask && (
-                <div ref={askPanelRef} className={`overlay-panel-common ${panelAnimClass.ask || ''}`} style={panelStyle(positions.ask, panelSizes.ask)}>
+                <div ref={askPanelRef} className={`overlay-panel-common overlay-ask-panel ${panelAnimClass.ask || ''}`} style={panelStyle(positions.ask, panelSizes.ask)}>
                     <AskView />
                 </div>
             )}

@@ -2035,11 +2035,8 @@ function createSplashWindow() {
 
     splashWindow.once('ready-to-show', () => {
         if (!splashWindow.isDestroyed()) {
-            splashWindow.setOpacity(0);
+            splashWindow.setOpacity(1);
             splashWindow.show();
-            setTimeout(() => {
-                if (!splashWindow.isDestroyed()) splashWindow.setOpacity(1);
-            }, 30);
             splashShownAt = Date.now();
         }
     });
