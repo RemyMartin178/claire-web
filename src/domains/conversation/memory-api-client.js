@@ -1,14 +1,9 @@
 /**
- * XERUS MEMORY API CLIENT
- * Frontend client for backend memory microservice
- * 
- * Integrates with:
- * - POST /api/memory/working/:agentId/:userId (store references)
- * - POST /api/memory/episodic/:agentId/:userId (store full visual data)
- * - POST /api/memory/semantic/:agentId/:userId (store knowledge)
- * - POST /api/memory/procedural/:agentId/:userId/behavior (store patterns)
- * - GET /api/memory/instance/:agentId/:userId (get stats)
- * - GET /api/memory/health (system health)
+ * Best-effort client for the optional backend memory service.
+ *
+ * Memory must never block STT, Ask, Summary, or session lifecycle. Endpoint
+ * failures disable this client for the current app session and return skipped
+ * results instead of throwing into product flows.
  */
 
 const { createLogger } = require('../../common/services/logger.js');
@@ -17,433 +12,361 @@ const logger = createLogger('MemoryApiClient');
 
 class MemoryApiClient {
     constructor(options = {}) {
-        this.baseUrl = options.baseUrl || process.env.pickleglass_API_URL || 'http://localhost:3001';
-        this.apiVersion = options.apiVersion || 'v1/memory'; // /api/v1/memory/* endpoints
-        this.timeout = options.timeout || 30000;
-        
-        // Authentication context
+        this.baseUrl =
+            options.baseUrl ||
+            process.env.CLAIRE_API_URL ||
+            process.env.pickleglass_API_URL ||
+            process.env.XERUS_API_URL ||
+            'http://localhost:3001';
+        this.apiVersion = options.apiVersion || 'v1/memory';
+        this.timeout = Number(options.timeout || process.env.MEMORY_API_TIMEOUT_MS || 5000);
+
+        this.disabled = Boolean(options.disabled) || process.env.MEMORY_API_ENABLED === 'false';
+        this.disabledReason = this.disabled ? 'MEMORY_API_ENABLED=false' : null;
+        if (this.disabled) {
+            MemoryApiClient.sessionDisabled = true;
+            MemoryApiClient.sessionDisabledReason = this.disabledReason;
+        }
+        this.lastWarningAt = 0;
+        this.warningIntervalMs = Number(options.warningIntervalMs || 30000);
+
         this.authToken = null;
         this.userId = null;
         this.userPermissions = [];
         this.isGuest = false;
-        
+
         logger.info('[MemoryApiClient] API client created', {
             baseUrl: this.baseUrl,
-            apiVersion: this.apiVersion
+            apiVersion: this.apiVersion,
+            disabled: this.disabled,
         });
     }
-    
-    /**
-     * Set authentication context
-     */
+
     setAuthContext(authContext = {}) {
         this.authToken = authContext.token || null;
         this.userId = authContext.userId || null;
         this.userPermissions = authContext.permissions || [];
         this.isGuest = authContext.isGuest || false;
-        
+
         logger.info('[MemoryApiClient] Auth context updated', {
-            hasToken: !!this.authToken,
+            hasToken: Boolean(this.authToken),
             userId: this.userId,
             isGuest: this.isGuest,
-            permissions: this.userPermissions
         });
     }
-    
-    // =============================================================================
-    // WORKING MEMORY OPERATIONS (References Only)
-    // =============================================================================
-    
-    /**
-     * Store reference in working memory (no image duplication)
-     */
+
+    shouldLogWarning() {
+        const now = Date.now();
+        if (now - MemoryApiClient.lastWarningAt < this.warningIntervalMs) return false;
+        MemoryApiClient.lastWarningAt = now;
+        this.lastWarningAt = now;
+        return true;
+    }
+
+    disable(reason) {
+        const nextReason = reason || 'memory disabled';
+        const wasEnabled = !this.disabled && !MemoryApiClient.sessionDisabled;
+
+        this.disabled = true;
+        this.disabledReason = nextReason;
+        MemoryApiClient.sessionDisabled = true;
+        MemoryApiClient.sessionDisabledReason = nextReason;
+
+        if (wasEnabled) {
+            if (this.shouldLogWarning()) {
+                logger.warn('[MemoryApiClient] Memory API disabled for this app session', {
+                    reason: this.disabledReason,
+                });
+            }
+        }
+    }
+
     async storeWorkingMemory(agentId, userId, referenceData) {
-        try {
-            const url = this._buildUrl(`/working/${agentId}/${userId}`);
-            
-            const payload = {
-                type: referenceData.type || 'visual_reference',
-                content: referenceData.content || referenceData,
-                metadata: {
-                    ...referenceData.metadata,
-                    timestamp: new Date(),
-                    source: 'frontend_memory_client'
-                }
-            };
-            
-            const response = await this._makeRequest('POST', url, payload);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            logger.info('[MemoryApiClient] Working memory reference stored', {
-                agentId,
-                userId,
-                type: payload.type,
-                success: result.success
-            });
-            
-            return result;
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Failed to store working memory:', { error });
-            throw new Error(`Failed to store working memory reference: ${error.message}`);
-        }
+        const payload = {
+            type: referenceData?.type || 'visual_reference',
+            content: referenceData?.content || referenceData,
+            metadata: {
+                ...referenceData?.metadata,
+                timestamp: new Date().toISOString(),
+                source: 'frontend_memory_client',
+            },
+        };
+        const result = await this._requestJson(
+            'POST',
+            this._buildUrl(`/working/${agentId}/${userId}`),
+            payload,
+            'storeWorkingMemory'
+        );
+        if (!result.success) return result;
+
+        logger.debug('[MemoryApiClient] Working memory reference stored', {
+            agentId,
+            userId,
+            type: payload.type,
+        });
+        return result.data || result;
     }
-    
-    /**
-     * Get working memory context
-     */
+
     async getWorkingMemory(agentId, userId, options = {}) {
-        try {
-            const limit = options.limit || 10;
-            const url = this._buildUrl(`/working/${agentId}/${userId}`, { limit });
-            
-            const response = await this._makeRequest('GET', url);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            logger.info('[MemoryApiClient] Working memory retrieved', {
-                agentId,
-                userId,
-                itemCount: result.data?.context?.length || 0
-            });
-            
-            return result.data;
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Failed to get working memory:', { error });
-            throw new Error(`Failed to retrieve working memory: ${error.message}`);
-        }
+        const result = await this._requestJson(
+            'GET',
+            this._buildUrl(`/working/${agentId}/${userId}`, { limit: options.limit || 10 }),
+            null,
+            'getWorkingMemory'
+        );
+        if (!result.success) return result;
+        return result.data?.data || result.data || result;
     }
-    
-    // =============================================================================
-    // EPISODIC MEMORY OPERATIONS (Full Visual Data Storage)
-    // =============================================================================
-    
-    /**
-     * Store full visual data in episodic memory (single source of truth)
-     */
+
     async storeEpisodicMemory(agentId, userId, episodicData) {
-        try {
-            const url = this._buildUrl(`/episodic/${agentId}/${userId}`);
-            
-            const payload = {
-                content: episodicData.content || episodicData,
-                response: episodicData.response || null,
-                context: episodicData.context || {},
-                importance: episodicData.importance || 0.7 // Higher importance for visual memories
-            };
-            
-            const response = await this._makeRequest('POST', url, payload);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            logger.info('[MemoryApiClient] Episodic memory stored', {
-                agentId,
-                userId,
-                episodeId: result.episodeId,
-                type: episodicData.content?.type,
-                hasScreenshot: !!episodicData.content?.screenshot
-            });
-            
-            return {
-                success: result.success,
-                id: result.episodeId,
-                message: result.message
-            };
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Failed to store episodic memory:', { 
-                error: error.message,
-                stack: error.stack,
-                agentId,
-                userId,
-                url,
-                payload: JSON.stringify(payload, null, 2)
-            });
-            throw new Error(`Failed to store episodic memory: ${error.message}`);
-        }
+        const payload = {
+            content: episodicData?.content || episodicData,
+            response: episodicData?.response || null,
+            context: episodicData?.context || {},
+            importance: episodicData?.importance || 0.7,
+        };
+        const result = await this._requestJson(
+            'POST',
+            this._buildUrl(`/episodic/${agentId}/${userId}`),
+            payload,
+            'storeEpisodicMemory'
+        );
+        if (!result.success) return result;
+
+        const body = result.data || {};
+        logger.debug('[MemoryApiClient] Episodic memory stored', {
+            agentId,
+            userId,
+            episodeId: body.episodeId,
+            type: episodicData?.content?.type,
+        });
+
+        return {
+            success: body.success !== false,
+            id: body.episodeId,
+            message: body.message,
+        };
     }
-    
-    /**
-     * Search episodic memories
-     */
+
     async searchEpisodicMemory(agentId, userId, query, options = {}) {
-        try {
-            const limit = options.limit || 10;
-            const offset = options.offset || 0;
-            
-            const url = this._buildUrl(`/episodic/${agentId}/${userId}`, { 
-                query, 
-                limit, 
-                offset 
-            });
-            
-            const response = await this._makeRequest('GET', url);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            logger.info('[MemoryApiClient] Episodic memory searched', {
-                agentId,
-                userId,
+        const result = await this._requestJson(
+            'GET',
+            this._buildUrl(`/episodic/${agentId}/${userId}`, {
                 query,
-                resultCount: result.data?.episodes?.length || 0
-            });
-            
-            return result.data;
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Failed to search episodic memory:', { error });
-            throw new Error(`Failed to search episodic memory: ${error.message}`);
-        }
+                limit: options.limit || 10,
+                offset: options.offset || 0,
+            }),
+            null,
+            'searchEpisodicMemory'
+        );
+        if (!result.success) return result;
+        return result.data?.data || result.data || result;
     }
-    
-    // =============================================================================
-    // SEMANTIC MEMORY OPERATIONS (Knowledge Storage)
-    // =============================================================================
-    
-    /**
-     * Store knowledge in semantic memory
-     */
+
     async storeSemanticMemory(agentId, userId, knowledgeData) {
-        try {
-            const url = this._buildUrl(`/semantic/${agentId}/${userId}`);
-            
-            const payload = {
-                content: knowledgeData.content || knowledgeData,
-                title: knowledgeData.title || 'Untitled Knowledge',
-                category: knowledgeData.category || 'general',
-                importance: knowledgeData.importance || 0.7
-            };
-            
-            const response = await this._makeRequest('POST', url, payload);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            logger.info('[MemoryApiClient] Semantic memory stored', {
-                agentId,
-                userId,
-                knowledgeId: result.knowledgeId,
-                title: payload.title
-            });
-            
-            return {
-                success: result.success,
-                id: result.knowledgeId,
-                message: result.message
-            };
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Failed to store semantic memory:', { error });
-            throw new Error(`Failed to store semantic memory: ${error.message}`);
-        }
+        const payload = {
+            content: knowledgeData?.content || knowledgeData,
+            title: knowledgeData?.title || 'Untitled Knowledge',
+            category: knowledgeData?.category || 'general',
+            importance: knowledgeData?.importance || 0.7,
+        };
+        const result = await this._requestJson(
+            'POST',
+            this._buildUrl(`/semantic/${agentId}/${userId}`),
+            payload,
+            'storeSemanticMemory'
+        );
+        if (!result.success) return result;
+
+        const body = result.data || {};
+        return {
+            success: body.success !== false,
+            id: body.knowledgeId,
+            message: body.message,
+        };
     }
-    
-    // =============================================================================
-    // PROCEDURAL MEMORY OPERATIONS (Behavior Patterns)
-    // =============================================================================
-    
-    /**
-     * Record behavior pattern in procedural memory
-     */
+
     async storeProceduralMemory(agentId, userId, behaviorData) {
-        try {
-            const url = this._buildUrl(`/procedural/${agentId}/${userId}/behavior`);
-            
-            const payload = {
-                pattern: behaviorData.pattern || behaviorData,
-                context: behaviorData.context || {},
-                success: behaviorData.success !== undefined ? behaviorData.success : true
-            };
-            
-            const response = await this._makeRequest('POST', url, payload);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            logger.info('[MemoryApiClient] Procedural memory recorded', {
-                agentId,
-                userId,
-                pattern: typeof payload.pattern === 'string' ? payload.pattern : 'object',
-                success: payload.success
-            });
-            
-            return result;
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Failed to store procedural memory:', { error });
-            throw new Error(`Failed to store procedural memory: ${error.message}`);
-        }
+        const payload = {
+            pattern: behaviorData?.pattern || behaviorData,
+            context: behaviorData?.context || {},
+            success: behaviorData?.success !== undefined ? behaviorData.success : true,
+        };
+        const result = await this._requestJson(
+            'POST',
+            this._buildUrl(`/procedural/${agentId}/${userId}/behavior`),
+            payload,
+            'storeProceduralMemory'
+        );
+        if (!result.success) return result;
+        return result.data || result;
     }
-    
-    // =============================================================================
-    // MEMORY SYSTEM UTILITIES
-    // =============================================================================
-    
-    /**
-     * Get memory instance statistics
-     */
+
     async getMemoryStats(agentId, userId) {
-        try {
-            const url = this._buildUrl(`/instance/${agentId}/${userId}`);
-            
-            const response = await this._makeRequest('GET', url);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            return result.data;
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Failed to get memory stats:', { error });
-            throw new Error(`Failed to get memory statistics: ${error.message}`);
-        }
+        const result = await this._requestJson(
+            'GET',
+            this._buildUrl(`/instance/${agentId}/${userId}`),
+            null,
+            'getMemoryStats'
+        );
+        if (!result.success) return result;
+        return result.data?.data || result.data || result;
     }
-    
-    /**
-     * Check memory system health
-     */
+
     async checkMemoryHealth() {
-        try {
-            const url = this._buildUrl('/health');
-            
-            const response = await this._makeRequest('GET', url);
-            
-            if (!response.ok) {
-                throw new Error(`Memory API error: ${response.status} ${response.statusText}`);
-            }
-            
-            const result = await response.json();
-            
-            return result.data;
-            
-        } catch (error) {
-            logger.error('[MemoryApiClient] Health check failed:', { error });
-            throw new Error(`Memory health check failed: ${error.message}`);
-        }
+        const result = await this._requestJson(
+            'GET',
+            this._buildUrl('/health'),
+            null,
+            'checkMemoryHealth'
+        );
+        if (!result.success) return result;
+        return result.data?.data || result.data || result;
     }
-    
-    // =============================================================================
-    // HELPER METHODS
-    // =============================================================================
-    
-    /**
-     * Build API URL with query parameters
-     */
+
     _buildUrl(endpoint, params = {}) {
-        let url = `${this.baseUrl}/api/${this.apiVersion}${endpoint}`;
-        
+        let url = `${this.baseUrl.replace(/\/$/, '')}/api/${this.apiVersion}${endpoint}`;
         const queryString = new URLSearchParams();
-        Object.keys(params).forEach(key => {
+
+        Object.keys(params).forEach((key) => {
             if (params[key] !== undefined && params[key] !== null) {
                 queryString.append(key, params[key]);
             }
         });
-        
+
         const query = queryString.toString();
-        if (query) {
-            url += `?${query}`;
-        }
-        
+        if (query) url += `?${query}`;
         return url;
     }
-    
-    /**
-     * Make HTTP request with resource pool management
-     */
-    async _makeRequest(method, url, body = null) {
+
+    async _requestJson(method, url, body, operation) {
+        if (this.disabled || MemoryApiClient.sessionDisabled) {
+            return this._skippedResult({
+                reason: this.disabledReason || MemoryApiClient.sessionDisabledReason,
+            });
+        }
+
         try {
-            logger.info('[MemoryApiClient] Making HTTP request', {
+            const response = await this._makeRequest(method, url, body);
+            if (!response.ok) {
+                return this._handleHttpFailure(response, url, operation);
+            }
+
+            return {
+                success: true,
+                data: await this._safeJson(response),
+            };
+        } catch (error) {
+            return this._handleRequestError(error, url, operation);
+        }
+    }
+
+    async _makeRequest(method, url, body = null) {
+        const headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Claire-Memory-Client/1.0',
+        };
+
+        if (this.authToken) headers.Authorization = `Bearer ${this.authToken}`;
+        if (this.userId) headers['X-User-ID'] = this.userId;
+        if (this.isGuest) headers['X-Guest-Mode'] = 'true';
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+        try {
+            logger.debug('[MemoryApiClient] HTTP request', {
                 method,
-                url,
-                hasBody: !!body,
-                bodyType: typeof body,
-                timeout: this.timeout
+                url: this._safeUrl(url),
+                hasBody: Boolean(body),
+                timeout: this.timeout,
             });
 
-            const headers = {
-                'Content-Type': 'application/json',
-                'User-Agent': 'Xerus-Memory-Client/1.0'
-            };
-            
-            // Add authentication if available
-            if (this.authToken) {
-                headers['Authorization'] = `Bearer ${this.authToken}`;
-            }
-            
-            // Add user context headers
-            if (this.userId) {
-                headers['X-User-ID'] = this.userId;
-            }
-            if (this.isGuest) {
-                headers['X-Guest-Mode'] = 'true';
-            }
-            
-            const options = {
+            return await fetch(url, {
                 method,
-                headers
-            };
-            
-            if (body && (method === 'POST' || method === 'PUT')) {
-                options.body = JSON.stringify(body);
-            }
-            
-            logger.info('[MemoryApiClient] Fetch options', {
-                method: options.method,
-                url,
-                headers: Object.keys(headers),
-                hasBody: !!options.body,
-                bodyLength: options.body ? options.body.length : 0
+                headers,
+                signal: controller.signal,
+                body: body && (method === 'POST' || method === 'PUT')
+                    ? JSON.stringify(body)
+                    : undefined,
             });
-            
-            const response = await fetch(url, options);
-            
-            logger.info('[MemoryApiClient] HTTP response received', {
-                url,
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    async _safeJson(response) {
+        try {
+            return await response.json();
+        } catch (_) {
+            return null;
+        }
+    }
+
+    _handleHttpFailure(response, url, operation) {
+        const status = response.status;
+        const result = {
+            success: false,
+            status,
+            statusText: response.statusText,
+        };
+
+        if (status === 404 || status >= 500) {
+            this.disable(`memory endpoint returned ${status}`);
+            return this._skippedResult({ ...result, disabled: true });
+        }
+
+        if (this.shouldLogWarning()) {
+            logger.warn('[MemoryApiClient] non-blocking failure', {
+                operation,
+                status,
+                url: this._safeUrl(url),
             });
-            
-            return response;
-        } catch (error) {
-            logger.error('[MemoryApiClient] HTTP request failed', {
-                method,
-                url,
-                error: error.message,
-                stack: error.stack,
-                name: error.name,
-                code: error.code
+        }
+
+        return result;
+    }
+
+    _handleRequestError(error, url, operation) {
+        const message = error?.name === 'AbortError'
+            ? `memory request timed out after ${this.timeout}ms`
+            : error?.message || 'memory request failed';
+
+        this.disable(message);
+
+        if (this.shouldLogWarning()) {
+            logger.warn('[MemoryApiClient] non-blocking error', {
+                operation,
+                error: message,
+                url: this._safeUrl(url),
             });
-            throw error;
+        }
+
+        return this._skippedResult({ error: message, disabled: true });
+    }
+
+    _skippedResult(extra = {}) {
+        return {
+            success: false,
+            skipped: true,
+            reason: this.disabledReason || MemoryApiClient.sessionDisabledReason || extra.reason || 'memory unavailable',
+            ...extra,
+        };
+    }
+
+    _safeUrl(url) {
+        try {
+            const parsed = new URL(url);
+            parsed.search = parsed.search ? '?...' : '';
+            return parsed.toString();
+        } catch (_) {
+            return url || null;
         }
     }
 }
+
+MemoryApiClient.sessionDisabled = false;
+MemoryApiClient.sessionDisabledReason = null;
+MemoryApiClient.lastWarningAt = 0;
 
 module.exports = MemoryApiClient;

@@ -177,6 +177,58 @@ class ListenService {
         }
     }
 
+    async storeTranscriptionMemoryBestEffort(speaker, text) {
+        if (speaker !== 'user' || !String(text || '').trim()) return;
+
+        const currentUser = authService.getCurrentUser();
+        const userId = currentUser?.uid || currentUser?.id || 'guest';
+        const currentPersonality = this.agentPersonalityManager?.getCurrentPersonalityStatus();
+        const agentId = currentPersonality?.id || 1;
+
+        const episodicResult = await this.memoryApiClient.storeEpisodicMemory(agentId, userId, {
+            content: {
+                type: 'voice_interaction',
+                transcription: text,
+                speaker,
+                interaction_type: 'listening_session',
+                metadata: {
+                    sessionId: this.currentSessionId,
+                    captureTime: new Date().toISOString(),
+                    textLength: text.length,
+                    processingMode: 'voice_to_text'
+                }
+            },
+            context: {
+                sessionId: this.currentSessionId,
+                mode: 'listening',
+                speaker
+            },
+            importance: 0.6
+        });
+
+        if (episodicResult?.skipped || episodicResult?.disabled) return;
+
+        await this.memoryApiClient.storeProceduralMemory(agentId, userId, {
+            pattern: {
+                type: 'voice_interaction_pattern',
+                action: 'voice_input',
+                context: 'listening_session',
+                outcome: 'transcription_successful',
+                metadata: {
+                    textLength: text.length,
+                    sessionDuration: Date.now() - (this.sessionStartTime || Date.now()),
+                    mode: 'listen'
+                }
+            },
+            context: {
+                sessionId: this.currentSessionId,
+                interactionMode: 'voice',
+                userEngagement: 'active'
+            },
+            success: true
+        });
+    }
+
     setupServiceCallbacks() {
         // STT service callbacks
         this.sttService.setCallbacks({
@@ -534,91 +586,7 @@ class ListenService {
         // Save to database
         await this.saveConversationTurn(speaker, text);
 
-        // ============================================================================
-        // MEMORY STORAGE: Store voice transcription in backend memory system
-        // ============================================================================
-
-        // Store voice transcription in backend memory for learning and context
-        if (speaker === 'user' && text.trim()) {
-            // Get current user and agent context (outside try block for scope)
-            const currentUser = authService.getCurrentUser();
-            const userId = currentUser?.uid || currentUser?.id || 'guest';
-
-            try {
-                const currentPersonality = this.agentPersonalityManager?.getCurrentPersonalityStatus();
-                const agentId = currentPersonality?.id || 1; // Agent ID is already numeric from database
-
-                logger.info('[ListenService] Current agent info', {
-                    agentId,
-                    agentName: currentPersonality?.name,
-                    personalityType: currentPersonality?.personalityType
-                });
-
-                logger.info('[ListenService] Storing voice transcription in memory', {
-                    agentId,
-                    userId,
-                    speaker,
-                    textLength: text.length
-                });
-
-                // Store voice interaction in Episodic Memory (for learning)
-                await this.memoryApiClient.storeEpisodicMemory(agentId, userId, {
-                    content: {
-                        type: 'voice_interaction',
-                        transcription: text,
-                        speaker: speaker,
-                        interaction_type: 'listening_session',
-                        metadata: {
-                            sessionId: this.currentSessionId,
-                            captureTime: new Date().toISOString(),
-                            textLength: text.length,
-                            processingMode: 'voice_to_text'
-                        }
-                    },
-                    context: {
-                        sessionId: this.currentSessionId,
-                        mode: 'listening',
-                        speaker: speaker
-                    },
-                    importance: 0.6 // Medium importance for voice transcriptions
-                });
-
-                // Store interaction pattern in Procedural Memory (for behavior learning)
-                await this.memoryApiClient.storeProceduralMemory(agentId, userId, {
-                    pattern: {
-                        type: 'voice_interaction_pattern',
-                        action: 'voice_input',
-                        context: 'listening_session',
-                        outcome: 'transcription_successful',
-                        metadata: {
-                            textLength: text.length,
-                            sessionDuration: Date.now() - (this.sessionStartTime || Date.now()),
-                            mode: 'listen'
-                        }
-                    },
-                    context: {
-                        sessionId: this.currentSessionId,
-                        interactionMode: 'voice',
-                        userEngagement: 'active'
-                    },
-                    success: true
-                });
-
-                logger.info('[ListenService] [OK] Voice transcription stored in memory system', {
-                    agentId,
-                    userId,
-                    textPreview: text.substring(0, 50) + '...'
-                });
-
-            } catch (memoryError) {
-                // Don't fail the main flow if memory storage fails
-                logger.warn('[ListenService] [WARNING] Failed to store transcription in memory (non-blocking):', {
-                    error: memoryError.message,
-                    speaker,
-                    userId: currentUser?.uid || 'unknown'
-                });
-            }
-        }
+        void this.storeTranscriptionMemoryBestEffort(speaker, text).catch(() => {});
 
         // ============================================================================
         // FIXED TTS ARCHITECTURE: Send raw transcript directly to TTS WebSocket
