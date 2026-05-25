@@ -63,7 +63,7 @@ export default function DashboardHeader({ onSearchClick, onSettingsClick }: Dash
             onClick={onSettingsClick}
             className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-neutral-200 dark:hover:ring-neutral-700 transition-all shadow-sm overflow-hidden"
           >
-            <Avatar name={getUserDisplayName()} size="sm" />
+            <Avatar name={getUserDisplayName()} avatarUrl={userInfo?.photoURL || null} size="sm" />
           </button>
         </div>
       </div>

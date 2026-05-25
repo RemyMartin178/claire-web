@@ -72,14 +72,14 @@ export default function ConditionalLayout({
   const pathname = usePathname()
   const router = useRouter()
   const { loading, isAuthenticated } = useAuth()
-  const { resolvedTheme } = useTheme()
+  const { theme } = useTheme()
   const isElectronRuntime = true
 
   useEffect(() => {
-    if (!resolvedTheme) return
+    if (!theme || !['light', 'dark', 'system'].includes(theme)) return
     const api = (window as any).api
-    void api?.sharedState?.patch?.({ theme: resolvedTheme })
-  }, [resolvedTheme])
+    void api?.sharedState?.patch?.({ theme })
+  }, [theme])
 
   const electronLoginPath = getElectronLoginPath()
   const normalizedPathname = normalizePath(pathname)

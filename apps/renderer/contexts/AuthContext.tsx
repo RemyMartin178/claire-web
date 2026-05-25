@@ -4,7 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { onAuthStateChanged, signInWithCustomToken, signOut, type User } from "firebase/auth"
 import { auth } from "../utils/firebase"
-import { getUserProfile, type UserProfile } from "../utils/api"
+import { getUserInfo, getUserProfile, onUserInfoChange, type UserProfile } from "../utils/api"
 import { identifyPostHog, resetPostHog } from "../lib/posthog"
 
 interface AuthContextType {
@@ -46,6 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       uid: source.uid,
       email,
       display_name: displayName,
+      photoURL: source.photoURL || source.photoUrl || source.avatarUrl || null,
       isAdmin: source.isAdmin === true || state?.isAdmin === true,
     }
 
@@ -125,6 +126,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ? (window as any).api?.dashboard?.onUserChanged?.(handleElectronUserChanged)
         : undefined
 
+    const unsubscribeLocalUserInfo =
+      typeof window !== 'undefined'
+        ? onUserInfoChange((nextUserInfo) => {
+            if (!nextUserInfo?.uid) return
+            setUser((current) => ({ ...(current || nextUserInfo), ...nextUserInfo }))
+            setIsAuthenticated(true)
+            setIsAdmin(nextUserInfo.isAdmin === true)
+            identifyPostHog(nextUserInfo)
+          })
+        : undefined
+
+    const storedUserInfo = getUserInfo()
+    if (storedUserInfo?.uid) {
+      setUser((current) => ({ ...(current || storedUserInfo), ...storedUserInfo }))
+      setIsAuthenticated(true)
+      setIsAdmin(storedUserInfo.isAdmin === true)
+      setLoading(false)
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         clearManualLogoutFlag()
@@ -172,6 +192,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (typeof unsubscribeElectronUser === 'function') {
         unsubscribeElectronUser()
       }
+      if (typeof unsubscribeLocalUserInfo === 'function') {
+        unsubscribeLocalUserInfo()
+      }
     }
   }, [])
 
@@ -185,7 +208,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fallbackProfile: UserProfile = {
         uid: firebaseUser.uid,
         display_name: displayName,
-        email: email
+        email: email,
+        photoURL: firebaseUser.photoURL || null,
       }
       
       // Définir l'utilisateur immédiatement

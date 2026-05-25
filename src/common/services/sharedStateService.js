@@ -60,6 +60,10 @@ const DEFAULT_STATE = Object.freeze({
   googleSearchEnabled: false,
   autoUpdate: true,
   autoMeetingDetectionEnabled: false,
+  screenContextEnabled: true,
+  hideWidgetWhenClaireHidden: false,
+  transcriptionLanguage: 'fr',
+  outputLanguage: 'fr',
   recallSdkInitialized: false,
   recallSdkStatus: 'idle',                // 'idle' | 'ready' | 'recording' | 'error'
   recallRecording: null,

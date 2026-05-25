@@ -6,19 +6,18 @@ import {
   X, Settings, Calendar, Keyboard, User, Shield, Languages,
   CreditCard, FileText, Globe, HelpCircle, LogOut, Power,
   Check, ChevronRight, Monitor, Smartphone, ChevronDown,
-  RefreshCw, Mic, Plus, MoreHorizontal, Trash2, Eye, EyeOff,
+  RefreshCw, Mic, MoreHorizontal, Trash2, Eye, EyeOff,
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
-import { logout, getUserSettings, updateUserSettings, getAuthType, updateUserProfile, deleteAccount, getApiHeaders } from '@/utils/api';
+import { logout, getUserSettings, updateUserSettings, getAuthType, updateUserProfile, deleteAccount, getApiHeaders, getUserInfo, setUserInfo } from '@/utils/api';
 import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth';
 import { trackLogout } from '@/lib/gtag';
 import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron';
 import { useTheme } from 'next-themes';
 import { usePasswordModal } from '@/contexts/PasswordModalContext';
 import toast from 'react-hot-toast';
-import { auth, storage } from '@/utils/firebase';
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential, updateProfile } from 'firebase/auth';
+import { auth } from '@/utils/firebase';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, linkWithCredential, updateProfile, verifyBeforeUpdateEmail } from 'firebase/auth';
 import Avatar from './Avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -36,6 +35,107 @@ type TabType =
 interface Device {
   id: string; name: string; os: string; browser: string;
   location: string; ip: string; lastSeen: string; isCurrent: boolean;
+}
+
+type ColorThemeLabel = 'Système' | 'Clair' | 'Sombre';
+type ThemePreference = 'system' | 'light' | 'dark';
+
+const VERSION_CACHE_KEY = 'claire:app-version';
+const COLOR_THEME_OPTIONS: ColorThemeLabel[] = ['Système', 'Clair', 'Sombre'];
+const LANGUAGE_LABEL_TO_CODE: Record<string, string> = {
+  'Français (recommandé)': 'fr',
+  'Français': 'fr',
+  English: 'en',
+  'Español': 'es',
+  Deutsch: 'de',
+  Italiano: 'it',
+  'Português': 'pt',
+};
+
+const LANGUAGE_CODE_TO_TRANSCRIPTION_LABEL: Record<string, string> = {
+  fr: 'Français (recommandé)',
+  en: 'English',
+  es: 'Español',
+  de: 'Deutsch',
+  it: 'Italiano',
+  pt: 'Português',
+};
+
+const LANGUAGE_CODE_TO_OUTPUT_LABEL: Record<string, string> = {
+  fr: 'Français',
+  en: 'English',
+  es: 'Español',
+  de: 'Deutsch',
+  it: 'Italiano',
+  pt: 'Português',
+};
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message = 'Operation timed out'): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('Failed to read image'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to decode image'));
+    img.src = dataUrl;
+  });
+}
+
+async function createAvatarDataUrl(file: File): Promise<string> {
+  const source = await readFileAsDataUrl(file);
+  const image = await loadImage(source);
+  const canvas = document.createElement('canvas');
+  const size = 256;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas not available');
+
+  const scale = Math.max(size / image.width, size / image.height);
+  const width = image.width * scale;
+  const height = image.height * scale;
+  const x = (size - width) / 2;
+  const y = (size - height) / 2;
+
+  ctx.fillStyle = '#18181b';
+  ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(image, x, y, width, height);
+  return canvas.toDataURL('image/jpeg', 0.86);
+}
+
+function normalizeColorTheme(value: unknown): ColorThemeLabel {
+  if (value === 'Clair') return 'Clair';
+  if (value === 'Sombre') return 'Sombre';
+  if (value === 'Système') return 'Système';
+
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'light' || normalized === 'clair') return 'Clair';
+  if (normalized === 'dark' || normalized === 'sombre') return 'Sombre';
+  return 'Système';
+}
+
+function colorThemeToPreference(value: unknown): ThemePreference {
+  const label = normalizeColorTheme(value);
+  if (label === 'Clair') return 'light';
+  if (label === 'Sombre') return 'dark';
+  return 'system';
 }
 
 const DEFAULT_SHORTCUTS = [
@@ -58,7 +158,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
     <button
       type="button"
       onClick={e => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
-      className={`group relative inline-flex h-[22px] w-[40px] shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 outline-none
+      className={`group relative inline-flex h-[22px] w-[40px] shrink-0 cursor-pointer items-center rounded-full transition-colors duration-[120ms] outline-none
         ${on ? 'bg-[#007AFF]' : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'}`}
     >
       <motion.span
@@ -68,8 +168,8 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
           scale: 1
         }}
         whileTap={{ scale: 0.9 }}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        className="h-[18px] w-[18px] rounded-full bg-white dark:bg-[#18181b] shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-transform"
+        transition={{ type: "tween", duration: 0.12, ease: [0.16, 1, 0.3, 1] }}
+        className="h-[18px] w-[18px] rounded-full bg-white dark:bg-[#18181b] shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
       />
     </button>
   );
@@ -153,9 +253,9 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
   const [detectable, setDetectable] = useState(false);
   const [ambient, setAmbient] = useState(false);
-  const [colorTheme, setColorTheme] = useState<'Système' | 'Clair' | 'Sombre'>('Système');
+  const [colorTheme, setColorTheme] = useState<ColorThemeLabel>('Système');
   const { setTheme } = useTheme();
-  const [screenUse, setScreenUse] = useState(false);
+  const [screenUse, setScreenUse] = useState(true);
   const [hideWidget, setHideWidget] = useState(false);
   const [autoMeetingDetection, setAutoMeetingDetection] = useState(false);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -186,10 +286,12 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const [profileLastName, setProfileLastName] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [providers, setProviders] = useState<Array<{ providerId: string; email: string }>>([]);
   const [isEditingEmail, setIsEditingEmail] = useState(false);
   const [newEmailInput, setNewEmailInput] = useState('');
+  const [emailPasswordInput, setEmailPasswordInput] = useState('');
   const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [showEmailOptions, setShowEmailOptions] = useState(false);
 
@@ -203,6 +305,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+  const [devicesLoadFailed, setDevicesLoadFailed] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [hasPassword, setHasPassword] = useState(true);
   const [confirmDeleteText, setConfirmDeleteText] = useState('');
@@ -213,9 +316,11 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [calendarEmail, setCalendarEmail] = useState('');
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
 
   // Settings load state
   const settingsLoadedRef = useRef(false);
+  const [settingsReady, setSettingsReady] = useState(false);
 
   // ── LOAD SETTINGS ON OPEN ─────────────────────────────────────────────────
   useEffect(() => {
@@ -224,24 +329,61 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
     // Load user settings from Firestore
     getUserSettings().then(s => {
+      const nextColorTheme = normalizeColorTheme(s.colorTheme);
       if (s.detectable !== undefined) setDetectable(s.detectable);
       if (s.ambient !== undefined) setAmbient(s.ambient);
-      if (s.colorTheme) setColorTheme(s.colorTheme);
+      setColorTheme(nextColorTheme);
       if (s.screenUse !== undefined) setScreenUse(s.screenUse);
       if (s.hideWidget !== undefined) setHideWidget(s.hideWidget);
       if (s.autoMeetingDetection !== undefined) setAutoMeetingDetection(s.autoMeetingDetection);
-      if (s.transcriptionLang) setTranscriptionLang(s.transcriptionLang);
-      if (s.outputLang) setOutputLang(s.outputLang);
+      if (s.transcriptionLang) {
+        setTranscriptionLang(LANGUAGE_CODE_TO_TRANSCRIPTION_LABEL[s.transcriptionLang] || s.transcriptionLang);
+      }
+      if (s.outputLang) {
+        setOutputLang(LANGUAGE_CODE_TO_OUTPUT_LABEL[s.outputLang] || s.outputLang);
+      }
       if (s.shortcuts?.length) setShortcutsList(s.shortcuts);
-    }).catch(() => {});
+
+      const api = (window as any).api;
+      void api?.sharedState?.patch?.({
+        theme: colorThemeToPreference(nextColorTheme),
+        agentMode: Boolean(s.ambient),
+        screenContextEnabled: s.screenUse !== false,
+        hideWidgetWhenClaireHidden: Boolean(s.hideWidget),
+        autoMeetingDetectionEnabled: Boolean(s.autoMeetingDetection),
+        transcriptionLanguage: LANGUAGE_LABEL_TO_CODE[s.transcriptionLang || ''] || s.transcriptionLang || 'fr',
+        outputLanguage: LANGUAGE_LABEL_TO_CODE[s.outputLang || ''] || s.outputLang || 'fr',
+      });
+      if (s.colorTheme && s.colorTheme !== nextColorTheme) {
+        updateUserSettings({ colorTheme: nextColorTheme }).catch(() => {});
+      }
+    }).catch(() => {}).finally(() => setSettingsReady(true));
 
     // Load version with 3s timeout
+    try {
+      const cachedVersion = window.sessionStorage.getItem(VERSION_CACHE_KEY);
+      if (cachedVersion) setVersion(cachedVersion);
+    } catch {}
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 3000);
     fetch('/api/version', { signal: ctrl.signal })
       .then(r => r.json())
-      .then(d => setVersion(d.version || d.tag || d.current_version || null))
-      .catch(() => setVersion(null))
+      .then(d => {
+        const nextVersion = d.version || d.tag || d.current_version || null;
+        setVersion(nextVersion);
+        if (nextVersion) {
+          try { window.sessionStorage.setItem(VERSION_CACHE_KEY, nextVersion); } catch {}
+        }
+      })
+      .catch(() => {
+        try {
+          const cachedVersion = window.sessionStorage.getItem(VERSION_CACHE_KEY);
+          if (cachedVersion) return;
+        } catch {}
+        const unavailable = 'indisponible';
+        setVersion(unavailable);
+        try { window.sessionStorage.setItem(VERSION_CACHE_KEY, unavailable); } catch {}
+      })
       .finally(() => clearTimeout(timer));
 
     // Load connected providers + detect if user has a password
@@ -266,6 +408,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
     if (devices.length > 0) return;
 
     setIsLoadingDevices(true);
+    setDevicesLoadFailed(false);
 
     const fetchDevices = async () => {
       try {
@@ -280,7 +423,6 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         if (resp.ok) {
           const data = await resp.json();
           if (data.length > 0) {
-            const ua = navigator.userAgent;
             const mapped: Device[] = data.map((s: any, i: number) => ({
               id: s.id,
               name: s.os_info?.toLowerCase().includes('windows') ? 'Windows' : s.os_info?.toLowerCase().includes('mac') ? 'macOS' : 'Appareil',
@@ -292,27 +434,19 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
               isCurrent: i === 0,
             }));
             setDevices(mapped);
+            setDevicesLoadFailed(false);
             return;
           }
-        }
-      } catch {}
 
-      // Fallback: current device only
-      try {
-        const ipResp = await fetch('https://api.ipify.org?format=json');
-        const { ip } = await ipResp.json();
-        const ua = navigator.userAgent;
-        let browser = 'Inconnu', os = 'Inconnu';
-        if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome';
-        else if (ua.includes('Firefox')) browser = 'Firefox';
-        else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
-        else if (ua.includes('Edg')) browser = 'Edge';
-        if (ua.includes('Windows')) os = 'Windows';
-        else if (ua.includes('Mac')) os = 'macOS';
-        else if (ua.includes('Linux')) os = 'Linux';
-        setDevices([{ id: 'current', name: os, os, browser, location: '', ip, lastSeen: 'Connecté maintenant', isCurrent: true }]);
+          setDevices([]);
+          setDevicesLoadFailed(false);
+          return;
+        }
+
+        throw new Error(`Devices endpoint returned ${resp.status}`);
       } catch {
-        setDevices([{ id: 'current', name: 'Cet appareil', os: 'Inconnu', browser: 'Inconnu', location: '', ip: '', lastSeen: 'Maintenant', isCurrent: true }]);
+        setDevices([]);
+        setDevicesLoadFailed(true);
       }
     };
 
@@ -323,12 +457,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   useEffect(() => {
     if (activeTab !== 'calendrier' || !userInfo?.uid) return;
     setIsLoadingCalendar(true);
-    checkAuthStatus('google_calendar', userInfo.uid)
-      .then(status => {
-        setCalendarConnected(status.authenticated);
-        const email = (status as any).accountEmail || '';
-        setCalendarEmail(email);
-      })
+    refreshCalendarStatus()
       .catch(() => { setCalendarConnected(false); setCalendarEmail(''); })
       .finally(() => setIsLoadingCalendar(false));
   }, [activeTab, userInfo]);
@@ -340,14 +469,24 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
     const parts = name.split(' ');
     setProfileFirstName(parts[0] || '');
     setProfileLastName(parts.slice(1).join(' ') || '');
+    setProfilePhotoUrl((userInfo as any)?.photoURL || auth.currentUser?.photoURL || null);
   }, [userInfo]);
 
   // ── THEME APPLY ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (colorTheme === 'Sombre') setTheme('dark');
-    else if (colorTheme === 'Clair') setTheme('light');
-    else setTheme('system');
-  }, [colorTheme, setTheme]);
+    if (!settingsReady) return;
+    const nextTheme = colorThemeToPreference(colorTheme);
+    setTheme(nextTheme);
+    const api = (window as any).api;
+    const themeUpdate = api?.dashboard?.setTheme?.(nextTheme);
+    if (!themeUpdate?.catch) {
+      void api?.sharedState?.patch?.({ theme: nextTheme });
+      return;
+    }
+    void themeUpdate.catch(() => {
+      void api?.sharedState?.patch?.({ theme: nextTheme });
+    });
+  }, [colorTheme, settingsReady, setTheme]);
 
   // ── CONTENT PROTECTION (détectable toggle) ────────────────────────────────
   useEffect(() => {
@@ -431,6 +570,19 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
     return 'Utilisateur';
   };
 
+  const syncProfileState = async (patch: { display_name?: string; photoURL?: string | null }) => {
+    const currentInfo = getUserInfo();
+    const baseInfo = currentInfo || userInfo || null;
+    if (!baseInfo) return;
+
+    const nextInfo = { ...baseInfo, ...patch };
+    setUserInfo(nextInfo);
+    await (window as any).api?.dashboard?.updateUserProfile?.({
+      displayName: nextInfo.display_name,
+      photoURL: nextInfo.photoURL ?? null,
+    }).catch(() => undefined);
+  };
+
   const openInBrowser = (url: string) => {
     if (typeof window !== 'undefined' && (window as any).api?.common?.openExternal) {
       (window as any).api.common.openExternal(url);
@@ -441,11 +593,46 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
   const persistToggle = (key: string, value: boolean) => {
     updateUserSettings({ [key]: value } as any).catch(() => {});
+    const api = (window as any).api;
+    const sharedPatch =
+      key === 'ambient'
+        ? { agentMode: value }
+        : key === 'screenUse'
+          ? { screenContextEnabled: value }
+          : key === 'hideWidget'
+            ? { hideWidgetWhenClaireHidden: value }
+            : key === 'autoMeetingDetection'
+              ? { autoMeetingDetectionEnabled: value }
+              : null;
+    if (sharedPatch) void api?.sharedState?.patch?.(sharedPatch);
     window.dispatchEvent(new CustomEvent('claire:settings-updated', { detail: { [key]: value } }));
   };
   const persistSelect = (key: string, value: string) => {
-    updateUserSettings({ [key]: value } as any).catch(() => {});
-    window.dispatchEvent(new CustomEvent('claire:settings-updated', { detail: { [key]: value } }));
+    const runtimeValue =
+      key === 'transcriptionLang' || key === 'outputLang'
+        ? (LANGUAGE_LABEL_TO_CODE[value] || value)
+        : key === 'colorTheme'
+          ? normalizeColorTheme(value)
+          : value;
+    updateUserSettings({ [key]: runtimeValue } as any).catch(() => {});
+    const api = (window as any).api;
+    if (key === 'transcriptionLang') {
+      void api?.sharedState?.patch?.({ transcriptionLanguage: runtimeValue });
+    } else if (key === 'outputLang') {
+      void api?.sharedState?.patch?.({ outputLanguage: runtimeValue });
+    } else if (key === 'colorTheme') {
+      const theme = colorThemeToPreference(runtimeValue);
+      const themeUpdate = api?.dashboard?.setTheme?.(theme);
+      if (!themeUpdate?.catch) {
+        void api?.sharedState?.patch?.({ theme });
+        window.dispatchEvent(new CustomEvent('claire:settings-updated', { detail: { [key]: runtimeValue } }));
+        return;
+      }
+      void themeUpdate.catch(() => {
+        void api?.sharedState?.patch?.({ theme });
+      });
+    }
+    window.dispatchEvent(new CustomEvent('claire:settings-updated', { detail: { [key]: runtimeValue } }));
   };
 
   const handleCheckVersion = async () => {
@@ -534,10 +721,79 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       const user = auth.currentUser;
       if (user) await updateProfile(user, { displayName });
       await updateUserProfile({ displayName });
+      await syncProfileState({ display_name: displayName });
       setIsEditingProfile(false);
       toast.success('Profil mis à jour.');
     } catch { toast.error('Erreur lors de la mise à jour du profil.'); }
     finally { setIsSavingProfile(false); }
+  };
+
+  const resetEmailEditor = () => {
+    setIsEditingEmail(false);
+    setNewEmailInput('');
+    setEmailPasswordInput('');
+  };
+
+  const getEmailActionRedirectUrl = () => {
+    if (typeof window === 'undefined') return 'https://app.clairia.app/activity';
+    return new URL('/activity', window.location.origin).toString();
+  };
+
+  const handleSaveEmail = async () => {
+    const nextEmail = newEmailInput.trim().toLowerCase();
+    const currentUser = auth.currentUser;
+
+    if (!currentUser?.email) {
+      toast.error('Vous devez être connecté pour modifier votre adresse e-mail.');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+      toast.error('Entrez une adresse e-mail valide.');
+      return;
+    }
+
+    if (nextEmail === currentUser.email.toLowerCase()) {
+      toast.error('Cette adresse e-mail est déjà utilisée sur ce compte.');
+      return;
+    }
+
+    if (hasPassword && !emailPasswordInput) {
+      toast.error('Entrez votre mot de passe actuel pour confirmer.');
+      return;
+    }
+
+    setIsSavingEmail(true);
+    try {
+      if (hasPassword) {
+        const credential = EmailAuthProvider.credential(currentUser.email, emailPasswordInput);
+        await reauthenticateWithCredential(currentUser, credential);
+      }
+
+      await verifyBeforeUpdateEmail(currentUser, nextEmail, {
+        url: getEmailActionRedirectUrl(),
+        handleCodeInApp: false,
+      });
+
+      toast.success('E-mail de vérification envoyé. Le changement sera appliqué après validation.');
+      resetEmailEditor();
+    } catch (e: any) {
+      if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+        toast.error('Mot de passe incorrect.');
+      } else if (e.code === 'auth/email-already-in-use') {
+        toast.error('Cette adresse e-mail est déjà utilisée.');
+      } else if (e.code === 'auth/requires-recent-login') {
+        toast.error('Reconnectez-vous avant de modifier votre adresse e-mail.');
+      } else if (e.code === 'auth/invalid-email') {
+        toast.error('Adresse e-mail invalide.');
+      } else if (e.code === 'auth/too-many-requests') {
+        toast.error('Trop de tentatives. Réessayez dans quelques minutes.');
+      } else {
+        toast.error('Impossible de lancer le changement d’e-mail.');
+      }
+    } finally {
+      setIsSavingEmail(false);
+    }
   };
 
   const handleSavePassword = async () => {
@@ -593,6 +849,32 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
       await deleteAccount();
       window.location.href = '/auth/login';
     } catch { toast.error('Erreur lors de la suppression du compte.'); setIsDeletingAccount(false); }
+  };
+
+  const refreshCalendarStatus = async (attempts = 1) => {
+    if (!userInfo?.uid) return { authenticated: false, accountEmail: '' as string };
+
+    let lastStatus: any = null;
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) {
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+
+      try {
+        lastStatus = await checkAuthStatus('google_calendar', userInfo.uid);
+        if (lastStatus.authenticated) break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    if (!lastStatus && lastError) throw lastError;
+
+    const accountEmail = (lastStatus as any)?.accountEmail || '';
+    setCalendarConnected(Boolean(lastStatus?.authenticated));
+    setCalendarEmail(accountEmail);
+    return { authenticated: Boolean(lastStatus?.authenticated), accountEmail };
   };
 
   // ── NAV ITEM ─────────────────────────────────────────────────────────────
@@ -686,9 +968,9 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             </div>
           </div>
           <CustomSelect
-            options={['Système', 'Clair', 'Sombre']}
+            options={COLOR_THEME_OPTIONS}
             value={colorTheme}
-            onChange={v => { setColorTheme(v as any); persistSelect('colorTheme', v); }}
+            onChange={v => { const next = normalizeColorTheme(v); setColorTheme(next); persistSelect('colorTheme', next); }}
           />
         </div>
       </div>
@@ -700,7 +982,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         <div className="space-y-4 rounded-lg bg-[#f9f9f9] dark:bg-[#18181b] border border-[#e4e4e7] dark:border-white/10 p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
-              <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">Source du microphone</p>
+              <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">Microphone par défaut</p>
               <div className="flex items-center gap-1.5">
                 <Mic size={14} className="text-[#71717a] dark:text-[#a1a1aa] shrink-0" />
                 <p className="text-[12px] text-[#71717a] dark:text-[#a1a1aa] leading-[1.35]">{micDeviceName || ' '}</p>
@@ -812,9 +1094,6 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
           </div>
           {calendarConnected ? (
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1.5 text-[13px] font-semibold text-emerald-600">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />Connecté
-              </span>
               <button
                 onClick={async () => {
                   if (!userInfo?.uid) return;
@@ -833,20 +1112,26 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             <button
               onClick={async () => {
                 if (!userInfo?.uid) return;
+                setIsConnectingCalendar(true);
                 try {
                   await openOAuthPopup({ toolName: 'google_calendar', provider: 'google' }, userInfo.uid);
-                  const status = await checkAuthStatus('google_calendar', userInfo.uid);
-                  setCalendarConnected(status.authenticated);
-                  setCalendarEmail((status as any).accountEmail || '');
-                  if (status.authenticated) toast.success('Google Agenda connecté !');
+                  const status = await refreshCalendarStatus(8);
+                  if (status.authenticated) {
+                    toast.success('Google Agenda connecté !');
+                  } else {
+                    toast.error('Connexion terminée, mais le calendrier n’est pas encore actif.');
+                  }
                 } catch (e: any) {
                   toast.error(e?.message || 'Connexion annulée.');
+                } finally {
+                  setIsConnectingCalendar(false);
                 }
               }}
-              className="flex items-center gap-2 px-3 py-1.5 border border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-neutral-100 hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transition-colors rounded-[6px] text-[13px] font-bold"
+              disabled={isConnectingCalendar}
+              className="flex items-center gap-2 px-3 py-1.5 border border-neutral-200 dark:border-white/10 text-neutral-900 dark:text-neutral-100 hover:bg-[#f4f4f5] dark:hover:bg-[#27272a] transition-colors rounded-[6px] text-[13px] font-bold disabled:opacity-60"
             >
               <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-              Connecter
+              {isConnectingCalendar ? 'Connexion...' : 'Connecter'}
             </button>
           )}
         </div>
@@ -915,11 +1200,12 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
     const toastId = toast.loading("Importation de la photo...");
 
     try {
-      const avatarPath = `users/${currentUser.uid}/avatar`;
-      const avatarRef = storageRef(storage, avatarPath);
-      await uploadBytes(avatarRef, file);
-      const url = await getDownloadURL(avatarRef);
-      await updateProfile(currentUser, { photoURL: url });
+      const url = await withTimeout(createAvatarDataUrl(file), 12000, 'Avatar processing timed out');
+      await updateProfile(currentUser, { photoURL: url }).catch(() => undefined);
+      await updateUserProfile({ photoURL: url });
+      await currentUser.reload().catch(() => undefined);
+      await syncProfileState({ photoURL: url });
+      setProfilePhotoUrl(url);
       toast.success("Photo mise à jour !", { id: toastId });
     } catch (error) {
       console.error("Error uploading photo:", error);
@@ -938,14 +1224,11 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
     const toastId = toast.loading("Suppression de la photo...");
 
     try {
-      const avatarPath = `users/${currentUser.uid}/avatar`;
-      const avatarRef = storageRef(storage, avatarPath);
-      try {
-        await deleteObject(avatarRef);
-      } catch (_e) {
-        // Ignore if file doesn't exist
-      }
-      await updateProfile(currentUser, { photoURL: null });
+      await updateProfile(currentUser, { photoURL: null }).catch(() => undefined);
+      await updateUserProfile({ photoURL: null });
+      await currentUser.reload().catch(() => undefined);
+      await syncProfileState({ photoURL: null });
+      setProfilePhotoUrl(null);
       toast.success("Photo retirée", { id: toastId });
     } catch (error) {
       console.error("Error removing photo:", error);
@@ -975,7 +1258,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                   className="flex items-center justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <Avatar name={getUserDisplayName()} avatarUrl={(userInfo as any)?.photoURL} size="lg" />
+                    <Avatar name={getUserDisplayName()} avatarUrl={profilePhotoUrl} size="lg" />
                     <span className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">{getUserDisplayName()}</span>
                   </div>
                   <button onClick={() => setIsEditingProfile(true)} className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
@@ -995,7 +1278,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                   
                   <div className="flex items-center gap-5 mb-8">
                     <div className="relative">
-                      <Avatar name={getUserDisplayName()} avatarUrl={auth.currentUser?.photoURL} size="lg" className="w-16 h-16 text-xl" />
+                      <Avatar name={getUserDisplayName()} avatarUrl={profilePhotoUrl} size="lg" className="w-16 h-16 text-xl" />
                       {isUploadingPhoto && (
                         <div className="absolute inset-0 bg-black/20 rounded-full flex items-center justify-center">
                           <RefreshCw className="text-white animate-spin" size={20} />
@@ -1019,7 +1302,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                         >
                           Choisir
                         </button>
-                        {auth.currentUser?.photoURL && (
+                        {profilePhotoUrl && (
                           <button 
                             type="button" 
                             onClick={handleRemovePhoto}
@@ -1111,7 +1394,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                     className="border border-neutral-200 dark:border-white/10 rounded-[8px] p-5 shadow-sm"
                   >
                     <p className="text-[14px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1">Changer l'adresse e-mail</p>
-                    <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa] mb-6">Vous devrez vérifier cette nouvelle adresse e-mail avant qu'elle ne soit mise à jour.</p>
+                    <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa] mb-6">Un lien de vérification sera envoyé à la nouvelle adresse avant application.</p>
                     
                     <div className="mb-6">
                       <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Nouvelle adresse e-mail</label>
@@ -1124,21 +1407,34 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                       />
                     </div>
 
+                    {hasPassword && (
+                      <div className="mb-6">
+                        <label className="block text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-1.5">Mot de passe actuel</label>
+                        <input
+                          type="password"
+                          value={emailPasswordInput}
+                          onChange={e => setEmailPasswordInput(e.target.value)}
+                          placeholder="Confirmez votre mot de passe"
+                          className="w-full bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-white/10 rounded-[6px] px-3 py-2 text-[13px] text-neutral-900 dark:text-neutral-100 focus:outline-none focus:border-[#d4d4d8] dark:focus:border-white/20 transition-all shadow-sm placeholder:text-neutral-400 dark:text-neutral-400"
+                        />
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-end gap-4">
                       <button 
                         type="button" 
-                        onClick={() => { setIsEditingEmail(false); setNewEmailInput(''); }}
+                        onClick={resetEmailEditor}
                         className="text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
                       >
                         Annuler
                       </button>
                       <button 
                         type="button"
-                        onClick={() => { setIsSavingEmail(true); setTimeout(() => { setIsSavingEmail(false); setIsEditingEmail(false); setNewEmailInput(''); }, 1000); }}
-                        disabled={!newEmailInput || isSavingEmail}
+                        onClick={handleSaveEmail}
+                        disabled={!newEmailInput || (hasPassword && !emailPasswordInput) || isSavingEmail}
                         className="px-4 py-1.5 bg-[#18181b] dark:bg-white hover:bg-[#27272a] dark:hover:bg-neutral-200 text-white dark:text-[#18181b] text-[13px] font-semibold rounded-[6px] transition-colors shadow-sm disabled:opacity-60"
                       >
-                        {isSavingEmail ? 'Mise à jour...' : 'Mettre à jour'}
+                        {isSavingEmail ? 'Envoi...' : 'Envoyer la vérification'}
                       </button>
                     </div>
                   </motion.div>
@@ -1151,21 +1447,29 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
         {/* Connected accounts */}
         <div>
           <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa] mb-4">Comptes connectés</p>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                  <div className="flex items-center gap-1.5 text-[14px]">
-                    <span className="font-semibold text-[#18181b] dark:text-[#fafafa]">Google</span>
-                    <span className="text-neutral-400 dark:text-neutral-400">•</span>
-                    <span className="text-neutral-500 dark:text-neutral-400">{userInfo?.email || 'email@exemple.com'}</span>
+          <div className="space-y-4">
+            {providers.length > 0 ? providers.map((provider) => {
+              const isGoogle = provider.providerId === 'google.com';
+              const label = isGoogle ? 'Google' : provider.providerId === 'password' ? 'E-mail' : provider.providerId;
+              return (
+                <div key={`${provider.providerId}-${provider.email}`} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {isGoogle ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                    ) : (
+                      <User size={18} className="text-[#71717a] dark:text-[#a1a1aa]" />
+                    )}
+                    <div className="flex items-center gap-1.5 text-[14px]">
+                      <span className="font-semibold text-[#18181b] dark:text-[#fafafa]">{label}</span>
+                      <span className="text-neutral-400 dark:text-neutral-400">•</span>
+                      <span className="text-neutral-500 dark:text-neutral-400">{provider.email || userInfo?.email || 'Compte connecté'}</span>
+                    </div>
                   </div>
                 </div>
-                <button className="text-neutral-400 dark:text-neutral-400 hover:text-neutral-600 transition-colors"><MoreHorizontal size={18} /></button>
-              </div>
-            <button className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
-              <Plus size={16} strokeWidth={2.5} /> Connecter un compte
-            </button>
+              );
+            }) : (
+              <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa]">Aucun fournisseur connecté.</p>
+            )}
           </div>
         </div>
       </div>
@@ -1360,6 +1664,14 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                 </div>
               ))}
             </div>
+          ) : devicesLoadFailed ? (
+            <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa]">
+              Impossible de charger les appareils pour le moment.
+            </p>
+          ) : devices.length === 0 ? (
+            <p className="text-[13px] text-[#71717a] dark:text-[#a1a1aa]">
+              Aucun appareil actif à afficher.
+            </p>
           ) : (
             <div className="space-y-6">
               {devices.map(device => (
@@ -1439,7 +1751,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
           <CustomSelect
             options={['Français (recommandé)', 'English', 'Español', 'Deutsch', 'Italiano', 'Português']}
             value={transcriptionLang}
-            onChange={v => { setTranscriptionLang(v); updateUserSettings({ transcriptionLang: v }).catch(() => {}); }}
+            onChange={v => { setTranscriptionLang(v); persistSelect('transcriptionLang', v); }}
           />
         </div>
         <div className="flex items-center justify-between pt-2">
@@ -1455,7 +1767,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
           <CustomSelect
             options={['Français', 'English', 'Español', 'Deutsch', 'Italiano', 'Português']}
             value={outputLang}
-            onChange={v => { setOutputLang(v); updateUserSettings({ outputLang: v }).catch(() => {}); }}
+            onChange={v => { setOutputLang(v); persistSelect('outputLang', v); }}
           />
         </div>
       </div>
@@ -1520,8 +1832,8 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             ))}
           </ul>
 
-          <button className="w-full py-2 bg-[#007AFF] hover:bg-[#0066D6] text-white text-[13px] font-bold rounded-lg transition-colors shadow-sm">
-            Passer à Pro
+          <button disabled className="w-full py-2 bg-neutral-200 text-neutral-500 dark:bg-white/10 dark:text-neutral-400 text-[13px] font-bold rounded-lg cursor-not-allowed">
+            Paiement bientôt disponible
           </button>
         </div>
 

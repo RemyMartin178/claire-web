@@ -174,7 +174,7 @@ export default function ElectronClientLayout({
               onClick={() => setSettingsOpen(true)}
               className="group inline-flex size-[30px] items-center justify-center overflow-hidden rounded-md border border-border/60 bg-muted text-muted-foreground text-xs font-medium outline-none transform-gpu transition-[background-color,border-color,box-shadow,transform] duration-180 ease-apple hover:bg-muted-foreground/15 hover:shadow-sm active:scale-95"
             >
-              <Avatar name={getUserDisplayName()} size="sm" />
+              <Avatar name={getUserDisplayName()} avatarUrl={userInfo?.photoURL || null} size="sm" />
             </button>
           </div>
         </header>

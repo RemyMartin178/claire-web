@@ -53,6 +53,10 @@ export type SharedState = {
   googleSearchEnabled: boolean
   autoUpdate: boolean
   autoMeetingDetectionEnabled: boolean
+  screenContextEnabled: boolean
+  hideWidgetWhenClaireHidden: boolean
+  transcriptionLanguage: string
+  outputLanguage: string
   recallSdkInitialized: boolean
   recallSdkStatus: 'idle' | 'ready' | 'recording' | 'error'
   recallRecording: { windowId: string; uploadId?: string; recordingId?: string; startedAt: number } | null

@@ -16,6 +16,7 @@ export interface UserProfile {
   uid: string;
   display_name: string;
   email: string;
+  photoURL?: string | null;
   isAdmin?: boolean;
 }
 
@@ -26,6 +27,8 @@ export interface Session {
   session_type: string;
   started_at: number;
   ended_at?: number;
+  summary_status?: 'idle' | 'analyzing' | 'completed' | 'failed';
+  title_status?: 'idle' | 'streaming' | 'ready' | 'failed';
   sync_state: 'clean' | 'dirty';
   updated_at: number;
 }
@@ -296,6 +299,8 @@ const convertFirestoreSession = (session: { id: string } & any, uid: string): Se
     session_type: session.sessionType || session.session_type, // ✅ Support both camelCase (new) and snake_case (old)
     started_at: timestampToUnix(session.startedAt || session.started_at), // ✅ Support both formats
     ended_at: (session.endedAt || session.ended_at) ? timestampToUnix(session.endedAt || session.ended_at) : undefined,
+    summary_status: session.summaryStatus || session.summary_status || 'idle',
+    title_status: session.titleStatus || session.title_status || 'idle',
     sync_state: 'clean',
     updated_at: timestampToUnix(session.updatedAt || session.startedAt || session.started_at)
   };
@@ -330,8 +335,8 @@ const convertFirestoreAiMessage = (message: { id: string } & any): AiMessage => 
 };
 
 const convertFirestoreSummary = (summary: any, sessionId: string): Summary => {
-  const bulletPoints = summary.bulletPoints || summary.bullet_points || summary.bullet_json;
-  const actionItems = summary.actionItems || summary.action_items || summary.action_json;
+  const bulletPoints = summary.bulletPoints || summary.bulletJson || summary.bullet_points || summary.bullet_json;
+  const actionItems = summary.actionItems || summary.actionJson || summary.action_items || summary.action_json;
 
   return {
     session_id: sessionId,
@@ -648,6 +653,36 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
   }
 };
 
+export const updateSessionTitle = async (sessionId: string, title: string): Promise<void> => {
+  const cleanTitle = title.trim();
+  if (!cleanTitle) return;
+
+  if (isFirebaseMode()) {
+    const uid = getCurrentUid();
+    if (!uid) throw new Error('No authenticated user');
+
+    await FirestoreSessionService.updateSession(uid, sessionId, {
+      title: cleanTitle,
+      titleStatus: 'ready',
+      updatedAt: Timestamp.now(),
+    } as any);
+    clearSessionsCache(uid);
+    sessionDetailsCache.delete(getSessionDetailsCacheKey(uid, sessionId));
+    if (typeof window !== 'undefined') {
+      try {
+        window.sessionStorage.removeItem(getSessionDetailsStorageKey(uid, sessionId));
+      } catch {}
+    }
+    return;
+  }
+
+  const response = await apiCall(`/api/sessions/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ title: cleanTitle }),
+  });
+  if (!response.ok) throw new Error('Failed to update session title');
+};
+
 export const getUserProfile = async (): Promise<UserProfile | null> => {
   if (isFirebaseMode()) {
     const user = auth.currentUser;
@@ -660,13 +695,20 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
       const firestoreProfile = await FirestoreUserService.getUser(user.uid);
 
       if (!firestoreProfile) {
-        return null;
+        return {
+          uid: user.uid,
+          display_name: user.displayName || user.email?.split('@')[0] || 'User',
+          email: user.email || 'no-email@example.com',
+          photoURL: user.photoURL || null,
+          isAdmin: false,
+        };
       }
 
       const userProfile = {
         uid: user.uid,
         display_name: firestoreProfile.displayName || user.displayName || 'User',
-        email: firestoreProfile.email || user.email || 'no-email@example.com',
+        email: user.email || firestoreProfile.email || 'no-email@example.com',
+        photoURL: (firestoreProfile as any)?.photoURL || user.photoURL || null,
         isAdmin: (firestoreProfile as any)?.isAdmin === true
       };
 
@@ -687,12 +729,17 @@ export const getUserProfile = async (): Promise<UserProfile | null> => {
   }
 };
 
-export const updateUserProfile = async (data: { displayName: string }): Promise<void> => {
+export const updateUserProfile = async (data: { displayName?: string; photoURL?: string | null }): Promise<void> => {
   if (isFirebaseMode()) {
     const uid = getCurrentUid();
     if (!uid) throw new Error('No authenticated user');
 
-    await FirestoreUserService.updateUser(uid, { displayName: data.displayName });
+    const patch: Record<string, unknown> = {};
+    if (data.displayName !== undefined) patch.displayName = data.displayName;
+    if (data.photoURL !== undefined) patch.photoURL = data.photoURL;
+    if (Object.keys(patch).length > 0) {
+      await FirestoreUserService.updateUser(uid, patch);
+    }
   } else {
     const response = await apiCall('/api/user/profile', {
       method: 'PUT',
