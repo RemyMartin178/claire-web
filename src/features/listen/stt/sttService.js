@@ -2,6 +2,7 @@ const { BrowserWindow } = require('electron');
 const { spawn } = require('child_process');
 const { createSTT } = require('../../../common/ai/factory');
 const modelStateService = require('../../../common/services/modelStateService');
+const sharedStateService = require('../../../common/services/sharedStateService');
 const { notificationManager } = require('../../../main/notification-manager');
 const { createLogger } = require('../../../common/services/logger.js');
 
@@ -60,7 +61,7 @@ class SttService {
         this.onStatusUpdate = null;
         this.onSilenceTimeout = null;
 
-        this.modelInfo = null; 
+        this.modelInfo = null;
     }
 
     setCallbacks({ onTranscriptionComplete, onStatusUpdate, onSilenceTimeout }) {
@@ -230,7 +231,11 @@ class SttService {
         // Auto-detect French and English by default
         // For Deepgram: use 'multi' for multilanguage support
         // For OpenAI/Whisper: null/undefined for auto-detection
-        const effectiveLanguage = process.env.OPENAI_TRANSCRIBE_LANG || language || 'auto';
+        const runtimeLanguage = sharedStateService.get().transcriptionLanguage || 'fr';
+        const effectiveLanguage = process.env.OPENAI_TRANSCRIBE_LANG
+            || (language === 'auto' ? runtimeLanguage : language)
+            || 'fr';
+        logger.info('[STT] using transcription language', { languageCode: effectiveLanguage });
 
         const modelInfo = modelStateService.getCurrentModelInfo('stt');
         logger.info('[STT] Configuration récupérée:', {
@@ -1049,4 +1054,4 @@ class SttService {
     }
 }
 
-module.exports = SttService; 
+module.exports = SttService;

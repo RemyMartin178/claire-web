@@ -701,7 +701,7 @@ class AuthService {
                 uid: authData.uid,
                 email: authData.email,
                 displayName: authData.displayName,
-                photoURL: null,
+                photoURL: authData.photoURL || null,
             };
             this.currentUserId = authData.uid;
             this.currentUserMode = 'firebase';
@@ -809,7 +809,12 @@ class AuthService {
         // Include nested `user` field so dashboard:getUser and user-state-changed share the same format
         const payload = {
             ...userState,
-            user: userState.isLoggedIn ? { uid: userState.uid, email: userState.email, displayName: userState.displayName, photoURL: null } : null,
+            user: userState.isLoggedIn ? {
+                uid: userState.uid,
+                email: userState.email,
+                displayName: userState.displayName,
+                photoURL: userState.photoURL || null,
+            } : null,
         };
         BrowserWindow.getAllWindows().forEach(win => {
             if (win && !win.isDestroyed() && win.webContents && !win.webContents.isDestroyed()) {
@@ -822,6 +827,27 @@ class AuthService {
 
         // NOTE: Removed automatic domain auth refresh to prevent memory issues
         // Auth will be initialized lazily when API calls are made
+    }
+
+    updateCurrentUserProfile(profile = {}) {
+        if (!this.currentUser || this.currentUserMode !== 'firebase') {
+            return this.getCurrentUser();
+        }
+
+        const displayName = typeof profile.displayName === 'string'
+            ? profile.displayName
+            : (typeof profile.display_name === 'string' ? profile.display_name : undefined);
+        const photoURL = Object.prototype.hasOwnProperty.call(profile, 'photoURL')
+            ? profile.photoURL
+            : (Object.prototype.hasOwnProperty.call(profile, 'photoUrl') ? profile.photoUrl : undefined);
+
+        this.currentUser = {
+            ...this.currentUser,
+            ...(displayName !== undefined ? { displayName } : {}),
+            ...(photoURL !== undefined ? { photoURL } : {}),
+        };
+        this.broadcastUserState();
+        return this.getCurrentUser();
     }
 
 
@@ -837,6 +863,7 @@ class AuthService {
                 uid: this.currentUser.uid,
                 email: this.currentUser.email,
                 displayName: this.currentUser.displayName,
+                photoURL: this.currentUser.photoURL || null,
                 mode: 'firebase',
                 isLoggedIn: true,
                 //////// before_modelStateService ////////

@@ -2,7 +2,8 @@
  * Centralized session phase + title derivation, matching Cluely's flow:
  *
  *   !ended_at                → 'ongoing'    (recording active)
- *   ended_at + no summary    → 'analyzing'  (Claire is generating the summary)
+ *   ended_at + summaryStatus analyzing → 'analyzing'
+ *   ended_at + summaryStatus failed    → 'failed'
  *   ended_at + summary       → 'completed'
  *
  * Every page (activity list, details, etc.) must use these helpers — no more
@@ -11,7 +12,7 @@
 
 import type { Session, Summary } from './api';
 
-export type SessionPhase = 'ongoing' | 'analyzing' | 'completed';
+export type SessionPhase = 'ongoing' | 'analyzing' | 'completed' | 'failed';
 
 const GENERIC_TITLES = [
   'Session @',
@@ -30,13 +31,19 @@ export function getSessionPhase(
   summary?: Summary | null
 ): SessionPhase {
   if (!session?.ended_at) return 'ongoing';
-  if (session.ended_at && !summary) return 'analyzing';
+  if (summary) return 'completed';
+
+  const summaryStatus = session.summary_status;
+  if (summaryStatus === 'analyzing') return 'analyzing';
+  if (summaryStatus === 'failed') return 'failed';
+
   return 'completed';
 }
 
 export function getSessionStatusLabel(phase: SessionPhase): string {
   if (phase === 'ongoing') return 'Session en cours';
   if (phase === 'analyzing') return 'Résumé en cours';
+  if (phase === 'failed') return 'Résumé indisponible';
   return 'Terminé';
 }
 
@@ -46,6 +53,7 @@ export function getSessionBadgeLabel(
 ): string {
   if (phase === 'ongoing') return 'En cours';
   if (phase === 'analyzing') return 'Analyse';
+  if (phase === 'failed') return durationStr || 'Terminé';
   return durationStr;
 }
 

@@ -22,6 +22,7 @@ const util = require('util');
 const execFile = util.promisify(require('child_process').execFile);
 const { desktopCapturer } = require('electron');
 const modelStateService = require('../../common/services/modelStateService');
+const sharedStateService = require('../../common/services/sharedStateService');
 
 // Import enhanced platform manager
 const { platformManager } = require('../../main/platform-manager');
@@ -59,6 +60,19 @@ function safeAddContext(payload) {
 // Lazy import personality manager to avoid circular dependency
 
 const logger = createLogger('AskService');
+
+function getOutputLanguageInstruction() {
+    const lang = sharedStateService.get().outputLanguage || 'fr';
+    const instructions = {
+        fr: 'Preference de langue : reponds en francais.',
+        en: 'Language preference: answer in English.',
+        es: 'Preferencia de idioma: responde en espanol.',
+        de: 'Spracheinstellung: antworte auf Deutsch.',
+        it: 'Preferenza lingua: rispondi in italiano.',
+        pt: 'Preferencia de idioma: responda em portugues.',
+    };
+    return instructions[lang] || instructions.fr;
+}
 
 // Initialize memory API client for backend memory storage
 const memoryApiClient = new MemoryApiClient();
@@ -604,12 +618,13 @@ class AskService {
             // Local app-managed mode: use the provider keys already loaded in the desktop app.
             logger.info('[AskService] Using local LLM execution with app-managed API keys');
             
-            // Cluely-parity: always capture a screenshot for every Ask request,
-            // unless caller explicitly opts out via { skipScreenshot: true }.
-            // This guarantees the "Viewed screen" metadata is attached to every assistant message.
-            let needsScreenshot = options.skipScreenshot === true ? false : true;
-            
-            let screenshotResult;
+            const runtimeState = sharedStateService.get();
+            const screenContextEnabled = runtimeState.screenContextEnabled !== false;
+            let needsScreenshot = options.forceScreenshot === true
+                ? true
+                : screenContextEnabled && options.skipScreenshot !== true;
+
+            let screenshotResult = { success: false };
             let screenshotBase64 = null;
             let screenshotContext = 'full screen';
             const SCREENSHOT_QUALITY = 50; // Reduced from 75 to 50 for faster upload
@@ -636,7 +651,7 @@ class AskService {
             }
             
             if (!needsScreenshot) {
-                logger.info('[AskService] OPTIMIZATION: Text-only query detected, skipping screenshot (10x faster)');
+                logger.info('[AskService] Screen context disabled or skipped, using text-only request');
             } else {
                 logger.info('[AskService] Screenshot required based on prompt analysis or persistent area selection');
             }
@@ -886,8 +901,7 @@ class AskService {
             if (currentUser?.displayName) {
                 enhancedSystemPrompt += `\n\nL'utilisateur s'appelle ${currentUser.displayName}.`;
             }
-            // Language preference — French by default, adapt to user's language
-            enhancedSystemPrompt += '\n\nPréférence de langue : Réponds de préférence en français. Si l\'utilisateur écrit dans une autre langue supportée, adapte-toi à sa langue.';
+            enhancedSystemPrompt += `\n\n${getOutputLanguageInstruction()}`;
             // Math formatting — avoid LaTeX since it can't be rendered in the UI
             enhancedSystemPrompt += '\n\n⚠️ FORMATAGE MATH : N\'utilise JAMAIS la notation LaTeX (\\frac, \\rho, \\[ \\], \\( \\), etc.). Pour les formules mathématiques, utilise du texte Unicode simple : ρ (rho), × (fois), ² (carré), ÷ (diviser), → (implique). Écris les formules en texte lisible, pas en LaTeX.';
             if (options.maxMode || options.webSearch) {
@@ -1528,7 +1542,7 @@ class AskService {
             let requestType = 'conversation';
             
             // Screenshot analysis
-            if (screenshotResult.success && (
+            if (screenshotResult?.success && (
                 prompt.includes('screen') || 
                 prompt.includes('image') || 
                 prompt.includes('what do you see') ||

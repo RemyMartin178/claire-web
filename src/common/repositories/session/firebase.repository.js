@@ -45,6 +45,8 @@ async function create(uid, type = 'ask') {
         startedAt: now, // Match web app field naming (camelCase)
         updatedAt: now,
         endedAt: null,
+        summaryStatus: 'idle',
+        titleStatus: 'idle',
     };
     const docRef = await addDoc(sessionsCol(uid), newSession);
     logger.info(`Firebase: Created session ${docRef.id} for user ${uid} in /users/${uid}/sessions/`);
@@ -61,6 +63,16 @@ async function updateTitle(uid, id, title) {
     const docRef = doc(sessionsCol(uid), id);
     await updateDoc(docRef, {
         title: title, // No encryption - web app needs to read this
+        titleStatus: 'ready',
+        updatedAt: Timestamp.now()
+    });
+    return { changes: 1 };
+}
+
+async function setSummaryStatus(uid, id, status) {
+    const docRef = doc(sessionsCol(uid), id);
+    await updateDoc(docRef, {
+        summaryStatus: status,
         updatedAt: Timestamp.now()
     });
     return { changes: 1 };
@@ -90,7 +102,7 @@ async function deleteWithRelatedData(uid, id) {
 
 async function end(uid, id) {
     const docRef = doc(sessionsCol(uid), id);
-    await updateDoc(docRef, { endedAt: Timestamp.now() });
+    await updateDoc(docRef, { endedAt: Timestamp.now(), updatedAt: Timestamp.now() });
     return { changes: 1 };
 }
 
@@ -162,10 +174,11 @@ module.exports = {
     create,
     getAllByUserId,
     updateTitle,
+    setSummaryStatus,
     deleteWithRelatedData,
     end,
     updateType,
     touch,
     getOrCreateActive,
     endAllActiveSessions,
-}; 
+};

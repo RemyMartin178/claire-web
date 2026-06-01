@@ -255,7 +255,7 @@ class ListenService {
         this.summaryService.setCallbacks({
             onAnalysisComplete: (data) => {
                 logger.info('[DATA] Analysis completed:', data);
-                if (notificationManager) {
+                if (notificationManager && typeof notificationManager.showNotesReady === 'function') {
                     notificationManager.showNotesReady();
                 }
             },
@@ -364,6 +364,31 @@ class ListenService {
             language: transcription.language,
             timestamp: transcription.timestamp
         });
+    }
+
+    normalizeTranscriptText(text) {
+        return String(text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    shouldKeepTranscript(text) {
+        const cleaned = this.normalizeTranscriptText(text);
+        if (!cleaned) return false;
+
+        const normalized = cleaned
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\p{L}\p{N}' ]/gu, '')
+            .toLowerCase()
+            .trim();
+
+        if (normalized.length < 3) return false;
+
+        const fillerWords = new Set([
+            'um', 'uh', 'euh', 'heu', 'hum', 'hmm', 'hm', 'mm', 'mmm',
+            'ah', 'oh', 'eh',
+        ]);
+
+        return !fillerWords.has(normalized);
     }
 
     /**
@@ -574,6 +599,22 @@ class ListenService {
 
     async handleTranscriptionComplete(speaker, text) {
         // Handle transcription completion
+        const normalizedText = this.normalizeTranscriptText(text);
+        if (!this.shouldKeepTranscript(normalizedText)) {
+            logger.info('[ListenService] Skipping low-signal transcript fragment', {
+                speaker,
+                textLength: normalizedText.length,
+            });
+            return;
+        }
+
+        const normalizedSpeaker = speaker === 'Me'
+            ? 'user'
+            : speaker === 'Them'
+                ? 'other'
+                : speaker;
+        speaker = normalizedSpeaker;
+        text = normalizedText;
 
         // Update personality context based on transcription
         if (speaker === 'user' && this.personalityInitialized && this.agentPersonalityManager) {
@@ -663,8 +704,8 @@ class ListenService {
             });
         }
 
-        // Keep original agent analysis for listen view (summary service)
-        await this.triggerAgentAnalysis();
+        // SummaryService already schedules threshold-based live analysis when
+        // addConversationTurn() runs above.
     }
 
     async triggerAgentAnalysis() {
@@ -924,6 +965,10 @@ class ListenService {
                 // 2. Stamp ended_at in the repository.
                 try {
                     await sessionRepository.end(endedSessionId);
+                    await sessionRepository.setSummaryStatus?.(
+                        endedSessionId,
+                        conversationSnapshot.length > 0 ? 'analyzing' : 'completed'
+                    );
                     logger.info('Session ended.');
                 } catch (endError) {
                     logger.error('Failed to record session end time:', { error: endError.message });
