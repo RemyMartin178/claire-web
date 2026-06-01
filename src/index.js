@@ -473,16 +473,13 @@ async function bootApp() {
     createSplashWindow();
 
     // Wait for the auxiliary web stack to allocate `pickleglass_WEB_URL` before
-    // creating the dashboard window. Otherwise getDashboardUrl() falls back to
-    // http://localhost:3000 (the default Next.js dev port), which ERR_CONNECTION_REFUSEDs
-    // when no dev server is running — producing a black dashboard and a 15s splash hang.
+    // creating the dashboard window. Otherwise getDashboardUrl() can fall back to
+    // http://localhost:3000 and reveal a black/stale renderer while the real
+    // bundled renderer is still starting.
     try {
-        await Promise.race([
-            ensureAuxiliaryWebStackStarted(),
-            new Promise((resolve) => setTimeout(resolve, 4000)),
-        ]);
+        await ensureAuxiliaryWebStackStarted();
     } catch (err) {
-        logger.warn('[Boot] auxiliary web stack failed to start in time', { error: err?.message });
+        logger.warn('[Boot] auxiliary web stack failed before dashboard creation', { error: err?.message });
     }
 
     logger.info('[Boot] Creating dashboard window (hidden)');
@@ -504,14 +501,15 @@ async function bootApp() {
         }
     } catch (_) { /* non-blocking */ }
 
-    // Timeout fallback shortened from 15s → 6s. With the aux-web await above,
-    // a healthy boot resolves in <2s; 6s is plenty for slow disks.
+    // Safety fallback only after the dashboard has been created from the final
+    // renderer URL. Keep this long enough that slow local static serving does
+    // not reveal a black dashboard before React reports dashboardReady.
     setTimeout(() => {
         if (_bootPhase !== 'done') {
             logger.warn('[Boot] Timeout — forcing boot resolution');
             void _resolveBoot();
         }
-    }, 6000);
+    }, 12000);
 }
 
 app.whenReady().then(async () => {
