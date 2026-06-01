@@ -4,7 +4,7 @@ const windowManager = require('../window/windowManager');
 const internalBridge = require('./internalBridge');
 const sharedStateService = require('../common/services/sharedStateService');
 const { getFirestoreInstance } = require('../common/services/firebaseClient');
-const { collection, doc, getDoc, getDocs, deleteDoc, writeBatch } = require('firebase/firestore');
+const { collection, doc, getDoc, getDocs, writeBatch } = require('firebase/firestore');
 const settingsService = require('../features/settings/settingsService');
 const authService = require('../common/services/authService');
 const modelStateService = require('../common/services/modelStateService');
@@ -160,18 +160,15 @@ module.exports = {
         });
 
         // App
-        // "Quitter" from settings hides the app to background (process stays alive)
-        // To truly quit, the user can use Task Manager.
+        // Settings "Quitter Claire" is a real quit. The dashboard X still hides.
         ipcMain.handle('quit-application', async () => {
-            // End active listen session so ended_at is recorded before going to background
-            try { await listenService.closeSession(); } catch { }
-            const { getOverlayWindow, stopOverlayPolling } = require('../window/windowManager');
-            // Stop the 60fps cursor-tracking loop — no UI visible, no need to poll
-            try { stopOverlayPolling(); } catch { }
-            const overlay = getOverlayWindow ? getOverlayWindow() : null;
-            if (overlay && !overlay.isDestroyed()) {
-                overlay.hide();
+            try { await listenService.closeSession(); } catch (error) {
+                logger.warn('[FeatureBridge] quit-application closeSession failed', { message: error?.message });
             }
+            try { windowManager.stopOverlayPolling?.(); } catch { }
+            global.isQuitting = true;
+            app.quit();
+            return { success: true };
         });
 
         // Whisper
@@ -410,22 +407,9 @@ module.exports = {
                 }
 
                 if (sessionIdBeforeStop) {
-                    // 1. Tell the (still-hidden) dashboard to route to the just-ended session NOW,
-                    //    so React can re-render in the background while the overlay is still on top.
-                    const dashWin = windowManager.getDashboardWindow();
-                    if (dashWin && !dashWin.isDestroyed()) {
-                        dashWin.webContents.send('dashboard:navigateToSession', { sessionId: sessionIdBeforeStop });
-                    }
-
-                    // 2. Give the renderer ~1 frame to start the route transition before we surface it.
-                    //    Without this, the user briefly sees /activity before /activity/details kicks in.
-                    await new Promise(r => setTimeout(r, 80));
-
-                    // 3. Single state patch drives everything: the change subscription
-                    //    above will hide the listen overlay + header bar, show + focus
-                    //    the dashboard, and notify any renderer subscribed to shared state.
-                    //    The state is also persisted to disk so a relaunch knows the last session.
-                    const prevFocus = sharedStateService.get().dashboardFocusCount || 0;
+                    // windowManager.openDashboardOnSession loads /activity/details
+                    // while the dashboard is hidden, then reveals it. Do not force
+                    // showDashboard here or the user briefly sees /activity first.
                     sharedStateService.patch({
                         session: null,
                         lastSessionId: sessionIdBeforeStop,
@@ -433,8 +417,6 @@ module.exports = {
                         showListen: false,
                         showChat: false,
                         showHeader: false,
-                        showDashboard: true,
-                        dashboardFocusCount: prevFocus + 1,
                     });
                 }
                 return { success: true };
@@ -649,6 +631,16 @@ module.exports = {
 
 
         // Dashboard window IPC handlers
+        ipcMain.handle('dashboard:session-route-ready', (_event, sessionId) => {
+            try {
+                const revealed = windowManager.markDashboardSessionRouteReady?.(sessionId) === true;
+                return { success: true, revealed };
+            } catch (e) {
+                logger.warn('[FeatureBridge] dashboard:session-route-ready failed', { message: e.message });
+                return { success: false, error: e.message };
+            }
+        });
+
         ipcMain.handle('dashboard:getUser', async () => {
             try {
                 const user = authService.getCurrentUser();
@@ -656,6 +648,16 @@ module.exports = {
                 return null;
             } catch (e) {
                 return null;
+            }
+        });
+
+        ipcMain.handle('dashboard:updateUserProfile', async (_event, profile) => {
+            try {
+                const user = authService.updateCurrentUserProfile(profile || {});
+                return { success: true, user };
+            } catch (e) {
+                logger.error('[FeatureBridge] dashboard:updateUserProfile failed', { message: e.message });
+                return { success: false, error: e.message };
             }
         });
 
@@ -716,7 +718,17 @@ module.exports = {
         ipcMain.handle('dashboard:deleteSession', async (event, uid, sessionId) => {
             try {
                 const db = getFirestoreInstance();
-                await deleteDoc(doc(db, 'users', uid, 'sessions', sessionId));
+                const batch = writeBatch(db);
+                const [transcriptsSnap, aiMessagesSnap, summarySnap] = await Promise.all([
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'transcripts')),
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'ai_messages')),
+                    getDocs(collection(db, 'users', uid, 'sessions', sessionId, 'summary')),
+                ]);
+                transcriptsSnap.docs.forEach(d => batch.delete(d.ref));
+                aiMessagesSnap.docs.forEach(d => batch.delete(d.ref));
+                summarySnap.docs.forEach(d => batch.delete(d.ref));
+                batch.delete(doc(db, 'users', uid, 'sessions', sessionId));
+                await batch.commit();
                 return { success: true };
             } catch (e) {
                 logger.error('[FeatureBridge] dashboard:deleteSession failed', { message: e.message });
@@ -830,7 +842,18 @@ module.exports = {
 
         ipcMain.handle('dashboard:stopClaire', async () => {
             try {
+                const sessionIdBeforeStop = listenService.currentSessionId;
                 await listenService.handleListenRequest('Stop', {});
+                if (sessionIdBeforeStop) {
+                    sharedStateService.patch({
+                        session: null,
+                        lastSessionId: sessionIdBeforeStop,
+                        isListenRunning: false,
+                        showListen: false,
+                        showChat: false,
+                        showHeader: false,
+                    });
+                }
                 return { success: true };
             } catch (e) {
                 logger.error('[FeatureBridge] dashboard:stopClaire failed', { message: e.message });

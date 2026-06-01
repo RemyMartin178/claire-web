@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,6 +8,7 @@ import { Session, deleteSession } from '@/utils/api'
 import { Button } from '@/components/ui/button'
 import { trackActivityPageView, trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
+import { AnimatePresence, motion } from 'framer-motion'
 import { getEventStartDate, getEventEndDate, getEventTitle } from '../calendar/event-utils'
 import { ActivitySessionListSkeleton } from '@/components/ActivityListSkeleton'
 import {
@@ -27,13 +28,14 @@ export default function ActivityPage() {
   const { user: userInfo, loading } = useAuth();
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { state: sharedState, ready: sharedReady } = useSharedState()
+  const { state: sharedState } = useSharedState()
   const sessionsQuery = useSessionsQuery(Boolean(userInfo))
   const allSessions = useMemo(() => sessionsQuery.data || [], [sessionsQuery.data])
   const sessions = useMemo(() => allSessions.filter(s => s.session_type !== 'ask'), [allSessions])
   const isLoading = sessionsQuery.isLoading && !sessionsQuery.data
   const isRefreshing = sessionsQuery.isFetching && !isLoading
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteConfirmedId, setDeleteConfirmedId] = useState<string | null>(null)
   const [hasRenderedActivity, setHasRenderedActivity] = useState(false)
 
   const [upcomingMeeting, setUpcomingMeeting] = useState<any>(null)
@@ -45,27 +47,17 @@ export default function ActivityPage() {
   const [openingSessionId, setOpeningSessionId] = useState<string | null>(null)
 
   const hasListenSession = allSessions.some((session) => session.session_type !== 'ask')
-  const focusCount = sharedState?.dashboardFocusCount ?? 0
-  const prevFocusCount = useRef<number | null>(null)
-
-  // Auto-navigate to the active session on explicit dashboard focus.
-  // No sessionStorage lock — it was preventing legitimate re-opens after the user
-  // came back to the activity list and re-focused the dashboard.
-  useEffect(() => {
-    if (!sharedReady) return
-    const sessionId = sharedState?.session?.id
-    if (!sessionId) return
-    const isFirst = prevFocusCount.current === null
-    const didFocus = !isFirst && focusCount > (prevFocusCount.current ?? 0)
-    prevFocusCount.current = focusCount
-    if (!didFocus) return
-    router.push(`/activity/details?sessionId=${sessionId}&title=Session+en+cours&new=1`)
-  }, [sharedReady, focusCount, sharedState?.session?.id, router])
 
   useEffect(() => {
     if (!sharedState?.lastSessionId) return
     void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
   }, [sharedState?.lastSessionId, queryClient])
+
+  useEffect(() => {
+    if (!sharedState?.isListenRunning) {
+      setIsStartingClaire(false)
+    }
+  }, [sharedState?.isListenRunning])
 
   useEffect(() => {
     if (sessionsQuery.error) {
@@ -221,14 +213,16 @@ export default function ActivityPage() {
     setDeletingId(sessionId);
     try {
       await deleteSession(sessionId);
+      setDeleteConfirmedId(sessionId);
+      await new Promise(resolve => setTimeout(resolve, 680));
       patchSessionList(queryClient, (sessions) => sessions.filter(s => s.id !== sessionId));
       queryClient.removeQueries({ queryKey: sessionKeys.detail(sessionId) });
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
-      toast.success('Activité supprimée');
     } catch (error) {
       toast.error('Échec de la suppression de l\'activité.');
     } finally {
       setDeletingId(null);
+      setDeleteConfirmedId(null);
     }
   }
 
@@ -501,13 +495,22 @@ export default function ActivityPage() {
                                 disabled={deletingId === session.id}
                                 variant="ghost"
                                 size="icon"
-                                className="absolute right-1 opacity-0 translate-x-1 group-hover/row:translate-x-0 group-hover/row:opacity-100 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 h-7 w-7 transition-[background-color,color,opacity,transform] duration-180 ease-apple"
+                                className={[
+                                  'absolute right-1 h-7 w-7 opacity-0 translate-x-1 group-hover/row:translate-x-0 group-hover/row:opacity-100 transition-[background-color,color,opacity,transform] duration-180 ease-apple',
+                                  deleteConfirmedId === session.id
+                                    ? 'bg-neutral-900 text-white dark:bg-white/15 dark:text-white'
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                                ].join(' ')}
                               >
-                                {deletingId === session.id ? (
-                                  <div className="animate-spin h-3.5 w-3.5 border-2 border-red-500 rounded-full border-t-transparent" />
-                                ) : (
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                )}
+                                <AnimatePresence mode="wait" initial={false}>
+                                  {deleteConfirmedId === session.id ? (
+                                    <motion.svg key="check" initial={{ opacity: 0, scale: 0.55, rotate: -16 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0.75 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 13l4 4L19 7" /></motion.svg>
+                                  ) : deletingId === session.id ? (
+                                    <motion.div key="spinner" initial={{ opacity: 0, scale: 0.75 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.75 }} className="animate-spin h-3.5 w-3.5 border-2 border-current rounded-full border-t-transparent" />
+                                  ) : (
+                                    <motion.svg key="trash" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.12 }} className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></motion.svg>
+                                  )}
+                                </AnimatePresence>
                               </Button>
                             </span>
                           </div>

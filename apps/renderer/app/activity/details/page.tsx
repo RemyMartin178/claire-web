@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import {
   getSessionPhase,
-  getSessionStatusLabel,
   getSessionDisplayTitle,
+  isGenericSessionTitle,
 } from '@/utils/sessionDisplay'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -17,12 +17,13 @@ import {
   AiMessage,
   getCachedSessionDetails,
   deleteSession,
+  updateSessionTitle,
 } from '@/utils/api'
 import { Button } from '@/components/ui/button'
-import { Mic, Trash2, ArrowLeft, Copy, Mail } from 'lucide-react';
+import { Mic, Trash2, ArrowLeft, Copy, Mail, Check } from 'lucide-react';
 import { AiMessageWithActions } from '@/components/ui/ai-actions'
 import { Conversation, ConversationContent, ConversationScrollButton } from '@/components/ui/conversation'
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { trackSessionViewed } from '@/lib/gtag'
 import { toast } from 'react-hot-toast'
 import { LiquidGlassInput } from '@/components/ui/liquid-glass-input'
@@ -41,7 +42,7 @@ const formatTime = (seconds: number) => {
 }
 
 // Custom Markdown Renderer to bypass NPM install issues, supporting nested lists and styled exactly like premium UI
-const parseMarkdown = (text: string, onCopySummary?: () => void) => {
+const parseMarkdown = (text: string, onCopySummary?: () => void, copiedSummary = false) => {
   if (!text) return null;
   // Remove the Title section and Actions suggérées section from display
   const cleanText = text
@@ -112,7 +113,8 @@ const parseMarkdown = (text: string, onCopySummary?: () => void) => {
               onClick={onCopySummary}
               className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Copy className="h-3.5 w-3.5" /> Copier le résumé
+              {copiedSummary ? <Check className="h-3.5 w-3.5 text-foreground copied-pop" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedSummary ? 'Copié' : 'Copier le résumé'}
             </button>
           )}
         </div>
@@ -180,9 +182,27 @@ function SessionDetailsContent() {
   const searchParams = useSearchParams();
   const { state: sharedState } = useSharedState();
   const sessionId = searchParams.get('sessionId');
+  const isNewSession = searchParams.get('new') === '1'
   const routeTitle = searchParams.get('title');
   const routeCreatedAt = searchParams.get('createdAt');
   const cachedDetails = sessionId ? getCachedSessionDetails(sessionId) : null;
+  const placeholderDetails = !cachedDetails && isNewSession && sessionId ? {
+    session: {
+      id: sessionId,
+      uid: userInfo?.uid || '',
+      title: 'Résumé en cours',
+      session_type: 'listen',
+      started_at: Number(routeCreatedAt) || Date.now(),
+      ended_at: Date.now(),
+      summary_status: 'analyzing',
+      title_status: 'streaming',
+      sync_state: 'clean',
+      updated_at: Date.now(),
+    },
+    transcripts: [],
+    ai_messages: [],
+    summary: null,
+  } satisfies SessionDetails : null;
   const detailsQuery = useSessionDetailsQuery(sessionId, Boolean(userInfo && sessionId));
 
   useEffect(() => {
@@ -191,19 +211,22 @@ function SessionDetailsContent() {
     }
   }, [userInfo, loading, router]);
 
-  const isNewSession = searchParams.get('new') === '1'
-  const [titleShimmer, setTitleShimmer] = useState(isNewSession)
+  const [, setTitleShimmer] = useState(isNewSession)
   // Live, token-by-token title coming from the main process while the summary
   // is generating. Cleared once the progressive reveal of the summary finishes.
   const [streamingTitle, setStreamingTitle] = useState<string>('')
+  const [analysisTitleStage, setAnalysisTitleStage] = useState<'analysis' | 'summary'>(
+    isNewSession ? 'analysis' : 'summary'
+  )
   // Renderer-side "fake stream" of the summary markdown — kicked off when
   // session:summary-completed arrives. Until it finishes, the shimmer + caret
   // stay on so the whole reveal feels continuous.
   const [progressiveSummaryText, setProgressiveSummaryText] = useState<string | null>(null)
   const progressiveTimerRef = useRef<number | null>(null)
-  const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(() => cachedDetails);
-  const [isLoading, setIsLoading] = useState(() => !cachedDetails)
+  const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(() => cachedDetails || placeholderDetails);
+  const [isLoading, setIsLoading] = useState(() => !cachedDetails && !placeholderDetails)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [isAiSidebarOpen, setIsAiSidebarOpen] = useState(false);
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant', content: string }[]>(
@@ -212,7 +235,37 @@ function SessionDetailsContent() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [sidebarInputValue, setSidebarInputValue] = useState("");
   const [isEmailing, setIsEmailing] = useState(false);
-  const [editableTitle, setEditableTitle] = useState(routeTitle || '');
+  const [editableTitle, setEditableTitle] = useState(() =>
+    routeTitle && !isGenericSessionTitle(routeTitle) ? routeTitle : ''
+  );
+  const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
+
+  useEffect(() => {
+    setAnalysisTitleStage(isNewSession ? 'analysis' : 'summary')
+    setStreamingTitle('')
+  }, [isNewSession, sessionId])
+
+  const groupedTranscripts = useMemo(() => {
+    const transcripts = sessionDetails?.transcripts || [];
+    const grouped: Transcript[] = [];
+
+    transcripts.forEach((item) => {
+      const last = grouped[grouped.length - 1] as (Transcript | undefined);
+      const lastEnd = last?.end_at || last?.start_at || null;
+      const currentStart = item.start_at || null;
+      const closeEnough = !lastEnd || !currentStart || Math.abs(currentStart - lastEnd) <= 8000;
+
+      if (last && last.speaker === item.speaker && closeEnough) {
+        last.text = `${last.text} ${item.text}`.replace(/\s+/g, ' ').trim();
+        last.end_at = item.end_at || last.end_at;
+        return;
+      }
+
+      grouped.push({ ...item });
+    });
+
+    return grouped;
+  }, [sessionDetails?.transcripts]);
 
   useEffect(() => {
     if (!detailsQuery.data || !sessionId) return
@@ -221,12 +274,16 @@ function SessionDetailsContent() {
     setChatHistory(detailsQuery.data.ai_messages.map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content })));
     setIsLoading(false);
     const loadedTitle = detailsQuery.data.session?.title || '';
-    const loadedTitleIsGeneric = !loadedTitle || ['Session @', 'Session Sans Titre', 'Discussion avec Claire', 'En cours'].some(t => loadedTitle.includes(t));
+    const loadedTitleIsGeneric = isGenericSessionTitle(loadedTitle);
     if (detailsQuery.data.summary || !loadedTitleIsGeneric) {
       setTitleShimmer(false);
     }
+    if (detailsQuery.data.summary && !progressiveTimerRef.current) {
+      setProgressiveSummaryText(null);
+      setStreamingTitle('');
+    }
     if (loadedTitle && !loadedTitleIsGeneric) {
-      setEditableTitle((current) => current || loadedTitle);
+      setEditableTitle((current) => isGenericSessionTitle(current) ? loadedTitle : (current || loadedTitle));
     }
     patchSessionFromDetails(queryClient, detailsQuery.data);
     trackSessionViewed(sessionId);
@@ -294,19 +351,27 @@ function SessionDetailsContent() {
           session: {
             ...prev.session,
             ended_at: prev.session.ended_at || Date.now(),
+            summary_status: 'analyzing',
           },
           summary: null,
         }
       })
       setStreamingTitle('')
+      setAnalysisTitleStage('analysis')
       void detailsQuery.refetch()
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
+    })
+
+    const offSummaryStarted = api.onSessionSummaryStarted?.((payload: { sessionId?: string }) => {
+      if (payload?.sessionId !== sessionId) return
+      setAnalysisTitleStage('summary')
     })
 
     const offTitleStream = api.onSessionTitleStream?.((payload: { sessionId?: string; partial?: string }) => {
       if (payload?.sessionId !== sessionId) return
       if (typeof payload.partial === 'string') {
         setStreamingTitle(payload.partial)
+        setAnalysisTitleStage('summary')
       }
     })
 
@@ -320,6 +385,8 @@ function SessionDetailsContent() {
           return { ...prev, session: { ...prev.session, title: payload.title! } }
         })
         setStreamingTitle(payload.title)
+        setAnalysisTitleStage('summary')
+        setEditableTitle((current) => isGenericSessionTitle(current) ? payload.title! : (current || payload.title!))
       }
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
@@ -356,6 +423,9 @@ function SessionDetailsContent() {
             // the fully-parsed summary from the backend so bullets/markdown
             // replace the streamed text.
             setStreamingTitle('')
+            setSessionDetails((prev) => prev
+              ? { ...prev, session: { ...prev.session, summary_status: 'completed' } }
+              : prev)
             void detailsQuery.refetch()
             void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
           }
@@ -365,6 +435,9 @@ function SessionDetailsContent() {
 
       // No raw text in payload → fall back to immediate refetch.
       setStreamingTitle('')
+      setSessionDetails((prev) => prev
+        ? { ...prev, session: { ...prev.session, summary_status: 'completed' } }
+        : prev)
       void detailsQuery.refetch()
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
@@ -372,11 +445,17 @@ function SessionDetailsContent() {
     const offFailed = api.onSessionSummaryFailed?.((payload: { sessionId?: string }) => {
       if (payload?.sessionId !== sessionId) return
       setStreamingTitle('')
+      setAnalysisTitleStage('summary')
+      setTitleShimmer(false)
+      setSessionDetails((prev) => prev
+        ? { ...prev, session: { ...prev.session, summary_status: 'failed' } }
+        : prev)
       void detailsQuery.refetch()
     })
 
     return () => {
       try { offAnalyzing?.() } catch {}
+      try { offSummaryStarted?.() } catch {}
       try { offTitleStream?.() } catch {}
       try { offTitleReady?.() } catch {}
       try { offCompleted?.() } catch {}
@@ -393,9 +472,10 @@ function SessionDetailsContent() {
     setIsDeleting(true);
     try {
       await deleteSession(sessionId);
+      setDeleteConfirmed(true);
+      await new Promise(resolve => window.setTimeout(resolve, 680));
       queryClient.removeQueries({ queryKey: sessionKeys.detail(sessionId) });
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
-      toast.success('Session supprimée');
       router.push('/activity');
     } catch (error) {
       toast.error('Échec de la suppression de l\'activité.');
@@ -403,9 +483,35 @@ function SessionDetailsContent() {
     }
   };
 
-  const handleCopySummary = () => {
-    if (!sessionDetails?.summary) return;
-    const { bullet_json, text: summaryText } = sessionDetails.summary;
+  const markCopied = (target: string) => {
+    setCopiedTarget(target);
+    window.setTimeout(() => setCopiedTarget((current) => current === target ? null : current), 1400);
+  };
+
+  const handleSaveTitle = async () => {
+    if (!sessionId) return;
+    const cleanTitle = editableTitle.trim();
+    if (!cleanTitle || cleanTitle === sessionDetails?.session.title) return;
+
+    const previousDetails = sessionDetails;
+    setSessionDetails((prev) => prev
+      ? { ...prev, session: { ...prev.session, title: cleanTitle, title_status: 'ready' } }
+      : prev);
+    try {
+      await updateSessionTitle(sessionId, cleanTitle);
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.detail(sessionId) });
+    } catch (error) {
+      setSessionDetails(previousDetails);
+      toast.error('Impossible de mettre à jour le titre.');
+    }
+  };
+
+  const handleCopySummary = async () => {
+    const summary = sessionDetails?.summary;
+    const bullet_json = summary?.bullet_json;
+    const summaryText = summary?.text || progressiveSummaryText || '';
+    if (!bullet_json && !summaryText) return;
 
     let bullets: string[] = [];
     if (bullet_json) {
@@ -420,18 +526,18 @@ function SessionDetailsContent() {
       ? bullets.map(b => `- ${b.replace(/\*\*/g, '')}`).join('\n')
       : (summaryText || '').replace(/\*\*/g, '').replace(/## /g, '').trim();
 
-    navigator.clipboard.writeText(copyText);
-    toast.success('Résumé copié !');
+    await navigator.clipboard.writeText(copyText);
+    markCopied('summary');
   }
 
-  const handleCopyTranscript = () => {
-    if (!sessionDetails?.transcripts) return;
-    const text = sessionDetails.transcripts.map(t => {
+  const handleCopyTranscript = async () => {
+    if (!groupedTranscripts.length) return;
+    const text = groupedTranscripts.map(t => {
       const speakerName = t.speaker === 'user' ? (userInfo?.display_name || 'Vous') : 'Autre';
       return `${speakerName}:\n${t.text}\n`;
     }).join('\n');
-    navigator.clipboard.writeText(text);
-    toast.success('Transcription copiée !');
+    await navigator.clipboard.writeText(text);
+    markCopied('transcript');
   }
 
   const handleEmailSession = async () => {
@@ -562,8 +668,14 @@ function SessionDetailsContent() {
 
   // Phase-derived state (single source of truth — matches Cluely).
   const phase = getSessionPhase(sessionDetails?.session, sessionDetails?.summary);
-  const isAnalyzingSession = phase === 'analyzing';
-  const isCompletedSession = phase === 'completed';
+  const isProgressiveRevealing = progressiveSummaryText !== null;
+  const isAnalyzingSession = phase === 'analyzing' || isProgressiveRevealing;
+
+  useEffect(() => {
+    if (!isAnalyzingSession || streamingTitle || analysisTitleStage !== 'analysis') return
+    const timer = window.setTimeout(() => setAnalysisTitleStage('summary'), 900)
+    return () => window.clearTimeout(timer)
+  }, [analysisTitleStage, isAnalyzingSession, streamingTitle])
 
   let rawSummaryText = sessionDetails?.summary?.text || '';
 
@@ -582,7 +694,7 @@ function SessionDetailsContent() {
   //   2. "Résumé en cours" placeholder while waiting for the first tokens
   // Outside analyzing, fall back to the helper-derived title.
   const displayTitle = isAnalyzingSession
-    ? (streamingTitle || 'Résumé en cours')
+    ? (streamingTitle || (analysisTitleStage === 'analysis' ? 'Analyse en cours' : 'Résumé en cours'))
     : helperTitle;
   const titleValue = editableTitle || displayTitle;
 
@@ -607,11 +719,6 @@ function SessionDetailsContent() {
     // Remove emojis and prefixes from extracted bullets
     if (matches) bulletPoints = matches.map(m => stripEmojisAndPrefixes(m.replace(/^- /, '')));
   }
-  // Summary is "generating" whenever the session is in analyzing phase, regardless
-  // of how the user arrived at this page (no longer dependent on ?new=1).
-  const isGeneratingSummary =
-    isAnalyzingSession && !rawSummaryText && bulletPoints.length === 0;
-
   // Live ONLY while listen actually runs AND the backend hasn't stamped ended_at.
   const isLiveSession = phase === 'ongoing'
     && (sharedState?.isListenRunning ?? false)
@@ -619,7 +726,7 @@ function SessionDetailsContent() {
 
   const missedOpportunitiesCount = 6;
 
-  const hasTranscript = Boolean(sessionDetails?.transcripts && sessionDetails.transcripts.length > 0);
+  const hasTranscript = groupedTranscripts.length > 0;
 
   const renderContent = () => {
     if (!sessionDetails) {
@@ -633,10 +740,20 @@ function SessionDetailsContent() {
     switch (activeTab) {
       case 'summary':
         // Priority order:
-        //  1. Final bullets / persisted markdown (from refetched summary)
-        //  2. Progressive reveal stream (between summary-completed and refetch)
+        //  1. Progressive reveal stream (between summary-completed and refetch)
+        //  2. Final bullets / persisted markdown (from refetched summary)
         //  3. Analyzing skeleton / ongoing placeholder
-        return bulletPoints.length > 0 ? (
+        return progressiveSummaryText !== null && progressiveSummaryText.length > 0 ? (
+          <div className="max-w-none summary-streaming">
+            {parseMarkdown(stripEmojisAndPrefixes(progressiveSummaryText), handleCopySummary, copiedTarget === 'summary')}
+          </div>
+        ) : progressiveSummaryText !== null ? (
+          <div className="space-y-3">
+            <div className="summary-skeleton-line w-[92%]" />
+            <div className="summary-skeleton-line w-[76%]" />
+            <div className="summary-skeleton-line w-[84%]" />
+          </div>
+        ) : bulletPoints.length > 0 ? (
           <ul className="list-disc pl-4 space-y-3 marker:text-muted-foreground">
             {bulletPoints.map((item: string, i: number) => (
               <li key={i} className="text-sm leading-relaxed text-foreground pl-1">
@@ -646,12 +763,10 @@ function SessionDetailsContent() {
           </ul>
         ) : rawSummaryText ? (
           <div className="max-w-none">
-            {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary)}
+            {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary, copiedTarget === 'summary')}
           </div>
-        ) : progressiveSummaryText !== null && progressiveSummaryText.length > 0 ? (
-          <div className="max-w-none summary-streaming">
-            {parseMarkdown(stripEmojisAndPrefixes(progressiveSummaryText), handleCopySummary)}
-          </div>
+        ) : phase === 'failed' ? (
+          <p className="text-muted-foreground/80 text-sm">Résumé indisponible pour cette session.</p>
         ) : phase === 'ongoing' ? (
           <p className="text-muted-foreground/50 text-sm">Terminez la session pour voir vos notes.</p>
         ) : phase === 'analyzing' ? (
@@ -667,7 +782,7 @@ function SessionDetailsContent() {
         if (!hasTranscript) return <p className="text-muted-foreground/80 text-sm">Pas de transcription disponible.</p>;
         return (
           <div className="space-y-5">
-            {sessionDetails.transcripts.map((t, idx) => {
+            {groupedTranscripts.map((t, idx) => {
               const isUser = t.speaker === 'user';
               const speakerName = isUser ? userInfo?.display_name || 'Vous' : 'Interlocuteur';
               let offsetText = '0:00';
@@ -707,11 +822,11 @@ function SessionDetailsContent() {
                         type="button"
                         onClick={() => {
                           navigator.clipboard.writeText(msg.content);
-                          toast.success('Réponse copiée');
+                          markCopied(`message-${idx}`);
                         }}
                         className="ml-auto opacity-0 group-hover:opacity-100 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-opacity"
                       >
-                        Copier
+                        {copiedTarget === `message-${idx}` ? 'Copié' : 'Copier'}
                       </button>
                     )}
                   </p>
@@ -746,8 +861,30 @@ function SessionDetailsContent() {
                 {isEmailing ? <div className="animate-spin w-3 h-3 border-2 border-current rounded-full border-t-transparent" /> : <Mail className="w-3.5 h-3.5" strokeWidth={2} />}
                 <span>{isEmailing ? 'Génération...' : 'Mail'}</span>
               </button>
-              <button type="button" onClick={handleDeleteClick} disabled={isDeleting}                 className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-red-500 transition disabled:opacity-50">
-                {isDeleting ? <div className="animate-spin w-3.5 h-3.5 border-2 border-current rounded-full border-t-transparent" /> : <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />}
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className={[
+                  'inline-flex items-center justify-center h-7 w-7 rounded-md transition disabled:opacity-70',
+                  deleteConfirmed
+                    ? 'bg-neutral-900 text-white dark:bg-white/15 dark:text-white'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                ].join(' ')}
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  {deleteConfirmed ? (
+                    <motion.span key="check" initial={{ opacity: 0, scale: 0.55, rotate: -16 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0.75 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}>
+                      <Check className="w-3.5 h-3.5" strokeWidth={2.4} />
+                    </motion.span>
+                  ) : isDeleting ? (
+                    <motion.span key="spinner" initial={{ opacity: 0, scale: 0.75 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.75 }} className="animate-spin w-3.5 h-3.5 border-2 border-current rounded-full border-t-transparent" />
+                  ) : (
+                    <motion.span key="trash" initial={{ opacity: 0, scale: 0.85 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={{ duration: 0.12 }}>
+                      <Trash2 className="w-3.5 h-3.5" strokeWidth={2} />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </button>
             </div>
           </div>
@@ -765,6 +902,12 @@ function SessionDetailsContent() {
             <input
               value={titleValue}
               onChange={(event) => setEditableTitle(event.target.value)}
+              onBlur={handleSaveTitle}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.currentTarget.blur();
+                }
+              }}
               aria-label="Titre de l'activité"
               className={[
                 'mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none',
@@ -793,13 +936,15 @@ function SessionDetailsContent() {
             {activeTab === 'summary' && sessionDetails && (
               <button type="button" onClick={handleCopySummary}
                 className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition">
-                <Copy className="w-3 h-3" /> Copier
+                {copiedTarget === 'summary' ? <Check className="w-3 h-3 text-foreground copied-pop" /> : <Copy className="w-3 h-3" />}
+                {copiedTarget === 'summary' ? 'Copié' : 'Copier'}
               </button>
             )}
             {activeTab === 'transcript' && hasTranscript && (
               <button type="button" onClick={handleCopyTranscript}
                 className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition">
-                <Copy className="w-3 h-3" /> Copier
+                {copiedTarget === 'transcript' ? <Check className="w-3 h-3 text-foreground copied-pop" /> : <Copy className="w-3 h-3" />}
+                {copiedTarget === 'transcript' ? 'Copié' : 'Copier'}
               </button>
             )}
           </div>

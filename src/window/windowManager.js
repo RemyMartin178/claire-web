@@ -1,4 +1,4 @@
-const { BrowserWindow, globalShortcut, screen, app, shell } = require('electron');
+const { BrowserWindow, globalShortcut, screen, app, shell, nativeTheme } = require('electron');
 const WindowLayoutManager = require('./windowLayoutManager');
 const SmoothMovementManager = require('./smoothMovementManager');
 const path = require('node:path');
@@ -15,6 +15,13 @@ const { platformManager } = require('../main/platform-manager');
 const { createLogger } = require('../common/services/logger.js');
 
 const logger = createLogger('WindowManager');
+
+function getDashboardSymbolColor() {
+    const theme = sharedStateService.get?.().theme;
+    if (theme === 'dark') return '#FFFFFF';
+    if (theme === 'light') return '#000000';
+    return nativeTheme.shouldUseDarkColors ? '#FFFFFF' : '#000000';
+}
 
 // FIX: Flag global pour désactiver updateLayout pendant le drag
 let isDraggingHeader = false;
@@ -2089,16 +2096,13 @@ function closeSplashWindow() {
 
 // ─── Dashboard window (renderer desktop) ────────────────────────────────────
 
-function createDashboardWindow({ skipAutoShow = false } = {}) {
+function createDashboardWindow({ skipAutoShow = false, initialPath = null } = {}) {
     if (dashboardWindow && !dashboardWindow.isDestroyed()) {
         if (!dashboardWindow.isVisible()) dashboardWindow.show();
         dashboardWindow.focus();
         return dashboardWindow;
     }
 
-    // The dashboard renderer is dark-themed regardless of the OS theme,
-    // so we hardcode white control symbols — black ones on dark bg are invisible
-    // when Windows is set to light mode (the cause of the "boutons cliquables mais invisibles" bug).
     dashboardWindow = new BrowserWindow({
         width: 1050,
         height: 700,
@@ -2111,7 +2115,7 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
         titleBarStyle: 'hidden',
         titleBarOverlay: {
             color: '#00000000',
-            symbolColor: '#FFFFFF',
+            symbolColor: getDashboardSymbolColor(),
             height: 38,
         },
         backgroundColor: '#09090B',
@@ -2150,7 +2154,7 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
     dashboardWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
         logger.error('[Dashboard] did-fail-load', { errorCode, errorDescription, validatedURL });
     });
-    const dashboardUrl = getDashboardUrl();
+    const dashboardUrl = initialPath ? getDashboardUrlForPath(initialPath) : getDashboardUrl();
     logger.info('[Dashboard] Loading dashboard URL', { url: dashboardUrl });
     void dashboardWindow.loadURL(dashboardUrl);
 
@@ -2160,10 +2164,9 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
         if (process.platform !== 'win32') return;
         const isAuthPage = /\/(electron-login|auth|login|register)/.test(url);
         try {
-            // Hardcoded white symbols — the dashboard is dark-themed end-to-end.
             dashboardWindow.setTitleBarOverlay({
                 color: '#00000000',
-                symbolColor: '#FFFFFF',
+                symbolColor: getDashboardSymbolColor(),
                 height: 38,
             });
             setDashboardOnboardingMode(isAuthPage);
@@ -2212,7 +2215,12 @@ function createDashboardWindow({ skipAutoShow = false } = {}) {
             const userState = authService.getCurrentUser();
             const payload = {
                 ...userState,
-                user: userState.isLoggedIn ? { uid: userState.uid, email: userState.email, displayName: userState.displayName, photoURL: null } : null,
+                user: userState.isLoggedIn ? {
+                    uid: userState.uid,
+                    email: userState.email,
+                    displayName: userState.displayName,
+                    photoURL: userState.photoURL || null,
+                } : null,
             };
             dashboardWindow.webContents.send('user-state-changed', payload);
             authService.handleDashboardDidFinishLoad(dashboardWindow).catch((error) => {
@@ -2242,40 +2250,98 @@ function getDashboardWindow() {
     return dashboardWindow && !dashboardWindow.isDestroyed() ? dashboardWindow : null;
 }
 
+let pendingDashboardSessionRoute = null;
+
+function revealDashboardWindow(win = dashboardWindow) {
+    if (!win || win.isDestroyed()) return;
+    if (!win.isVisible()) {
+        try { win.setOpacity(0); } catch (_) {}
+        win.show();
+        setTimeout(() => {
+            if (!win.isDestroyed()) {
+                try { win.setOpacity(1); } catch (_) {}
+            }
+        }, 30);
+    } else {
+        try { win.setOpacity(1); } catch (_) {}
+    }
+    try { win.focus(); } catch (_) {}
+    const prevFocus = sharedStateService.get().dashboardFocusCount || 0;
+    sharedStateService.patch({ showDashboard: true, dashboardFocusCount: prevFocus + 1 });
+}
+
+function markDashboardSessionRouteReady(sessionId) {
+    if (!sessionId || pendingDashboardSessionRoute?.sessionId !== sessionId) return false;
+    const pending = pendingDashboardSessionRoute;
+    pendingDashboardSessionRoute = null;
+    if (pending.timer) clearTimeout(pending.timer);
+    revealDashboardWindow(pending.window || dashboardWindow);
+    return true;
+}
+
 /**
- * Bring the dashboard window to the foreground on /activity/details for a
- * specific session. Called by ListenService.closeSession() so the user lands
- * directly on the session that just ended (Cluely behavior).
- *
- * - If the window is already on that route, just show/focus.
- * - Otherwise send a 'dashboard:navigate-to-session' IPC; the renderer (which
- *   already listens for navigation events) routes to /activity/details.
+ * Bring the dashboard window to /activity/details for a specific session.
+ * Existing windows navigate by IPC and are revealed only after the renderer
+ * acknowledges that the target route is mounted.
  */
 function openDashboardOnSession(sessionId) {
     if (!sessionId) return;
+    const targetPath = `/activity/details?sessionId=${encodeURIComponent(sessionId)}&new=1`;
+    const targetUrl = getDashboardUrlForPath(targetPath);
     const dash = getDashboardWindow();
     if (!dash) {
-        // No dashboard window yet — create one and queue the navigation for
-        // after did-finish-load.
-        const created = createDashboardWindow({ skipAutoShow: false });
+        // No dashboard window yet: create it directly on the target details
+        // route. Loading /activity first causes the exact flash this path
+        // exists to avoid.
+        const created = createDashboardWindow({ skipAutoShow: true, initialPath: targetPath });
         if (!created) return;
-        const send = () => {
-            try {
-                created.webContents.send('dashboard:navigate-to-session', { sessionId });
-            } catch (_) {}
+        let settled = false;
+        const finish = () => {
+            if (settled) return;
+            settled = true;
+            revealDashboardWindow(created);
         };
-        created.webContents.once('did-finish-load', send);
+        created.webContents.once('did-finish-load', finish);
+        setTimeout(finish, 2500);
         return;
     }
 
-    if (!dash.isVisible()) {
-        dash.setOpacity(0);
-        dash.show();
-        setTimeout(() => { if (!dash.isDestroyed()) dash.setOpacity(1); }, 30);
+    const currentUrl = dash.webContents.getURL() || '';
+    if (currentUrl.includes('/activity/details') && currentUrl.includes(sessionId)) {
+        revealDashboardWindow(dash);
+        return;
     }
-    try { dash.focus(); } catch (_) {}
-    try { dash.webContents.send('dashboard:navigate-to-session', { sessionId }); } catch (_) {}
-    sharedStateService.patch({ showDashboard: true });
+
+    if (pendingDashboardSessionRoute?.timer) {
+        clearTimeout(pendingDashboardSessionRoute.timer);
+    }
+    try { dash.setOpacity(0); } catch (_) {}
+    if (!dash.isVisible()) {
+        try { dash.show(); } catch (_) {}
+    }
+
+    const fallbackReveal = () => {
+        if (pendingDashboardSessionRoute?.sessionId === sessionId) {
+            pendingDashboardSessionRoute = null;
+        }
+        revealDashboardWindow(dash);
+    };
+    pendingDashboardSessionRoute = {
+        sessionId,
+        window: dash,
+        timer: setTimeout(fallbackReveal, 2500),
+    };
+
+    try {
+        dash.webContents.send('dashboard:navigate-to-session', { sessionId });
+    } catch (error) {
+        logger.warn('[Dashboard] openDashboardOnSession IPC navigation failed', { error: error?.message });
+        dash.webContents.once('did-finish-load', () => markDashboardSessionRouteReady(sessionId) || revealDashboardWindow(dash));
+        dash.loadURL(targetUrl).catch((loadError) => {
+            logger.warn('[Dashboard] openDashboardOnSession loadURL fallback failed', { error: loadError?.message });
+            markDashboardSessionRouteReady(sessionId);
+        });
+    }
 }
 
 // ─── Onboarding mode (resize dashboard pour /electron-login) ────────────────
@@ -2464,5 +2530,6 @@ module.exports = {
     getDashboardWindow,
     getDashboardUrlForPath,
     openDashboardOnSession,
+    markDashboardSessionRouteReady,
     ensureListenWindow,
 };

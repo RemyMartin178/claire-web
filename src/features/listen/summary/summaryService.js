@@ -5,9 +5,49 @@ const { createLLM, createStreamingLLM } = require('../../../common/ai/factory');
 const sessionRepository = require('../../../common/repositories/session');
 const summaryRepository = require('./repositories');
 const modelStateService = require('../../../common/services/modelStateService');
+const sharedStateService = require('../../../common/services/sharedStateService');
 const { createLogger } = require('../../../common/services/logger.js');
 
 const logger = createLogger('SummaryService');
+
+function getOutputLanguageInstruction() {
+    const lang = sharedStateService.get().outputLanguage || 'fr';
+    const instructions = {
+        fr: 'Redige en francais.',
+        en: 'Write in English.',
+        es: 'Escribe en espanol.',
+        de: 'Schreibe auf Deutsch.',
+        it: 'Scrivi in italiano.',
+        pt: 'Escreva em portugues.',
+    };
+    return instructions[lang] || instructions.fr;
+}
+
+function providerNeedsClientApiKey(provider) {
+    return provider !== 'claire-api';
+}
+
+function isRateLimitError(error) {
+    const message = error?.message || String(error || '');
+    return /\b429\b|rate limit|too many requests/i.test(message);
+}
+
+async function runChatCompletion(llm, messages, options = {}) {
+    if (typeof llm.chat === 'function') {
+        return llm.chat(messages, options);
+    }
+
+    if (typeof llm.generateContent === 'function') {
+        const content = await llm.generateContent({
+            messages,
+            temperature: options.temperature,
+            max_tokens: options.maxTokens || options.max_tokens,
+        });
+        return { content };
+    }
+
+    throw new Error('LLM chat interface is not available.');
+}
 // const { getStoredApiKey, getStoredProvider, getCurrentModelInfo } = require('../../../window/windowManager.js');
 
 class SummaryService {
@@ -16,6 +56,10 @@ class SummaryService {
         this.analysisHistory = [];
         this.conversationHistory = [];
         this.currentSessionId = null;
+        this.liveAnalysisInFlight = false;
+        this.finalSummaryInFlight = false;
+        this.lastLiveAnalysisAt = 0;
+        this.liveAnalysisCooldownMs = 30000;
 
         // Callbacks
         this.onAnalysisComplete = null;
@@ -96,8 +140,13 @@ class SummaryService {
         // Debug: show the actual conversation history
         console.log('DEBUG conversation history:', this.conversationHistory.map((text, i) => `${i + 1}: ${text.substring(0, 50)}...`));
 
-        // Trigger analysis if needed
-        this.triggerAnalysisIfNeeded();
+        // Trigger analysis if needed without leaking rejected promises into
+        // the main process.
+        void this.triggerAnalysisIfNeeded().catch((error) => {
+            logger.error('[SummaryService] Background analysis failed', {
+                error: error?.message || String(error),
+            });
+        });
     }
 
     getConversationHistory() {
@@ -122,7 +171,8 @@ class SummaryService {
         return conversationTexts.slice(-maxTurns).join('\n');
     }
 
-    async makeOutlineAndRequests(conversationTexts, maxTurns = 30) {
+    async makeOutlineAndRequests(conversationTexts, maxTurns = 30, options = {}) {
+        const { allowFallback = true, throwOnError = false } = options;
         logger.info(`[SEARCH] makeOutlineAndRequests called - conversationTexts: ${conversationTexts.length}`);
 
         if (conversationTexts.length === 0) {
@@ -162,7 +212,7 @@ Please build upon this context while analyzing the new conversation segments.
                 hasApiKey: !!modelInfo?.apiKey
             });
 
-            if (!modelInfo || !modelInfo.apiKey) {
+            if (!modelInfo?.provider || !modelInfo?.model || (providerNeedsClientApiKey(modelInfo.provider) && !modelInfo.apiKey)) {
                 console.log('ERROR: LLM analysis failing - no model or API key');
                 throw new Error('AI model or API key is not configured.');
             }
@@ -206,7 +256,7 @@ RÈGLES :
 - Chaque bullet du Résumé doit contenir des détails spécifiques issus de la conversation (noms, chiffres, concepts)
 - L'introduction doit permettre de comprendre le sujet sans réécouter
 - Ne commence PAS par "La conversation porte sur" ni "L'utilisateur a mentionné"
-- Rédige dans la langue principale de la conversation
+- ${getOutputLanguageInstruction()}
 - Actions suggérées : JAMAIS de générique comme "Résumer la conversation"`,
                 },
             ];
@@ -222,7 +272,10 @@ RÈGLES :
                 portkeyVirtualKey: undefined,
             });
 
-            const completion = await llm.chat(messages);
+            const completion = await runChatCompletion(llm, messages, {
+                temperature: 0.7,
+                maxTokens: 1024,
+            });
 
             const responseText = this.normalizeDisplayText(completion.content);
             logger.info(`[OK] Analysis response received: ${responseText}`);
@@ -231,7 +284,7 @@ RÈGLES :
             // Skip Firestore save for temporary sessions
             if (this.currentSessionId && !this.currentSessionId.startsWith('temp_session_')) {
                 try {
-                    summaryRepository.saveSummary({
+                    await summaryRepository.saveSummary({
                         sessionId: this.currentSessionId,
                         text: responseText,
                         tldr: structuredData.topic.header || structuredData.summary[0] || '',
@@ -266,7 +319,10 @@ RÈGLES :
             return structuredData;
         } catch (error) {
             logger.error('[ERROR] Error during analysis generation:', { message: error.message });
-            return this.previousAnalysisResult; // [Korean comment translated] [Korean comment translated] [Korean comment translated] Result [Korean comment translated]
+            if (throwOnError) {
+                throw error;
+            }
+            return allowFallback ? this.previousAnalysisResult : null;
         }
     }
 
@@ -367,28 +423,41 @@ RÈGLES :
         return structuredData;
     }
 
-    /**
-     * Triggers analysis immediately on first message and when questions are detected.
-     * Also triggers at regular intervals for continuous insights.
-     */
     async triggerAnalysisIfNeeded() {
         const length = this.conversationHistory.length;
+        if (this.finalSummaryInFlight) {
+            logger.info('[SummaryService] Skipping live analysis while final summary is running');
+            return;
+        }
+        if (this.liveAnalysisInFlight) {
+            logger.info('[SummaryService] Skipping live analysis because one is already in flight');
+            return;
+        }
 
-        // Check if last message contains a question - if so, trigger immediately
         const lastMessage = this.conversationHistory[this.conversationHistory.length - 1];
         const hasQuestion = lastMessage && /\?|comment|pourquoi|quand|où|qui|quoi|quel|quelle/i.test(lastMessage);
+        const now = Date.now();
+        const hasCooldownElapsed = now - this.lastLiveAnalysisAt >= this.liveAnalysisCooldownMs;
 
-        // Trigger analysis at strategic intervals for responsive insights
         const shouldTrigger =
-            length === 1 ||  // INSTANT: First message triggers analysis immediately
-            hasQuestion ||   // INSTANT: Question detected triggers analysis immediately
-            length === 2 ||  // Second update after 2 messages
-            length === 4 ||  // Third update
-            (length >= 8 && length % 5 === 0);  // Then every 5 turns
+            length === 6 ||
+            (length >= 10 && length % 8 === 0) ||
+            (length >= 6 && hasQuestion);
 
-        if (shouldTrigger) {
-            logger.info(`Triggering analysis - ${length} conversation texts accumulated${hasQuestion ? ' (question detected)' : ''}`);
+        if (!shouldTrigger) return;
+        if (!hasCooldownElapsed) {
+            logger.info('[SummaryService] Skipping live analysis due to cooldown', {
+                length,
+                cooldownRemainingMs: this.liveAnalysisCooldownMs - (now - this.lastLiveAnalysisAt),
+            });
+            return;
+        }
 
+        logger.info(`Triggering live analysis - ${length} conversation texts accumulated${hasQuestion ? ' (question detected)' : ''}`);
+        this.liveAnalysisInFlight = true;
+        this.lastLiveAnalysisAt = now;
+
+        try {
             const data = await this.makeOutlineAndRequests(this.conversationHistory);
 
             if (data) {
@@ -398,11 +467,26 @@ RÈGLES :
 
                 // Notify callback
                 if (this.onAnalysisComplete) {
-                    this.onAnalysisComplete(data);
+                    try {
+                        this.onAnalysisComplete(data);
+                    } catch (callbackError) {
+                        logger.warn('[SummaryService] onAnalysisComplete callback failed', {
+                            error: callbackError?.message || String(callbackError),
+                        });
+                    }
                 }
             } else {
                 logger.info('No analysis data returned');
             }
+        } catch (error) {
+            if (isRateLimitError(error)) {
+                this.lastLiveAnalysisAt = Date.now();
+            }
+            logger.warn('[SummaryService] Live analysis failed', {
+                error: error?.message || String(error),
+            });
+        } finally {
+            this.liveAnalysisInFlight = false;
         }
     }
 
@@ -435,13 +519,20 @@ RÈGLES :
 
         // Make sure saveSummary inside makeOutlineAndRequests targets the right session.
         const previousSessionId = this.currentSessionId;
+        this.finalSummaryInFlight = true;
         this.setSessionId(sessionId);
 
+        await sessionRepository.setSummaryStatus?.(sessionId, 'analyzing').catch((error) => {
+            logger.warn('[SummaryService] set analyzing status failed', { error: error?.message });
+        });
         this._broadcastSessionStatus('session:summary-started', { sessionId });
 
         try {
             if (!conversationTexts || conversationTexts.length === 0) {
                 logger.info('[SummaryService] No conversation to summarize for session ' + sessionId);
+                await sessionRepository.setSummaryStatus?.(sessionId, 'completed').catch((error) => {
+                    logger.warn('[SummaryService] set completed empty status failed', { error: error?.message });
+                });
                 this._broadcastSessionStatus('session:summary-completed', { sessionId, empty: true });
                 return null;
             }
@@ -454,22 +545,33 @@ RÈGLES :
                     logger.warn('[SummaryService] title stream failed (non-blocking):', { error: titleErr?.message });
                     return null;
                 });
-            const summaryPromise = this.makeOutlineAndRequests(conversationTexts);
+            const summaryPromise = this.makeOutlineAndRequests(conversationTexts, 30, {
+                allowFallback: false,
+                throwOnError: true,
+            });
 
             const [titleResult, summaryResult] = await Promise.allSettled([titlePromise, summaryPromise]);
 
             const data = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
 
             if (!data) {
+                const errorMessage = summaryResult.status === 'rejected'
+                    ? (summaryResult.reason?.message || String(summaryResult.reason))
+                    : 'No data returned';
+                await sessionRepository.setSummaryStatus?.(sessionId, 'failed').catch((error) => {
+                    logger.warn('[SummaryService] set failed status failed', { error: error?.message });
+                });
                 this._broadcastSessionStatus('session:summary-failed', {
                     sessionId,
-                    error: summaryResult.status === 'rejected'
-                        ? (summaryResult.reason?.message || String(summaryResult.reason))
-                        : 'No data returned',
+                    error: errorMessage,
+                    reason: isRateLimitError(errorMessage) ? 'rate_limited' : 'summary_failed',
                 });
                 return null;
             }
 
+            await sessionRepository.setSummaryStatus?.(sessionId, 'completed').catch((error) => {
+                logger.warn('[SummaryService] set completed status failed', { error: error?.message });
+            });
             this._broadcastSessionStatus('session:summary-completed', {
                 sessionId,
                 data,
@@ -478,14 +580,19 @@ RÈGLES :
             return data;
         } catch (error) {
             logger.error('[SummaryService] final summary failed:', { error: error?.message, sessionId });
+            await sessionRepository.setSummaryStatus?.(sessionId, 'failed').catch((statusError) => {
+                logger.warn('[SummaryService] set failed catch status failed', { error: statusError?.message });
+            });
             this._broadcastSessionStatus('session:summary-failed', {
                 sessionId,
                 error: error?.message || String(error),
+                reason: isRateLimitError(error) ? 'rate_limited' : 'summary_failed',
             });
             throw error;
         } finally {
             // Restore whatever sessionId was set before (usually null after closeSession).
             this.currentSessionId = previousSessionId;
+            this.finalSummaryInFlight = false;
         }
     }
 
@@ -498,7 +605,7 @@ RÈGLES :
         if (!sessionId || !conversationTexts || conversationTexts.length === 0) return null;
 
         const modelInfo = modelStateService.getCurrentModelInfo('llm');
-        if (!modelInfo?.provider || !modelInfo?.apiKey || !modelInfo?.model) {
+        if (!modelInfo?.provider || !modelInfo?.model || (providerNeedsClientApiKey(modelInfo.provider) && !modelInfo.apiKey)) {
             logger.warn('[SummaryService] generateTitleStream: no LLM configured');
             return null;
         }
@@ -513,7 +620,7 @@ RÈGLES :
 Règles strictes :
 - Réponds UNIQUEMENT avec le titre, sans guillemets, sans ponctuation finale.
 - Pas de prefixe (pas de "Titre :", pas de "La conversation porte sur").
-- Rédige dans la langue principale de la conversation.
+- ${getOutputLanguageInstruction()}
 - Sois spécifique : noms, sujets concrets si possible.`,
             },
             {
@@ -537,30 +644,44 @@ Règles strictes :
 
         let accumulated = '';
         try {
-            const response = await streamingLLM.streamChat(messages);
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n').filter(l => l.trim() !== '');
-                for (const line of lines) {
-                    if (!line.startsWith('data: ')) continue;
-                    const data = line.substring(6);
-                    if (data === '[DONE]') break;
-                    try {
-                        const json = JSON.parse(data);
-                        const token = json.choices?.[0]?.delta?.content || '';
-                        if (token) {
-                            accumulated += token;
-                            this._broadcastSessionStatus('session:title-stream', {
-                                sessionId,
-                                partial: accumulated,
-                            });
-                        }
-                    } catch (_) { /* keep streaming */ }
+            const response = await streamingLLM.streamChat({ messages, temperature: 0.6 });
+
+            if (response?.body?.getReader) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n').filter(l => l.trim() !== '');
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = line.substring(6);
+                        if (data === '[DONE]') break;
+                        try {
+                            const json = JSON.parse(data);
+                            const token = json.choices?.[0]?.delta?.content || '';
+                            if (token) {
+                                accumulated += token;
+                                this._broadcastSessionStatus('session:title-stream', {
+                                    sessionId,
+                                    partial: accumulated,
+                                });
+                            }
+                        } catch (_) { /* keep streaming */ }
+                    }
                 }
+            } else if (response && typeof response[Symbol.asyncIterator] === 'function') {
+                for await (const token of response) {
+                    if (!token) continue;
+                    accumulated += String(token);
+                    this._broadcastSessionStatus('session:title-stream', {
+                        sessionId,
+                        partial: accumulated,
+                    });
+                }
+            } else {
+                throw new Error('Unsupported streaming LLM response.');
             }
         } catch (e) {
             logger.warn('[SummaryService] title stream errored, falling back', { error: e?.message });
@@ -583,7 +704,10 @@ Règles strictes :
                 temperature: 0.6,
                 maxTokens: 40,
             });
-            const completion = await llm.chat(messages);
+            const completion = await runChatCompletion(llm, messages, {
+                temperature: 0.6,
+                maxTokens: 40,
+            });
             const finalTitle = this._cleanGeneratedTitle(completion?.content || '');
             if (finalTitle) {
                 // No streaming tokens available — still emit the partial=final once so

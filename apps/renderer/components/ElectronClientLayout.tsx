@@ -23,11 +23,13 @@ export default function ElectronClientLayout({
 }) {
   const { user: userInfo } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const queryClient = useQueryClient()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [canGoBack, setCanGoBack] = useState(false)
   const [canGoForward, setCanGoForward] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [pendingSessionRouteReady, setPendingSessionRouteReady] = useState<string | null>(null)
 
   useEffect(() => {
     const refresh = async () => {
@@ -48,28 +50,6 @@ export default function ElectronClientLayout({
 
   // Listen for "navigate to session" events fired by main process when
   // a recording session ends — auto-route to the session details page.
-  useEffect(() => {
-    const api = (window as any).api
-    const onNavigate = api?.dashboard?.onNavigateToSession
-    const offNavigate = api?.dashboard?.removeOnNavigateToSession
-    if (typeof onNavigate !== 'function') return
-
-    onNavigate((data: { sessionId?: string } | undefined) => {
-      const id = data?.sessionId
-      if (typeof id === 'string' && id.length > 0) {
-        void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
-        const current = window.location.pathname + window.location.search
-        if (!current.includes(id)) {
-          router.push(`/activity/details?sessionId=${id}&new=1`)
-        }
-      }
-    })
-
-    return () => {
-      try { offNavigate?.() } catch { /* noop */ }
-    }
-  }, [router])
-
   // Cluely-style reopen: when the user closes the dashboard window and later
   // brings the app back to the foreground (taskbar/dock click → second-instance
   // or activate in main), we route to /activity.
@@ -101,13 +81,49 @@ export default function ElectronClientLayout({
       if (!current.includes(id)) {
         router.push(`/activity/details?sessionId=${id}&new=1`)
       }
+      setPendingSessionRouteReady(id)
     })
     return () => {
       try { off?.() } catch { /* noop */ }
     }
   }, [router, queryClient])
 
-  const pathname = usePathname()
+  useEffect(() => {
+    if (!pendingSessionRouteReady) return
+    const api = (window as any).api
+    const startedAt = Date.now()
+    let rafId = 0
+    let ackTimer = 0
+
+    const waitForTargetRoute = () => {
+      const params = new URLSearchParams(window.location.search)
+      const isTargetRoute =
+        window.location.pathname === '/activity/details' &&
+        params.get('sessionId') === pendingSessionRouteReady
+
+      if (isTargetRoute) {
+        ackTimer = window.setTimeout(() => {
+          void api?.dashboard?.sessionRouteReady?.(pendingSessionRouteReady)
+          setPendingSessionRouteReady(null)
+        }, 40)
+        return
+      }
+
+      if (Date.now() - startedAt > 2200) {
+        setPendingSessionRouteReady(null)
+        return
+      }
+
+      rafId = window.requestAnimationFrame(waitForTargetRoute)
+    }
+
+    rafId = window.requestAnimationFrame(waitForTargetRoute)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(ackTimer)
+    }
+  }, [pendingSessionRouteReady])
+
   const isOnboarding = pathname?.startsWith('/onboarding')
   const isAtRoot = pathname === '/' || pathname === '/activity'
 

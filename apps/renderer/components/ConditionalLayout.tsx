@@ -128,17 +128,6 @@ export default function ConditionalLayout({
     })
   }, [isAuthPage, isBareWindow])
 
-  useEffect(() => {
-    if (isBareWindow) return
-    const api = (window as any).api
-    if (!api?.dashboard?.onNavigateToSession) return
-    const handler = ({ sessionId }: { sessionId: string }) => {
-      router.push(`/activity/details?sessionId=${sessionId}`)
-    }
-    api.dashboard.onNavigateToSession(handler)
-    return () => api.dashboard.removeOnNavigateToSession?.()
-  }, [isBareWindow, router])
-
   if (isBareWindow) {
     return <>{children}</>
   }

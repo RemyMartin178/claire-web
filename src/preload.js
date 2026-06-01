@@ -13,6 +13,7 @@ const dashboardApi = {
   getSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSession', uid, sessionId),
   getSessionDetails: (uid, sessionId) => ipcRenderer.invoke('dashboard:getSessionDetails', uid, sessionId),
   deleteSession: (uid, sessionId) => ipcRenderer.invoke('dashboard:deleteSession', uid, sessionId),
+  updateUserProfile: (profile) => ipcRenderer.invoke('dashboard:updateUserProfile', profile),
   startClaire: () => ipcRenderer.invoke('dashboard:startClaire'),
   stopClaire: () => ipcRenderer.invoke('dashboard:stopClaire'),
   minimizeWindow: () => ipcRenderer.invoke('dashboard:minimize'),
@@ -43,8 +44,6 @@ const dashboardApi = {
     }
     ipcRenderer.removeAllListeners('user-state-changed');
   },
-  onNavigateToSession: (cb) => ipcRenderer.on('dashboard:navigateToSession', (_e, data) => cb(data)),
-  removeOnNavigateToSession: () => ipcRenderer.removeAllListeners('dashboard:navigateToSession'),
   onShowDashboard: (cb) => ipcRenderer.on('dashboard:show', (_e, data) => cb(data)),
   removeOnShowDashboard: () => ipcRenderer.removeAllListeners('dashboard:show'),
 
@@ -91,6 +90,7 @@ const dashboardApi = {
     ipcRenderer.on('dashboard:navigate-to-session', handler);
     return () => ipcRenderer.removeListener('dashboard:navigate-to-session', handler);
   },
+  sessionRouteReady: (sessionId) => ipcRenderer.invoke('dashboard:session-route-ready', sessionId),
 };
 
 contextBridge.exposeInMainWorld('api', {
@@ -167,6 +167,13 @@ contextBridge.exposeInMainWorld('api', {
     // Pro unlock listener (triggered by claire://billing-success deeplink)
     onProUnlocked: (callback) => ipcRenderer.on('pro-unlocked', callback),
     removeOnProUnlocked: (callback) => ipcRenderer.removeListener('pro-unlocked', callback),
+
+    // OAuth listener (triggered by claire://auth-success deeplink)
+    onOAuthSuccess: (callback) => {
+      const handler = (_event, payload) => callback(payload || {});
+      ipcRenderer.on('oauth:success', handler);
+      return () => ipcRenderer.removeListener('oauth:success', handler);
+    },
 
     // Area selection & screen capture
     startAreaSelection: () => ipcRenderer.invoke('start-area-selection'),
