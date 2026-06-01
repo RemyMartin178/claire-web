@@ -18,7 +18,7 @@ const CSS = `
   position: relative; z-index: 1;
   min-height: 0; flex: 1;
   background: transparent;
-  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased;
   scrollbar-width: none;
 }
@@ -78,7 +78,7 @@ const CSS = `
 .summary-empty-state {
   display: flex; align-items: center; justify-content: center;
   min-height: 100px; color: rgba(255,255,255,0.20); font-size: 12px; font-style: italic;
-  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
 }
 `;
 

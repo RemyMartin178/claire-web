@@ -10,7 +10,7 @@ const injectStyles = (id, css) => {
 };
 
 const CSS = `
-* { font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+* { font-family: 'Geist Variable', 'Geist', sans-serif;
     cursor: default; user-select: none; box-sizing: border-box; }
 
 .ssv-root { display: flex; width: 100%; height: 100%; color: var(--text-primary, #1f2937); }

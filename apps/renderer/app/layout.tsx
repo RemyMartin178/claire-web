@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { ThemeProvider } from 'next-themes'
-import { Inter } from 'next/font/google'
+import { Geist } from 'next/font/google'
 import Script from 'next/script'
 import ConditionalLayout from '@/components/ConditionalLayout'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -13,7 +13,7 @@ import { GA_TRACKING_ID } from '@/lib/gtag'
 import { Toaster } from 'react-hot-toast'
 import { QueryProvider } from '@/components/QueryProvider'
 
-const inter = Inter({ subsets: ['latin'] })
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 
 export const metadata: Metadata = {
   title: { default: 'Claire', template: '%s' },
@@ -67,7 +67,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className={`${geist.className} ${geist.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
             <ElectronBootProvider>

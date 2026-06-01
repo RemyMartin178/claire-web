@@ -20,88 +20,6 @@
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Local fonts loaded via @font-face declarations below */
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/inter-v12-latin-regular.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-regular.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 500;
-  src: url('/fonts/inter-v12-latin-500.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-500.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 600;
-  src: url('/fonts/inter-v12-latin-600.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-600.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/inter-v12-latin-700.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-700.woff') format('woff');
-}
-
-/* Lora Font Face Declarations */
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/lora-v25-latin-regular.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-regular.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 500;
-  src: url('/fonts/lora-v25-latin-500.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-500.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 600;
-  src: url('/fonts/lora-v25-latin-600.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-600.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/lora-v25-latin-700.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-700.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: italic;
-  font-weight: 400;
-  src: url('/fonts/lora-v25-latin-italic.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-italic.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: italic;
-  font-weight: 700;
-  src: url('/fonts/lora-v25-latin-700italic.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-700italic.woff') format('woff');
-}
-
 
 :root {
   --foreground-rgb: 0, 0, 0;
@@ -109,9 +27,9 @@
   --background-end-rgb: 255, 255, 255;
 
   /* Design System Variables */
-  --gh-font-heading: "Geist Variable", Inter, -apple-system, sans-serif;
-  --theme-font-heading: "Geist Variable", Inter, -apple-system, sans-serif;
-  --theme-font-body: "Geist Variable", Inter, -apple-system, sans-serif;
+  --gh-font-heading: 'Geist Variable', 'Geist', sans-serif;
+  --theme-font-heading: 'Geist Variable', 'Geist', sans-serif;
+  --theme-font-body: 'Geist Variable', 'Geist', sans-serif;
 
   /* Brand Colors */
   --primary-color: #3b82f6;
@@ -162,9 +80,9 @@
   --background-end-rgb: 0, 0, 0;
 
   /* Font variables remain the same in dark mode */
-  --gh-font-heading: "Geist Variable", Inter, -apple-system, sans-serif;
-  --theme-font-heading: "Geist Variable", Inter, -apple-system, sans-serif;
-  --theme-font-body: "Geist Variable", Inter, -apple-system, sans-serif;
+  --gh-font-heading: 'Geist Variable', 'Geist', sans-serif;
+  --theme-font-heading: 'Geist Variable', 'Geist', sans-serif;
+  --theme-font-body: 'Geist Variable', 'Geist', sans-serif;
 
   /* Dark mode adjustments */
   --text-color: #f3f4f6;
@@ -213,7 +131,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 body {
-  font-family: var(--theme-font-body);
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
@@ -232,7 +150,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--theme-font-heading);
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   line-height: 1.1;
   color: var(--text-color);
   font-weight: 600;
@@ -370,11 +288,11 @@ a:hover {
 
   /* Typography Utilities */
   .font-heading {
-    font-family: var(--gh-font-heading, var(--theme-font-heading));
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .font-body {
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .text-primary {
@@ -414,7 +332,7 @@ a:hover {
     line-height: 1;
     padding: calc(.75em * var(--multiplier, 1)) calc(1.15em * var(--multiplier, 1));
     transition: var(--transition);
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .btn-secondary-custom:hover {
@@ -433,7 +351,7 @@ a:hover {
     transition: var(--transition);
     border-left: 2px solid transparent;
     border-radius: var(--radius-sm);
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .nav-item:hover {
@@ -462,7 +380,7 @@ a:hover {
 
   /* Form Elements */
   .form-input {
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
     transition: var(--transition);
@@ -481,7 +399,7 @@ a:hover {
     padding: 0.25rem 0.75rem;
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .badge-secondary {
@@ -491,7 +409,7 @@ a:hover {
     padding: 0.25rem 0.75rem;
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 }
 
@@ -589,7 +507,7 @@ a:hover {
   body {
     background-color: var(--background);
     color: var(--foreground);
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
     line-height: 1.6;
   }
 }
@@ -862,7 +780,7 @@ a:hover {
   box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.28);
   color: white !important;
   border-radius: 8px;
-  font-family: "Google Sans", var(--font-plus-jakarta), -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-size: 16px;
   font-weight: 550;
   transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
@@ -1192,7 +1110,7 @@ a:hover {
   --claire-bubble-shadow: 0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6ff;
 
   /* Typography */
-  --claire-font: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --claire-font: 'Geist Variable', 'Geist', sans-serif;
   --claire-font-smoothing: antialiased;
 }
 
@@ -1288,6 +1206,15 @@ a:hover {
 @keyframes title-caret-blink {
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }
+}
+
+@keyframes copied-pop {
+  from { opacity: 0; transform: translateY(3px) scale(0.84); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.copied-pop {
+  animation: copied-pop 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ─── Cluely blue gradient button (reusable utility) ─── */

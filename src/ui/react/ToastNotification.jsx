@@ -67,7 +67,7 @@ const CSS = `
 .toast-subtitle {
   font-size: 10px;
   color: #71717a;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-weight: 500;
   margin-bottom: 1px;
   white-space: nowrap;
@@ -78,7 +78,7 @@ const CSS = `
 .toast-title {
   font-size: 12.5px;
   color: #18181b;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-weight: 500;
   line-height: 1.4;
   word-break: break-word;
@@ -103,7 +103,7 @@ const CSS = `
   border-radius: 7px;
   padding: 5px 10px;
   font-size: 11.5px;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;

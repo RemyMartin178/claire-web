@@ -16,7 +16,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -110,7 +110,7 @@
   background: rgba(255, 255, 255, 0.07);
   padding: 1px 5px;
   border-radius: 4px;
-  font-family: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-size: 12px;
 }
 .cluely-assistant-content pre {

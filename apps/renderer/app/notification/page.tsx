@@ -58,7 +58,7 @@ export default function MeetingNotificationPage() {
         height: '100vh',
         padding: 8,
         background: 'transparent',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: "'Geist Variable', 'Geist', sans-serif",
       }}
     >
       <div

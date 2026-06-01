@@ -47,7 +47,7 @@ export default function AuthSuccessPage() {
     if (!showFallback) return null
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif", textAlign: 'center', padding: '40px', background: '#fff' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: "'Geist Variable', 'Geist', sans-serif", textAlign: 'center', padding: '40px', background: '#fff' }}>
             <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '56px', height: '56px', borderRadius: '50%', background: error ? '#fef2f2' : '#f0fdf4', margin: '0 auto 16px' }}>
                     {error ? (

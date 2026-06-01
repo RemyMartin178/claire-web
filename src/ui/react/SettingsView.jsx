@@ -15,7 +15,7 @@ const CSS = `
 
 .sv-root {
   display: block; width: 100%; height: 100%;
-  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased; cursor: default; user-select: none;
 }
 .sv-root.quitting { animation: sv-fadeout 0.22s ease forwards; }

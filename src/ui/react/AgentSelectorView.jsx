@@ -16,7 +16,7 @@ const CSS = `
   height: 100%;
   background: var(--surface-elevated, #ffffff);
   color: var(--text-primary, #1f2937);
-  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   overflow: hidden;
   border-radius: 12px;
 }

@@ -221,7 +221,7 @@ export default function ElectronLoginPage() {
       height: '100vh',
       width: '100vw',
       overflow: 'hidden',
-      fontFamily: '"Google Sans", var(--font-plus-jakarta), -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif',
+      fontFamily: "'Geist Variable', 'Geist', sans-serif",
       background: '#ffffff',
     }}>
       {/* ── Left Panel ── */}
@@ -250,7 +250,7 @@ export default function ElectronLoginPage() {
               fontWeight: 500,
               color: '#1d1d1f',
               letterSpacing: '-0.02em',
-              fontFamily: 'var(--font-plus-jakarta), sans-serif',
+              fontFamily: "'Geist Variable', 'Geist', sans-serif",
               transform: 'translateY(-0.5px)',
               lineHeight: 1,
             }}>Claire</span>
@@ -474,7 +474,7 @@ export default function ElectronLoginPage() {
             border: '1px solid rgba(207,226,255,0.24)',
             backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
             borderRadius: 16, color: 'white',
-            fontFamily: 'var(--font-plus-jakarta), -apple-system, sans-serif',
+            fontFamily: "'Geist Variable', 'Geist', sans-serif",
             boxShadow: '0 24px 56px rgba(0,0,0,0.20), 0 4px 16px rgba(0,0,0,0.10)',
             overflow: 'hidden', position: 'relative',
           }}>
@@ -497,7 +497,7 @@ export default function ElectronLoginPage() {
               </p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px 14px 16px', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-              <span style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.28)', fontFamily: 'var(--font-plus-jakarta), -apple-system, sans-serif', fontWeight: 400, userSelect: 'none' }}>
+              <span style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.28)', fontFamily: "'Geist Variable', 'Geist', sans-serif", fontWeight: 400, userSelect: 'none' }}>
                 Posez une question sur votre écran ou la conversation...
               </span>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8, padding: '5px 7px', color: 'rgba(255,255,255,0.50)', flexShrink: 0 }}>

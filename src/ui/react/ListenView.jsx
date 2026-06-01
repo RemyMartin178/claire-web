@@ -32,7 +32,7 @@ const CSS = `
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   will-change: transform, opacity;
-  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   cursor: default;
   user-select: none;
 }
@@ -99,7 +99,7 @@ const CSS = `
 .lv-bar-left-text {
   color: rgba(255,255,255,0.88);
   font-size: 12.5px;
-  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-weight: 600;
   letter-spacing: -0.01em;
   position: relative;
@@ -141,7 +141,7 @@ const CSS = `
   white-space: nowrap;
   transition: background 0.12s, color 0.12s;
   justify-content: center;
-  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
 }
 .lv-toggle-button:hover { background: rgba(255,255,255,0.11); color: rgba(255,255,255,0.90); }
 .lv-toggle-button:active { transform: scale(0.96); }
@@ -186,7 +186,7 @@ const CSS = `
 }
 
 .lv-timer {
-  font-family: 'Monaco', 'Menlo', monospace;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-size: 10px;
   color: rgba(255,255,255,0.38);
   margin-right: 4px;

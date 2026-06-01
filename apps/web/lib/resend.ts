@@ -81,11 +81,11 @@ const layout = (hero: string, body: string, preheader = '') => `<!DOCTYPE html>
       <!-- Footer -->
       <tr>
         <td style="padding:24px 4px 0;text-align:center;">
-          <p style="margin:0 0 4px;font-family:'Plus Jakarta Sans',Helvetica,sans-serif;font-size:12px;font-weight:300;color:#9090a8;line-height:1.6;">
+          <p style="margin:0 0 4px;font-family:'Geist Variable','Geist',sans-serif;font-size:12px;font-weight:300;color:#9090a8;line-height:1.6;">
             © ${new Date().getFullYear()} Clairia &nbsp;·&nbsp;
             <a href="${APP_URL}" style="color:#9090a8;text-decoration:underline;">app.clairia.app</a>
           </p>
-          <p style="margin:0;font-family:'Plus Jakarta Sans',Helvetica,sans-serif;font-size:11px;font-weight:300;color:#b0b0c4;">
+          <p style="margin:0;font-family:'Geist Variable','Geist',sans-serif;font-size:11px;font-weight:300;color:#b0b0c4;">
             Vous recevez cet email car vous avez un compte Claire.
           </p>
         </td>
@@ -115,26 +115,26 @@ const hero = (title: string, subtitle: string, ctaLabel: string, ctaUrl: string)
   </table>
 
   <!-- Wordmark -->
-  <p style="margin:0 0 28px;font-family:'Plus Jakarta Sans',Helvetica,sans-serif;font-size:13px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,0.60);">Claire</p>
+  <p style="margin:0 0 28px;font-family:'Geist Variable','Geist',sans-serif;font-size:13px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,0.60);">Claire</p>
 
   <!-- Title -->
-  <h1 style="margin:0 0 14px;font-family:'Plus Jakarta Sans',Helvetica,sans-serif;font-size:36px;font-weight:700;letter-spacing:-1px;line-height:1.15;color:#ffffff;">${title}</h1>
+  <h1 style="margin:0 0 14px;font-family:'Geist Variable','Geist',sans-serif;font-size:36px;font-weight:700;letter-spacing:-1px;line-height:1.15;color:#ffffff;">${title}</h1>
 
   <!-- Subtitle -->
-  <p style="margin:0 0 36px;font-family:'Plus Jakarta Sans',Helvetica,sans-serif;font-size:16px;font-weight:300;line-height:1.6;color:rgba(255,255,255,0.72);max-width:400px;display:inline-block;">${subtitle}</p>
+  <p style="margin:0 0 36px;font-family:'Geist Variable','Geist',sans-serif;font-size:16px;font-weight:300;line-height:1.6;color:rgba(255,255,255,0.72);max-width:400px;display:inline-block;">${subtitle}</p>
 
   <!-- Pill CTA — .btn-primary: #000, full pill, weight 600 -->
   <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
     <tr>
       <td style="border-radius:9999px;background:#000000;border:1px solid rgba(0,0,0,0.9);">
-        <a href="${ctaUrl}" style="display:inline-block;padding:13px 30px;font-family:'Plus Jakarta Sans',Helvetica,sans-serif;font-size:15px;font-weight:600;color:#ffffff;white-space:nowrap;letter-spacing:-0.1px;text-decoration:none;">${ctaLabel}</a>
+        <a href="${ctaUrl}" style="display:inline-block;padding:13px 30px;font-family:'Geist Variable','Geist',sans-serif;font-size:15px;font-weight:600;color:#ffffff;white-space:nowrap;letter-spacing:-0.1px;text-decoration:none;">${ctaLabel}</a>
       </td>
     </tr>
   </table>`
 
 // ── Body helpers ──────────────────────────────────────────────────────────────
 
-const F = `'Plus Jakarta Sans',Helvetica,sans-serif`
+const F = `'Geist Variable','Geist',sans-serif`
 
 const p = (text: string, muted = false) =>
   `<p style="margin:0 0 16px;font-family:${F};font-size:15px;font-weight:300;line-height:1.75;color:${muted ? '#9898b0' : '#2d2d3a'};">${text}</p>`

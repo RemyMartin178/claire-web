@@ -19,10 +19,10 @@ module.exports = {
 	theme: {
 		extend: {
 			fontFamily: {
-				'heading': ['"Geist Variable"', 'Inter', '-apple-system', 'sans-serif'],
-				'body': ['"Geist Variable"', 'Inter', '-apple-system', 'sans-serif'],
-				'sans': ['"Geist Variable"', 'Inter', '-apple-system', 'sans-serif'],
-				'serif': ['Lora', 'Georgia', 'Times New Roman', 'serif'],
+				'heading': ['Geist Variable', 'Geist', 'sans-serif'],
+				'body': ['Geist Variable', 'Geist', 'sans-serif'],
+				'sans': ['Geist Variable', 'Geist', 'sans-serif'],
+				'serif': ['Geist Variable', 'Geist', 'sans-serif'],
 			},
 			letterSpacing: {
 				tightest: '0',

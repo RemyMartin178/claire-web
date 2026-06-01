@@ -1,11 +1,12 @@
 import {
+    CheckIcon,
     CopyIcon,
     ShareIcon,
 } from "lucide-react"
+import { useState } from "react"
 import { Action, Actions } from "@/components/ui/actions"
 import { Message, MessageContent } from "@/components/ui/message"
 import { cn } from "@/lib/utils"
-import { toast } from "react-hot-toast"
 
 interface AiActionsProps {
     role: 'user' | 'assistant';
@@ -13,9 +14,12 @@ interface AiActionsProps {
 }
 
 export const AiMessageWithActions = ({ role, content }: AiActionsProps) => {
+    const [copied, setCopied] = useState(false)
+
     const handleCopy = () => {
         navigator.clipboard.writeText(content)
-        toast.success("Copié dans le presse-papier")
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1400)
     }
 
     const handleShare = () => {
@@ -36,11 +40,15 @@ export const AiMessageWithActions = ({ role, content }: AiActionsProps) => {
                 {role === "assistant" && (
                     <Actions className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity justify-start px-1">
                         <Action
-                            label="Copier"
+                            label={copied ? "Copié" : "Copier"}
                             onClick={handleCopy}
                             className="size-8"
                         >
-                            <CopyIcon className="size-3.5" />
+                            {copied ? (
+                                <CheckIcon className="size-3.5 text-foreground copied-pop" />
+                            ) : (
+                                <CopyIcon className="size-3.5" />
+                            )}
                         </Action>
                         <Action
                             label="Partager"

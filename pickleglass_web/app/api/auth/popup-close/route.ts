@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     <title>Authentification...</title>
     <style>
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            font-family: 'Geist Variable', 'Geist', sans-serif;
             display: flex; 
             align-items: center; 
             justify-content: center; 

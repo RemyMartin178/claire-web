@@ -19,7 +19,7 @@ const CSS = `
   display: block;
   transition: opacity 0.3s ease-in, transform 0.3s ease-in;
   will-change: opacity, transform;
-  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   cursor: default; user-select: none;
 }
 .ph-root.ph-sliding-out { animation: ph-slideOut 0.3s ease-in-out forwards; }

@@ -22,7 +22,7 @@ const CSS = `
 .eb-root {
   display: flex; align-items: center; justify-content: center;
   width: 100%; height: 100%; min-height: 120px;
-  font-family: 'Geist Variable', 'Geist', -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 

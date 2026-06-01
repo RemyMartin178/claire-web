@@ -27,7 +27,7 @@ const CLUELY_ASK_CSS = `
   backdrop-filter: blur(28px) saturate(175%);
   -webkit-backdrop-filter: blur(28px) saturate(175%);
   /* Match Cluely (index-BPsiDjLU.css): --default-font-family: "Geist Variable", sans-serif */
-  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
@@ -153,7 +153,7 @@ const CLUELY_ASK_CSS = `
   background: rgba(255, 255, 255, 0.07);
   padding: 1px 5px;
   border-radius: 4px;
-  font-family: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-size: 12px;
 }
 .cluely-assistant-content pre {

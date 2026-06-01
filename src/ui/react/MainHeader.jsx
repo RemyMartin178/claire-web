@@ -20,7 +20,7 @@ const CSS = `
   height: 100vh;
   padding: 2px;
   background: transparent;
-  font-family: 'Geist Variable', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 .mh-root * {

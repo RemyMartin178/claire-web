@@ -374,7 +374,7 @@ router.get('/:toolName/auth/callback', async (req, res) => {
     if (platform === 'desktop') {
       return res.send(`
         <html>
-          <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+          <body style="font-family: 'Geist Variable', 'Geist', sans-serif; text-align: center; padding: 50px;">
             <h2>Connexion réussie !</h2>
             <p>Le compte Google est maintenant connecté.</p>
             <p>Vous pouvez fermer cette fenêtre, l'application Claire va se mettre à jour.</p>
@@ -410,7 +410,7 @@ router.get('/:toolName/auth/callback', async (req, res) => {
     if (platform === 'desktop') {
       return res.send(`
         <html>
-          <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+          <body style="font-family: 'Geist Variable', 'Geist', sans-serif; text-align: center; padding: 50px;">
             <h2 style="color: #dc2626;">Erreur de connexion</h2>
             <p>${error.message}</p>
             <script>

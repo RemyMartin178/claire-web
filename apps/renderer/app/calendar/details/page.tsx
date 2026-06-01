@@ -10,6 +10,7 @@ import {
   Calendar,
   Clock,
   Users,
+  Check,
   Copy,
   Mail,
   Video,
@@ -130,6 +131,7 @@ export default function CalendarDetailsPage() {
   const [activeTab, setActiveTab] = useState<DetailsTab>('summary')
   const [aiSummary, setAiSummary] = useState<string | null>(null)
   const [isSummaryLoading, setIsSummaryLoading] = useState(false)
+  const [copiedSummary, setCopiedSummary] = useState(false)
 
   const resolveUserId = useCallback(async (): Promise<string | null> => {
     const { auth } = await import('@/utils/firebase')
@@ -288,7 +290,8 @@ export default function CalendarDetailsPage() {
   const handleCopySummary = async () => {
     if (!eventData) return
     await navigator.clipboard.writeText(aiSummary || getEventTitle(eventData))
-    toast.success('Resume copie')
+    setCopiedSummary(true)
+    window.setTimeout(() => setCopiedSummary(false), 1400)
   }
 
   const handlePrepareEmail = async () => {
@@ -444,8 +447,8 @@ export default function CalendarDetailsPage() {
                     onClick={() => void handleCopySummary()}
                     className="flex items-center gap-1.5 text-[12px] font-medium text-[#86868b] hover:text-[#1d1d1f] transition-colors"
                   >
-                    <Copy className="h-3.5 w-3.5" />
-                    Copier
+                    {copiedSummary ? <Check className="h-3.5 w-3.5 text-foreground copied-pop" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copiedSummary ? 'Copié' : 'Copier'}
                   </button>
                 )}
               </div>

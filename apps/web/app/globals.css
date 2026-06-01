@@ -1,90 +1,9 @@
+/* Geist — only allowed font in this project */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Local fonts loaded via @font-face declarations below */
-
-/* Font Face Declarations */
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/inter-v12-latin-regular.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-regular.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 500;
-  src: url('/fonts/inter-v12-latin-500.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-500.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 600;
-  src: url('/fonts/inter-v12-latin-600.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-600.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Inter';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/inter-v12-latin-700.woff2') format('woff2'),
-    url('/fonts/inter-v12-latin-700.woff') format('woff');
-}
-
-/* Lora Font Face Declarations */
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 400;
-  src: url('/fonts/lora-v25-latin-regular.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-regular.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 500;
-  src: url('/fonts/lora-v25-latin-500.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-500.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 600;
-  src: url('/fonts/lora-v25-latin-600.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-600.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: normal;
-  font-weight: 700;
-  src: url('/fonts/lora-v25-latin-700.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-700.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: italic;
-  font-weight: 400;
-  src: url('/fonts/lora-v25-latin-italic.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-italic.woff') format('woff');
-}
-
-@font-face {
-  font-family: 'Lora';
-  font-style: italic;
-  font-weight: 700;
-  src: url('/fonts/lora-v25-latin-700italic.woff2') format('woff2'),
-    url('/fonts/lora-v25-latin-700italic.woff') format('woff');
-}
 
 
 :root {
@@ -93,9 +12,9 @@
   --background-end-rgb: 255, 255, 255;
 
   /* Design System Variables */
-  --gh-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
-  --theme-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
-  --theme-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  --gh-font-heading: 'Geist Variable', 'Geist', sans-serif;
+  --theme-font-heading: 'Geist Variable', 'Geist', sans-serif;
+  --theme-font-body: 'Geist Variable', 'Geist', sans-serif;
 
   /* Brand Colors */
   --primary-color: #3b82f6;
@@ -137,9 +56,9 @@
     --background-end-rgb: 0, 0, 0;
 
     /* Font variables remain the same in dark mode */
-    --gh-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
-    --theme-font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
-    --theme-font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+    --gh-font-heading: 'Geist Variable', 'Geist', sans-serif;
+    --theme-font-heading: 'Geist Variable', 'Geist', sans-serif;
+    --theme-font-body: 'Geist Variable', 'Geist', sans-serif;
 
     /* Dark mode adjustments */
     --text-color: #f3f4f6;
@@ -164,7 +83,7 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color: #1d1d1f;
@@ -181,7 +100,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   line-height: 1.1;
   color: #1d1d1f;
   font-weight: 600;
@@ -286,11 +205,11 @@ a:hover {
 
   /* Typography Utilities */
   .font-heading {
-    font-family: var(--gh-font-heading, var(--theme-font-heading));
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .font-body {
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .text-primary {
@@ -330,7 +249,7 @@ a:hover {
     line-height: 1;
     padding: calc(.75em * var(--multiplier, 1)) calc(1.15em * var(--multiplier, 1));
     transition: var(--transition);
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .btn-secondary-custom:hover {
@@ -349,7 +268,7 @@ a:hover {
     transition: var(--transition);
     border-left: 2px solid transparent;
     border-radius: var(--radius-sm);
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .nav-item:hover {
@@ -378,7 +297,7 @@ a:hover {
 
   /* Form Elements */
   .form-input {
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-color);
     transition: var(--transition);
@@ -398,7 +317,7 @@ a:hover {
     padding: 0.25rem 0.75rem;
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 
   .badge-secondary {
@@ -408,7 +327,7 @@ a:hover {
     padding: 0.25rem 0.75rem;
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
   }
 }
 
@@ -480,7 +399,7 @@ a:hover {
   body {
     @apply bg-background text-foreground;
     background-color: white !important;
-    font-family: var(--theme-font-body);
+    font-family: 'Geist Variable', 'Geist', sans-serif;
     line-height: 1.6;
     color: var(--text-color);
   }
@@ -758,7 +677,7 @@ a:hover {
   box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.28);
   color: white !important;
   border-radius: 8px;
-  font-family: "Google Sans", var(--font-plus-jakarta), -apple-system, sans-serif;
+  font-family: 'Geist Variable', 'Geist', sans-serif;
   font-size: 16px;
   font-weight: 550;
   transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
