@@ -1,254 +1,650 @@
-# CLAUDE.md
+# CLAUDE.md — Claire Engineering Rules
 
-Guidance for Claude Code when working in this repository.
+## Project Context
+
+You are working on Claire, an Electron/React/Next.js desktop app.
+
+Local repository:
+```txt
+C:\Users\somen\Desktop\glass-main
+```
+
+Local Cluely reference:
+```txt
+C:\Users\somen\Desktop\cluely findr
+```
+
+Use the local Cluely extraction only when the task explicitly asks for Cluely comparison or behavior matching. Do not browse GitHub or the web for Cluely unless the user explicitly asks.
+
+Claire has these major layers:
+```txt
+Electron main process
+Renderer / dashboard
+Overlay / floating bar
+sharedStateService
+windowReconciler
+Listen / STT
+Summary
+Ask
+Settings
+Billing/Auth/Calendar integrations
+```
+
+Target architecture:
+```txt
+Renderer asks for an action
+→ preload exposes a safe API
+→ ipcMain handler receives the request
+→ main process/service orchestrates
+→ sharedStateService.patch() updates canonical runtime state
+→ windowReconciler applies effects
+→ renderer updates from state/events
+```
+
+Do not create random parallel state systems.
 
 ---
 
-## Build
+## Prime Directive
 
+Be conservative with existing working behavior.
+
+When changing code:
+
+- Read the relevant files first.
+- Identify the real cause before editing.
+- Make the smallest complete fix.
+- Avoid touching unrelated areas.
+- Do not claim a visual bug is fixed until the user confirms it.
+- Stop after each coherent unit of work and report clearly.
+
+The user prefers direct, critical, non-yes-man engineering judgment.
+
+---
+
+## Hard Rules
+
+### Builds
+
+Do not run full builds automatically.
+
+Forbidden unless the user explicitly asks:
 ```bash
-# Renderer only — most common (overlay pill + AskView + dashboard Next.js)
 npm run build:ui
-
-# Full build (renderer + web + Electron packaging)
 npm run build
+npm run dist
+npm run package
+npx electron-builder
 ```
 
-**The user ALWAYS launches builds manually. Never run builds automatically.**
+Allowed when useful:
+```bash
+git status --short
+git branch --show-current
+git log --oneline -5
+git diff --check
+node --check path\to\file.js
+```
 
-- Changes in `src/ui/react/*.jsx` → require `npm run build:ui`
-- Changes in `apps/renderer/**` (Next.js dashboard) → require `npm run build:ui`
-- Changes in `src/` (main process, IPC) → require app restart, no rebuild needed
+The user normally runs the app and build manually.
+
+### Git
+
+Before starting any task, inspect:
+```bash
+git status --short
+git branch --show-current
+git log --oneline -5
+```
+
+- Do not overwrite uncommitted user changes.
+- Do not commit or push unless the user explicitly authorizes it in the current task/thread.
+- If the user says auto-push is allowed for a specific branch/task, you may push after a clean commit report. Do not assume permanent global auto-push.
+
+Branch names:
+```txt
+fix/<short-bug>
+refactor/<short-area>
+polish/<short-ui-area>
+```
+
+### Scope
+
+Do not mix unrelated changes.
+
+Bad:
+```txt
+Fix STT + refactor settings + change UI + alter overlay timing
+```
+
+Good:
+```txt
+Fix one bug, in one layer, with a clear rollback.
+```
+
+### No fake features
+
+No fake buttons, fake API handlers, fake success messages, or dead UI.
+
+A feature must be one of:
+```txt
+functional
+disabled with honest copy
+hidden
+```
+
+Examples:
+```txt
+Dead billing button → disabled or wired to Stripe
+Fake email update → disabled or real Firebase flow
+Mic selector not connected to STT → rename to "Test du microphone par défaut"
+Unavailable setting → disabled with "Bientôt disponible"
+```
 
 ---
 
-## Architecture
+## Protected Areas
 
-### Trois fenêtres Electron
-
-| Fenêtre | Rôle | Fichiers clés |
-|---------|------|---------------|
-| **Splash** | Boot loader 360×500, `alwaysOnTop: true`, opaque | `src/ui/splash/splash.html`, `src/window/windowManager.js` |
-| **Overlay** | Fullscreen transparent — contient pill + AskView + ListenView | `src/ui/react/OverlayRoot.jsx`, `src/ui/react/MainHeader.jsx` |
-| **Dashboard** | Next.js app — `/activity`, `/settings`, etc. | `apps/renderer/app/**`, `src/window/windowReconciler.js` |
-
-### Boot sequence
-
-```
-bootApp()
-  └── sharedStateService.patch({ showHeader: false, showListen: false,
-                                  showChat: false, showDashboard: false })
-  └── createSplashWindow() → show splash
-  └── createDashboardWindow({ skipAutoShow: true }) → preload en arrière-plan
-  └── _resolveBoot()
-        ├── closeSplashWindow()
-        ├── setTimeout(700ms)  ← desktop gap (splash → dashboard)
-        └── dash.setOpacity(0) → dash.show() → setTimeout(30ms) → setOpacity(1)
+Modify these only when directly required:
+```txt
+src/window/windowManager.js
+src/ui/react/OverlayRoot.jsx
+src/ui/react/MainHeader.jsx
+src/window/windowReconciler.js
+src/common/services/sharedStateService.js
 ```
 
-**Anti-flash pattern** — toujours utiliser cette séquence pour afficher une fenêtre sans flash blanc :
+The floating bar visual design is accepted unless the user says otherwise. Do not restyle it casually.
+
+Viewed screen / Écran consulté is accepted unless the user reports a regression. Do not modify it casually.
+
+---
+
+## Core Architecture Rules
+
+### sharedStateService
+
+`sharedStateService` is the central runtime state mechanism.
+
+Good:
+```js
+sharedStateService.patch({
+  showDashboard: false,
+  showHeader: true,
+});
+```
+
+Bad:
+```js
+// local renderer state pretends to be the global truth
+setIsSessionRunning(true);
+```
+
+Do not duplicate global runtime state in React if it should be shared across windows.
+
+### windowReconciler
+
+`windowReconciler` applies shared state to windows and runtime side effects.
+
+If a window appears too early, flashes, or ignores state, inspect this chain before touching UI:
+```txt
+sharedStateService
+windowReconciler
+windowManager
+OverlayRoot / renderer hydration
+```
+
+### IPC
+
+Preferred pattern:
+```txt
+renderer → preload window.api.* → ipcRenderer.invoke → ipcMain.handle → service/action
+```
+
+A preload method must map to real main-process logic.
+
+Good:
+```js
+window.api.app.startClaire = () => ipcRenderer.invoke('app:startClaire');
+```
+
+Bad:
+```js
+window.api.settings.update = async () => ({ success: true }); // fake stub
+```
+
+Legacy APIs may exist temporarily, but they should delegate to canonical handlers.
+
+### Runtime action files
+
+Use runtime action files only when they reduce dispersion:
+```txt
+src/runtime/settingsActions.js
+src/runtime/sessionActions.js
+src/runtime/appActions.js
+```
+
+They must orchestrate existing services and `sharedStateService`. They must not create a competing source of truth.
+
+---
+
+## Electron / Window Patterns
+
+### Anti-flash dashboard reveal pattern
+
+When revealing a BrowserWindow that may flash black/white:
 ```js
 win.setOpacity(0);
 win.show();
-setTimeout(() => { if (!win.isDestroyed()) { win.setOpacity(1); } }, 30);
+setTimeout(() => {
+  if (!win.isDestroyed()) win.setOpacity(1);
+}, 30);
 ```
 
-### SharedState IPC
+Use only when appropriate; do not hide logic bugs with opacity.
 
-`sharedStateService.patch(delta)` → broadcast à tous les renderers → `windowReconciler.js` réagit pour show/hide les fenêtres.
+### Overlay first-render rule
 
-Champs critiques : `showHeader`, `showDashboard`, `showListen`, `showChat`, `isListenRunning`, `session`, `lastSessionId`, `dashboardFocusCount`.
+Overlay must not show visible UI before runtime visibility is known.
 
-**Important** : patcher `{ showHeader: false, showListen: false, showChat: false, showDashboard: false }` au démarrage de `bootApp()` pour éviter le cold start (pill qui apparaît avant que le dashboard se ferme).
-
-### Pattern IPC strict
-
-```js
-// 1. Main — featureBridge.js ou windowBridge.js
-ipcMain.handle('feature:action', async (event, ...args) => { … });
-
-// 2. Preload — preload.js
-window.api.feature = {
-  action: (...args) => ipcRenderer.invoke('feature:action', ...args),
-};
-
-// 3. React
-await window.api.feature.action(…);
+Correct pattern:
+```txt
+BrowserWindow created with show:false
+renderer loads
+sharedState visibility hydrated
+overlay:panel-visibility applied
+only then show if showHeader || showListen || showChat
 ```
 
-Ne jamais utiliser `ipcRenderer.send` / `ipcMain.on` pour du request-response.
+Never rely on `OverlayRoot` rendering `header:true` by default.
 
-### Modes de rendu des panels
+### Splash / boot sequencing
 
-- **Overlay mode** (production) : fenêtre fullscreen transparente unique. `OverlayRoot.jsx` positionne tous les panels via `computeLayout()`.
-- **Window mode** : chaque panel dans sa propre fenêtre OS.
+Splash and dashboard must be sequenced deliberately.
 
-En overlay mode, **ne jamais appeler** `window.api.askView.adjustWindowHeight()` directement :
-```js
-// ✅ Correct
-window.dispatchEvent(new CustomEvent('local-panel-resize', {
-  detail: { name: 'ask', width: 600, height: targetHeight }
-}));
+Avoid:
+```txt
+dashboard visible under splash unintentionally
+splash closing before dashboard is ready
+black/white flashes
+double show/focus calls
 ```
 
-### Événements DOM custom (communication intra-overlay)
-
-| Événement | Sens | Rôle |
-|-----------|------|------|
-| `ask:setScreenContext` | MainHeader → AskView | Active/désactive le contexte écran |
-| `local-panel-close` | Panel → OverlayRoot | Ferme un panel |
-| `local-panel-resize` | Panel → OverlayRoot | Redimensionne un panel |
-
-### Navigation dashboard
-
-Toujours utiliser `router.push()` (pas `router.replace`) pour naviguer vers les sessions — `push` ajoute à l'historique Electron WebContents et permet au bouton retour de fonctionner.
-
-Avant de naviguer vers une session via `onNavigateToSession`, vérifier que l'URL courante ne contient pas déjà le `sessionId` pour éviter le re-mount :
-```ts
-const current = window.location.pathname + window.location.search;
-if (!current.includes(id)) router.push(`/activity/details?sessionId=${id}&new=1`);
+Preferred boot handoff concept:
+```txt
+dashboard created hidden
+dashboard ready
+splash exit animation starts
+wait exit animation / controlled timeout
+splash destroyed
+dashboard revealed with anti-flash pattern
 ```
 
 ---
 
-## Design system
+## Overlay / Custom Events
 
-### Background glass (identique sur tous les panels)
-
-```css
-background: rgba(11,11,14,0.88);
-backdrop-filter: blur(28px) saturate(190%);
--webkit-backdrop-filter: blur(28px) saturate(190%);
-border-radius: 16px;
-border: 1px solid rgba(255,255,255,0.09);
-box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.05) inset;
+Important renderer/main events used in this repo may include:
+```txt
+local-panel-resize
+local-panel-close
+ask:setScreenContext
+overlay:panel-visibility
+shared-state:updated
+session:updated
+settings:updated
 ```
 
-### Bleu Cluely (boutons d'action, bulles question)
+Before replacing any event, search its usage. Do not rename events casually.
 
-```css
-background: radial-gradient(179.05% 132.83% at 46.18% -23.44%, #1562df 0, #0c26a8 100%);
-color: #CBE3FF;
-box-shadow: 0 0 0 .678px #0c44a1, inset 0 -1.355px #022c70, inset 0 .678px #81b6ff;
-```
-
-### Fonts
-
-- Ask / Settings : `'Plus Jakarta Sans', -apple-system, sans-serif`
-- Listen : `'Helvetica Neue', -apple-system, sans-serif`
-- Splash / boot : `'Geist Variable', sans-serif`
-
-### Référence dimensions Cluely (v2.0.186)
-
-Extraits du ASAR installé — servir de référence pour la parité visuelle :
-
-| Élément | Dimensions |
-|---------|-----------|
-| Pill / control bar | **163×50px**, centré horizontalement, 25px du bord bas |
-| Chat panel (Ask) | **540px** de large, hauteur dynamique |
-| Dashboard (Mac) | **1050×700px** |
-| Dashboard (Windows) | **1100×720px** |
-
-Les prompts IA de Cluely sont **côté serveur** (`api.v2.cluely.com`) — pas dans l'ASAR. Impossible à extraire.
+For overlay panels, do not call native window resize/show/hide directly from React if the repo already routes through `local-panel-resize` or shared state.
 
 ---
 
-## Décisions techniques
+## UI Rules
+
+### General
+
+Avoid:
+```txt
+layout shifts
+flicker
+changing accepted visual components
+animations that hide logic bugs
+overusing blur/shimmer
+```
+
+Prefer:
+```txt
+opacity / transform animations
+stable dimensions
+simple state machines
+clear loading/error/empty states
+prefers-reduced-motion
+```
+
+### Floating bar
+
+Do not visually change the floating bar unless explicitly asked.
+If there is a timing issue, fix lifecycle/visibility logic, not CSS.
+
+Reference dimensions if matching Cluely is explicitly requested:
+```txt
+Floating pill target: around 163×50
+```
+
+Only use exact values after confirming from current code or local Cluely extraction.
+
+### Ask / Chat panel
+
+If matching Cluely is explicitly requested, inspect local Cluely assets first.
+
+Common reference targets:
+```txt
+Ask/chat panel width around 540px
+dark glass background
+compact footer
+stable input height
+no flicker on textarea focus
+```
+
+Do not modify Viewed screen / Écran consulté unless asked.
+
+### Dashboard
+
+Reference target if matching Cluely is explicitly requested:
+```txt
+Dashboard around 1050×700 or 1100×720 depending current implementation
+stable first paint
+no black/white boot flash
+no layout jump during session updates
+```
+
+---
+
+## Design Tokens / Visual Consistency
+
+Do not invent new design language casually.
+
+When adding UI, prefer existing tokens/classes already used in the repo. If you must define values, keep them consistent with current Claire/Cluely-like style:
+```txt
+dark glass surfaces
+subtle borders
+stable rounded panels
+low-noise shadows
+compact spacing
+```
+
+Example glass baseline used historically in this project:
+```css
+background: rgba(11, 11, 14, 0.88);
+backdrop-filter: blur(18px) saturate(1.2);
+border: 1px solid rgba(255, 255, 255, 0.08);
+```
+
+Do not add random gradients unless the task is explicitly UI polish.
+
+### Font — Geist EVERYWHERE
+
+The ONLY font allowed in this project is **Geist** (Geist Variable / Geist Sans).
+
+This applies to:
+```txt
+overlay (pill, AskView, ListenView)
+dashboard Next.js (/activity, /settings, all routes)
+splash
+modals, settings panels, toasts
+buttons, inputs, labels, code blocks
+all renderers — no exception
+```
+
+Forbidden:
+```txt
+Plus Jakarta Sans
+Helvetica Neue
+SF Pro / -apple-system
+Inter
+Arial / sans-serif fallback alone
+any other named font
+```
+
+Correct usage:
+```css
+font-family: 'Geist Variable', 'Geist', sans-serif;
+```
+
+When editing any file with `font-family` or `fontFamily`, replace the existing value with Geist. Never reintroduce another font even "just for one component".
+
+---
+
+## Settings Rules
+
+Settings are not just UI. A setting must have a clear lifecycle:
+```txt
+Settings UI
+→ persistence if needed
+→ runtime/shared state
+→ real service consumer
+```
+
+If no consumer exists, do not make it look functional.
+
+### Language settings
+
+Never pass UI labels into services.
+
+Bad:
+```txt
+Français (recommandé)
+English
+Español
+```
+
+Good:
+```txt
+fr
+en
+es
+de
+it
+pt
+```
+
+Typical mappings:
+```txt
+detectable → contentProtectionEnabled = !detectable
+screenUse → screenContextEnabled
+transcriptionLang → transcriptionLanguage
+outputLang → outputLanguage
+autoMeetingDetection → autoMeetingDetectionEnabled
+colorTheme → theme
+```
+
+---
+
+## STT / AI / Summary Rules
+
+### Provider defaults
+
+Do not change provider order or STT provider without reading current code and confirming with the user.
+If the repo has an explicit provider fallback order, preserve it.
+
+Historical target decisions in this project may include:
+```txt
+AssemblyAI as default STT provider
+French as default output/user-facing language
+```
+
+Verify in code before editing.
 
 ### STT
-AssemblyAI est le provider par défaut. `modelStateService.js` force la re-sélection si une clé AssemblyAI est présente et que le provider actuel est différent.
 
-### LLM
-Ordre de priorité : **Anthropic > Gemini > OpenAI > autres** — configuré dans `modelStateService.js`.
+STT must not silently ignore user settings.
 
-### Langue des réponses IA
-Injection systématique à la fin de `enhancedSystemPrompt` dans `askService.js` :
+Use runtime language settings when available:
 ```js
-enhancedSystemPrompt += '\n\n⚠️ RÈGLE ABSOLUE : Tu dois TOUJOURS répondre en français, peu importe la langue de la question. Ne réponds JAMAIS en anglais.';
+const languageCode = state.transcriptionLanguage || 'fr';
 ```
-Ne pas compter uniquement sur le template `claire_analysis` — `formatRequirements` est en anglais et peut surcharger l'instruction française.
 
-### Suggestions contextuelles
-Après chaque réponse Ask, appel LLM (claude-haiku → OpenAI fallback) via `ask:generateSuggestions` dans `featureBridge.js`. Génère 2 questions en français. Rotation toutes les 2 s.
+Filter obvious transcript noise before it pollutes summaries.
 
-### Historique Ask
-Les Q&A s'accumulent dans `messages[]` local à `AskView`. La réponse courante est sauvegardée (avec son HTML rendu) avant chaque nouvelle question. Effacé à la fermeture du panel.
+### Summary
 
-### Email → navigateur externe
-Toujours utiliser `window.api.openExternal(url)` pour ouvrir Gmail (ou tout lien externe) — déclenche `shell.openExternal` dans le main process et ouvre un vrai onglet Chrome.  
-Ne pas utiliser le trick `a.click()` — bloqué par les popup blockers après les calls async.
+Summary must be robust if memory or auxiliary services fail.
+Final summary should not depend on Memory API being available.
+
+### Ask
+
+Ask should consume:
+```txt
+active session context when relevant
+output language setting
+screen context setting
+```
+
+Do not break Viewed screen behavior unless the task is specifically about Viewed screen.
 
 ---
 
-## Bugs connus / ouverts
+## Error Handling
 
-### Logo dans la pill — repositionnement (OPEN)
-**Symptôme** : le logo apparaît coupé en bas au rendu initial, puis se recentre (~100ms plus tard).  
-**Tentative** : remplacement `<img src="logo.svg">` par un composant SVG inline `<ClaireMark />` pour éliminer le délai de chargement asynchrone. Bug persiste — cause exacte non résolue.  
-**Piste** : probable conflit entre `flex-shrink: 0` + `margin-right: auto` et le layout initial de `.mh-controls` avant que les dimensions soient calculées.  
-**Fichier** : `src/ui/react/MainHeader.jsx` — composant `ClaireMark`, CSS `.mh-logo`.
+Live features should degrade gracefully.
 
----
-
-## Pièges à éviter
-
-**`body.has-glass` CSS bypass** — ne pas l'utiliser ni l'étendre :
-```css
-/* ❌ Supprime backgrounds, animations, backdrop-filter */
-body.has-glass .mon-composant { background: transparent !important; }
-```
-Pattern hérité encore présent dans `ListenView.jsx` mais retiré de `AskView`.
-
-**`overflow: hidden` sans `borderRadius` dans `OverlayRoot`** — `panelStyle` doit inclure `borderRadius: 16`, sinon les coins arrondis intérieurs apparaissent comme des "piques".
-
-**Streaming markdown** — utiliser le pipeline `parser` / `parser_write` / `parser_end` / `default_renderer` de `smd.js`. Ne jamais écrire dans `innerHTML` directement pendant le streaming.
-
-**Chemin des assets** — la base URL est `src/ui/app/content.html` :
-```
-✅  ../assets/logo.png
-❌  ../../assets/logo.png
+Good:
+```txt
+Memory API down → log once/throttled → continue session
+STT provider error → surface clear failure → recover UI
+Settings endpoint missing → disable feature, do not fake success
 ```
 
-**`isLiveSession` scope** — doit être défini au niveau du composant (avant `renderContent`), pas redéfini dans chaque fonction locale. Utilisé pour le titre shimmer, l'état "Terminez la session", et le champ titre `readOnly`.
+Bad:
+```txt
+throw inside transcript flow and break Listen
+spam logs on every transcript
+hide failures behind fake success
+```
 
----
+Use throttled logs for repetitive failures.
 
-## Conventions React (overlay UI)
-
+Avoid unhandled promise rejections:
 ```js
-// Style scopé — injecté une seule fois par composant
-const injectStyles = (id, css) => {
-  if (!document.getElementById(id)) { … }
-};
-injectStyles('mon-composant-styles', CSS);
-
-// Refs pour valeurs mutables dans callbacks (évite stale closures)
-const isLoadingRef = useRef(false);
-useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+void doAsyncThing().catch((error) => logger.warn(...));
 ```
 
 ---
 
-## Agent Directives
+## Known Quirks / Check First
 
-Rules that override default Claude behavior for this codebase.
+Before fixing these, inspect current code and confirm the issue still exists.
+```txt
+Overlay/floating bar first-render flash
+Splash exit / dashboard reveal overlap
+Logo in floating pill may differ between runtime/taskbar/local assets
+Settings controls may be UI-only or partially wired
+Memory API may be unavailable and must remain best-effort
+session title fallbacks may conflict between /activity and /activity/details
+```
 
-**1. Read before edit.** Re-read any file before editing it. After 10+ messages, auto-compaction may have destroyed context. Edit against stale state = silent breakage.
+Do not assume a known quirk still exists if recent commits fixed it.
 
-**2. Verify after edit.** After every file write, confirm the change applied. The Edit tool reports success even when `old_string` didn't match.
+---
 
-**3. No auto-build.** Never run `npm run build` or `npm run build:ui`. The user always triggers builds manually.
+## Execution Discipline
 
-**4. Phased execution.** Multi-file refactors must be broken into explicit phases (max 5 files each). Complete Phase 1, wait for approval, then Phase 2.
+### Rule 6 — Phased execution & sub-agent swarming
 
-**5. Type-check before declaring done.** Run `npx tsc --noEmit` after any TypeScript change. Fix all errors before reporting completion. If no type-checker exists, say so explicitly.
+Multi-file work must be structured, never freeform.
 
-**6. Sub-agent swarming.** Tasks touching >5 independent files → launch parallel sub-agents. Sequential processing of large tasks guarantees context decay.
+**Phased execution (sequential):**
+- Refactors or rules-rollouts must be broken into explicit phases of **max 5 files** each.
+- Complete one phase, report cleanly, wait for user approval, then start the next.
+- Never bundle "all the changes" into a single mega-edit pass.
 
-**7. Grep exhaustively on renames.** When renaming any symbol, search for: direct calls, type references, string literals, dynamic imports, re-exports, test files. A single grep is never enough.
+**Sub-agent swarming (parallel):**
+- Tasks touching **>5 independent files** → launch parallel sub-agents (one Agent call per group, all in the same message).
+- Each sub-agent gets a tight, self-contained brief: exact files, exact change, exact verification.
+- Sequential single-threaded processing of large tasks guarantees context decay and is forbidden when work is parallelizable.
 
-**8. No dead code accumulation.** Before any structural refactor on a file >300 LOC, first remove dead props, unused exports, unused imports, debug logs. Commit cleanup separately.
+**Pre-rollout cleanup:**
+- Before any structural refactor on a file >300 LOC, first remove dead props/exports/imports/debug logs. Commit that cleanup separately.
 
-**9. IPC pattern is strict.** Always `ipcMain.handle` + `ipcRenderer.invoke`. Never `send`/`on` for request-response. Always expose through `preload.js` — never import electron directly in renderer.
+**Type-check gate:**
+- After any TypeScript change, run `npx tsc --noEmit` and fix every error before reporting completion.
+- If a project area has no type-checker, state so explicitly in the Work Completed report.
 
-**10. Overlay resize via events.** In overlay mode, never call `adjustWindowHeight()` directly. Always dispatch `local-panel-resize` custom event.
+**Grep exhaustively on renames:**
+- When renaming any symbol/event/file: search direct calls, type references, string literals, dynamic imports, re-exports, test files. One grep is never enough.
+
+---
+
+## Working Process
+
+### Before coding
+
+Respond with:
+```txt
+## Audit / Plan
+
+Task:
+Files read:
+Current behavior:
+Root cause:
+Proposed change:
+Files to modify:
+Files not to touch:
+Risks:
+Rollback:
+Manual tests:
+Waiting for approval:
+```
+
+### After coding
+
+Respond with:
+```txt
+## Work completed
+
+Files created:
+Files modified:
+Old logic removed:
+New logic:
+Why this is safer/cleaner:
+Checks run:
+Risks:
+Rollback:
+Manual tests for user:
+Next recommended step:
+```
+
+---
+
+## Local Cluely Reference
+
+Use local search only:
+```txt
+C:\Users\somen\Desktop\cluely findr
+```
+
+Useful search terms:
+```txt
+get-shared-state
+patch-shared-state
+shared-state-updated
+BrowserWindow
+show: false
+dashboard
+control
+session
+settings
+```
+
+Use Cluely as a conceptual reference for state flow and polish, not as code to copy.
+Do not copy proprietary code.
+
+---
+
+## If Unsure
+
+Do not guess.
+Say what is unclear, what you inspected, and what must be verified.
+Prefer a narrow audit over speculative code.
