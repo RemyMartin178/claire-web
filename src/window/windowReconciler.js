@@ -123,7 +123,31 @@ function reconcile({ state, previous }) {
         } catch { /* destroyed mid-flight */ }
       } else {
         try { dashWin.hide(); } catch { /* destroyed mid-flight */ }
+        if (state.hideWidgetWhenClaireHidden && !state.isListenRunning) {
+          try {
+            internalBridge.emit('window:requestVisibility', { name: 'header', visible: false });
+            internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
+            internalBridge.emit('window:requestVisibility', { name: 'ask', visible: false });
+          } catch (e) {
+            logger.warn('[WindowReconciler] hide widget reconcile failed:', e.message);
+          }
+        }
       }
+    }
+  }
+
+  if (
+    state.hideWidgetWhenClaireHidden !== previous.hideWidgetWhenClaireHidden
+    && state.hideWidgetWhenClaireHidden
+    && !state.showDashboard
+    && !state.isListenRunning
+  ) {
+    try {
+      internalBridge.emit('window:requestVisibility', { name: 'header', visible: false });
+      internalBridge.emit('window:requestVisibility', { name: 'listen', visible: false });
+      internalBridge.emit('window:requestVisibility', { name: 'ask', visible: false });
+    } catch (e) {
+      logger.warn('[WindowReconciler] hide widget preference reconcile failed:', e.message);
     }
   }
 
