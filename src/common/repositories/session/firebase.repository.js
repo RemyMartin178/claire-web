@@ -69,12 +69,14 @@ async function updateTitle(uid, id, title) {
     return { changes: 1 };
 }
 
-async function setSummaryStatus(uid, id, status) {
+async function setSummaryStatus(uid, id, status, reason = null) {
     const docRef = doc(sessionsCol(uid), id);
-    await updateDoc(docRef, {
+    const patch = {
         summaryStatus: status,
+        summaryError: status === 'failed' ? (reason || 'summary_failed') : null,
         updatedAt: Timestamp.now()
-    });
+    };
+    await updateDoc(docRef, patch);
     return { changes: 1 };
 }
 

@@ -322,7 +322,9 @@ function SessionDetailsContent() {
     setIsLoading(false);
     const loadedTitle = detailsQuery.data.session?.title || '';
     const loadedTitleIsGeneric = isGenericSessionTitle(loadedTitle);
-    if (detailsQuery.data.session?.summary_status !== 'failed') {
+    if (detailsQuery.data.session?.summary_status === 'failed') {
+      setSummaryFailureReason(detailsQuery.data.session.summary_error || null);
+    } else {
       setSummaryFailureReason(null);
     }
     if (detailsQuery.data.summary && !progressiveTimerRef.current) {
@@ -524,14 +526,15 @@ function SessionDetailsContent() {
       if (payload?.sessionId !== sessionId) return
       setStreamingTitle('')
       setAnalysisTitleStage('summary')
-      setSummaryFailureReason(payload.reason || payload.error || null)
+      const failureReason = payload.reason || payload.error || null
+      setSummaryFailureReason(failureReason)
       if (progressiveTimerRef.current) {
         window.clearInterval(progressiveTimerRef.current)
         progressiveTimerRef.current = null
       }
       setProgressiveSummaryText(null)
       setSessionDetails((prev) => prev
-        ? { ...prev, session: { ...prev.session, summary_status: 'failed' }, summary: null }
+        ? { ...prev, session: { ...prev.session, summary_status: 'failed', summary_error: failureReason }, summary: null }
         : prev)
       void detailsQuery.refetch()
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })

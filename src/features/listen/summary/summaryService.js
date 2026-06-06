@@ -32,6 +32,10 @@ function isRateLimitError(error) {
     return /\b429\b|rate limit|too many requests/i.test(message);
 }
 
+function getSummaryFailureReason(error) {
+    return isRateLimitError(error) ? 'rate_limited' : 'summary_failed';
+}
+
 async function runChatCompletion(llm, messages, options = {}) {
     if (typeof llm.chat === 'function') {
         return llm.chat(messages, options);
@@ -60,6 +64,8 @@ class SummaryService {
         this.finalSummaryInFlight = false;
         this.lastLiveAnalysisAt = 0;
         this.liveAnalysisCooldownMs = 30000;
+        this.liveAnalysisPausedUntil = 0;
+        this.liveAnalysisRateLimitBackoffMs = 120000;
 
         // Callbacks
         this.onAnalysisComplete = null;
@@ -437,6 +443,14 @@ RÈGLES :
         const lastMessage = this.conversationHistory[this.conversationHistory.length - 1];
         const hasQuestion = lastMessage && /\?|comment|pourquoi|quand|où|qui|quoi|quel|quelle/i.test(lastMessage);
         const now = Date.now();
+        if (now < this.liveAnalysisPausedUntil) {
+            logger.info('[SummaryService] Skipping live analysis due to rate-limit backoff', {
+                length,
+                backoffRemainingMs: this.liveAnalysisPausedUntil - now,
+            });
+            return;
+        }
+
         const hasCooldownElapsed = now - this.lastLiveAnalysisAt >= this.liveAnalysisCooldownMs;
 
         const shouldTrigger =
@@ -480,7 +494,9 @@ RÈGLES :
             }
         } catch (error) {
             if (isRateLimitError(error)) {
-                this.lastLiveAnalysisAt = Date.now();
+                const backoffStartedAt = Date.now();
+                this.lastLiveAnalysisAt = backoffStartedAt;
+                this.liveAnalysisPausedUntil = backoffStartedAt + this.liveAnalysisRateLimitBackoffMs;
             }
             logger.warn('[SummaryService] Live analysis failed', {
                 error: error?.message || String(error),
@@ -520,6 +536,7 @@ RÈGLES :
         // Make sure saveSummary inside makeOutlineAndRequests targets the right session.
         const previousSessionId = this.currentSessionId;
         this.finalSummaryInFlight = true;
+        this.liveAnalysisPausedUntil = 0;
         this.setSessionId(sessionId);
 
         await sessionRepository.setSummaryStatus?.(sessionId, 'analyzing').catch((error) => {
@@ -558,13 +575,14 @@ RÈGLES :
                 const errorMessage = summaryResult.status === 'rejected'
                     ? (summaryResult.reason?.message || String(summaryResult.reason))
                     : 'No data returned';
-                await sessionRepository.setSummaryStatus?.(sessionId, 'failed').catch((error) => {
+                const reason = getSummaryFailureReason(errorMessage);
+                await sessionRepository.setSummaryStatus?.(sessionId, 'failed', reason).catch((error) => {
                     logger.warn('[SummaryService] set failed status failed', { error: error?.message });
                 });
                 this._broadcastSessionStatus('session:summary-failed', {
                     sessionId,
                     error: errorMessage,
-                    reason: isRateLimitError(errorMessage) ? 'rate_limited' : 'summary_failed',
+                    reason,
                 });
                 return null;
             }
@@ -580,13 +598,14 @@ RÈGLES :
             return data;
         } catch (error) {
             logger.error('[SummaryService] final summary failed:', { error: error?.message, sessionId });
-            await sessionRepository.setSummaryStatus?.(sessionId, 'failed').catch((statusError) => {
+            const reason = getSummaryFailureReason(error);
+            await sessionRepository.setSummaryStatus?.(sessionId, 'failed', reason).catch((statusError) => {
                 logger.warn('[SummaryService] set failed catch status failed', { error: statusError?.message });
             });
             this._broadcastSessionStatus('session:summary-failed', {
                 sessionId,
                 error: error?.message || String(error),
-                reason: isRateLimitError(error) ? 'rate_limited' : 'summary_failed',
+                reason,
             });
             throw error;
         } finally {

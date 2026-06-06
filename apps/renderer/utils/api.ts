@@ -28,6 +28,7 @@ export interface Session {
   started_at: number;
   ended_at?: number;
   summary_status?: 'idle' | 'analyzing' | 'completed' | 'failed';
+  summary_error?: string | null;
   title_status?: 'idle' | 'streaming' | 'ready' | 'failed';
   sync_state: 'clean' | 'dirty';
   updated_at: number;
@@ -300,6 +301,7 @@ const convertFirestoreSession = (session: { id: string } & any, uid: string): Se
     started_at: timestampToUnix(session.startedAt || session.started_at), // ✅ Support both formats
     ended_at: (session.endedAt || session.ended_at) ? timestampToUnix(session.endedAt || session.ended_at) : undefined,
     summary_status: session.summaryStatus || session.summary_status || 'idle',
+    summary_error: session.summaryError || session.summary_error || null,
     title_status: session.titleStatus || session.title_status || 'idle',
     sync_state: 'clean',
     updated_at: timestampToUnix(session.updatedAt || session.startedAt || session.started_at)

@@ -35,9 +35,9 @@ const sessionRepositoryAdapter = {
         return getBaseRepository().updateTitle(uid, id, title);
     },
 
-    setSummaryStatus: (id, status) => {
+    setSummaryStatus: (id, status, reason = null) => {
         const uid = authService.getCurrentUserId();
-        return getBaseRepository().setSummaryStatus(uid, id, status);
+        return getBaseRepository().setSummaryStatus(uid, id, status, reason);
     },
     
     deleteWithRelatedData: (id) => {
