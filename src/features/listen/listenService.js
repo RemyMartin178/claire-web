@@ -516,7 +516,7 @@ class ListenService {
     }
 
     async handleListenRequest(listenButtonText, options = {}) {
-        logger.info('[SEARCH] DEBUG: handleListenRequest called with:', listenButtonText);
+        logger.info('[ListenService] handleListenRequest', { action: listenButtonText });
         const { revealListen = true } = options;
 
         const nextHeaderStateByAction = {
@@ -640,7 +640,12 @@ class ListenService {
         // Use local agent mode state (updated via internal bridge events)
         const isInAgentMode = this.agentModeActive;
 
-        logger.info(`[ListenService] [TOOL] DEBUG TTS check: speaker="${speaker}", text="${text.trim()}", isInAgentMode=${isInAgentMode}, shouldSend=${(speaker === 'user' || speaker === 'Me') && text.trim() && isInAgentMode}`);
+        logger.info('[ListenService] TTS routing check', {
+            speaker,
+            textLength: text.trim().length,
+            isInAgentMode,
+            shouldSend: (speaker === 'user' || speaker === 'Me') && text.trim() && isInAgentMode,
+        });
 
         if ((speaker === 'user' || speaker === 'Me') && text.trim() && isInAgentMode) {
             try {
@@ -810,7 +815,7 @@ class ListenService {
             // Enhanced audio services have been removed
 
             /* ---------- STT Initialization Retry Logic ---------- */
-            logger.info('[SEARCH] DEBUG: About to start STT initialization retry logic');
+            logger.info('[ListenService] Starting STT initialization retry logic');
             const MAX_RETRY = 10;
             const RETRY_DELAY_MS = 300;   // 0.3 seconds
 
@@ -818,32 +823,25 @@ class ListenService {
             let lastError = null;
             for (let attempt = 1; attempt <= MAX_RETRY; attempt++) {
                 try {
-                    logger.info(`[SEARCH] DEBUG: STT init attempt ${attempt}/${MAX_RETRY} - calling sttService.initializeSttSessions(${language})`);
+                    logger.info(`[ListenService] STT init attempt ${attempt}/${MAX_RETRY}`);
                     await this.sttService.initializeSttSessions(language);
-                    logger.info(`[SEARCH] DEBUG: STT init attempt ${attempt}/${MAX_RETRY} SUCCESS!`);
+                    logger.info(`[ListenService] STT init attempt ${attempt}/${MAX_RETRY} succeeded`);
                     sttReady = true;
                     break;                         // Exit on success
                 } catch (err) {
                     lastError = err;
-                    logger.error(`[SEARCH] DEBUG: STT init attempt ${attempt}/${MAX_RETRY} FAILED:`, {
-                        error: err.message,
-                        stack: err.stack,
-                        name: err.name
-                    });
                     logger.warn(`[ListenService] STT init attempt ${attempt}/${MAX_RETRY} failed:`, {
                         error: err.message,
-                        stack: err.stack,
                         name: err.name
                     });
                     if (attempt < MAX_RETRY) {
-                        logger.info(`[SEARCH] DEBUG: Waiting ${RETRY_DELAY_MS}ms before retry...`);
+                        logger.info(`[ListenService] Waiting ${RETRY_DELAY_MS}ms before retry`);
                         await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
                     }
                 }
             }
             if (!sttReady) {
                 const errorMessage = `STT init failed after ${MAX_RETRY} retries. Last error: ${lastError?.message || 'Unknown error'}`;
-                logger.error('[SEARCH] DEBUG: STT initialization completely failed after all retries');
                 logger.error('[ListenService] STT initialization completely failed:', {
                     lastError: lastError?.message,
                     stack: lastError?.stack,
@@ -851,7 +849,7 @@ class ListenService {
                 });
                 throw new Error(errorMessage);
             }
-            logger.info('[SEARCH] DEBUG: STT initialization retry logic completed successfully');
+            logger.info('[ListenService] STT initialization retry logic completed successfully');
             /* ------------------------------------------- */
 
             // Start system audio capture after STT sessions are ready (simplified - no TTS coordination needed)

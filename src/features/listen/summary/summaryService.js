@@ -140,11 +140,11 @@ class SummaryService {
     addConversationTurn(speaker, text) {
         const conversationText = `${speaker.toLowerCase()}: ${text.trim()}`;
         this.conversationHistory.push(conversationText);
-        logger.info(`[CHAT] Added conversation text: ${conversationText}`);
-        logger.info(` Total conversation history: ${this.conversationHistory.length} texts`);
-
-        // Debug: show the actual conversation history
-        console.log('DEBUG conversation history:', this.conversationHistory.map((text, i) => `${i + 1}: ${text.substring(0, 50)}...`));
+        logger.info('[SummaryService] Conversation turn added', {
+            speaker: speaker.toLowerCase(),
+            textLength: text.trim().length,
+            totalTurns: this.conversationHistory.length,
+        });
 
         // Trigger analysis if needed without leaking rejected promises into
         // the main process.
@@ -179,7 +179,10 @@ class SummaryService {
 
     async makeOutlineAndRequests(conversationTexts, maxTurns = 30, options = {}) {
         const { allowFallback = true, throwOnError = false } = options;
-        logger.info(`[SEARCH] makeOutlineAndRequests called - conversationTexts: ${conversationTexts.length}`);
+        logger.info('[SummaryService] makeOutlineAndRequests called', {
+            conversationTexts: conversationTexts.length,
+            maxTurns,
+        });
 
         if (conversationTexts.length === 0) {
             logger.info('[WARNING] No conversation texts available for analysis');
@@ -211,7 +214,7 @@ Please build upon this context while analyzing the new conversation segments.
             }
 
             const modelInfo = modelStateService.getCurrentModelInfo('llm');
-            console.log('DEBUG LLM modelInfo:', {
+            logger.info('[SummaryService] LLM model selected', {
                 hasModelInfo: !!modelInfo,
                 provider: modelInfo?.provider,
                 model: modelInfo?.model,
@@ -219,7 +222,6 @@ Please build upon this context while analyzing the new conversation segments.
             });
 
             if (!modelInfo?.provider || !modelInfo?.model || (providerNeedsClientApiKey(modelInfo.provider) && !modelInfo.apiKey)) {
-                console.log('ERROR: LLM analysis failing - no model or API key');
                 throw new Error('AI model or API key is not configured.');
             }
             logger.info(`[AI] Sending analysis request to ${modelInfo.provider} using model ${modelInfo.model}`);
@@ -425,7 +427,11 @@ RÈGLES :
             };
         }
 
-        logger.info('[DATA] Final structured data:', JSON.stringify(structuredData, null, 2));
+        logger.info('[SummaryService] Final structured data ready', {
+            summaryItems: structuredData.summary?.length || 0,
+            actions: structuredData.actions?.length || 0,
+            hasTopic: Boolean(structuredData.topic?.header),
+        });
         return structuredData;
     }
 
@@ -476,7 +482,6 @@ RÈGLES :
 
             if (data) {
                 logger.info('Sending structured data to renderer');
-                console.log('DEBUG sending summary-update to renderer:', JSON.stringify(data, null, 2));
                 this.sendToRenderer('summary-update', data);
 
                 // Notify callback
