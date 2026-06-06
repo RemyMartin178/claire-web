@@ -440,7 +440,8 @@ export default function ActivityPage() {
                       // No more page-level "Discussion avec Claire" fallback.
                       const phase = getSessionPhase(session, null)
                       const isLive = phase === 'ongoing'
-                      const isAnalyzing = phase === 'analyzing'
+                      const isActivePhase = phase === 'ending' || phase === 'analyzing' || phase === 'revealing'
+                      const isFailed = phase === 'failed'
                       let displayTitle = getSessionDisplayTitle(session, null)
                       if (displayTitle.length > 45) {
                         displayTitle = displayTitle.substring(0, 42).trimEnd() + '…'
@@ -468,7 +469,7 @@ export default function ActivityPage() {
                             <span
                               className={[
                                 'truncate pr-3 font-medium text-sm flex-1 block',
-                                isLive || isAnalyzing ? 'cluely-text-shimmer' : 'text-foreground',
+                                isLive || isActivePhase ? 'cluely-text-shimmer' : 'text-foreground',
                               ].join(' ')}
                             >
                               {displayTitle}
@@ -479,8 +480,10 @@ export default function ActivityPage() {
                                   'inline-flex items-center rounded-full px-2 py-0.5 font-medium text-[11px] tabular-nums',
                                   isLive
                                     ? 'bg-muted text-muted-foreground animate-pulse'
-                                    : isAnalyzing
+                                    : isActivePhase
                                       ? 'bg-muted cluely-text-shimmer'
+                                      : isFailed
+                                        ? 'bg-muted text-muted-foreground'
                                       : 'bg-muted text-muted-foreground',
                                 ].join(' ')}
                               >

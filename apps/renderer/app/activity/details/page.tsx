@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import {
   getSessionPhase,
   getSessionDisplayTitle,
+  getSessionSummaryUnavailableMessage,
   isGenericSessionTitle,
 } from '@/utils/sessionDisplay'
 import { useAuth } from '@/contexts/AuthContext'
@@ -211,7 +212,6 @@ function SessionDetailsContent() {
     }
   }, [userInfo, loading, router]);
 
-  const [, setTitleShimmer] = useState(isNewSession)
   // Live, token-by-token title coming from the main process while the summary
   // is generating. Cleared once the progressive reveal of the summary finishes.
   const [streamingTitle, setStreamingTitle] = useState<string>('')
@@ -223,6 +223,7 @@ function SessionDetailsContent() {
   // stay on so the whole reveal feels continuous.
   const [progressiveSummaryText, setProgressiveSummaryText] = useState<string | null>(null)
   const progressiveTimerRef = useRef<number | null>(null)
+  const [summaryFailureReason, setSummaryFailureReason] = useState<string | null>(null)
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(() => cachedDetails || placeholderDetails);
   const [isLoading, setIsLoading] = useState(() => !cachedDetails && !placeholderDetails)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -275,8 +276,8 @@ function SessionDetailsContent() {
     setIsLoading(false);
     const loadedTitle = detailsQuery.data.session?.title || '';
     const loadedTitleIsGeneric = isGenericSessionTitle(loadedTitle);
-    if (detailsQuery.data.summary || !loadedTitleIsGeneric) {
-      setTitleShimmer(false);
+    if (detailsQuery.data.session?.summary_status !== 'failed') {
+      setSummaryFailureReason(null);
     }
     if (detailsQuery.data.summary && !progressiveTimerRef.current) {
       setProgressiveSummaryText(null);
@@ -297,13 +298,20 @@ function SessionDetailsContent() {
   }, [detailsQuery.data, detailsQuery.error, detailsQuery.isLoading, sessionDetails]);
 
   useEffect(() => {
-    if (!isNewSession || !sessionId || sessionDetails?.summary) return
+    const summaryStatus = sessionDetails?.session.summary_status
+    if (
+      !isNewSession ||
+      !sessionId ||
+      sessionDetails?.summary ||
+      summaryStatus === 'failed' ||
+      summaryStatus === 'completed'
+    ) return
     void detailsQuery.refetch()
     const interval = window.setInterval(() => {
       void detailsQuery.refetch()
     }, 2500)
     return () => window.clearInterval(interval)
-  }, [detailsQuery.refetch, isNewSession, sessionDetails?.summary, sessionId])
+  }, [detailsQuery.refetch, isNewSession, sessionDetails?.summary, sessionDetails?.session.summary_status, sessionId])
 
   // When listen stops on the active session, immediately refetch so the UI sees
   // the new ended_at and any newly-generated summary without waiting for the
@@ -314,10 +322,26 @@ function SessionDetailsContent() {
     const running = Boolean(sharedState?.isListenRunning)
     const wasRunning = prevIsListenRunningRef.current
     prevIsListenRunningRef.current = running
-    if (wasRunning === true && running === false && sharedState?.session?.id === sessionId) {
+    if (
+      wasRunning === true &&
+      running === false &&
+      (sharedState?.session?.id === sessionId || sharedState?.lastSessionId === sessionId)
+    ) {
       // Mark the session as having a pending summary so the UI shows the
       // shimmer/loading state instead of "Aucun résumé disponible".
-      setTitleShimmer(true)
+      setSummaryFailureReason(null)
+      setSessionDetails((prev) => prev
+        ? {
+            ...prev,
+            session: {
+              ...prev.session,
+              ended_at: prev.session.ended_at || Date.now(),
+              summary_status: 'analyzing',
+            },
+            summary: null,
+          }
+        : prev)
+      setAnalysisTitleStage('analysis')
       void detailsQuery.refetch()
       // Re-poll a couple more times in the next few seconds to catch the
       // backend summary as soon as it lands.
@@ -325,7 +349,7 @@ function SessionDetailsContent() {
       const t2 = setTimeout(() => detailsQuery.refetch(), 4000)
       return () => { clearTimeout(t1); clearTimeout(t2); }
     }
-  }, [sharedState?.isListenRunning, sharedState?.session?.id, sessionId, detailsQuery])
+  }, [sharedState?.isListenRunning, sharedState?.session?.id, sharedState?.lastSessionId, sessionId, detailsQuery])
 
   // Title shimmer is now derived from phase (ongoing/analyzing). No arbitrary
   // 30s timeout — the visual stops naturally as soon as the summary lands and
@@ -358,6 +382,7 @@ function SessionDetailsContent() {
       })
       setStreamingTitle('')
       setAnalysisTitleStage('analysis')
+      setSummaryFailureReason(null)
       void detailsQuery.refetch()
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
@@ -365,6 +390,7 @@ function SessionDetailsContent() {
     const offSummaryStarted = api.onSessionSummaryStarted?.((payload: { sessionId?: string }) => {
       if (payload?.sessionId !== sessionId) return
       setAnalysisTitleStage('summary')
+      setSummaryFailureReason(null)
     })
 
     const offTitleStream = api.onSessionTitleStream?.((payload: { sessionId?: string; partial?: string }) => {
@@ -393,6 +419,7 @@ function SessionDetailsContent() {
 
     const offCompleted = api.onSessionSummaryCompleted?.((payload: { sessionId?: string; data?: any }) => {
       if (payload?.sessionId !== sessionId) return
+      setSummaryFailureReason(null)
 
       const finalText =
         payload?.data?.rawText ||
@@ -426,7 +453,11 @@ function SessionDetailsContent() {
             setSessionDetails((prev) => prev
               ? { ...prev, session: { ...prev.session, summary_status: 'completed' } }
               : prev)
-            void detailsQuery.refetch()
+            void detailsQuery.refetch().then((result) => {
+              if (result.data?.summary) {
+                setProgressiveSummaryText(null)
+              }
+            })
             void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
           }
         }, tickMs)
@@ -435,6 +466,7 @@ function SessionDetailsContent() {
 
       // No raw text in payload → fall back to immediate refetch.
       setStreamingTitle('')
+      setProgressiveSummaryText(null)
       setSessionDetails((prev) => prev
         ? { ...prev, session: { ...prev.session, summary_status: 'completed' } }
         : prev)
@@ -442,15 +474,21 @@ function SessionDetailsContent() {
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
 
-    const offFailed = api.onSessionSummaryFailed?.((payload: { sessionId?: string }) => {
+    const offFailed = api.onSessionSummaryFailed?.((payload: { sessionId?: string; reason?: string; error?: string }) => {
       if (payload?.sessionId !== sessionId) return
       setStreamingTitle('')
       setAnalysisTitleStage('summary')
-      setTitleShimmer(false)
+      setSummaryFailureReason(payload.reason || payload.error || null)
+      if (progressiveTimerRef.current) {
+        window.clearInterval(progressiveTimerRef.current)
+        progressiveTimerRef.current = null
+      }
+      setProgressiveSummaryText(null)
       setSessionDetails((prev) => prev
-        ? { ...prev, session: { ...prev.session, summary_status: 'failed' } }
+        ? { ...prev, session: { ...prev.session, summary_status: 'failed' }, summary: null }
         : prev)
       void detailsQuery.refetch()
+      void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
     })
 
     return () => {
@@ -667,9 +705,11 @@ function SessionDetailsContent() {
   }
 
   // Phase-derived state (single source of truth — matches Cluely).
-  const phase = getSessionPhase(sessionDetails?.session, sessionDetails?.summary);
-  const isProgressiveRevealing = progressiveSummaryText !== null;
-  const isAnalyzingSession = phase === 'analyzing' || isProgressiveRevealing;
+  const isProgressiveRevealing = progressiveTimerRef.current !== null;
+  const phase = getSessionPhase(sessionDetails?.session, sessionDetails?.summary, {
+    isRevealing: isProgressiveRevealing,
+  });
+  const isAnalyzingSession = phase === 'ending' || phase === 'analyzing' || phase === 'revealing';
 
   useEffect(() => {
     if (!isAnalyzingSession || streamingTitle || analysisTitleStage !== 'analysis') return
@@ -688,7 +728,9 @@ function SessionDetailsContent() {
     }
   }
 
-  const helperTitle = getSessionDisplayTitle(sessionDetails?.session, sessionDetails?.summary);
+  const helperTitle = getSessionDisplayTitle(sessionDetails?.session, sessionDetails?.summary, {
+    isRevealing: isProgressiveRevealing,
+  });
   // Priority during analyzing:
   //   1. streamingTitle (live token-by-token from main)
   //   2. "Résumé en cours" placeholder while waiting for the first tokens
@@ -766,10 +808,15 @@ function SessionDetailsContent() {
             {parseMarkdown(stripEmojisAndPrefixes(rawSummaryText), handleCopySummary, copiedTarget === 'summary')}
           </div>
         ) : phase === 'failed' ? (
-          <p className="text-muted-foreground/80 text-sm">Résumé indisponible pour cette session.</p>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">R\u00e9sum\u00e9 indisponible</p>
+            <p className="text-muted-foreground/80 text-sm">
+              {getSessionSummaryUnavailableMessage(summaryFailureReason)}
+            </p>
+          </div>
         ) : phase === 'ongoing' ? (
           <p className="text-muted-foreground/50 text-sm">Terminez la session pour voir vos notes.</p>
-        ) : phase === 'analyzing' ? (
+        ) : phase === 'ending' || phase === 'analyzing' || phase === 'revealing' ? (
           <div className="space-y-3">
             <div className="summary-skeleton-line w-[92%]" />
             <div className="summary-skeleton-line w-[76%]" />
