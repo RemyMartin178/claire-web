@@ -613,8 +613,14 @@ function SessionDetailsContent() {
       ? bullets.map(b => `- ${b.replace(/\*\*/g, '')}`).join('\n')
       : (summaryText || '').replace(/\*\*/g, '').replace(/## /g, '').trim();
 
-    await navigator.clipboard.writeText(copyText);
-    markCopied('summary');
+    if (!copyText) return;
+
+    try {
+      await navigator.clipboard.writeText(copyText);
+      markCopied('summary');
+    } catch (error) {
+      console.warn('Failed to copy summary:', error);
+    }
   }
 
   const handleCopyTranscript = async () => {
@@ -818,6 +824,7 @@ function SessionDetailsContent() {
   const missedOpportunitiesCount = 6;
 
   const hasTranscript = groupedTranscripts.length > 0;
+  const canCopySummary = bulletPoints.length > 0 || Boolean((rawSummaryText || progressiveSummaryText || '').trim());
 
   const renderContent = () => {
     if (!sessionDetails) {
@@ -1029,7 +1036,7 @@ function SessionDetailsContent() {
                 </button>
               ))}
             </div>
-            {activeTab === 'summary' && sessionDetails && (
+            {activeTab === 'summary' && sessionDetails && canCopySummary && (
               <button type="button" onClick={handleCopySummary}
                 className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-muted-foreground hover:text-foreground text-xs font-medium transition">
                 {copiedTarget === 'summary' ? <Check className="w-3 h-3 text-foreground copied-pop" /> : <Copy className="w-3 h-3" />}
@@ -1046,7 +1053,7 @@ function SessionDetailsContent() {
           </div>
 
           {/* Content */}
-          <section className="mt-6">
+          <section className="mt-6" aria-live={isAnalyzingSession ? 'polite' : 'off'} aria-busy={isAnalyzingSession}>
             {renderContent()}
           </section>
 

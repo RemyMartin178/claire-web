@@ -1297,3 +1297,33 @@ a:hover {
     animation: page-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .claire-text-shimmer,
+  .cluely-text-shimmer,
+  .title-shimmer {
+    animation: none !important;
+    background: none !important;
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+  }
+
+  .summary-skeleton-line {
+    animation: none !important;
+    background: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .dark .summary-skeleton-line {
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .summary-dot,
+  .summary-streaming,
+  .title-caret,
+  .copied-pop,
+  .animate-spin,
+  .animate-pulse {
+    animation: none !important;
+    transform: none !important;
+  }
+}
