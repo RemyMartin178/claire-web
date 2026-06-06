@@ -79,7 +79,10 @@ export default function ElectronClientLayout({
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
       const current = window.location.pathname + window.location.search
       if (!current.includes(id)) {
-        router.push(`/activity/details?sessionId=${id}&new=1`)
+        try {
+          window.sessionStorage.setItem('activity:pendingSessionId', id)
+        } catch { /* noop */ }
+        router.push(`/activity/details?sessionId=${encodeURIComponent(id)}`)
       }
       setPendingSessionRouteReady(id)
     })

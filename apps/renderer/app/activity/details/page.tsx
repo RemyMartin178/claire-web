@@ -173,6 +173,7 @@ const parseMarkdown = (text: string, onCopySummary?: () => void, copiedSummary =
 };
 
 type TabType = 'summary' | 'transcript' | 'usage';
+const PENDING_SESSION_STORAGE_KEY = 'activity:pendingSessionId';
 
 // Unused component removed for cleanup
 
@@ -183,27 +184,47 @@ function SessionDetailsContent() {
   const searchParams = useSearchParams();
   const { state: sharedState } = useSharedState();
   const sessionId = searchParams.get('sessionId');
-  const isNewSession = searchParams.get('new') === '1'
+  const isLegacyNewSession = searchParams.get('new') === '1'
   const routeTitle = searchParams.get('title');
   const routeCreatedAt = searchParams.get('createdAt');
   const cachedDetails = sessionId ? getCachedSessionDetails(sessionId) : null;
-  const placeholderDetails = !cachedDetails && isNewSession && sessionId ? {
-    session: {
-      id: sessionId,
-      uid: userInfo?.uid || '',
-      title: 'Résumé en cours',
-      session_type: 'listen',
-      started_at: Number(routeCreatedAt) || Date.now(),
-      ended_at: Date.now(),
-      summary_status: 'analyzing',
-      title_status: 'streaming',
-      sync_state: 'clean',
-      updated_at: Date.now(),
-    },
-    transcripts: [],
-    ai_messages: [],
-    summary: null,
-  } satisfies SessionDetails : null;
+  const [pendingSessionId, setPendingSessionId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      return window.sessionStorage.getItem(PENDING_SESSION_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const isPendingSessionBootstrap = Boolean(
+    sessionId &&
+    !cachedDetails &&
+    (
+      isLegacyNewSession ||
+      pendingSessionId === sessionId ||
+      sharedState?.lastSessionId === sessionId
+    )
+  );
+  const routeCreatedAtMs = routeCreatedAt ? new Date(routeCreatedAt).getTime() : NaN;
+  const placeholderDetails = useMemo(() => (
+    isPendingSessionBootstrap && sessionId ? {
+      session: {
+        id: sessionId,
+        uid: userInfo?.uid || '',
+        title: 'R\u00e9sum\u00e9 en cours',
+        session_type: 'listen',
+        started_at: Number.isFinite(routeCreatedAtMs) ? routeCreatedAtMs : Date.now(),
+        ended_at: Date.now(),
+        summary_status: 'analyzing',
+        title_status: 'streaming',
+        sync_state: 'clean',
+        updated_at: Date.now(),
+      },
+      transcripts: [],
+      ai_messages: [],
+      summary: null,
+    } satisfies SessionDetails : null
+  ), [isPendingSessionBootstrap, routeCreatedAtMs, sessionId, userInfo?.uid]);
   const detailsQuery = useSessionDetailsQuery(sessionId, Boolean(userInfo && sessionId));
 
   useEffect(() => {
@@ -212,11 +233,30 @@ function SessionDetailsContent() {
     }
   }, [userInfo, loading, router]);
 
+  useEffect(() => {
+    if (!sessionId) {
+      setPendingSessionId(null);
+      return;
+    }
+    try {
+      setPendingSessionId(window.sessionStorage.getItem(PENDING_SESSION_STORAGE_KEY));
+    } catch {
+      setPendingSessionId(null);
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId || pendingSessionId !== sessionId) return;
+    try {
+      window.sessionStorage.removeItem(PENDING_SESSION_STORAGE_KEY);
+    } catch { /* noop */ }
+  }, [pendingSessionId, sessionId]);
+
   // Live, token-by-token title coming from the main process while the summary
   // is generating. Cleared once the progressive reveal of the summary finishes.
   const [streamingTitle, setStreamingTitle] = useState<string>('')
   const [analysisTitleStage, setAnalysisTitleStage] = useState<'analysis' | 'summary'>(
-    isNewSession ? 'analysis' : 'summary'
+    isPendingSessionBootstrap ? 'analysis' : 'summary'
   )
   // Renderer-side "fake stream" of the summary markdown — kicked off when
   // session:summary-completed arrives. Until it finishes, the shimmer + caret
@@ -242,9 +282,15 @@ function SessionDetailsContent() {
   const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
 
   useEffect(() => {
-    setAnalysisTitleStage(isNewSession ? 'analysis' : 'summary')
+    if (!placeholderDetails) return;
+    setSessionDetails((prev) => prev || placeholderDetails);
+    setIsLoading(false);
+  }, [placeholderDetails]);
+
+  useEffect(() => {
+    setAnalysisTitleStage(isPendingSessionBootstrap ? 'analysis' : 'summary')
     setStreamingTitle('')
-  }, [isNewSession, sessionId])
+  }, [isPendingSessionBootstrap, sessionId])
 
   const groupedTranscripts = useMemo(() => {
     const transcripts = sessionDetails?.transcripts || [];
@@ -300,7 +346,7 @@ function SessionDetailsContent() {
   useEffect(() => {
     const summaryStatus = sessionDetails?.session.summary_status
     if (
-      !isNewSession ||
+      !isPendingSessionBootstrap ||
       !sessionId ||
       sessionDetails?.summary ||
       summaryStatus === 'failed' ||
@@ -311,7 +357,7 @@ function SessionDetailsContent() {
       void detailsQuery.refetch()
     }, 2500)
     return () => window.clearInterval(interval)
-  }, [detailsQuery.refetch, isNewSession, sessionDetails?.summary, sessionDetails?.session.summary_status, sessionId])
+  }, [detailsQuery.refetch, isPendingSessionBootstrap, sessionDetails?.summary, sessionDetails?.session.summary_status, sessionId])
 
   // When listen stops on the active session, immediately refetch so the UI sees
   // the new ended_at and any newly-generated summary without waiting for the

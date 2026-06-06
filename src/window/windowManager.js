@@ -2286,7 +2286,10 @@ function markDashboardSessionRouteReady(sessionId) {
  */
 function openDashboardOnSession(sessionId) {
     if (!sessionId) return;
-    const targetPath = `/activity/details?sessionId=${encodeURIComponent(sessionId)}&new=1`;
+    try {
+        sharedStateService.patch({ lastSessionId: sessionId });
+    } catch (_) {}
+    const targetPath = `/activity/details?sessionId=${encodeURIComponent(sessionId)}`;
     const targetUrl = getDashboardUrlForPath(targetPath);
     const dash = getDashboardWindow();
     if (!dash) {
