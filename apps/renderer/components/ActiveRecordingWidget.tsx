@@ -47,7 +47,7 @@ export function ActiveRecordingWidget() {
 
   const handleClick = () => {
     if (!session?.id) return
-    router.push(`/activity/details?sessionId=${session.id}&title=Session+en+cours&new=1`)
+    router.push(`/activity/details?sessionId=${encodeURIComponent(session.id)}`)
   }
 
   return (
