@@ -46,6 +46,7 @@ async function create(uid, type = 'ask') {
         updatedAt: now,
         endedAt: null,
         summaryStatus: 'idle',
+        summaryError: null,
         titleStatus: 'idle',
     };
     const docRef = await addDoc(sessionsCol(uid), newSession);
