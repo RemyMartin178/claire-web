@@ -77,8 +77,12 @@ export default function ElectronClientLayout({
       const id = payload?.sessionId
       if (!id) return
       void queryClient.invalidateQueries({ queryKey: sessionKeys.list() })
-      const current = window.location.pathname + window.location.search
-      if (!current.includes(id)) {
+      const params = new URLSearchParams(window.location.search)
+      const isAlreadyOnTargetSession =
+        window.location.pathname === '/activity/details' &&
+        params.get('sessionId') === id
+
+      if (!isAlreadyOnTargetSession) {
         try {
           window.sessionStorage.setItem('activity:pendingSessionId', id)
         } catch { /* noop */ }
