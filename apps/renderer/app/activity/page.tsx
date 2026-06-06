@@ -402,7 +402,7 @@ export default function ActivityPage() {
             </ul>
           ) : (
             <p className="mt-4 text-sm text-muted-foreground/80">
-              <button className="text-blue-500 hover:underline font-medium" onClick={() => {}}>Relier votre calendrier</button>
+              <button className="text-blue-500 hover:underline font-medium" onClick={() => router.push('/calendar')}>Relier votre calendrier</button>
               {' '}pour recevoir des notifications pour vos réunions à venir.
             </p>
           )}
