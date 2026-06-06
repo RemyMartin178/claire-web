@@ -227,11 +227,14 @@ class AuthService {
 
     _getRendererUrl() {
         if (!app.isPackaged) {
+            if (process.env.pickleglass_WEB_URL) {
+                return process.env.pickleglass_WEB_URL;
+            }
             const devUrl = process.env.DASHBOARD_DEV_URL;
             if (devUrl) {
                 try { return new URL(devUrl).origin; } catch {}
             }
-            return process.env.pickleglass_WEB_URL || 'http://localhost:3000';
+            return 'http://localhost:3000';
         }
         return 'https://renderer.clairia.app';
     }

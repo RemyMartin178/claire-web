@@ -156,6 +156,19 @@ function getInitialDashboardPath() {
     return '/electron-login';
 }
 
+function getDevDashboardBaseUrl() {
+    const runtimeBaseUrl = (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || '').trim();
+    if (runtimeBaseUrl) return runtimeBaseUrl.replace(/\/$/, '');
+
+    if (process.env.DASHBOARD_DEV_URL) {
+        try {
+            return new URL(process.env.DASHBOARD_DEV_URL).origin;
+        } catch (_) { /* fall through */ }
+    }
+
+    return 'http://localhost:3000';
+}
+
 function getDashboardUrlForPath(targetPath) {
     const initialPath = targetPath || getInitialDashboardPath();
 
@@ -171,14 +184,7 @@ function getDashboardUrlForPath(targetPath) {
         }
     }
 
-    if (process.env.DASHBOARD_DEV_URL) {
-        try {
-            const devOrigin = new URL(process.env.DASHBOARD_DEV_URL).origin;
-            return `${devOrigin}${initialPath}`;
-        } catch (_) { /* fall through */ }
-    }
-    const baseUrl = (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000').trim();
-    return `${baseUrl.replace(/\/$/, '')}${initialPath}`;
+    return `${getDevDashboardBaseUrl()}${initialPath}`;
 }
 
 function getDashboardUrl() {
@@ -188,15 +194,7 @@ function getDashboardUrl() {
         return process.env.DASHBOARD_URL || `app://renderer${initialPath}`;
     }
 
-    // DASHBOARD_DEV_URL takes top priority for local dev (may include a path, so extract origin only)
-    if (process.env.DASHBOARD_DEV_URL) {
-        try {
-            const devOrigin = new URL(process.env.DASHBOARD_DEV_URL).origin;
-            return `${devOrigin}${initialPath}`;
-        } catch (_) { /* fall through */ }
-    }
-    const baseUrl = (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000').trim();
-    return `${baseUrl.replace(/\/$/, '')}${initialPath}`;
+    return `${getDevDashboardBaseUrl()}${initialPath}`;
 }
 
 let settingsHideTimer = null;
@@ -2430,9 +2428,7 @@ function createMeetingNotificationWindow() {
 
     const baseUrl = app.isPackaged
         ? 'app://renderer'
-        : (process.env.DASHBOARD_DEV_URL
-            ? new URL(process.env.DASHBOARD_DEV_URL).origin
-            : (process.env.pickleglass_WEB_URL || process.env.XERUS_WEB_URL || 'http://localhost:3000').replace(/\/$/, ''));
+        : getDevDashboardBaseUrl();
     void meetingNotificationWindow.loadURL(`${baseUrl}/notification`);
 
     meetingNotificationWindow.setAlwaysOnTop(true, 'floating');
