@@ -2279,6 +2279,17 @@ function markDashboardSessionRouteReady(sessionId) {
     return true;
 }
 
+function isDashboardShowingSession(win, sessionId) {
+    if (!win || !sessionId) return false;
+    const currentUrl = win.webContents.getURL() || '';
+    try {
+        const parsed = new URL(currentUrl);
+        return parsed.pathname === '/activity/details' && parsed.searchParams.get('sessionId') === sessionId;
+    } catch (_) {
+        return false;
+    }
+}
+
 /**
  * Bring the dashboard window to /activity/details for a specific session.
  * Existing windows navigate by IPC and are revealed only after the renderer
@@ -2309,8 +2320,7 @@ function openDashboardOnSession(sessionId) {
         return;
     }
 
-    const currentUrl = dash.webContents.getURL() || '';
-    if (currentUrl.includes('/activity/details') && currentUrl.includes(sessionId)) {
+    if (isDashboardShowingSession(dash, sessionId)) {
         revealDashboardWindow(dash);
         return;
     }
