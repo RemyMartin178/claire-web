@@ -337,7 +337,7 @@ export default function ActivityPage() {
 
                     let displayTitle = session.title;
                     if (!displayTitle || displayTitle.includes('Session @') || displayTitle === 'Session Sans Titre') {
-                      displayTitle = 'Discussion avec Claire';
+                      displayTitle = 'Sans titre';
                     }
                     // Enforce max length: titles should be 3-6 words
                     if (displayTitle && displayTitle.length > 45) {

@@ -283,12 +283,12 @@ export const getSessions = async (): Promise<Session[]> => {
           if (summary && summary.tldr) {
             const firstLine = summary.tldr.split('\n')[0].trim();
             let cleanTldr = firstLine.replace(/^(La discussion porte sur|La conversation porte sur|Ce \w+ porte sur|Le sujet est)\s*/i, '').replace(/\*\*/g, '').trim();
-            session.title = cleanTldr.length > 40 ? cleanTldr.substring(0, 40).trimEnd() + '…' : cleanTldr || 'Discussion avec Claire';
+            session.title = cleanTldr.length > 40 ? cleanTldr.substring(0, 40).trimEnd() + '…' : cleanTldr || 'Sans titre';
           } else {
-            session.title = 'Discussion avec Claire';
+            session.title = 'Sans titre';
           }
         } catch (e) {
-          session.title = 'Discussion avec Claire';
+          session.title = 'Sans titre';
         }
       }
     }));

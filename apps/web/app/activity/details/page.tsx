@@ -488,7 +488,7 @@ function SessionDetailsContent() {
   }
 
   if (!displayTitle || displayTitle.trim() === '' || genericTitles.some(t => displayTitle.includes(t))) {
-    displayTitle = 'Discussion avec Claire';
+    displayTitle = 'Sans titre';
   }
 
   const sessionContext = detectSessionType(rawSummaryText, displayTitle);
