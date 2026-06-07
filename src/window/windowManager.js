@@ -139,7 +139,7 @@ function getMainWindow() {
 }
 /* ────────────────[ LIQUID GLASS API ]─────────────── */
 
-let isContentProtectionOn = true;
+let isContentProtectionOn = false;
 let lastVisibleWindows = new Set(['header']);
 
 let currentHeaderState = 'apikey';
@@ -2134,11 +2134,11 @@ function createDashboardWindow({ skipAutoShow = false, initialPath = null } = {}
         dashboardWindow.setWindowButtonVisibility(false);
     }
 
-    // Content protection: respect persisted user preference (default true = undetectable).
+    // Content protection: respect persisted user preference (default false = detectable).
     // Toggle via dashboard:setContentProtection IPC (e.g. "détectable" setting).
     {
         const savedProtection = sharedStateService.get()?.contentProtectionEnabled;
-        const initialProtection = savedProtection === false ? false : true;
+        const initialProtection = savedProtection === true;
         try { dashboardWindow.setContentProtection(initialProtection); } catch (_) { }
     }
 

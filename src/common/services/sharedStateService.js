@@ -49,7 +49,7 @@ const DEFAULT_STATE = Object.freeze({
   handledMeetingNotificationIds: [],
 
   // Settings/state currently mirrored from legacy IPC handlers.
-  contentProtectionEnabled: true,
+  contentProtectionEnabled: false,
   theme: 'system',                         // 'light' | 'dark' | 'system'
   isOnboarding: false,
   titleBarVisible: true,

@@ -251,7 +251,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
   // General
   const [version, setVersion] = useState<string | null>(null);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
-  const [detectable, setDetectable] = useState(false);
+  const [detectable, setDetectable] = useState(true);
   const [ambient, setAmbient] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorThemeLabel>('Système');
   const { setTheme } = useTheme();
@@ -490,6 +490,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
   // ── CONTENT PROTECTION (détectable toggle) ────────────────────────────────
   useEffect(() => {
+    if (!settingsReady) return;
     const api = (window as any).api;
     if (api?.sharedState?.patch) {
       void api.sharedState.patch({
@@ -499,7 +500,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
     } else {
       void api?.dashboard?.setContentProtection?.(!detectable);
     }
-  }, [detectable, autoMeetingDetection]);
+  }, [detectable, autoMeetingDetection, settingsReady]);
 
   // ── ESC + SCROLL LOCK ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -935,7 +936,7 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
             <div>
               <p className="text-[13px] font-semibold text-[#18181b] dark:text-[#fafafa]">Détectable</p>
               <p className="text-[12px] leading-[1.35] text-[#71717a] dark:text-[#a1a1aa] mt-0.5">
-                {detectable ? "Claire est actuellement détectable par le partage d'écran" : "Claire n'est pas détectable par le partage d'écran"}
+                {detectable ? "Capture d'écran autorisée" : "Protection d'écran activée"}
               </p>
             </div>
           </div>
