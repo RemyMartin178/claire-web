@@ -554,6 +554,19 @@ function SessionDetailsContent() {
     }
   }, [sessionId, detailsQuery, queryClient])
 
+  // Phase-derived state (single source of truth - matches Cluely).
+  const isProgressiveRevealing = progressiveTimerRef.current !== null;
+  const phase = getSessionPhase(sessionDetails?.session, sessionDetails?.summary, {
+    isRevealing: isProgressiveRevealing,
+  });
+  const isAnalyzingSession = phase === 'ending' || phase === 'analyzing' || phase === 'revealing';
+
+  useEffect(() => {
+    if (!isAnalyzingSession || streamingTitle || analysisTitleStage !== 'analysis') return
+    const timer = window.setTimeout(() => setAnalysisTitleStage('summary'), 900)
+    return () => window.clearTimeout(timer)
+  }, [analysisTitleStage, isAnalyzingSession, streamingTitle])
+
   const handleDeleteClick = async () => {
     if (!sessionId) return;
     setIsDeleting(true);
@@ -759,18 +772,6 @@ function SessionDetailsContent() {
     durationFormatted = "En cours";
   }
 
-  // Phase-derived state (single source of truth — matches Cluely).
-  const isProgressiveRevealing = progressiveTimerRef.current !== null;
-  const phase = getSessionPhase(sessionDetails?.session, sessionDetails?.summary, {
-    isRevealing: isProgressiveRevealing,
-  });
-  const isAnalyzingSession = phase === 'ending' || phase === 'analyzing' || phase === 'revealing';
-
-  useEffect(() => {
-    if (!isAnalyzingSession || streamingTitle || analysisTitleStage !== 'analysis') return
-    const timer = window.setTimeout(() => setAnalysisTitleStage('summary'), 900)
-    return () => window.clearTimeout(timer)
-  }, [analysisTitleStage, isAnalyzingSession, streamingTitle])
 
   let rawSummaryText = sessionDetails?.summary?.text || '';
 

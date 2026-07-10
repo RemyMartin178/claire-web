@@ -22,9 +22,13 @@ Avatar.displayName = "Avatar"
 export interface AvatarImageProps extends React.ImgHTMLAttributes<HTMLImageElement> { }
 
 const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
-    ({ className, ...props }, ref) => (
+    ({ className, alt = "", ...props }, ref) => (
+        // Generic avatar primitive: callers may pass remote/blob URLs that do not
+        // fit next/image's optimizer in Electron.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
             ref={ref}
+            alt={alt}
             className={cn("aspect-square h-full w-full", className)}
             {...props}
         />
