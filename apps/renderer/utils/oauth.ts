@@ -71,7 +71,9 @@ function unique(values: string[]): string[] {
 async function getApiV1BaseCandidates(): Promise<string[]> {
   const candidates: string[] = []
 
-  if (typeof window !== 'undefined' && window.location?.origin) {
+  // En app packagée (protocole app://) il n'y a pas de serveur Next : les
+  // routes /api/* renvoient le HTML de fallback SPA, jamais du JSON.
+  if (typeof window !== 'undefined' && window.location?.origin && window.location.protocol !== 'app:') {
     candidates.push(`${window.location.origin.replace(/\/+$/, '')}/api/v1`)
   }
 
@@ -92,6 +94,12 @@ async function getApiV1BaseCandidates(): Promise<string[]> {
 
   candidates.push(PROD_API_V1_BASE)
   return unique(candidates).filter(isBackendCandidate)
+}
+
+// Fetch JSON sur l'API v1 backend en essayant les bases candidates dans
+// l'ordre. Réutilisable hors OAuth (ex. liste des appareils du Settings modal).
+export async function fetchApiV1Json<T>(path: string, init?: RequestInit): Promise<T> {
+  return fetchToolJson<T>(path, init)
 }
 
 async function fetchToolJson<T>(path: string, init?: RequestInit): Promise<T> {

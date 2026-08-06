@@ -360,9 +360,6 @@ export default function ActivityPage() {
                     Démarrer Claire
                   </button>
                 </div>
-                <span className="text-[11px] text-muted-foreground/60 tabular-nums pr-1">
-                  {sessions.length} {sessions.length === 1 ? 'session enregistrée' : 'sessions enregistrées'}
-                </span>
               </div>
             )}
           </div>

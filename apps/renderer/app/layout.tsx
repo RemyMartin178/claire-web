@@ -77,33 +77,6 @@ export default function RootLayout({
                   <ConditionalLayout>
                     <Analytics />
                     {children}
-                    <Toaster position="bottom-right" toastOptions={{
-                  duration: 3000,
-                  className: 'dark-toast',
-                  style: {
-                    background: 'rgba(40, 40, 40, 0.85)',
-                    color: '#fff',
-                    borderRadius: '14px',
-                    fontSize: '14px',
-                    padding: '12px 20px',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-                    fontWeight: '500',
-                  },
-                  success: {
-                    iconTheme: {
-                      primary: '#fff',
-                      secondary: '#282828',
-                    },
-                  },
-                  error: {
-                    iconTheme: {
-                      primary: '#fff',
-                      secondary: '#ef4444',
-                    },
-                  },
-                  }} />
                   </ConditionalLayout>
                 </PasswordModalProvider>
               </RevenueCatProvider>
@@ -111,6 +84,35 @@ export default function RootLayout({
             </ElectronBootProvider>
           </AuthProvider>
         </ThemeProvider>
+        {/* Monté au niveau du body : un ancêtre avec transform (animate-page-enter)
+            piégerait son position:fixed et le ferait passer sous les modals. */}
+        <Toaster position="bottom-right" containerStyle={{ zIndex: 20000 }} toastOptions={{
+          duration: 3000,
+          className: 'dark-toast',
+          style: {
+            background: 'rgba(40, 40, 40, 0.85)',
+            color: '#fff',
+            borderRadius: '14px',
+            fontSize: '14px',
+            padding: '12px 20px',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            fontWeight: '500',
+          },
+          success: {
+            iconTheme: {
+              primary: '#fff',
+              secondary: '#282828',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#fff',
+              secondary: '#ef4444',
+            },
+          },
+        }} />
       </body>
     </html>
   )

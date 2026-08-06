@@ -6,6 +6,7 @@ import {
   getSessionDisplayTitle,
   getSessionSummaryUnavailableMessage,
   isGenericSessionTitle,
+  STALE_ANALYZING_MS,
 } from '@/utils/sessionDisplay'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -346,9 +347,18 @@ function SessionDetailsContent() {
   }, [detailsQuery.data, detailsQuery.error, detailsQuery.isLoading, sessionDetails]);
 
   useEffect(() => {
-    const summaryStatus = sessionDetails?.session.summary_status
+    const session = sessionDetails?.session
+    const summaryStatus = session?.summary_status
+    // Poll while a summary is being generated: either during the bootstrap
+    // right after the session ended, or whenever the persisted status is still
+    // 'analyzing' on a recently ended session (the main process writes the
+    // terminal status after this renderer cached its snapshot).
+    const isRecentlyAnalyzing =
+      summaryStatus === 'analyzing' &&
+      typeof session?.ended_at === 'number' &&
+      Date.now() - session.ended_at < STALE_ANALYZING_MS
     if (
-      !isPendingSessionBootstrap ||
+      !(isPendingSessionBootstrap || isRecentlyAnalyzing) ||
       !sessionId ||
       sessionDetails?.summary ||
       summaryStatus === 'failed' ||
@@ -359,7 +369,7 @@ function SessionDetailsContent() {
       void detailsQuery.refetch()
     }, 2500)
     return () => window.clearInterval(interval)
-  }, [detailsQuery.refetch, isPendingSessionBootstrap, sessionDetails?.summary, sessionDetails?.session.summary_status, sessionId])
+  }, [detailsQuery.refetch, isPendingSessionBootstrap, sessionDetails?.summary, sessionDetails?.session.summary_status, sessionDetails?.session.ended_at, sessionId])
 
   // When listen stops on the active session, immediately refetch so the UI sees
   // the new ended_at and any newly-generated summary without waiting for the
@@ -1015,7 +1025,14 @@ function SessionDetailsContent() {
               aria-label="Titre de l'activité"
               className={[
                 'mt-2 w-full bg-transparent p-0 font-medium text-3xl leading-[1.03] tracking-tight outline-none',
-                isAnalyzingSession ? 'cluely-text-shimmer' : 'text-foreground',
+                // Le shimmer du titre suit l'état du titre, pas celui du résumé :
+                // un titre déjà persisté ('ready') doit se figer même si le
+                // résumé est encore en cours.
+                isAnalyzingSession &&
+                sessionDetails?.session.title_status !== 'ready' &&
+                sessionDetails?.session.title_status !== 'failed'
+                  ? 'cluely-text-shimmer'
+                  : 'text-foreground',
               ].join(' ')}
             />
           )}

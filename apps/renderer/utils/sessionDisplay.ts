@@ -48,6 +48,8 @@ const GENERIC_TITLES = [
 
 const MAX_DERIVED_TITLE_LENGTH = 40;
 
+export const STALE_ANALYZING_MS = 15 * 60 * 1000;
+
 function normalizeForComparison(value: string): string {
   return value
     .normalize('NFD')
@@ -71,7 +73,13 @@ export function getSessionPhase(
   if (summaryStatus === 'failed') return 'failed';
   if (displayState.isRevealing) return 'revealing';
   if (summary) return 'completed';
-  if (summaryStatus === 'analyzing') return 'analyzing';
+  if (summaryStatus === 'analyzing') {
+    // A session can be left in 'analyzing' forever if the main process died
+    // mid-generation. Past this window no summary is coming: surface 'failed'
+    // instead of an endless shimmer/skeleton.
+    if (Date.now() - session.ended_at > STALE_ANALYZING_MS) return 'failed';
+    return 'analyzing';
+  }
   if (titleStatus === 'streaming') return 'analyzing';
 
   return 'completed';

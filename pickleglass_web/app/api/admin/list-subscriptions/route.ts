@@ -1,56 +1,87 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
-import { getApps } from 'firebase-admin/app'
+import { ensureFirebaseAdminInitialized } from '@/utils/firebaseAdmin'
+
+function toIsoString(value: any): string | null {
+  if (!value) return null
+  const date = typeof value.toDate === 'function' ? value.toDate() : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // Vérifier si Firebase Admin est initialisé
-    if (getApps().length === 0) {
-      return NextResponse.json(
-        { error: 'Firebase Admin not initialized' },
-        { status: 500 }
-      )
+    ensureFirebaseAdminInitialized()
+
+    const authorization = request.headers.get('authorization')
+    if (!authorization?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
+    }
+
+    let decodedToken
+    try {
+      decodedToken = await getAuth().verifyIdToken(authorization.slice(7))
+    } catch {
+      return NextResponse.json({ error: 'Session invalide' }, { status: 401 })
     }
 
     const db = getFirestore()
-    console.log('🔍 Recherche de tous les utilisateurs avec abonnements Stripe...')
-    
-    // Récupérer tous les utilisateurs qui ont un stripeSubscriptionId
-    const usersSnapshot = await db.collection('users')
-      .where('subscription.stripeSubscriptionId', '!=', null)
-      .get()
-    
-    const subscriptions = []
-    
-    for (const userDoc of usersSnapshot.docs) {
-      const userData = userDoc.data()
-      const subscription = userData.subscription
-      
-      if (subscription?.stripeSubscriptionId) {
-        subscriptions.push({
-          userId: userDoc.id,
-          email: userData.email,
-          displayName: userData.displayName,
-          subscriptionId: subscription.stripeSubscriptionId,
-          currentPlan: subscription.plan,
-          currentStatus: subscription.status,
-          currentPeriodEnd: subscription.currentPeriodEnd?.toDate?.() || subscription.currentPeriodEnd
-        })
-      }
+    const adminDocument = await db.collection('users').doc(decodedToken.uid).get()
+    if (!adminDocument.exists || adminDocument.data()?.isAdmin !== true) {
+      return NextResponse.json({ error: 'Acces administrateur requis' }, { status: 403 })
     }
-    
-    console.log(`📊 Trouvé ${subscriptions.length} utilisateurs avec abonnements Stripe`)
-    
-    return NextResponse.json({
-      success: true,
-      count: subscriptions.length,
-      subscriptions: subscriptions
+
+    const usersSnapshot = await db.collection('users').get()
+    const accounts = usersSnapshot.docs.map((userDocument) => {
+      const user = userDocument.data()
+      const subscription = user.subscription || {}
+      const status = subscription.status || 'inactive'
+      const plan = subscription.plan || 'free'
+      const hasActiveSubscription =
+        ['active', 'trialing'].includes(status) && plan !== 'free'
+
+      return {
+        id: userDocument.id,
+        email: user.email || '',
+        displayName: user.displayName || user.display_name || '',
+        createdAt: toIsoString(user.createdAt),
+        isAdmin: user.isAdmin === true,
+        isMock: user.isMock === true,
+        subscription: {
+          plan,
+          status,
+          isActive: hasActiveSubscription,
+          isLifetime: subscription.lifetime === true,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd === true,
+          currentPeriodEnd: toIsoString(subscription.currentPeriodEnd),
+        },
+      }
     })
-    
-  } catch (error: any) {
-    console.error('Error listing subscriptions:', error)
+
+    accounts.sort((a, b) => {
+      if (a.subscription.isActive !== b.subscription.isActive) {
+        return a.subscription.isActive ? -1 : 1
+      }
+      const left = a.createdAt ? new Date(a.createdAt).getTime() : 0
+      const right = b.createdAt ? new Date(b.createdAt).getTime() : 0
+      return right - left
+    })
+
+    return NextResponse.json({
+      accounts,
+      stats: {
+        total: accounts.length,
+        activeSubscriptions: accounts.filter((account) => account.subscription.isActive).length,
+        freeAccounts: accounts.filter((account) => account.subscription.plan === 'free').length,
+        canceledSubscriptions: accounts.filter((account) =>
+          ['canceled', 'unpaid', 'incomplete_expired'].includes(account.subscription.status)
+        ).length,
+      },
+    })
+  } catch (error) {
+    console.error('Failed to list admin accounts:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to list subscriptions' },
+      { error: 'Impossible de charger les comptes' },
       { status: 500 }
     )
   }

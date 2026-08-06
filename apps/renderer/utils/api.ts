@@ -1143,6 +1143,19 @@ export const updateAssistant = async (id: string, data: Partial<Assistant>): Pro
 
 // ── USER SETTINGS ─────────────────────────────────────────────────────────────
 
+export interface OnboardingState {
+  completed: boolean
+  completedAt?: string
+  version: '2026-07' | 'legacy-exempt'
+  persona?: 'looking-for-work' | 'student' | 'professional' | 'curious'
+  useCase?: string
+  roleOrEducation?: string
+  referrer?: string
+  referrerOther?: string
+  permissions?: { mic?: 'granted' | 'denied' | 'skipped' }
+  calendarConnected?: boolean
+}
+
 export interface UserSettings {
   detectable?: boolean
   ambient?: boolean
@@ -1153,6 +1166,7 @@ export interface UserSettings {
   transcriptionLang?: string
   outputLang?: string
   shortcuts?: Array<{ id: string; group: string; label: string; keys: string[] }>
+  onboarding?: OnboardingState
 }
 
 export const getUserSettings = async (): Promise<UserSettings> => {
@@ -1168,6 +1182,25 @@ export const updateUserSettings = async (data: Partial<UserSettings>): Promise<v
   const userData = await FirestoreUserService.getUser(uid)
   const currentSettings: UserSettings = (userData as any)?.settings || {}
   await FirestoreUserService.updateUser(uid, { settings: { ...currentSettings, ...data } } as any)
+}
+
+export const getOnboardingState = async (): Promise<OnboardingState | null> => {
+  const settings = await getUserSettings()
+  return settings.onboarding ?? null
+}
+
+export const completeOnboarding = async (data: Partial<OnboardingState> = {}): Promise<void> => {
+  const settings = await getUserSettings()
+  const current = settings.onboarding
+  await updateUserSettings({
+    onboarding: {
+      ...current,
+      ...data,
+      completed: true,
+      completedAt: data.completedAt ?? new Date().toISOString(),
+      version: data.version ?? current?.version ?? '2026-07',
+    },
+  })
 }
 
 export const deleteAssistant = async (id: string): Promise<void> => {

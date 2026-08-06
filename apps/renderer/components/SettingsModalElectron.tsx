@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { logout, getUserSettings, updateUserSettings, getAuthType, updateUserProfile, deleteAccount, getApiHeaders, getUserInfo, setUserInfo } from '@/utils/api';
-import { openOAuthPopup, checkAuthStatus, revokeAuth } from '@/utils/oauth';
+import { openOAuthPopup, checkAuthStatus, revokeAuth, fetchApiV1Json } from '@/utils/oauth';
 import { trackLogout } from '@/lib/gtag';
 import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron';
 import { useTheme } from 'next-themes';
@@ -412,38 +412,26 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
 
     const fetchDevices = async () => {
       try {
-        let baseUrl = 'http://localhost:3001';
-        try {
-          const cfg = await fetch('/runtime-config.json');
-          if (cfg.ok) { const c = await cfg.json(); baseUrl = c.API_URL || baseUrl; }
-        } catch {}
-
         const headers = await getApiHeaders();
-        const resp = await fetch(`${baseUrl}/api/v1/sessions/user/${userInfo.uid}`, { headers });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.length > 0) {
-            const mapped: Device[] = data.map((s: any, i: number) => ({
-              id: s.id,
-              name: s.os_info?.toLowerCase().includes('windows') ? 'Windows' : s.os_info?.toLowerCase().includes('mac') ? 'macOS' : 'Appareil',
-              os: s.os_info || 'Inconnu',
-              browser: s.browser_info || 'Inconnu',
-              location: 'Localisation masquée',
-              ip: s.ip_address || 'Non spécifiée',
-              lastSeen: s.last_seen_at ? new Date(s.last_seen_at).toLocaleString('fr-FR') : 'Inconnu',
-              isCurrent: i === 0,
-            }));
-            setDevices(mapped);
-            setDevicesLoadFailed(false);
-            return;
-          }
-
-          setDevices([]);
+        const data = await fetchApiV1Json<any[]>(`/sessions/user/${userInfo.uid}`, { headers });
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped: Device[] = data.map((s: any, i: number) => ({
+            id: s.id,
+            name: s.os_info?.toLowerCase().includes('windows') ? 'Windows' : s.os_info?.toLowerCase().includes('mac') ? 'macOS' : 'Appareil',
+            os: s.os_info || 'Inconnu',
+            browser: s.browser_info || 'Inconnu',
+            location: 'Localisation masquée',
+            ip: s.ip_address || 'Non spécifiée',
+            lastSeen: s.last_seen_at ? new Date(s.last_seen_at).toLocaleString('fr-FR') : 'Inconnu',
+            isCurrent: i === 0,
+          }));
+          setDevices(mapped);
           setDevicesLoadFailed(false);
           return;
         }
 
-        throw new Error(`Devices endpoint returned ${resp.status}`);
+        setDevices([]);
+        setDevicesLoadFailed(false);
       } catch {
         setDevices([]);
         setDevicesLoadFailed(true);
@@ -1123,7 +1111,9 @@ export default function SettingsModalElectron({ isOpen, onClose, onSearchClick }
                     toast.error('Connexion terminée, mais le calendrier n’est pas encore actif.');
                   }
                 } catch (e: any) {
-                  toast.error(e?.message || 'Connexion annulée.');
+                  // e.message est souvent un brut technique ("Failed to fetch") :
+                  // toujours afficher un message utilisateur clair.
+                  toast.error('Connexion au calendrier impossible. Réessayez dans un instant.');
                 } finally {
                   setIsConnectingCalendar(false);
                 }

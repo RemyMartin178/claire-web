@@ -567,12 +567,25 @@ RÈGLES :
                     logger.warn('[SummaryService] title stream failed (non-blocking):', { error: titleErr?.message });
                     return null;
                 });
-            const summaryPromise = this.makeOutlineAndRequests(conversationTexts, 30, {
-                allowFallback: false,
-                throwOnError: true,
-            });
+            // Watchdog: a stalled LLM call would otherwise leave summaryStatus
+            // stuck on 'analyzing' forever in Firestore (infinite skeleton in
+            // the dashboard). Force a terminal 'failed' past this window.
+            let watchdogHandle = null;
+            const summaryPromise = Promise.race([
+                this.makeOutlineAndRequests(conversationTexts, 30, {
+                    allowFallback: false,
+                    throwOnError: true,
+                }),
+                new Promise((_, reject) => {
+                    watchdogHandle = setTimeout(
+                        () => reject(new Error('final summary generation timed out')),
+                        120000
+                    );
+                }),
+            ]);
 
             const [titleResult, summaryResult] = await Promise.allSettled([titlePromise, summaryPromise]);
+            if (watchdogHandle) clearTimeout(watchdogHandle);
 
             const data = summaryResult.status === 'fulfilled' ? summaryResult.value : null;
 

@@ -6,11 +6,12 @@ service cloud.firestore {
       // Lecture: un utilisateur ne peut lire que son propre document
       allow read: if request.auth != null && request.auth.uid == userId;
 
-      // Mise à jour par l'utilisateur lui-même, sans pouvoir modifier isAdmin
-      // Approche compatible: on autorise uniquement si isAdmin reste identique
+      // Un utilisateur peut uniquement modifier les champs publics de son profil.
+      // Le diff fonctionne aussi pour les anciens documents sans champ isAdmin.
       allow update: if request.auth != null
                     && request.auth.uid == userId
-                    && (request.resource.data.isAdmin == resource.data.isAdmin);
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['displayName', 'email']);
 
       // Règle spéciale: seuls les admins existants peuvent modifier isAdmin
       allow update: if request.auth != null

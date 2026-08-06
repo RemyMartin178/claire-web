@@ -552,13 +552,26 @@ app.whenReady().then(async () => {
         return new Response('Renderer page not found', { status: 404 });
     });
 
-    // Allow app://renderer to call app.clairia.app APIs without CORS errors
-    session.defaultSession.webRequest.onHeadersReceived({ urls: ['https://app.clairia.app/*'] }, (details, callback) => {
+    // Allow app://renderer to call our HTTPS APIs without CORS errors.
+    // The Railway backend's own CORS allowlist only knows browser origins,
+    // so the packaged app (origin app://renderer) must get its headers here —
+    // including the preflight ones (Authorization requests are preflighted).
+    const apiCorsUrls = [
+        'https://app.clairia.app/*',
+        'https://backend-production-ba2c.up.railway.app/*',
+    ];
+    session.defaultSession.webRequest.onHeadersReceived({ urls: apiCorsUrls }, (details, callback) => {
+        const responseHeaders = { ...details.responseHeaders };
+        for (const key of Object.keys(responseHeaders)) {
+            if (/^access-control-allow-/i.test(key)) delete responseHeaders[key];
+        }
         callback({
             responseHeaders: {
-                ...details.responseHeaders,
+                ...responseHeaders,
                 'Access-Control-Allow-Origin': ['app://renderer'],
                 'Access-Control-Allow-Credentials': ['true'],
+                'Access-Control-Allow-Methods': ['GET, POST, PUT, DELETE, OPTIONS'],
+                'Access-Control-Allow-Headers': ['authorization, content-type'],
             },
         });
     });

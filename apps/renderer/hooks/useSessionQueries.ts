@@ -25,9 +25,12 @@ export function useSessionsQuery(enabled: boolean) {
     enabled,
     staleTime: SESSION_QUERY_STALE_TIME,
     gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    // Sessions can be created outside this renderer (another device, admin
+    // injection, or the main process). Always reconcile the activity list
+    // when Electron returns to it instead of keeping a five-minute stale view.
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: false,
     placeholderData: () => getCachedSessions() ?? undefined,
   })
@@ -40,9 +43,12 @@ export function useSessionDetailsQuery(sessionId: string | null, enabled: boolea
     enabled: enabled && Boolean(sessionId),
     staleTime: SESSION_QUERY_STALE_TIME,
     gcTime: 30 * 60 * 1000,
-    refetchOnMount: false,
+    // The summary/title statuses are written by the main process after the
+    // renderer cached this session. Re-reading on mount is the only way the
+    // detail page sees the terminal state when the user comes back to it.
+    refetchOnMount: 'always',
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
     retry: false,
     placeholderData: () => (sessionId ? getCachedSessionDetails(sessionId) ?? undefined : undefined),
   })

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { Sidebar as ShadcnSidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { HelpCircle, LogOut, Calendar, Settings } from "lucide-react";
+import { HelpCircle, LogOut, Calendar, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
@@ -16,7 +16,7 @@ import { getElectronLoginPath, useElectronRuntime } from '@/utils/electron';
 
 export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void }) {
     const pathname = usePathname();
-    const { user: userInfo, loading: authLoading } = useAuth();
+    const { user: userInfo, loading: authLoading, isAdmin } = useAuth();
     const subscription = useSubscription();
     const [open, setOpen] = useState(false);
     const isElectronRuntime = useElectronRuntime();
@@ -92,6 +92,11 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
 
         return [
             ...baseLinks,
+            ...(isAdmin ? [{
+                label: "Administration",
+                href: "/admin",
+                icon: <ShieldCheck className="text-neutral-700 dark:text-neutral-200 h-5 w-5 shrink-0" />
+            }] : []),
             {
                 label: "Telecharger Claire",
                 href: "/api/download",
@@ -99,7 +104,7 @@ export default function Sidebar({ onSearchClick }: { onSearchClick?: () => void 
                 onClick: handleDownloadClick
             }
         ];
-    }, [handleDownloadClick, isElectronRuntime, onSearchClick]);
+    }, [handleDownloadClick, isAdmin, isElectronRuntime, onSearchClick]);
 
     return (
         <ShadcnSidebar open={open} setOpen={setOpen}>
