@@ -109,6 +109,12 @@ contextBridge.exposeInMainWorld('api', {
     platform: process.platform
   },
 
+  // Onboarding: system permission status/requests (handlers live in main/privacy-manager.js)
+  onboarding: {
+    checkPermissions: () => ipcRenderer.invoke('check-permissions'),
+    requestPermissions: (permissions) => ipcRenderer.invoke('request-permissions', permissions),
+  },
+
   // Generic IPC methods for overlay windows
   send: (channel, data) => ipcRenderer.send(channel, data),
   invoke: (channel, data) => ipcRenderer.invoke(channel, data),

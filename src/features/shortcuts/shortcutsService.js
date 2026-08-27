@@ -65,7 +65,7 @@ class ShortcutsService {
             moveDown: isMac ? 'Cmd+Down' : 'Ctrl+Down',
             moveLeft: isMac ? 'Cmd+Left' : 'Ctrl+Left',
             moveRight: isMac ? 'Cmd+Right' : 'Ctrl+Right',
-            toggleVisibility: isMac ? 'Cmd+\\' : 'Ctrl+\\',
+            toggleVisibility: isMac ? 'Cmd+/' : 'Ctrl+/',
             toggleClickThrough: isMac ? 'Cmd+M' : 'Ctrl+M',
             nextStep: isMac ? 'Cmd+Enter' : 'Ctrl+Enter',
             manualScreenshot: isMac ? 'Cmd+Shift+S' : 'Ctrl+Shift+S',

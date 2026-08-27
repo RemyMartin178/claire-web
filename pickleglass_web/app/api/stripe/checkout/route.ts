@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     const planParam = plan ? `&plan=${encodeURIComponent(plan)}` : ''
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
 
     // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -34,8 +35,8 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/billing/success?session_id={CHECKOUT_SESSION_ID}${planParam}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing?canceled=true`,
+      success_url: `${appUrl}/billing/success?session_id={CHECKOUT_SESSION_ID}${planParam}`,
+      cancel_url: `${appUrl}/settings/billing?canceled=true`,
       customer_email: userEmail,
       metadata: {
         userId: userId,

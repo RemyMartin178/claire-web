@@ -52,10 +52,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
     const session = await stripe.billingPortal.sessions.create({
       customer: finalCustomerId,
-      return_url: returnUrl || `${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`,
+      return_url: returnUrl || `${appUrl}/settings/billing`,
     })
 
     return NextResponse.json({ url: session.url })

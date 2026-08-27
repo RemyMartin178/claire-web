@@ -49,9 +49,15 @@ if (branch !== 'main') {
     process.exit(1);
 }
 
-// Local build — produces the installer in dist/
-console.log('\nBuilding locally...');
-run('npm run build:win');
+// Local sanity build — only on Windows, where electron-builder can produce
+// the NSIS installer natively. On other platforms (e.g. macOS without Wine),
+// skip it: GitHub Actions builds the real Windows artifact on windows-latest.
+if (process.platform === 'win32') {
+    console.log('\nBuilding locally...');
+    run('npm run build:win');
+} else {
+    console.log(`\nSkipping local Windows build (running on ${process.platform}) — CI will build it on windows-latest.`);
+}
 
 let version;
 
@@ -85,4 +91,11 @@ if (noBump) {
 }
 
 console.log(`\n✓ ${tag} pushed — GitHub Actions is building and publishing the release.`);
-console.log('Monitor progress at: https://github.com/pickle-com/claire/actions');
+try {
+    const remoteUrl = runCapture('git remote get-url origin');
+    const match = remoteUrl.match(/github\.com[:/]([^/]+\/[^/.]+)/);
+    const slug = match ? match[1] : 'RemyMartin178/claire-web';
+    console.log(`Monitor progress at: https://github.com/${slug}/actions`);
+} catch (_) {
+    console.log('Monitor progress on GitHub Actions.');
+}

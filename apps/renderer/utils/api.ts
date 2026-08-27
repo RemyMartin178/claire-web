@@ -1220,6 +1220,21 @@ export const captureAnalyticsEvent = async (event: string, properties: Record<st
   }).catch(() => undefined)
 }
 
+// Même contrat que pickleglass_web/app/settings/billing/page.tsx (handleSubscribe).
+export const startStripeCheckout = async (priceId: string, plan: 'plus' | 'max'): Promise<string> => {
+  const user = auth.currentUser
+  if (!user) throw new Error('Connexion requise')
+
+  const response = await apiCall('/api/stripe/checkout', {
+    method: 'POST',
+    body: JSON.stringify({ priceId, userId: user.uid, userEmail: user.email, plan }),
+  })
+
+  const { url, error } = await response.json()
+  if (error || !url) throw new Error(error || 'Échec de la création de la session de paiement')
+  return url as string
+}
+
 export const getRevenueCatStatus = async (): Promise<{
   configured: boolean
   hasPro: boolean

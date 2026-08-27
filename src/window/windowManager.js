@@ -2110,12 +2110,19 @@ function createDashboardWindow({ skipAutoShow = false, initialPath = null } = {}
         maxHeight: 700,
         resizable: false,
         center: true,
-        titleBarStyle: 'hidden',
-        titleBarOverlay: {
-            color: '#00000000',
-            symbolColor: getDashboardSymbolColor(),
-            height: 38,
-        },
+        ...(process.platform === 'darwin'
+            ? {
+                titleBarStyle: 'hiddenInset',
+                trafficLightPosition: { x: 12, y: 12 },
+            }
+            : {
+                titleBarStyle: 'hidden',
+                titleBarOverlay: {
+                    color: '#00000000',
+                    symbolColor: getDashboardSymbolColor(),
+                    height: 38,
+                },
+            }),
         backgroundColor: '#09090B',
         show: false,
         webPreferences: {
@@ -2130,9 +2137,9 @@ function createDashboardWindow({ skipAutoShow = false, initialPath = null } = {}
         icon: path.join(__dirname, '../../build/icon.png'),
     });
 
-    if (process.platform === 'darwin') {
-        dashboardWindow.setWindowButtonVisibility(false);
-    }
+    // Native traffic lights stay visible on macOS: the renderer already reserves
+    // 60px on the left for them (see ElectronClientLayout.tsx), so hiding them
+    // here would leave that space empty with no way to close the window.
 
     // Content protection: respect persisted user preference (default false = detectable).
     // Toggle via dashboard:setContentProtection IPC (e.g. "détectable" setting).
